@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.ScrollPane?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" styleClass="dashboard-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.Pidev3A49.controllers.DashboardController">
+    <VBox spacing="20.0" styleClass="dashboard-content">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <VBox spacing="10.0" styleClass="welcome-section">
+            <Label text="Welcome back, Student!" styleClass="welcome-title"/>
+            <Label text="Continue your learning journey" styleClass="welcome-subtitle"/>
+        </VBox>
+
+        <HBox spacing="20.0" styleClass="stats-row">
+            <VBox styleClass="stat-card">
+                <Label text="12" styleClass="stat-value"/>
+                <Label text="Sessions Completed" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card">
+                <Label text="5" styleClass="stat-value"/>
+                <Label text="Active Tutors" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card">
+                <Label text="85%" styleClass="stat-value"/>
+                <Label text="Progress Score" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card">
+                <Label text="3" styleClass="stat-value"/>
+                <Label text="Upcoming Sessions" styleClass="stat-label"/>
+            </VBox>
+        </HBox>
+
+        <VBox spacing="15.0" styleClass="upcoming-sessions">
+            <Label text="Upcoming Sessions" styleClass="section-title"/>
+            <VBox spacing="10.0">
+                <HBox styleClass="session-card" spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Mathematics - Algebra" styleClass="session-subject"/>
+                        <Label text="Tutor: Ahmed Ben Ali" styleClass="session-tutor"/>
+                        <Label text="Tomorrow, 10:00 AM" styleClass="session-time"/>
+                    </VBox>
+                    <VBox spacing="5.0" alignment="CENTER">
+                        <Label text="50 DT" styleClass="session-price"/>
+                        <Button text="Join Session" styleClass="session-button"/>
+                    </VBox>
+                </HBox>
+                <HBox styleClass="session-card" spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Physics - Mechanics" styleClass="session-subject"/>
+                        <Label text="Tutor: Sarah Mansour" styleClass="session-tutor"/>
+                        <Label text="Friday, 2:00 PM" styleClass="session-time"/>
+                    </VBox>
+                    <VBox spacing="5.0" alignment="CENTER">
+                        <Label text="45 DT" styleClass="session-price"/>
+                        <Button text="Join Session" styleClass="session-button"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </VBox>
+
+        <VBox spacing="15.0" styleClass="learning-progress">
+            <Label text="Learning Progress" styleClass="section-title"/>
+            <VBox spacing="10.0">
+                <VBox spacing="5.0">
+                    <HBox spacing="10.0" alignment="CENTER_LEFT">
+                        <Label text="Mathematics" styleClass="progress-subject"/>
+                        <Label text="75%" styleClass="progress-percentage"/>
+                    </HBox>
+                    <ProgressBar progress="0.75" styleClass="progress-bar"/>
+                </VBox>
+                <VBox spacing="5.0">
+                    <HBox spacing="10.0" alignment="CENTER_LEFT">
+                        <Label text="Physics" styleClass="progress-subject"/>
+                        <Label text="60%" styleClass="progress-percentage"/>
+                    </HBox>
+                    <ProgressBar progress="0.60" styleClass="progress-bar"/>
+                </VBox>
+                <VBox spacing="5.0">
+                    <HBox spacing="10.0" alignment="CENTER_LEFT">
+                        <Label text="Chemistry" styleClass="progress-subject"/>
+                        <Label text="40%" styleClass="progress-percentage"/>
+                    </HBox>
+                    <ProgressBar progress="0.40" styleClass="progress-bar"/>
+                </VBox>
+            </VBox>
+        </VBox>
+
+        <VBox spacing="15.0" styleClass="recommended-tutors">
+            <Label text="Recommended Tutors" styleClass="section-title"/>
+            <HBox spacing="15.0">
+                <VBox styleClass="tutor-card" spacing="10.0">
+                    <Label text="ðŸ‘¤" styleClass="tutor-avatar"/>
+                    <VBox spacing="5.0" alignment="CENTER">
+                        <Label text="Ahmed Ben Ali" styleClass="tutor-name"/>
+                        <Label text="Mathematics" styleClass="tutor-subject"/>
+                        <Label text="â­ 4.8" styleClass="tutor-rating"/>
+                        <Button text="Contact" styleClass="contact-button"/>
+                    </VBox>
+                </VBox>
+                <VBox styleClass="tutor-card" spacing="10.0">
+                    <Label text="ðŸ‘¤" styleClass="tutor-avatar"/>
+                    <VBox spacing="5.0" alignment="CENTER">
+                        <Label text="Sarah Mansour" styleClass="tutor-name"/>
+                        <Label text="Physics" styleClass="tutor-subject"/>
+                        <Label text="â­ 4.9" styleClass="tutor-rating"/>
+                        <Button text="Contact" styleClass="contact-button"/>
+                    </VBox>
+                </VBox>
+                <VBox styleClass="tutor-card" spacing="10.0">
+                    <Label text="ðŸ‘¤" styleClass="tutor-avatar"/>
+                    <VBox spacing="5.0" alignment="CENTER">
+                        <Label text="Mohamed Trabelsi" styleClass="tutor-name"/>
+                        <Label text="Chemistry" styleClass="tutor-subject"/>
+                        <Label text="â­ 4.7" styleClass="tutor-rating"/>
+                        <Button text="Contact" styleClass="contact-button"/>
+                    </VBox>
+                </VBox>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>
+

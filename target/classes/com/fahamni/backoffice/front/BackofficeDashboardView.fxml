@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.Pidev3A49.controllers.BackofficeDashboardController">
+    <VBox spacing="22.0" styleClass="backoffice-page">
+        <padding>
+            <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+        </padding>
+
+        <HBox spacing="18.0" styleClass="backoffice-stats-row">
+            <VBox spacing="8.0" styleClass="backoffice-stat-card">
+                <Label text="Utilisateurs suivis" styleClass="backoffice-stat-title"/>
+                <Label fx:id="usersValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                <Label text="Comptes visibles dans l'espace admin." styleClass="backoffice-stat-copy"/>
+            </VBox>
+            <VBox spacing="8.0" styleClass="backoffice-stat-card">
+                <Label text="Seances en catalogue" styleClass="backoffice-stat-title"/>
+                <Label fx:id="sessionsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                <Label text="Seances planifiees ou en brouillon." styleClass="backoffice-stat-copy"/>
+            </VBox>
+            <VBox spacing="8.0" styleClass="backoffice-stat-card">
+                <Label text="Reservations suivies" styleClass="backoffice-stat-title"/>
+                <Label fx:id="reservationsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                <Label text="Demandes a confirmer ou verifier." styleClass="backoffice-stat-copy"/>
+            </VBox>
+            <VBox spacing="8.0" styleClass="backoffice-stat-card">
+                <Label text="Contenus actifs" styleClass="backoffice-stat-title"/>
+                <Label fx:id="contentValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                <Label text="Articles et ressources editorialisees." styleClass="backoffice-stat-copy"/>
+            </VBox>
+        </HBox>
+
+        <HBox spacing="18.0">
+            <VBox spacing="14.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
+                <Label text="Activite recente" styleClass="backoffice-panel-title"/>
+                <VBox fx:id="recentActivityBox" spacing="10.0"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel" prefWidth="320.0" minWidth="320.0">
+                <Label text="Points d'attention" styleClass="backoffice-panel-title"/>
+                <VBox fx:id="alertsBox" spacing="10.0"/>
+            </VBox>
+        </HBox>
+
+        <VBox spacing="14.0" styleClass="backoffice-panel">
+            <Label text="Priorites du jour" styleClass="backoffice-panel-title"/>
+            <HBox spacing="16.0">
+                <VBox spacing="6.0" styleClass="backoffice-mini-card">
+                    <Label text="Validation" styleClass="backoffice-mini-title"/>
+                    <Label text="Verifier les comptes tuteurs en attente." styleClass="backoffice-mini-copy"/>
+                </VBox>
+                <VBox spacing="6.0" styleClass="backoffice-mini-card">
+                    <Label text="Programmation" styleClass="backoffice-mini-title"/>
+                    <Label text="Confirmer les seances publiees de la semaine." styleClass="backoffice-mini-copy"/>
+                </VBox>
+                <VBox spacing="6.0" styleClass="backoffice-mini-card">
+                    <Label text="Editorial" styleClass="backoffice-mini-title"/>
+                    <Label text="Relire les brouillons avant publication." styleClass="backoffice-mini-copy"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>
+

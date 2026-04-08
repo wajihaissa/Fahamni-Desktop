@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="20.0" styleClass="backoffice-page"
+      xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.Pidev3A49.controllers.BackofficeUsersController">
+    <padding>
+        <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+    </padding>
+
+    <VBox spacing="6.0" styleClass="backoffice-header-block">
+        <Label text="Gestion des utilisateurs" styleClass="backoffice-panel-title"/>
+        <Label text="Suivez les comptes et ajustez leur role ou leur statut." styleClass="backoffice-panel-copy"/>
+    </VBox>
+
+    <HBox spacing="18.0">
+        <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
+            <Label text="Liste des comptes" styleClass="backoffice-section-title"/>
+            <TableView fx:id="usersTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+                <columns>
+                    <TableColumn fx:id="fullNameColumn" prefWidth="190.0" text="Nom complet"/>
+                    <TableColumn fx:id="emailColumn" prefWidth="220.0" text="Email"/>
+                    <TableColumn fx:id="roleColumn" prefWidth="120.0" text="Role"/>
+                    <TableColumn fx:id="statusColumn" prefWidth="110.0" text="Statut"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+        <VBox spacing="12.0" styleClass="backoffice-panel backoffice-form-panel" prefWidth="320.0" minWidth="320.0">
+            <Label text="Edition rapide" styleClass="backoffice-section-title"/>
+
+            <VBox spacing="6.0">
+                <Label text="Nom complet" styleClass="backoffice-form-label"/>
+                <TextField fx:id="fullNameField" promptText="Nom complet" styleClass="backoffice-form-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Adresse email" styleClass="backoffice-form-label"/>
+                <TextField fx:id="emailField" promptText="Email" styleClass="backoffice-form-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Role" styleClass="backoffice-form-label"/>
+                <ComboBox fx:id="roleComboBox" styleClass="backoffice-form-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Statut" styleClass="backoffice-form-label"/>
+                <ComboBox fx:id="statusComboBox" styleClass="backoffice-form-input"/>
+            </VBox>
+
+            <Button maxWidth="Infinity" onAction="#handleCreateUser" text="Ajouter un utilisateur" styleClass="backoffice-primary-button"/>
+            <Button maxWidth="Infinity" onAction="#handleUpdateUser" text="Mettre a jour la selection" styleClass="backoffice-secondary-button"/>
+            <Button maxWidth="Infinity" onAction="#handleResetForm" text="Reinitialiser le formulaire" styleClass="backoffice-secondary-button"/>
+
+            <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+        </VBox>
+    </HBox>
+</VBox>
+

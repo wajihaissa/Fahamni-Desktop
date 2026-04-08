@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" styleClass="quiz-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.Pidev3A49.controllers.QuizController">
+    <VBox spacing="20.0" styleClass="quiz-content">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <VBox spacing="15.0" styleClass="quiz-header">
+            <Label text="Quiz Center" styleClass="section-title"/>
+            <Label text="Test your knowledge and track your progress" styleClass="section-subtitle"/>
+        </VBox>
+
+        <HBox spacing="20.0" styleClass="quiz-stats">
+            <VBox styleClass="stat-card">
+                <Label text="12" styleClass="stat-value"/>
+                <Label text="Quizzes Taken" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card">
+                <Label text="85%" styleClass="stat-value"/>
+                <Label text="Average Score" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="stat-card">
+                <Label text="8" styleClass="stat-value"/>
+                <Label text="Subjects Mastered" styleClass="stat-label"/>
+            </VBox>
+        </HBox>
+
+        <VBox spacing="15.0" styleClass="available-quizzes">
+            <Label text="Available Quizzes" styleClass="section-title"/>
+            <VBox spacing="10.0">
+                <HBox styleClass="quiz-card" spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Mathematics - Algebra Basics" styleClass="quiz-title"/>
+                        <Label text="15 questions â€¢ 20 minutes â€¢ Medium" styleClass="quiz-info"/>
+                        <Label text="Test your understanding of fundamental algebraic concepts" styleClass="quiz-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="â­ 4.5" styleClass="quiz-rating"/>
+                        <Button text="Start Quiz" styleClass="start-quiz-button"/>
+                    </VBox>
+                </HBox>
+
+                <HBox styleClass="quiz-card" spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Physics - Mechanics" styleClass="quiz-title"/>
+                        <Label text="20 questions â€¢ 25 minutes â€¢ Hard" styleClass="quiz-info"/>
+                        <Label text="Challenge yourself with advanced mechanics problems" styleClass="quiz-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="â­ 4.7" styleClass="quiz-rating"/>
+                        <Button text="Start Quiz" styleClass="start-quiz-button"/>
+                    </VBox>
+                </HBox>
+
+                <HBox styleClass="quiz-card" spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Chemistry - Organic Compounds" styleClass="quiz-title"/>
+                        <Label text="18 questions â€¢ 22 minutes â€¢ Medium" styleClass="quiz-info"/>
+                        <Label text="Explore the world of organic chemistry" styleClass="quiz-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="â­ 4.3" styleClass="quiz-rating"/>
+                        <Button text="Start Quiz" styleClass="start-quiz-button"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </VBox>
+
+        <VBox spacing="15.0" styleClass="recent-results">
+            <Label text="Recent Results" styleClass="section-title"/>
+            <VBox spacing="10.0">
+                <HBox styleClass="result-card" spacing="15.0">
+                    <VBox HBox.hgrow="ALWAYS">
+                        <Label text="Mathematics - Algebra Basics" styleClass="result-title"/>
+                        <Label text="Completed: Dec 10, 2024" styleClass="result-date"/>
+                    </VBox>
+                    <VBox alignment="CENTER">
+                        <Label text="13/15 (87%)" styleClass="result-score"/>
+                        <Label text="Excellent!" styleClass="result-grade excellent"/>
+                    </VBox>
+                    <Button text="Review" styleClass="review-button"/>
+                </HBox>
+
+                <HBox styleClass="result-card" spacing="15.0">
+                    <VBox HBox.hgrow="ALWAYS">
+                        <Label text="Physics - Forces" styleClass="result-title"/>
+                        <Label text="Completed: Dec 8, 2024" styleClass="result-date"/>
+                    </VBox>
+                    <VBox alignment="CENTER">
+                        <Label text="16/20 (80%)" styleClass="result-score"/>
+                        <Label text="Good" styleClass="result-grade good"/>
+                    </VBox>
+                    <Button text="Review" styleClass="review-button"/>
+                </HBox>
+            </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>
+

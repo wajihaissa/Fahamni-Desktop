@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Polygon?>
+
+<AnchorPane prefHeight="600.0" prefWidth="900.0" styleClass="login-root"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.Pidev3A49.controllers.LoginController">
+    <children>
+        <Polygon fill="#f7fbff" mouseTransparent="true"
+                 points="0.0, 0.0, 418.0, 0.0, 306.0, 600.0, 0.0, 600.0"/>
+
+        <HBox alignment="CENTER" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+              AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <children>
+                <StackPane alignment="CENTER" maxWidth="Infinity" prefWidth="420.0">
+                    <children>
+                        <VBox alignment="CENTER" maxWidth="356.0" spacing="18.0" styleClass="login-brand-block">
+                            <children>
+                                <ImageView fitHeight="374.0" fitWidth="290.0" pickOnBounds="true"
+                                           preserveRatio="true" styleClass="login-art-image">
+                                    <image>
+                                        <Image url="@../../images/logo.png"/>
+                                    </image>
+                                </ImageView>
+
+                                <VBox alignment="CENTER" spacing="5.0" styleClass="login-brand-copy">
+                                    <children>
+                                        <Label text="Fahamni" styleClass="login-brand-title"/>
+                                        <Label maxWidth="280.0"
+                                               text="Plateforme d'apprentissage et de suivi academique."
+                                               textAlignment="CENTER" wrapText="true"
+                                               styleClass="login-brand-subtitle"/>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </StackPane>
+
+                <StackPane alignment="CENTER_RIGHT" maxWidth="Infinity" prefWidth="480.0">
+                    <children>
+                        <VBox maxWidth="340.0" spacing="18.0" styleClass="login-panel">
+                            <children>
+                                <VBox spacing="0.0" styleClass="login-form-card">
+                                    <children>
+                                        <VBox fx:id="signInPane" spacing="18.0">
+                                            <children>
+                                                <VBox spacing="8.0">
+                                                    <children>
+                                                        <Label text="Connexion securisee" styleClass="login-eyebrow"/>
+                                                        <Label text="Bon retour" styleClass="login-heading"/>
+                                                        <Label text="Connectez-vous pour acceder a votre espace Fahamni."
+                                                               styleClass="login-copy"/>
+                                                    </children>
+                                                </VBox>
+
+                                                <Separator styleClass="login-divider"/>
+
+                                                <VBox spacing="12.0" styleClass="login-fields-stack">
+                                                    <children>
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Adresse email" styleClass="login-input-label"/>
+                                                                <TextField fx:id="emailField" promptText="Entrer votre email" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Mot de passe" styleClass="login-input-label"/>
+                                                                <PasswordField fx:id="passwordField" promptText="Entrer votre mot de passe" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="login-options-row">
+                                                            <children>
+                                                                <CheckBox mnemonicParsing="false" selected="true" styleClass="login-check" text="Se souvenir de moi"/>
+                                                                <Region HBox.hgrow="ALWAYS"/>
+                                                                <Hyperlink focusTraversable="false" text="Mot de passe oublie ?" styleClass="login-link"/>
+                                                            </children>
+                                                        </HBox>
+                                                    </children>
+                                                </VBox>
+
+                                                <Button fx:id="loginButton" defaultButton="true" maxWidth="Infinity"
+                                                        onAction="#handleLogin" text="SE CONNECTER" styleClass="login-primary-button"/>
+
+                                                <Separator styleClass="login-divider"/>
+
+                                                <HBox alignment="CENTER" spacing="5.0" styleClass="login-helper-row">
+                                                    <children>
+                                                        <Label text="Pas encore de compte ?" styleClass="login-helper-text"/>
+                                                        <Hyperlink focusTraversable="false" onAction="#showSignUpMode"
+                                                                   text="Creer un compte" styleClass="login-link"/>
+                                                    </children>
+                                                </HBox>
+
+                                                <Label fx:id="loginMessageLabel" managed="false" visible="false" wrapText="true"
+                                                       styleClass="login-message-label"/>
+                                            </children>
+                                        </VBox>
+
+                                        <VBox fx:id="signUpPane" managed="false" spacing="18.0" visible="false">
+                                            <children>
+                                                <VBox spacing="8.0">
+                                                    <children>
+                                                        <Label text="Nouveau compte" styleClass="login-eyebrow"/>
+                                                        <Label text="Creer votre espace" styleClass="login-heading"/>
+                                                        <Label text="Inscrivez-vous pour commencer votre parcours sur Fahamni."
+                                                               styleClass="login-copy"/>
+                                                    </children>
+                                                </VBox>
+
+                                                <Separator styleClass="login-divider"/>
+
+                                                <VBox spacing="12.0" styleClass="login-fields-stack">
+                                                    <children>
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Nom complet" styleClass="login-input-label"/>
+                                                                <TextField fx:id="fullNameField" promptText="Entrer votre nom complet" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Adresse email" styleClass="login-input-label"/>
+                                                                <TextField fx:id="registerEmailField" promptText="Entrer votre email" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Mot de passe" styleClass="login-input-label"/>
+                                                                <PasswordField fx:id="registerPasswordField" promptText="Choisir un mot de passe" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Confirmer le mot de passe" styleClass="login-input-label"/>
+                                                                <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+                                                    </children>
+                                                </VBox>
+
+                                                <Button fx:id="createAccountButton" maxWidth="Infinity"
+                                                        onAction="#handleCreateAccount" text="CREER UN COMPTE"
+                                                        styleClass="login-primary-button"/>
+
+                                                <Separator styleClass="login-divider"/>
+
+                                                <HBox alignment="CENTER" spacing="5.0" styleClass="login-helper-row">
+                                                    <children>
+                                                        <Label text="Vous avez deja un compte ?" styleClass="login-helper-text"/>
+                                                        <Hyperlink focusTraversable="false" onAction="#showSignInMode"
+                                                                   text="Se connecter" styleClass="login-link"/>
+                                                    </children>
+                                                </HBox>
+
+                                                <Label fx:id="registerMessageLabel" managed="false" visible="false" wrapText="true"
+                                                       styleClass="login-message-label"/>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </VBox>
+                    </children>
+                </StackPane>
+            </children>
+        </HBox>
+    </children>
+</AnchorPane>
+
