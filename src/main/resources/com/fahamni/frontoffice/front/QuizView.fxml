@@ -8,7 +8,7 @@
 <ScrollPane fitToWidth="true" styleClass="quiz-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.QuizController">
+            fx:controller="tn.esprit.fahamni.controllers.QuizController">
     <VBox spacing="20.0" styleClass="quiz-content">
         <padding>
             <Insets top="20" right="20" bottom="20" left="20"/>

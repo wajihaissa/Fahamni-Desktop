@@ -11,7 +11,7 @@
 <ScrollPane fitToWidth="true" styleClass="dashboard-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.DashboardController">
+            fx:controller="tn.esprit.fahamni.controllers.DashboardController">
     <VBox spacing="20.0" styleClass="dashboard-content">
         <padding>
             <Insets top="20" right="20" bottom="20" left="20"/>

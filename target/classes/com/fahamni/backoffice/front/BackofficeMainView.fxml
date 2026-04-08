@@ -12,7 +12,7 @@
 <BorderPane prefHeight="820.0" prefWidth="1280.0" styleClass="backoffice-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.BackofficeMainController">
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeMainController">
     <left>
         <VBox styleClass="backoffice-sidebar" BorderPane.alignment="CENTER">
             <padding>

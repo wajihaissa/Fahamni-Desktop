@@ -12,7 +12,7 @@
 <BorderPane prefHeight="800.0" prefWidth="1200.0" styleClass="main-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.MainController">
+            fx:controller="tn.esprit.fahamni.controllers.MainController">
     <left>
         <VBox styleClass="sidebar" BorderPane.alignment="CENTER">
             <padding>

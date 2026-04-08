@@ -51,7 +51,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>tn.esprit.Pidev3A49.test.Main</mainClass>
+                    <mainClass>tn.esprit.fahamni.test.Main</mainClass>
                 </configuration>
             </plugin>
         </plugins>

@@ -8,7 +8,7 @@
 <ScrollPane fitToWidth="true" styleClass="seance-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.SeanceController">
+            fx:controller="tn.esprit.fahamni.controllers.SeanceController">
     <VBox spacing="20.0" styleClass="seance-content">
         <padding>
             <Insets top="20" right="20" bottom="20" left="20"/>

@@ -8,7 +8,7 @@
 <BorderPane styleClass="messenger-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.MessengerController">
+            fx:controller="tn.esprit.fahamni.controllers.MessengerController">
     <left>
         <VBox styleClass="conversations-list" BorderPane.alignment="CENTER">
             <padding>

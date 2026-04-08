@@ -10,7 +10,7 @@
 <ScrollPane fitToWidth="true" styleClass="backoffice-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.Pidev3A49.controllers.BackofficeDashboardController">
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeDashboardController">
     <VBox spacing="22.0" styleClass="backoffice-page">
         <padding>
             <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
