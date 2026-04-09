@@ -86,85 +86,13 @@
 
         <VBox spacing="14.0" styleClass="reservation-section-panel">
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <Label text="Tuteurs recommandes" styleClass="subsection-title"/>
+                <Label fx:id="sessionFormTitleLabel" text="Publier une seance" styleClass="subsection-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label text="Selection IA" styleClass="workspace-chip workspace-chip-muted"/>
-            </HBox>
-
-            <FlowPane hgap="14.0" vgap="14.0" prefWrapLength="1200.0">
-                <VBox spacing="12.0" styleClass="tutor-profile-card" prefWidth="350.0">
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                            <Label text="Ahmed Ben Ali" styleClass="tutor-card-name"/>
-                            <Label text="Algebre | En ligne | Reponse rapide" styleClass="tutor-card-meta"/>
-                        </VBox>
-                        <Label text="Disponible" styleClass="reservation-status confirmed"/>
-                    </HBox>
-                    <Label text="Explique les bases clairement, propose des exercices guides et accompagne les revisions avant examen." styleClass="reservation-section-copy" wrapText="true"/>
-                    <HBox spacing="8.0">
-                        <Label text="5 ans d'experience" styleClass="workspace-chip workspace-chip-muted"/>
-                        <Label text="4.9/5" styleClass="workspace-chip workspace-chip-muted"/>
-                    </HBox>
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <Label text="A partir de 50 DT" styleClass="reservation-price"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="Voir profil" styleClass="action-button secondary"/>
-                        <Button text="Demander" styleClass="action-button primary"/>
-                    </HBox>
-                </VBox>
-
-                <VBox spacing="12.0" styleClass="tutor-profile-card" prefWidth="350.0">
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                            <Label text="Sarah Mansour" styleClass="tutor-card-name"/>
-                            <Label text="Physique | Hybride | Week-end" styleClass="tutor-card-meta"/>
-                        </VBox>
-                        <Label text="Populaire" styleClass="reservation-status pending"/>
-                    </HBox>
-                    <Label text="Tres bonne pedagogie pour les etudiants qui veulent revoir mecanique, electricite et methodologie de resolution." styleClass="reservation-section-copy" wrapText="true"/>
-                    <HBox spacing="8.0">
-                        <Label text="Cours individuels" styleClass="workspace-chip workspace-chip-muted"/>
-                        <Label text="Reponse sous 24h" styleClass="workspace-chip workspace-chip-muted"/>
-                    </HBox>
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <Label text="A partir de 75 DT" styleClass="reservation-price"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="Voir profil" styleClass="action-button secondary"/>
-                        <Button text="Contacter" styleClass="action-button primary"/>
-                    </HBox>
-                </VBox>
-
-                <VBox spacing="12.0" styleClass="tutor-profile-card" prefWidth="350.0">
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                            <Label text="Leila Khemiri" styleClass="tutor-card-name"/>
-                            <Label text="Anglais | En ligne | Soiree" styleClass="tutor-card-meta"/>
-                        </VBox>
-                        <Label text="Nouveau profil" styleClass="reservation-status confirmed"/>
-                    </HBox>
-                    <Label text="Ideal pour renforcer la grammaire, la comprehension orale et la preparation aux presentations en anglais." styleClass="reservation-section-copy" wrapText="true"/>
-                    <HBox spacing="8.0">
-                        <Label text="Support PDF" styleClass="workspace-chip workspace-chip-muted"/>
-                        <Label text="Conversation guidee" styleClass="workspace-chip workspace-chip-muted"/>
-                    </HBox>
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <Label text="A partir de 45 DT" styleClass="reservation-price"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="Voir profil" styleClass="action-button secondary"/>
-                        <Button text="Programmer" styleClass="action-button primary"/>
-                    </HBox>
-                </VBox>
-            </FlowPane>
-        </VBox>
-
-        <VBox spacing="14.0" styleClass="reservation-section-panel">
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <Label text="Publier une seance" styleClass="subsection-title"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Label text="Ajout direct" styleClass="workspace-chip workspace-chip-muted"/>
+                <Label fx:id="sessionFormModeChipLabel" text="Ajout direct" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
             <Label text="Remplis les informations principales ci-dessous pour inserer une vraie seance dans la table SQL." styleClass="reservation-section-copy"/>
+            <Label fx:id="editingSessionLabel" managed="false" visible="false" wrapText="true" styleClass="workspace-chip"/>
 
             <VBox spacing="12.0" styleClass="reservation-form-shell">
                 <HBox spacing="12.0">
@@ -224,7 +152,7 @@
                 <Label text="Mise a jour auto" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
-            <Label text="Les dernieres seances en base s'affichent ici apres creation." styleClass="reservation-section-copy"/>
+            <Label text="Les dernieres seances en base s'affichent ici. Clique sur Modifier pour charger une seance dans le formulaire." styleClass="reservation-section-copy"/>
 
             <VBox fx:id="recentSessionsContainer" spacing="12.0"/>
         </VBox>

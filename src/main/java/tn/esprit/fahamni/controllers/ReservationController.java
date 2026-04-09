@@ -5,6 +5,7 @@ import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.utils.OperationResult;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
@@ -30,6 +31,7 @@ public class ReservationController {
 
     private final SeanceService seanceService = new SeanceService();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
+    private Integer editingSessionId;
 
     @FXML
     private Label publishedSessionsCountLabel;
@@ -59,14 +61,25 @@ public class ReservationController {
     private Label publishFeedbackLabel;
 
     @FXML
+    private Label sessionFormTitleLabel;
+
+    @FXML
+    private Label sessionFormModeChipLabel;
+
+    @FXML
+    private Label editingSessionLabel;
+
+    @FXML
     private VBox recentSessionsContainer;
 
     @FXML
     private void initialize() {
         tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
+        tutorComboBox.setEditable(true);
         if (!tutorComboBox.getItems().isEmpty()) {
             tutorComboBox.setValue(tutorComboBox.getItems().get(0));
         }
+        resetEditMode();
         hideFeedback();
         loadSessionDashboard();
     }
@@ -84,19 +97,34 @@ public class ReservationController {
     @FXML
     private void handleClearSessionForm() {
         clearSessionForm();
+        resetEditMode();
         hideFeedback();
     }
 
     private void submitSession(int status, String successMessage) {
         hideFeedback();
+        boolean editing = editingSessionId != null;
 
         try {
             Seance seance = buildSeance(status);
-            OperationResult result = seanceService.createSeance(seance);
+            OperationResult result;
+            if (editing) {
+                seance.setId(editingSessionId);
+                seance.setUpdatedAt(LocalDateTime.now());
+                result = seanceService.updateSeance(seance);
+            } else {
+                seance.setCreatedAt(LocalDateTime.now());
+                result = seanceService.createSeance(seance);
+            }
+
             if (result.isSuccess()) {
                 clearSessionForm();
+                resetEditMode();
                 loadSessionDashboard();
-                showFeedback(successMessage, true);
+                showFeedback(
+                    editing ? "La seance a ete modifiee avec succes." : successMessage,
+                    true
+                );
                 return;
             }
             showFeedback(result.getMessage(), false);
@@ -124,7 +152,6 @@ public class ReservationController {
         seance.setMaxParticipants(capacity);
         seance.setStatus(status);
         seance.setDescription(blankToNull(sessionDescriptionArea.getText()));
-        seance.setCreatedAt(LocalDateTime.now());
         seance.setTuteurId(tutorId);
         return seance;
     }
@@ -184,8 +211,43 @@ public class ReservationController {
         descriptionLabel.setWrapText(true);
         descriptionLabel.getStyleClass().add("reservation-section-copy");
 
-        card.getChildren().addAll(headerRow, metaLabel, descriptionLabel);
+        HBox actionRow = new HBox(10.0);
+        Label idChip = new Label("Seance #" + seance.getId());
+        idChip.getStyleClass().add("workspace-chip");
+
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+        Button editButton = new Button("Modifier");
+        editButton.getStyleClass().addAll("action-button", "secondary");
+        editButton.setOnAction(event -> startEditingSession(seance));
+
+        actionRow.getChildren().addAll(idChip, actionSpacer, editButton);
+
+        card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
         return card;
+    }
+
+    private void startEditingSession(Seance seance) {
+        editingSessionId = seance.getId();
+        sessionSubjectField.setText(seance.getMatiere());
+        sessionStartAtField.setText(formatDateTime(seance.getStartAt()));
+        sessionDurationField.setText(String.valueOf(seance.getDurationMin()));
+        sessionCapacityField.setText(String.valueOf(seance.getMaxParticipants()));
+        sessionDescriptionArea.setText(seance.getDescription() != null ? seance.getDescription() : "");
+
+        String tutorValue = resolveTutorValueForEdit(seance.getTuteurId());
+        tutorComboBox.setValue(tutorValue);
+
+        sessionFormTitleLabel.setText("Modifier une seance");
+        sessionFormModeChipLabel.setText("Modification");
+        editingSessionLabel.setText(
+            "Mode modification actif pour la seance #" + seance.getId()
+                + ". Mets a jour les champs puis clique sur brouillon ou publier."
+        );
+        editingSessionLabel.setManaged(true);
+        editingSessionLabel.setVisible(true);
+        hideFeedback();
     }
 
     private LocalDateTime parseStartAt(String value) {
@@ -252,7 +314,30 @@ public class ReservationController {
         sessionDescriptionArea.clear();
         if (!tutorComboBox.getItems().isEmpty()) {
             tutorComboBox.setValue(tutorComboBox.getItems().get(0));
+        } else {
+            tutorComboBox.setValue(null);
         }
+    }
+
+    private void resetEditMode() {
+        editingSessionId = null;
+        sessionFormTitleLabel.setText("Publier une seance");
+        sessionFormModeChipLabel.setText("Ajout direct");
+        editingSessionLabel.setText("");
+        editingSessionLabel.setManaged(false);
+        editingSessionLabel.setVisible(false);
+    }
+
+    private String resolveTutorValueForEdit(int tutorId) {
+        if (tutorId <= 0) {
+            return "";
+        }
+
+        String tutorDisplayName = tutorDirectoryService.getTutorDisplayName(tutorId);
+        if (tutorDisplayName.startsWith("Tuteur #")) {
+            return String.valueOf(tutorId);
+        }
+        return tutorDisplayName;
     }
 
     private void showFeedback(String message, boolean success) {
