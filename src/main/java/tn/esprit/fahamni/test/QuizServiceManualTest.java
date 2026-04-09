@@ -44,8 +44,8 @@ public class QuizServiceManualTest {
         System.out.println("\n[CREATE]");
 
         Quiz quiz = new Quiz();
-        quiz.setTitre("please ");
-        quiz.setKeyword("work");
+        quiz.setTitre("running the streets ");
+        quiz.setKeyword("TS");
 
         Question q1 = new Question();
         q1.setQuestion("Java is mainly a?");
@@ -99,8 +99,8 @@ public class QuizServiceManualTest {
     private static Quiz runUpdateTest(QuizService service, Quiz quizToUpdate) {
         System.out.println("\n[UPDATE]");
 
-        quizToUpdate.setTitre("wajih");
-        quizToUpdate.setKeyword("wins at life");
+        quizToUpdate.setTitre("all bout ma bread");
+        quizToUpdate.setKeyword("YN");
 
         Question replacementQuestion = new Question();
         replacementQuestion.setQuestion("Which company originally developed Java?");

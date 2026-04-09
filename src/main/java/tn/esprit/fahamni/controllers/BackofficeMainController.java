@@ -29,6 +29,9 @@ public class BackofficeMainController {
     private Button reservationsButton;
 
     @FXML
+    private Button quizButton;
+
+    @FXML
     private Button contentButton;
 
     @FXML
@@ -58,6 +61,12 @@ public class BackofficeMainController {
     private void showReservations() {
         loadView("BackofficeReservationsView.fxml", "Gestion des reservations");
         setActiveButton(reservationsButton);
+    }
+
+    @FXML
+    private void showQuiz() {
+        loadView("BackofficeQuizView.fxml", "Gestion des quiz");
+        setActiveButton(quizButton);
     }
 
     @FXML
@@ -98,6 +107,7 @@ public class BackofficeMainController {
         usersButton.getStyleClass().remove("active");
         sessionsButton.getStyleClass().remove("active");
         reservationsButton.getStyleClass().remove("active");
+        quizButton.getStyleClass().remove("active");
         contentButton.getStyleClass().remove("active");
 
         if (!activeButton.getStyleClass().contains("active")) {
