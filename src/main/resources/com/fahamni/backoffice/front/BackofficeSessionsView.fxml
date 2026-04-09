@@ -8,6 +8,7 @@
 <?import javafx.scene.control.SpinnerValueFactory$IntegerSpinnerValueFactory?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
@@ -48,13 +49,13 @@
             </VBox>
 
             <VBox spacing="6.0">
-                <Label text="Tuteur" styleClass="backoffice-form-label"/>
-                <TextField fx:id="tutorField" promptText="Nom du tuteur" styleClass="backoffice-form-input"/>
+                <Label text="Tuteur (nom mock ou ID)" styleClass="backoffice-form-label"/>
+                <TextField fx:id="tutorField" promptText="Ex: Ahmed Ben Ali ou 9" styleClass="backoffice-form-input"/>
             </VBox>
 
             <VBox spacing="6.0">
-                <Label text="Planning" styleClass="backoffice-form-label"/>
-                <TextField fx:id="scheduleField" promptText="Ex: 04 Apr 2026 - 14:00" styleClass="backoffice-form-input"/>
+                <Label text="Planning (dd/MM/yyyy HH:mm)" styleClass="backoffice-form-label"/>
+                <TextField fx:id="scheduleField" promptText="Ex: 09/04/2026 14:00" styleClass="backoffice-form-input"/>
             </VBox>
 
             <VBox spacing="6.0">
@@ -64,6 +65,20 @@
                         <IntegerSpinnerValueFactory min="1" max="50" initialValue="10"/>
                     </valueFactory>
                 </Spinner>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Duree (minutes)" styleClass="backoffice-form-label"/>
+                <Spinner fx:id="durationSpinner" editable="true" styleClass="backoffice-form-input">
+                    <valueFactory>
+                        <IntegerSpinnerValueFactory min="15" max="480" initialValue="60"/>
+                    </valueFactory>
+                </Spinner>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Description" styleClass="backoffice-form-label"/>
+                <TextArea fx:id="descriptionArea" prefRowCount="4" promptText="Ex: chapitre 1, revision DS, notions a couvrir..." styleClass="backoffice-form-input" wrapText="true"/>
             </VBox>
 
             <VBox spacing="6.0">

@@ -59,7 +59,7 @@ public class MainController {
 
     @FXML
     private void showReservations() {
-        loadView("ReservationView.fxml", "RÃ©servations");
+        loadView("ReservationView.fxml", "Trouver un tuteur");
         setActiveButton(reservationsButton);
     }
 
@@ -132,5 +132,3 @@ public class MainController {
         }
     }
 }
-
-

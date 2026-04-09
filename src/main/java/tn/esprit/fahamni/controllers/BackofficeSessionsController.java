@@ -9,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 
@@ -45,7 +46,13 @@ public class BackofficeSessionsController {
     private Spinner<Integer> capacitySpinner;
 
     @FXML
+    private Spinner<Integer> durationSpinner;
+
+    @FXML
     private ComboBox<String> statusComboBox;
+
+    @FXML
+    private TextArea descriptionArea;
 
     @FXML
     private Label feedbackLabel;
@@ -63,6 +70,7 @@ public class BackofficeSessionsController {
         statusComboBox.getItems().setAll(sessionService.getAvailableStatuses());
         statusComboBox.setValue("Draft");
         capacitySpinner.getValueFactory().setValue(10);
+        durationSpinner.getValueFactory().setValue(60);
 
         sessionsTable.setItems(sessionService.getSessions());
         sessionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
@@ -79,9 +87,12 @@ public class BackofficeSessionsController {
             tutorField.getText(),
             scheduleField.getText(),
             capacitySpinner.getValue(),
+            durationSpinner.getValue(),
+            descriptionArea.getText(),
             statusComboBox.getValue()
         );
         if (result.isSuccess()) {
+            sessionsTable.getSelectionModel().clearSelection();
             clearForm();
         }
         showFeedback(result.getMessage(), result.isSuccess());
@@ -97,6 +108,8 @@ public class BackofficeSessionsController {
             tutorField.getText(),
             scheduleField.getText(),
             capacitySpinner.getValue(),
+            durationSpinner.getValue(),
+            descriptionArea.getText(),
             statusComboBox.getValue()
         );
         if (result.isSuccess()) {
@@ -121,7 +134,9 @@ public class BackofficeSessionsController {
         tutorField.setText(session.getTutor());
         scheduleField.setText(session.getSchedule());
         capacitySpinner.getValueFactory().setValue(session.getCapacity());
+        durationSpinner.getValueFactory().setValue(session.getDurationMinutes());
         statusComboBox.setValue(session.getStatus());
+        descriptionArea.setText(session.getDescription());
     }
 
     private void clearForm() {
@@ -129,7 +144,9 @@ public class BackofficeSessionsController {
         tutorField.clear();
         scheduleField.clear();
         capacitySpinner.getValueFactory().setValue(10);
+        durationSpinner.getValueFactory().setValue(60);
         statusComboBox.setValue("Draft");
+        descriptionArea.clear();
     }
 
     private void showFeedback(String message, boolean success) {
@@ -146,4 +163,3 @@ public class BackofficeSessionsController {
         feedbackLabel.setVisible(false);
     }
 }
-

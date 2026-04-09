@@ -418,6 +418,116 @@ public final class UiTheme {
             -fx-background-radius: 999px;
         }
 
+        .reservation-workspace, .reservation-search-panel, .reservation-section-panel {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.08), 18, 0.18, 0, 6);
+            -fx-padding: 16px;
+        }
+
+        .reservation-form-shell, .workspace-stat-card, .tutor-profile-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7faff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-padding: 14px;
+        }
+
+        .workspace-eyebrow, .workspace-label {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4a6ea9;
+        }
+
+        .workspace-title {
+            -fx-font-size: 26px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .workspace-subtitle, .reservation-section-copy, .tutor-card-meta {
+            -fx-font-size: 13px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .workspace-chip {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #d0def8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 7px 12px;
+            -fx-text-fill: #2f5ca7;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+        }
+
+        .workspace-chip-muted {
+            -fx-background-color: #f7faff;
+            -fx-border-color: #dbe7f7;
+            -fx-text-fill: #5e78a2;
+        }
+
+        .workspace-menu-combo, .reservation-mode-combo {
+            -fx-pref-height: 38px;
+        }
+
+        .workspace-stat-card {
+            -fx-min-height: 76px;
+        }
+
+        .workspace-stat-icon {
+            -fx-min-width: 38px;
+            -fx-min-height: 38px;
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #d6e2f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 12px;
+            -fx-background-radius: 12px;
+            -fx-alignment: center;
+        }
+
+        .workspace-stat-icon-text {
+            -fx-text-fill: #4a6ff5;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+        }
+
+        .workspace-stat-title {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #5d78a2;
+        }
+
+        .workspace-stat-value {
+            -fx-font-size: 28px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4968f2;
+        }
+
+        .reservation-search-title, .tutor-card-name {
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .reservation-search-field {
+            -fx-pref-height: 40px;
+        }
+
+        .reservation-submit-button {
+            -fx-padding: 0 18px;
+            -fx-pref-height: 40px;
+        }
+
+        .tutor-profile-card {
+            -fx-spacing: 12px;
+        }
+
         .confirmed, .good {
             -fx-background-color: #e6eeff;
             -fx-text-fill: #3158a8;
@@ -510,6 +620,20 @@ public final class UiTheme {
         }
 
         .backoffice-feedback.error {
+            -fx-background-color: #ffe8ec;
+            -fx-text-fill: #c43b49;
+            -fx-background-radius: 12px;
+            -fx-padding: 10px 12px;
+        }
+
+        .frontoffice-feedback.success {
+            -fx-background-color: #e2f5e8;
+            -fx-text-fill: #1d7a46;
+            -fx-background-radius: 12px;
+            -fx-padding: 10px 12px;
+        }
+
+        .frontoffice-feedback.error {
             -fx-background-color: #ffe8ec;
             -fx-text-fill: #c43b49;
             -fx-background-radius: 12px;
