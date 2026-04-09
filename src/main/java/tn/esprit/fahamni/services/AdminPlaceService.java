@@ -18,6 +18,7 @@ public class AdminPlaceService implements IServices<Place> {
         "INSERT INTO place (numero, rang, colonne, etat, idSalle) VALUES (?, ?, ?, ?, ?)";
     private static final String UPDATE_SQL =
         "UPDATE place SET numero = ?, rang = ?, colonne = ?, etat = ?, idSalle = ? WHERE idPlace = ?";
+    private static final String UPDATE_ETAT_SQL = "UPDATE place SET etat = ? WHERE idPlace = ?";
     private static final String DELETE_SQL = "DELETE FROM place WHERE idPlace = ?";
     private static final String SELECT_ALL_SQL =
         "SELECT idPlace, numero, rang, colonne, etat, idSalle FROM place ORDER BY idSalle, rang, colonne";
@@ -140,11 +141,31 @@ public class AdminPlaceService implements IServices<Place> {
         return List.of("disponible", "en maintenance", "indisponible");
     }
 
+    public void updateEtat(int idPlace, String nouvelEtat) throws SQLException {
+        if (idPlace <= 0) {
+            throw new IllegalArgumentException("L'id de la place doit etre positif.");
+        }
+
+        String etatNormalise = normalizeEtat(nouvelEtat);
+        if (!getAvailableEtats().contains(etatNormalise)) {
+            throw new IllegalArgumentException("L'etat de la place est invalide.");
+        }
+
+        try (PreparedStatement statement = requireConnection().prepareStatement(UPDATE_ETAT_SQL)) {
+            statement.setString(1, etatNormalise);
+            statement.setInt(2, idPlace);
+
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Aucune place trouvee avec l'id " + idPlace + ".");
+            }
+        }
+    }
+
     private void fillStatement(PreparedStatement statement, Place place) throws SQLException {
         statement.setInt(1, place.getNumero());
         statement.setInt(2, place.getRang());
         statement.setInt(3, place.getColonne());
-        statement.setString(4, place.getEtat().trim());
+        statement.setString(4, normalizeEtat(place.getEtat()));
         statement.setInt(5, place.getIdSalle());
     }
 
@@ -192,5 +213,13 @@ public class AdminPlaceService implements IServices<Place> {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String normalizeEtat(String etat) {
+        if (isBlank(etat)) {
+            throw new IllegalArgumentException("L'etat de la place est obligatoire.");
+        }
+
+        return etat.trim().toLowerCase();
     }
 }
