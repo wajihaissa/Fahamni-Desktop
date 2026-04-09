@@ -5,7 +5,13 @@ CREATE TABLE IF NOT EXISTS salle (
     localisation VARCHAR(255) NOT NULL,
     typeSalle VARCHAR(100) NOT NULL,
     etat VARCHAR(50) NOT NULL,
-    description TEXT
+    description TEXT,
+    batiment VARCHAR(150),
+    etage INT,
+    typeDisposition VARCHAR(100),
+    accesHandicape BOOLEAN NOT NULL DEFAULT FALSE,
+    statutDetaille VARCHAR(150),
+    dateDerniereMaintenance DATE
 );
 
 CREATE TABLE IF NOT EXISTS equipement (

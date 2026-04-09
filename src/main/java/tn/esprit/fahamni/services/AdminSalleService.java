@@ -5,24 +5,27 @@ import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AdminSalleService implements IServices<Salle> {
 
     private static final String INSERT_SQL =
-        "INSERT INTO salle (nom, capacite, localisation, typeSalle, etat, description) VALUES (?, ?, ?, ?, ?, ?)";
+        "INSERT INTO salle (nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String UPDATE_SQL =
-        "UPDATE salle SET nom = ?, capacite = ?, localisation = ?, typeSalle = ?, etat = ?, description = ? WHERE idSalle = ?";
+        "UPDATE salle SET nom = ?, capacite = ?, localisation = ?, typeSalle = ?, etat = ?, description = ?, batiment = ?, etage = ?, typeDisposition = ?, accesHandicape = ?, statutDetaille = ?, dateDerniereMaintenance = ? WHERE idSalle = ?";
     private static final String DELETE_SQL = "DELETE FROM salle WHERE idSalle = ?";
     private static final String SELECT_ALL_SQL =
-        "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description FROM salle ORDER BY idSalle DESC";
+        "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance FROM salle ORDER BY idSalle DESC";
     private static final String SELECT_BY_ID_SQL =
-        "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description FROM salle WHERE idSalle = ?";
+        "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance FROM salle WHERE idSalle = ?";
 
     private final Connection cnx;
 
@@ -66,7 +69,7 @@ public class AdminSalleService implements IServices<Salle> {
 
         try (PreparedStatement statement = requireConnection().prepareStatement(UPDATE_SQL)) {
             fillStatement(statement, salle);
-            statement.setInt(7, salle.getIdSalle());
+            statement.setInt(13, salle.getIdSalle());
 
             if (statement.executeUpdate() == 0) {
                 throw new SQLException("Aucune salle trouvee avec l'id " + salle.getIdSalle() + ".");
@@ -122,16 +125,28 @@ public class AdminSalleService implements IServices<Salle> {
         return List.of("disponible", "en maintenance", "indisponible");
     }
 
+    public List<String> getAvailableDispositions() {
+        return List.of("cinema", "classe", "u", "reunion", "conference", "atelier", "informatique");
+    }
+
     private void fillStatement(PreparedStatement statement, Salle salle) throws SQLException {
         statement.setString(1, salle.getNom().trim());
         statement.setInt(2, salle.getCapacite());
         statement.setString(3, salle.getLocalisation().trim());
         statement.setString(4, salle.getTypeSalle().trim());
-        statement.setString(5, salle.getEtat().trim());
+        statement.setString(5, normalizeEtat(salle.getEtat()));
         statement.setString(6, normalizeText(salle.getDescription()));
+        statement.setString(7, normalizeText(salle.getBatiment()));
+        setNullableInteger(statement, 8, salle.getEtage());
+        statement.setString(9, normalizeText(salle.getTypeDisposition()));
+        statement.setBoolean(10, salle.isAccesHandicape());
+        statement.setString(11, normalizeText(salle.getStatutDetaille()));
+        setNullableDate(statement, 12, salle.getDateDerniereMaintenance());
     }
 
     private Salle mapSalle(ResultSet resultSet) throws SQLException {
+        Date dateMaintenance = resultSet.getDate("dateDerniereMaintenance");
+
         return new Salle(
             resultSet.getInt("idSalle"),
             resultSet.getString("nom"),
@@ -139,7 +154,13 @@ public class AdminSalleService implements IServices<Salle> {
             resultSet.getString("localisation"),
             resultSet.getString("typeSalle"),
             resultSet.getString("etat"),
-            resultSet.getString("description")
+            resultSet.getString("description"),
+            resultSet.getString("batiment"),
+            getNullableInteger(resultSet, "etage"),
+            resultSet.getString("typeDisposition"),
+            resultSet.getBoolean("accesHandicape"),
+            resultSet.getString("statutDetaille"),
+            dateMaintenance == null ? null : dateMaintenance.toLocalDate()
         );
     }
 
@@ -165,6 +186,10 @@ public class AdminSalleService implements IServices<Salle> {
         if (isBlank(salle.getEtat())) {
             throw new IllegalArgumentException("L'etat de la salle est obligatoire.");
         }
+        LocalDate dateDerniereMaintenance = salle.getDateDerniereMaintenance();
+        if (dateDerniereMaintenance != null && dateDerniereMaintenance.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("La date de derniere maintenance ne peut pas etre dans le futur.");
+        }
     }
 
     private Connection requireConnection() {
@@ -176,6 +201,34 @@ public class AdminSalleService implements IServices<Salle> {
 
     private String normalizeText(String value) {
         return isBlank(value) ? null : value.trim();
+    }
+
+    private String normalizeEtat(String value) {
+        if (isBlank(value)) {
+            throw new IllegalArgumentException("L'etat de la salle est obligatoire.");
+        }
+        return value.trim().toLowerCase();
+    }
+
+    private void setNullableInteger(PreparedStatement statement, int index, Integer value) throws SQLException {
+        if (value == null) {
+            statement.setNull(index, Types.INTEGER);
+            return;
+        }
+        statement.setInt(index, value);
+    }
+
+    private void setNullableDate(PreparedStatement statement, int index, LocalDate value) throws SQLException {
+        if (value == null) {
+            statement.setNull(index, Types.DATE);
+            return;
+        }
+        statement.setDate(index, Date.valueOf(value));
+    }
+
+    private Integer getNullableInteger(ResultSet resultSet, String columnLabel) throws SQLException {
+        int value = resultSet.getInt(columnLabel);
+        return resultSet.wasNull() ? null : value;
     }
 
     private boolean isBlank(String value) {
