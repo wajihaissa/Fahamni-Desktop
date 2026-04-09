@@ -40,7 +40,6 @@ public class MainController {
     @FXML
     private void initialize() {
         System.out.println("MainController initialized");
-        // Load dashboard by default
         showDashboard();
     }
 
@@ -53,7 +52,7 @@ public class MainController {
 
     @FXML
     private void showSeances() {
-        loadView("SeanceListView.fxml", "SÃ©ances");
+        loadView("SeanceListView.fxml", "Calendrier");
         setActiveButton(seancesButton);
     }
 
@@ -65,7 +64,7 @@ public class MainController {
 
     @FXML
     private void showPlanner() {
-        loadView("PlannerView.fxml", "Planner de RÃ©vision");
+        loadView("PlannerView.fxml", "Planner de revision");
         setActiveButton(plannerButton);
     }
 
@@ -108,7 +107,6 @@ public class MainController {
             pageTitle.setText(title);
         } catch (Exception e) {
             e.printStackTrace();
-            // For now, show a placeholder
             Label placeholder = new Label("View not implemented yet: " + fxmlFile);
             placeholder.getStyleClass().add("content-placeholder");
             contentPane.getChildren().clear();
@@ -117,7 +115,6 @@ public class MainController {
     }
 
     private void setActiveButton(Button activeButton) {
-        // Reset all buttons
         dashboardButton.getStyleClass().remove("active");
         seancesButton.getStyleClass().remove("active");
         reservationsButton.getStyleClass().remove("active");
@@ -126,7 +123,6 @@ public class MainController {
         quizButton.getStyleClass().remove("active");
         blogButton.getStyleClass().remove("active");
 
-        // Set active
         if (!activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");
         }
