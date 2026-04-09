@@ -40,7 +40,7 @@ public class AdminEquipementService implements IServices<Equipement> {
 
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
-                    equipement.setIdEquipement(generatedKeys.getInt(1));
+                    equipement.setIdEquipement(generatedKeys.getInt(1));// remplit l'attribut id de l'equipement par l'id généré automatiquement par MySQL
                 }
             }
         }
@@ -130,6 +130,8 @@ public class AdminEquipementService implements IServices<Equipement> {
         statement.setString(5, normalizeText(equipement.getDescription()));
     }
 
+
+    //mapEquipement sert à transformer une ligne venant de la base de données en objet java Equipement
     private Equipement mapEquipement(ResultSet resultSet) throws SQLException {
         return new Equipement(
             resultSet.getInt("idEquipement"),

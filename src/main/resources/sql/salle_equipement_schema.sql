@@ -17,6 +17,20 @@ CREATE TABLE IF NOT EXISTS equipement (
     description TEXT
 );
 
+CREATE TABLE IF NOT EXISTS place (
+    idPlace INT AUTO_INCREMENT PRIMARY KEY,
+    numero INT NOT NULL,
+    rang INT NOT NULL,
+    colonne INT NOT NULL,
+    etat VARCHAR(50) NOT NULL,
+    idSalle INT NOT NULL,
+    CONSTRAINT fk_place_salle
+        FOREIGN KEY (idSalle) REFERENCES salle(idSalle)
+        ON DELETE CASCADE,
+    CONSTRAINT uk_place_salle_numero UNIQUE (idSalle, numero),
+    CONSTRAINT uk_place_salle_position UNIQUE (idSalle, rang, colonne)
+);
+
 CREATE TABLE IF NOT EXISTS salle_equipement (
     idSalle INT NOT NULL,
     idEquipement INT NOT NULL,
