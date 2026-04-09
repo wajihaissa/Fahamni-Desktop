@@ -74,13 +74,14 @@
         </VBox>
 
         <VBox spacing="12.0" styleClass="reservation-search-panel">
-            <Label text="Chercher sur Fahamni" styleClass="reservation-search-title"/>
-            <Label text="Choisis un mode de recherche simple ou assistee, puis lance la recherche." styleClass="reservation-section-copy"/>
+            <Label text="Rechercher dans les seances recentes" styleClass="reservation-search-title"/>
+            <Label text="Filtre les seances par mot-cle, tuteur, date ou statut avant de les modifier ou supprimer." styleClass="reservation-section-copy"/>
 
             <HBox spacing="10.0">
-                <TextField promptText="Ex: analyse, bac maths, samedi soir, budget 50 DT" styleClass="search-field reservation-search-field" HBox.hgrow="ALWAYS"/>
-                <ComboBox value="Recherche simple" styleClass="filter-combo reservation-mode-combo" prefWidth="180.0"/>
-                <Button text="Chercher" styleClass="action-button primary reservation-submit-button"/>
+                <TextField fx:id="sessionSearchField" onAction="#handleSearchSessions" promptText="Ex: analyse, Ahmed, 09/04/2026, brouillon..." styleClass="search-field reservation-search-field" HBox.hgrow="ALWAYS"/>
+                <ComboBox fx:id="sessionSearchModeComboBox" styleClass="filter-combo reservation-mode-combo" prefWidth="180.0"/>
+                <Button text="Filtrer" onAction="#handleSearchSessions" styleClass="action-button primary reservation-submit-button"/>
+                <Button text="Reinitialiser" onAction="#handleClearSessionSearch" styleClass="action-button secondary"/>
             </HBox>
         </VBox>
 

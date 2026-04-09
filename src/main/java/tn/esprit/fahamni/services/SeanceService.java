@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.interfaces.ISeanceSearchService;
 import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
@@ -11,11 +12,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
-public class SeanceService implements IServices<Seance> {
+public class SeanceService implements IServices<Seance>, ISeanceSearchService {
 
+    private static final DateTimeFormatter SEARCH_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final List<String> FALLBACK_SUBJECTS = List.of(
         "Mathematics",
         "Physics",
@@ -26,6 +30,7 @@ public class SeanceService implements IServices<Seance> {
     );
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
+    private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
 
     public List<String> getSubjects() {
         List<String> subjects = new ArrayList<>();
@@ -65,6 +70,16 @@ public class SeanceService implements IServices<Seance> {
         return "Searching for: " + searchText + " in " + selectedSubject;
     }
 
+    @Override
+    public List<String> getAvailableSearchStatuses() {
+        return List.of(
+            "Toutes les seances",
+            "Publiees",
+            "Brouillons",
+            "Archivees"
+        );
+    }
+
     public List<Seance> getAllSeances() {
         return getAll();
     }
@@ -92,6 +107,15 @@ public class SeanceService implements IServices<Seance> {
             System.out.println("Erreur chargement seances: " + e.getMessage());
         }
         return seances;
+    }
+
+    @Override
+    public List<Seance> search(String keyword, String statusFilter, int limit) {
+        return getAll().stream()
+            .filter(seance -> matchesStatusFilter(seance, statusFilter))
+            .filter(seance -> matchesKeywordFilter(seance, keyword))
+            .limit(limit > 0 ? limit : Long.MAX_VALUE)
+            .toList();
     }
 
     public OperationResult createSeance(Seance seance) {
@@ -261,5 +285,55 @@ public class SeanceService implements IServices<Seance> {
             throw new IllegalStateException("Connexion a la base indisponible.");
         }
         return cnx;
+    }
+
+    private boolean matchesStatusFilter(Seance seance, String statusFilter) {
+        if (statusFilter == null || statusFilter.isBlank() || "Toutes les seances".equalsIgnoreCase(statusFilter)) {
+            return true;
+        }
+        return switch (statusFilter) {
+            case "Publiees" -> seance.getStatus() == 1;
+            case "Brouillons" -> seance.getStatus() == 0;
+            case "Archivees" -> seance.getStatus() == 2;
+            default -> true;
+        };
+    }
+
+    private boolean matchesKeywordFilter(Seance seance, String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return true;
+        }
+
+        String normalizedKeyword = normalize(keyword);
+        String searchableText = String.join(" ",
+            String.valueOf(seance.getId()),
+            safe(seance.getMatiere()),
+            safe(seance.getDescription()),
+            String.valueOf(seance.getTuteurId()),
+            safe(tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())),
+            safe(formatDateTime(seance.getStartAt())),
+            safe(mapStatusLabel(seance.getStatus()))
+        );
+        return normalize(searchableText).contains(normalizedKeyword);
+    }
+
+    private String mapStatusLabel(int status) {
+        return switch (status) {
+            case 1 -> "Publiee";
+            case 2 -> "Archivee";
+            default -> "Brouillon";
+        };
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        return value != null ? value.format(SEARCH_DATE_FORMATTER) : "";
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 }

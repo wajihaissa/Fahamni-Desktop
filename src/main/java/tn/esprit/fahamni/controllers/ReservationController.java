@@ -1,6 +1,8 @@
 package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.interfaces.ISeanceSearchService;
+import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.SeanceService;
 import javafx.fxml.FXML;
@@ -33,6 +35,8 @@ public class ReservationController {
     );
 
     private final SeanceService seanceService = new SeanceService();
+    private final IServices<Seance> seanceCrudService = seanceService;
+    private final ISeanceSearchService seanceSearchService = seanceService;
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private Integer editingSessionId;
 
@@ -44,6 +48,12 @@ public class ReservationController {
 
     @FXML
     private ComboBox<String> tutorComboBox;
+
+    @FXML
+    private TextField sessionSearchField;
+
+    @FXML
+    private ComboBox<String> sessionSearchModeComboBox;
 
     @FXML
     private TextField sessionSubjectField;
@@ -82,9 +92,25 @@ public class ReservationController {
         if (!tutorComboBox.getItems().isEmpty()) {
             tutorComboBox.setValue(tutorComboBox.getItems().get(0));
         }
+
+        sessionSearchModeComboBox.getItems().setAll(seanceSearchService.getAvailableSearchStatuses());
+        sessionSearchModeComboBox.setValue("Toutes les seances");
+
         resetEditMode();
         hideFeedback();
         loadSessionDashboard();
+    }
+
+    @FXML
+    private void handleSearchSessions() {
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handleClearSessionSearch() {
+        sessionSearchField.clear();
+        sessionSearchModeComboBox.setValue("Toutes les seances");
+        applySessionFilters();
     }
 
     @FXML
@@ -113,10 +139,10 @@ public class ReservationController {
             if (editing) {
                 seance.setId(editingSessionId);
                 seance.setUpdatedAt(LocalDateTime.now());
-                seanceService.update(seance);
+                seanceCrudService.update(seance);
             } else {
                 seance.setCreatedAt(LocalDateTime.now());
-                seanceService.add(seance);
+                seanceCrudService.add(seance);
             }
 
             clearSessionForm();
@@ -155,15 +181,24 @@ public class ReservationController {
     }
 
     private void loadSessionDashboard() {
-        List<Seance> seances = seanceService.getAll();
-        long publishedCount = seances.stream().filter(seance -> seance.getStatus() == 1).count();
-        long draftCount = seances.stream().filter(seance -> seance.getStatus() == 0).count();
+        List<Seance> allSessions = seanceCrudService.getAll();
+        long publishedCount = allSessions.stream().filter(seance -> seance.getStatus() == 1).count();
+        long draftCount = allSessions.stream().filter(seance -> seance.getStatus() == 0).count();
 
         publishedSessionsCountLabel.setText(String.valueOf(publishedCount));
         draftSessionsCountLabel.setText(String.valueOf(draftCount));
+        applySessionFilters();
+    }
 
+    private void applySessionFilters() {
         recentSessionsContainer.getChildren().clear();
-        if (seances.isEmpty()) {
+        List<Seance> filteredSessions = seanceSearchService.search(
+            sessionSearchField.getText(),
+            sessionSearchModeComboBox.getValue(),
+            8
+        );
+
+        if (filteredSessions.isEmpty() && seanceCrudService.getAll().isEmpty()) {
             Label emptyLabel = new Label("Aucune seance disponible pour le moment. La premiere publication apparaitra ici.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("reservation-section-copy");
@@ -171,8 +206,15 @@ public class ReservationController {
             return;
         }
 
-        seances.stream()
-            .limit(4)
+        if (filteredSessions.isEmpty()) {
+            Label emptyLabel = new Label("Aucune seance ne correspond aux filtres actuels.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            recentSessionsContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        filteredSessions.stream()
             .map(this::buildRecentSessionCard)
             .forEach(recentSessionsContainer.getChildren()::add);
     }
@@ -274,7 +316,7 @@ public class ReservationController {
         hideFeedback();
 
         try {
-            seanceService.delete(seance);
+            seanceCrudService.delete(seance);
             if (editingSessionId != null && editingSessionId == seance.getId()) {
                 clearSessionForm();
                 resetEditMode();
