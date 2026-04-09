@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" styleClass="planner-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.PlannerController">
+    <VBox spacing="20.0" styleClass="planner-content">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <VBox spacing="15.0" styleClass="planner-header">
+            <Label text="AI Revision Planner" styleClass="section-title"/>
+            <Label text="Generate personalized study plans for your exams" styleClass="section-subtitle"/>
+        </VBox>
+
+        <VBox spacing="20.0" styleClass="planner-form">
+            <Label text="Create New Study Plan" styleClass="form-title"/>
+
+            <GridPane hgap="15.0" vgap="15.0" styleClass="form-grid">
+                <Label text="Exam Date:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label"/>
+                <DatePicker fx:id="examDatePicker" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="form-field"/>
+
+                <Label text="Subject:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
+                <ComboBox fx:id="subjectCombo" promptText="Select subject" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="form-field">
+                    <items>
+                        <FXCollections fx:factory="observableArrayList">
+                            <String fx:value="Mathematics"/>
+                            <String fx:value="Physics"/>
+                            <String fx:value="Chemistry"/>
+                            <String fx:value="Biology"/>
+                            <String fx:value="English"/>
+                            <String fx:value="French"/>
+                        </FXCollections>
+                    </items>
+                </ComboBox>
+
+                <Label text="Difficulty Level:" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
+                <ComboBox fx:id="difficultyCombo" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="form-field">
+                    <items>
+                        <FXCollections fx:factory="observableArrayList">
+                            <String fx:value="Easy"/>
+                            <String fx:value="Medium"/>
+                            <String fx:value="Hard"/>
+                        </FXCollections>
+                    </items>
+                </ComboBox>
+            </GridPane>
+
+            <Button fx:id="generateButton" text="Generate Study Plan" styleClass="generate-button" onAction="#generatePlan"/>
+        </VBox>
+
+        <VBox spacing="15.0" styleClass="current-plan">
+            <Label text="Current Study Plan" styleClass="plan-title"/>
+            <Label text="Mathematics - Baccalaureate Exam (Dec 20, 2024)" styleClass="plan-subtitle"/>
+
+            <VBox spacing="10.0" styleClass="plan-days">
+                <VBox styleClass="plan-day" spacing="10.0">
+                    <Label text="Day 1: Overview Phase" styleClass="day-title"/>
+                    <VBox spacing="5.0">
+                        <Label text="â€¢ Review basic algebra concepts" styleClass="task-item"/>
+                        <Label text="â€¢ Practice simple equations" styleClass="task-item"/>
+                        <Label text="â€¢ Duration: 2 hours" styleClass="task-duration"/>
+                    </VBox>
+                </VBox>
+
+                <VBox styleClass="plan-day" spacing="10.0">
+                    <Label text="Day 2: Deep Dive Phase" styleClass="day-title"/>
+                    <VBox spacing="5.0">
+                        <Label text="â€¢ Advanced algebraic functions" styleClass="task-item"/>
+                        <Label text="â€¢ Word problems and applications" styleClass="task-item"/>
+                        <Label text="â€¢ Duration: 2.5 hours" styleClass="task-duration"/>
+                    </VBox>
+                </VBox>
+
+                <VBox styleClass="plan-day" spacing="10.0">
+                    <Label text="Day 3: Practice Phase" styleClass="day-title"/>
+                    <VBox spacing="5.0">
+                        <Label text="â€¢ Mixed practice problems" styleClass="task-item"/>
+                        <Label text="â€¢ Previous exam questions" styleClass="task-item"/>
+                        <Label text="â€¢ Duration: 3 hours" styleClass="task-duration"/>
+                    </VBox>
+                </VBox>
+
+                <VBox styleClass="plan-day" spacing="10.0">
+                    <Label text="Day 4: Review Phase" styleClass="day-title"/>
+                    <VBox spacing="5.0">
+                        <Label text="â€¢ Final review of all concepts" styleClass="task-item"/>
+                        <Label text="â€¢ Identify weak areas" styleClass="task-item"/>
+                        <Label text="â€¢ Duration: 2 hours" styleClass="task-duration"/>
+                    </VBox>
+                </VBox>
+            </VBox>
+
+            <HBox spacing="15.0" styleClass="plan-actions">
+                <Button text="Edit Plan" styleClass="action-button secondary"/>
+                <Button text="Save Plan" styleClass="action-button primary"/>
+                <Button text="Export PDF" styleClass="action-button secondary"/>
+            </HBox>
+        </VBox>
+
+        <VBox spacing="15.0" styleClass="previous-plans">
+            <Label text="Previous Plans" styleClass="section-title"/>
+            <VBox spacing="10.0">
+                <HBox styleClass="previous-plan-item" spacing="15.0">
+                    <VBox HBox.hgrow="ALWAYS">
+                        <Label text="Physics - Mid-term Exam" styleClass="plan-item-title"/>
+                        <Label text="Completed: Nov 15, 2024" styleClass="plan-item-date"/>
+                    </VBox>
+                    <Button text="View" styleClass="view-button"/>
+                </HBox>
+
+                <HBox styleClass="previous-plan-item" spacing="15.0">
+                    <VBox HBox.hgrow="ALWAYS">
+                        <Label text="Chemistry - Final Exam" styleClass="plan-item-title"/>
+                        <Label text="Completed: Oct 30, 2024" styleClass="plan-item-date"/>
+                    </VBox>
+                    <Button text="View" styleClass="view-button"/>
+                </HBox>
+            </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>
+

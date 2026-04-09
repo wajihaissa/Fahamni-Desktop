@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" styleClass="seance-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.SeanceController">
+    <VBox spacing="20.0" styleClass="seance-content">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <HBox spacing="15.0" alignment="CENTER_LEFT" styleClass="seance-header">
+            <Label text="Available Sessions" styleClass="section-title" HBox.hgrow="ALWAYS"/>
+            <ComboBox fx:id="subjectFilter" promptText="All Subjects" styleClass="filter-combo"/>
+            <TextField fx:id="searchField" promptText="Search sessions..." styleClass="search-field"/>
+            <Button text="ðŸ”" styleClass="search-button"/>
+        </HBox>
+
+        <VBox spacing="15.0" styleClass="seance-list">
+            <!-- Mock session cards -->
+            <VBox styleClass="seance-card" spacing="15.0">
+                <HBox spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Mathematics - Algebra Fundamentals" styleClass="seance-title"/>
+                        <Label text="Tutor: Ahmed Ben Ali" styleClass="seance-tutor"/>
+                        <HBox spacing="20.0">
+                            <Label text="ðŸ“… Dec 15, 2024 - 10:00 AM" styleClass="seance-info"/>
+                            <Label text="â±ï¸ 60 min" styleClass="seance-info"/>
+                            <Label text="ðŸ‘¥ 5/10 spots" styleClass="seance-info"/>
+                        </HBox>
+                        <Label text="Master the basics of algebra with interactive examples and practice problems." styleClass="seance-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="50 DT" styleClass="seance-price"/>
+                        <Label text="â­ 4.8 (12 reviews)" styleClass="seance-rating"/>
+                        <Button text="Reserve Now" styleClass="reserve-button"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox styleClass="seance-card" spacing="15.0">
+                <HBox spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Physics - Mechanics" styleClass="seance-title"/>
+                        <Label text="Tutor: Sarah Mansour" styleClass="seance-tutor"/>
+                        <HBox spacing="20.0">
+                            <Label text="ðŸ“… Dec 16, 2024 - 2:00 PM" styleClass="seance-info"/>
+                            <Label text="â±ï¸ 90 min" styleClass="seance-info"/>
+                            <Label text="ðŸ‘¥ 3/8 spots" styleClass="seance-info"/>
+                        </HBox>
+                        <Label text="Learn Newton's laws and solve mechanics problems step by step." styleClass="seance-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="75 DT" styleClass="seance-price"/>
+                        <Label text="â­ 4.9 (8 reviews)" styleClass="seance-rating"/>
+                        <Button text="Reserve Now" styleClass="reserve-button"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox styleClass="seance-card" spacing="15.0">
+                <HBox spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="Chemistry - Organic Chemistry" styleClass="seance-title"/>
+                        <Label text="Tutor: Mohamed Trabelsi" styleClass="seance-tutor"/>
+                        <HBox spacing="20.0">
+                            <Label text="ðŸ“… Dec 17, 2024 - 4:00 PM" styleClass="seance-info"/>
+                            <Label text="â±ï¸ 75 min" styleClass="seance-info"/>
+                            <Label text="ðŸ‘¥ 7/10 spots" styleClass="seance-info"/>
+                        </HBox>
+                        <Label text="Explore organic compounds and reaction mechanisms." styleClass="seance-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="60 DT" styleClass="seance-price"/>
+                        <Label text="â­ 4.7 (15 reviews)" styleClass="seance-rating"/>
+                        <Button text="Reserve Now" styleClass="reserve-button"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <VBox styleClass="seance-card" spacing="15.0">
+                <HBox spacing="15.0">
+                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                        <Label text="English - Grammar & Writing" styleClass="seance-title"/>
+                        <Label text="Tutor: Leila Khemiri" styleClass="seance-tutor"/>
+                        <HBox spacing="20.0">
+                            <Label text="ðŸ“… Dec 18, 2024 - 11:00 AM" styleClass="seance-info"/>
+                            <Label text="â±ï¸ 60 min" styleClass="seance-info"/>
+                            <Label text="ðŸ‘¥ 2/6 spots" styleClass="seance-info"/>
+                        </HBox>
+                        <Label text="Improve your English writing skills and grammar knowledge." styleClass="seance-description"/>
+                    </VBox>
+                    <VBox spacing="10.0" alignment="CENTER">
+                        <Label text="45 DT" styleClass="seance-price"/>
+                        <Label text="â­ 4.6 (20 reviews)" styleClass="seance-rating"/>
+                        <Button text="Reserve Now" styleClass="reserve-button"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>
+

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" styleClass="reservation-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.ReservationController">
+    <VBox spacing="20.0" styleClass="reservation-content">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <VBox spacing="10.0" styleClass="reservation-header">
+            <Label text="My Reservations" styleClass="section-title"/>
+            <Label text="Manage your upcoming and past session bookings" styleClass="section-subtitle"/>
+        </VBox>
+
+        <TabPane styleClass="reservation-tabs" tabClosingPolicy="UNAVAILABLE">
+            <tabs>
+                <Tab text="Upcoming">
+                    <content>
+                        <VBox spacing="15.0" styleClass="tab-content">
+                            <HBox styleClass="reservation-card" spacing="15.0">
+                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <Label text="Mathematics - Algebra Fundamentals" styleClass="reservation-title"/>
+                                    <Label text="Tutor: Ahmed Ben Ali" styleClass="reservation-tutor"/>
+                                    <Label text="ðŸ“… Dec 15, 2024 - 10:00 AM" styleClass="reservation-info"/>
+                                    <Label text="ðŸ“ Online (Zoom)" styleClass="reservation-info"/>
+                                </VBox>
+                                <VBox spacing="10.0" alignment="CENTER">
+                                    <Label text="50 DT" styleClass="reservation-price"/>
+                                    <Label text="Status: Confirmed" styleClass="reservation-status confirmed"/>
+                                    <HBox spacing="10.0">
+                                        <Button text="Join Session" styleClass="action-button primary"/>
+                                        <Button text="Cancel" styleClass="action-button danger"/>
+                                    </HBox>
+                                </VBox>
+                            </HBox>
+
+                            <HBox styleClass="reservation-card" spacing="15.0">
+                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <Label text="Physics - Mechanics" styleClass="reservation-title"/>
+                                    <Label text="Tutor: Sarah Mansour" styleClass="reservation-tutor"/>
+                                    <Label text="ðŸ“… Dec 16, 2024 - 2:00 PM" styleClass="reservation-info"/>
+                                    <Label text="ðŸ“ Online (Zoom)" styleClass="reservation-info"/>
+                                </VBox>
+                                <VBox spacing="10.0" alignment="CENTER">
+                                    <Label text="75 DT" styleClass="reservation-price"/>
+                                    <Label text="Status: Pending" styleClass="reservation-status pending"/>
+                                    <HBox spacing="10.0">
+                                        <Button text="Pay Now" styleClass="action-button primary"/>
+                                        <Button text="Cancel" styleClass="action-button danger"/>
+                                    </HBox>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </content>
+                </Tab>
+
+                <Tab text="History">
+                    <content>
+                        <VBox spacing="15.0" styleClass="tab-content">
+                            <HBox styleClass="reservation-card completed" spacing="15.0">
+                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <Label text="Chemistry - Organic Chemistry" styleClass="reservation-title"/>
+                                    <Label text="Tutor: Mohamed Trabelsi" styleClass="reservation-tutor"/>
+                                    <Label text="ðŸ“… Nov 20, 2024 - 4:00 PM" styleClass="reservation-info"/>
+                                    <Label text="â­ Rating: 5/5" styleClass="reservation-rating"/>
+                                </VBox>
+                                <VBox spacing="10.0" alignment="CENTER">
+                                    <Label text="60 DT" styleClass="reservation-price"/>
+                                    <Label text="Status: Completed" styleClass="reservation-status completed"/>
+                                    <Button text="Rate & Review" styleClass="action-button secondary"/>
+                                </VBox>
+                            </HBox>
+
+                            <HBox styleClass="reservation-card completed" spacing="15.0">
+                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
+                                    <Label text="English - Grammar" styleClass="reservation-title"/>
+                                    <Label text="Tutor: Leila Khemiri" styleClass="reservation-tutor"/>
+                                    <Label text="ðŸ“… Nov 15, 2024 - 11:00 AM" styleClass="reservation-info"/>
+                                    <Label text="â­ Rating: 4/5" styleClass="reservation-rating"/>
+                                </VBox>
+                                <VBox spacing="10.0" alignment="CENTER">
+                                    <Label text="45 DT" styleClass="reservation-price"/>
+                                    <Label text="Status: Completed" styleClass="reservation-status completed"/>
+                                    <Button text="View Details" styleClass="action-button secondary"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </content>
+                </Tab>
+            </tabs>
+        </TabPane>
+    </VBox>
+</ScrollPane>
+
