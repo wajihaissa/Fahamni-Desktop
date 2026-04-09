@@ -87,6 +87,47 @@ public final class UiTheme {
             -fx-effect: dropshadow(gaussian, rgba(23, 52, 110, 0.22), 12, 0.18, 0, 4);
         }
 
+        .backoffice-dropdown-chevron {
+            -fx-text-fill: rgba(231, 239, 251, 0.80);
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+        }
+
+        .backoffice-nav-button:hover .backoffice-dropdown-chevron,
+        .backoffice-nav-button.active .backoffice-dropdown-chevron {
+            -fx-text-fill: white;
+        }
+
+        .backoffice-subnav {
+            -fx-padding: 2px 0 2px 14px;
+            -fx-spacing: 4px;
+        }
+
+        .backoffice-subnav-button {
+            -fx-background-color: transparent;
+            -fx-text-fill: rgba(224, 234, 248, 0.72);
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-padding: 10px 14px;
+            -fx-background-radius: 10px;
+            -fx-alignment: CENTER_LEFT;
+            -fx-border-width: 0 0 0 1px;
+            -fx-border-color: rgba(255, 255, 255, 0.10);
+            -fx-cursor: hand;
+        }
+
+        .backoffice-subnav-button:hover {
+            -fx-background-color: rgba(255, 255, 255, 0.08);
+            -fx-text-fill: white;
+            -fx-border-color: rgba(255, 255, 255, 0.24);
+        }
+
+        .backoffice-subnav-button.active {
+            -fx-background-color: rgba(255, 255, 255, 0.14);
+            -fx-text-fill: white;
+            -fx-border-color: rgba(255, 255, 255, 0.34);
+        }
+
         .sidebar-footer, .backoffice-sidebar-footer {
             -fx-padding: 16px 24px 0 24px;
             -fx-border-color: rgba(255, 255, 255, 0.10);
@@ -299,6 +340,15 @@ public final class UiTheme {
             -fx-text-fill: #4a6284;
         }
 
+        .backoffice-room-chip {
+            -fx-background-color: rgba(90, 128, 244, 0.12);
+            -fx-text-fill: #315cb4;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 8px 14px;
+            -fx-background-radius: 999px;
+        }
+
         .seance-rating, .reservation-rating, .quiz-rating {
             -fx-font-size: 13px;
             -fx-font-weight: bold;
@@ -326,6 +376,81 @@ public final class UiTheme {
         .date-picker:focused, .text-area:focused, .login-input:focused {
             -fx-border-color: #7fb0ff;
             -fx-effect: dropshadow(gaussian, rgba(17, 67, 140, 0.16), 10, 0.22, 0, 3);
+        }
+
+        .backoffice-form-spinner {
+            -fx-pref-height: 40px;
+            -fx-background-color: transparent;
+        }
+
+        .backoffice-form-spinner .text-field {
+            -fx-background-color: rgba(255, 255, 255, 0.96);
+            -fx-control-inner-background: white;
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 12px 0 0 12px;
+            -fx-background-radius: 12px 0 0 12px;
+            -fx-text-fill: #243c59;
+            -fx-prompt-text-fill: #8da0b8;
+            -fx-padding: 0 12px;
+        }
+
+        .backoffice-form-spinner .increment-arrow-button,
+        .backoffice-form-spinner .decrement-arrow-button {
+            -fx-background-color: rgba(231, 239, 251, 0.90);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px 1px 1px 0;
+        }
+
+        .backoffice-form-spinner .increment-arrow-button {
+            -fx-background-radius: 0 12px 0 0;
+            -fx-border-radius: 0 12px 0 0;
+        }
+
+        .backoffice-form-spinner .decrement-arrow-button {
+            -fx-background-radius: 0 0 12px 0;
+            -fx-border-radius: 0 0 12px 0;
+        }
+
+        .backoffice-form-spinner:focused .text-field,
+        .backoffice-form-spinner .text-field:focused {
+            -fx-border-color: #7fb0ff;
+            -fx-effect: dropshadow(gaussian, rgba(17, 67, 140, 0.16), 10, 0.22, 0, 3);
+        }
+
+        .backoffice-form-textarea {
+            -fx-background-color: rgba(255, 255, 255, 0.96);
+            -fx-control-inner-background: white;
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 12px;
+            -fx-background-radius: 12px;
+            -fx-text-fill: #243c59;
+            -fx-prompt-text-fill: #8da0b8;
+            -fx-padding: 10px 12px;
+        }
+
+        .backoffice-check {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #29476d;
+        }
+
+        .backoffice-check .box {
+            -fx-background-color: rgba(255, 255, 255, 0.96);
+            -fx-border-color: #d5e1f5;
+            -fx-border-radius: 6px;
+            -fx-background-radius: 6px;
+            -fx-padding: 3px;
+        }
+
+        .backoffice-check:selected .box {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #7fb0ff;
+        }
+
+        .backoffice-check:selected .mark {
+            -fx-background-color: #315bb4;
         }
 
         .contact-button, .session-button, .search-button, .reserve-button, .generate-button, .send-button, .start-quiz-button,
@@ -371,6 +496,21 @@ public final class UiTheme {
         }
 
         .action-button.danger:hover {
+            -fx-background-color: #ffdce3;
+        }
+
+        .backoffice-danger-button {
+            -fx-background-color: #ffe8ec;
+            -fx-border-color: #ffcbd3;
+            -fx-border-width: 1px;
+            -fx-text-fill: #ba4658;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+        }
+
+        .backoffice-danger-button:hover {
             -fx-background-color: #ffdce3;
         }
 
@@ -514,6 +654,12 @@ public final class UiTheme {
             -fx-text-fill: #c43b49;
             -fx-background-radius: 12px;
             -fx-padding: 10px 12px;
+        }
+
+        .backoffice-room-hero {
+            -fx-background-color:
+                radial-gradient(center 18% 0%, radius 90%, rgba(110, 151, 255, 0.10) 0%, rgba(110, 151, 255, 0.0) 72%),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.96) 0%, rgba(247, 251, 255, 0.96) 100%);
         }
 
         .login-root {

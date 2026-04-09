@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeSallesController">
+    <content>
+        <VBox spacing="20.0" styleClass="backoffice-page">
+            <padding>
+                <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+            </padding>
+
+            <VBox spacing="6.0" styleClass="backoffice-header-block">
+                <Label text="Gestion des salles" styleClass="backoffice-panel-title"/>
+                <Label text="Centralisez vos espaces, leur disponibilite et les informations utiles pour l'exploitation." styleClass="backoffice-panel-copy"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel backoffice-room-hero">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0">
+                        <Label text="Pilotage de l'infrastructure" styleClass="backoffice-section-title"/>
+                        <Label text="Une vue claire pour administrer les salles, suivre leur capacite et preparer vos prochains sous-modules." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="selectionBadgeLabel" text="Nouvelle salle prete a etre configuree" styleClass="backoffice-room-chip"/>
+                </HBox>
+
+                <HBox spacing="14.0">
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Salles suivies" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="totalRoomsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Espaces actuellement references dans ce module." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Disponibles" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="availableRoomsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Salles pouvant etre exploitees immediatement." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Maintenance" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="maintenanceRoomsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Espaces a surveiller avant planification." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Capacite totale" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="totalCapacityValueLabel" text="0 places" styleClass="backoffice-stat-value"/>
+                        <Label text="Volume global de places gerees dans vos salles." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox spacing="18.0" fillHeight="true">
+                <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                            <Label text="Catalogue des salles" styleClass="backoffice-section-title"/>
+                            <Label text="Selectionnez une ligne pour remplir le formulaire de droite." styleClass="backoffice-panel-copy"/>
+                        </VBox>
+                        <Button onAction="#handleRefresh" text="Actualiser" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+
+                    <TextField fx:id="searchField" promptText="Rechercher par nom, batiment, localisation ou type" styleClass="backoffice-form-input"/>
+
+                    <TableView fx:id="sallesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+                        <columns>
+                            <TableColumn fx:id="nomColumn" prefWidth="160.0" text="Salle"/>
+                            <TableColumn fx:id="batimentColumn" prefWidth="120.0" text="Batiment"/>
+                            <TableColumn fx:id="localisationColumn" prefWidth="170.0" text="Localisation"/>
+                            <TableColumn fx:id="typeColumn" prefWidth="130.0" text="Type"/>
+                            <TableColumn fx:id="capaciteColumn" prefWidth="90.0" text="Capacite"/>
+                            <TableColumn fx:id="etatColumn" prefWidth="125.0" text="Etat"/>
+                        </columns>
+                    </TableView>
+
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <Button onAction="#handleDeleteSalle" text="Supprimer la selection" styleClass="backoffice-danger-button"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label text="Astuce : utilisez la recherche pour filtrer rapidement les espaces." styleClass="backoffice-panel-copy"/>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="12.0" styleClass="backoffice-panel" prefWidth="430.0" minWidth="430.0">
+                    <Label text="Fiche salle" styleClass="backoffice-section-title"/>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Nom" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="nomField" promptText="Ex: Salle Atlas" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" prefWidth="150.0">
+                            <Label text="Capacite" styleClass="backoffice-form-label"/>
+                            <Spinner fx:id="capaciteSpinner" editable="true" styleClass="backoffice-form-spinner"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Localisation" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="localisationField" promptText="Ex: Bloc B - Aile Est" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Batiment" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="batimentField" promptText="Ex: Batiment B" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Type de salle" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="typeComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Etat" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="etatComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Etage" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="etageField" promptText="Ex: 2 ou -1" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Disposition" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="dispositionComboBox" promptText="Optionnelle" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Derniere maintenance" styleClass="backoffice-form-label"/>
+                            <DatePicker fx:id="maintenanceDatePicker" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox alignment="BOTTOM_LEFT" spacing="6.0" prefWidth="160.0">
+                            <Label text="Accessibilite" styleClass="backoffice-form-label"/>
+                            <CheckBox fx:id="accesHandicapeCheckBox" text="Acces handicape" styleClass="backoffice-check"/>
+                        </VBox>
+                    </HBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Statut detaille" styleClass="backoffice-form-label"/>
+                        <TextField fx:id="statutDetailleField" promptText="Ex: Projecteur en revision ou salle reservee" styleClass="backoffice-form-input"/>
+                    </VBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Description" styleClass="backoffice-form-label"/>
+                        <TextArea fx:id="descriptionArea" prefRowCount="4" wrapText="true" styleClass="backoffice-form-textarea"/>
+                    </VBox>
+
+                    <HBox spacing="10.0">
+                        <Button maxWidth="Infinity" onAction="#handleCreateSalle" text="Ajouter la salle" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button maxWidth="Infinity" onAction="#handleUpdateSalle" text="Mettre a jour" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Button maxWidth="Infinity" onAction="#handleResetForm" text="Reinitialiser le formulaire" styleClass="backoffice-secondary-button"/>
+
+                    <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </content>
+</ScrollPane>
