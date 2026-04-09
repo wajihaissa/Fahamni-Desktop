@@ -3,9 +3,11 @@ package tn.esprit.fahamni.controllers;
 import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.SeanceService;
-import tn.esprit.fahamni.utils.OperationResult;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
@@ -19,6 +21,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 
 public class ReservationController {
 
@@ -107,28 +110,23 @@ public class ReservationController {
 
         try {
             Seance seance = buildSeance(status);
-            OperationResult result;
             if (editing) {
                 seance.setId(editingSessionId);
                 seance.setUpdatedAt(LocalDateTime.now());
-                result = seanceService.updateSeance(seance);
+                seanceService.update(seance);
             } else {
                 seance.setCreatedAt(LocalDateTime.now());
-                result = seanceService.createSeance(seance);
+                seanceService.add(seance);
             }
 
-            if (result.isSuccess()) {
-                clearSessionForm();
-                resetEditMode();
-                loadSessionDashboard();
-                showFeedback(
-                    editing ? "La seance a ete modifiee avec succes." : successMessage,
-                    true
-                );
-                return;
-            }
-            showFeedback(result.getMessage(), false);
-        } catch (IllegalArgumentException exception) {
+            clearSessionForm();
+            resetEditMode();
+            loadSessionDashboard();
+            showFeedback(
+                editing ? "La seance a ete modifiee avec succes." : successMessage,
+                true
+            );
+        } catch (RuntimeException exception) {
             showFeedback(exception.getMessage(), false);
         }
     }
@@ -157,7 +155,7 @@ public class ReservationController {
     }
 
     private void loadSessionDashboard() {
-        List<Seance> seances = seanceService.getAllSeances();
+        List<Seance> seances = seanceService.getAll();
         long publishedCount = seances.stream().filter(seance -> seance.getStatus() == 1).count();
         long draftCount = seances.stream().filter(seance -> seance.getStatus() == 0).count();
 
@@ -222,7 +220,11 @@ public class ReservationController {
         editButton.getStyleClass().addAll("action-button", "secondary");
         editButton.setOnAction(event -> startEditingSession(seance));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer, editButton);
+        Button deleteButton = new Button("Supprimer");
+        deleteButton.getStyleClass().addAll("action-button", "danger");
+        deleteButton.setOnAction(event -> confirmDeleteSession(seance));
+
+        actionRow.getChildren().addAll(idChip, actionSpacer, editButton, deleteButton);
 
         card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
         return card;
@@ -248,6 +250,40 @@ public class ReservationController {
         editingSessionLabel.setManaged(true);
         editingSessionLabel.setVisible(true);
         hideFeedback();
+    }
+
+    private void confirmDeleteSession(Seance seance) {
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType deleteButton = new ButtonType("Supprimer", ButtonBar.ButtonData.OK_DONE);
+
+        Alert confirmationAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmationAlert.setTitle("Suppression de seance");
+        confirmationAlert.setHeaderText("Confirmer la suppression");
+        confirmationAlert.setContentText(
+            "La seance \"" + seance.getMatiere() + "\" sera supprimee definitivement si aucune reservation ne la reference."
+        );
+        confirmationAlert.getButtonTypes().setAll(cancelButton, deleteButton);
+
+        Optional<ButtonType> choice = confirmationAlert.showAndWait();
+        if (choice.isPresent() && choice.get() == deleteButton) {
+            deleteSession(seance);
+        }
+    }
+
+    private void deleteSession(Seance seance) {
+        hideFeedback();
+
+        try {
+            seanceService.delete(seance);
+            if (editingSessionId != null && editingSessionId == seance.getId()) {
+                clearSessionForm();
+                resetEditMode();
+            }
+            loadSessionDashboard();
+            showFeedback("La seance a ete supprimee avec succes.", true);
+        } catch (RuntimeException exception) {
+            showFeedback(exception.getMessage(), false);
+        }
     }
 
     private LocalDateTime parseStartAt(String value) {

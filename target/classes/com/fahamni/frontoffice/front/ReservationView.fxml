@@ -152,7 +152,7 @@
                 <Label text="Mise a jour auto" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
-            <Label text="Les dernieres seances en base s'affichent ici. Clique sur Modifier pour charger une seance dans le formulaire." styleClass="reservation-section-copy"/>
+            <Label text="Les dernieres seances en base s'affichent ici. Clique sur Modifier pour editer ou sur Supprimer pour retirer une seance." styleClass="reservation-section-copy"/>
 
             <VBox fx:id="recentSessionsContainer" spacing="12.0"/>
         </VBox>

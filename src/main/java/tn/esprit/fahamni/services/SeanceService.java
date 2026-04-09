@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SeanceService {
+public class SeanceService implements IServices<Seance> {
 
     private static final List<String> FALLBACK_SUBJECTS = List.of(
         "Mathematics",
@@ -65,6 +66,11 @@ public class SeanceService {
     }
 
     public List<Seance> getAllSeances() {
+        return getAll();
+    }
+
+    @Override
+    public List<Seance> getAll() {
         List<Seance> seances = new ArrayList<>();
         if (cnx == null) {
             return seances;
@@ -89,12 +95,19 @@ public class SeanceService {
     }
 
     public OperationResult createSeance(Seance seance) {
+        try {
+            add(seance);
+            return OperationResult.success("Seance ajoutee avec succes.");
+        } catch (RuntimeException e) {
+            return OperationResult.failure(e.getMessage());
+        }
+    }
+
+    @Override
+    public void add(Seance seance) {
         String validationError = validateSeance(seance);
         if (validationError != null) {
-            return OperationResult.failure(validationError);
-        }
-        if (cnx == null) {
-            return OperationResult.failure("Connexion a la base indisponible.");
+            throw new IllegalArgumentException(validationError);
         }
 
         String sql = """
@@ -102,7 +115,7 @@ public class SeanceService {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             LocalDateTime now = LocalDateTime.now();
             pst.setString(1, seance.getMatiere().trim());
             pst.setTimestamp(2, Timestamp.valueOf(seance.getStartAt()));
@@ -114,22 +127,28 @@ public class SeanceService {
             pst.setTimestamp(8, seance.getUpdatedAt() != null ? Timestamp.valueOf(seance.getUpdatedAt()) : null);
             pst.setInt(9, seance.getTuteurId());
             pst.executeUpdate();
-            return OperationResult.success("Seance ajoutee avec succes.");
         } catch (SQLException e) {
-            return OperationResult.failure("Ajout impossible: " + e.getMessage());
+            throw new IllegalStateException("Ajout impossible: " + e.getMessage(), e);
         }
     }
 
     public OperationResult updateSeance(Seance seance) {
+        try {
+            update(seance);
+            return OperationResult.success("Seance mise a jour.");
+        } catch (RuntimeException e) {
+            return OperationResult.failure(e.getMessage());
+        }
+    }
+
+    @Override
+    public void update(Seance seance) {
         String validationError = validateSeance(seance);
         if (validationError != null) {
-            return OperationResult.failure(validationError);
+            throw new IllegalArgumentException(validationError);
         }
         if (seance.getId() <= 0) {
-            return OperationResult.failure("Selectionnez une seance valide.");
-        }
-        if (cnx == null) {
-            return OperationResult.failure("Connexion a la base indisponible.");
+            throw new IllegalArgumentException("Selectionnez une seance valide.");
         }
 
         String sql = """
@@ -139,7 +158,7 @@ public class SeanceService {
             WHERE id = ?
             """;
 
-        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             pst.setString(1, seance.getMatiere().trim());
             pst.setTimestamp(2, Timestamp.valueOf(seance.getStartAt()));
             pst.setInt(3, seance.getDurationMin());
@@ -152,11 +171,42 @@ public class SeanceService {
 
             int updatedRows = pst.executeUpdate();
             if (updatedRows == 0) {
-                return OperationResult.failure("Aucune seance mise a jour.");
+                throw new IllegalStateException("Aucune seance mise a jour.");
             }
-            return OperationResult.success("Seance mise a jour.");
         } catch (SQLException e) {
-            return OperationResult.failure("Mise a jour impossible: " + e.getMessage());
+            throw new IllegalStateException("Mise a jour impossible: " + e.getMessage(), e);
+        }
+    }
+
+    public OperationResult deleteSeance(int seanceId) {
+        try {
+            Seance seance = new Seance();
+            seance.setId(seanceId);
+            delete(seance);
+            return OperationResult.success("Seance supprimee avec succes.");
+        } catch (RuntimeException e) {
+            return OperationResult.failure(e.getMessage());
+        }
+    }
+
+    @Override
+    public void delete(Seance seance) {
+        if (seance == null || seance.getId() <= 0) {
+            throw new IllegalArgumentException("Selectionnez une seance valide.");
+        }
+
+        String sql = "DELETE FROM seance WHERE id = ?";
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+            pst.setInt(1, seance.getId());
+            int deletedRows = pst.executeUpdate();
+            if (deletedRows == 0) {
+                throw new IllegalStateException("Aucune seance supprimee.");
+            }
+        } catch (SQLException e) {
+            if ("23000".equals(e.getSQLState())) {
+                throw new IllegalStateException("Suppression impossible: cette seance est deja liee a une reservation.", e);
+            }
+            throw new IllegalStateException("Suppression impossible: " + e.getMessage(), e);
         }
     }
 
@@ -204,5 +254,12 @@ public class SeanceService {
 
     private String blankToNull(String value) {
         return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private Connection requireConnection() {
+        if (cnx == null) {
+            throw new IllegalStateException("Connexion a la base indisponible.");
+        }
+        return cnx;
     }
 }

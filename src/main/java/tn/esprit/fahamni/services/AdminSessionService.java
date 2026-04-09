@@ -51,12 +51,10 @@ public class AdminSessionService {
             seance.setCreatedAt(LocalDateTime.now());
             seance.setTuteurId(formData.tutorId());
 
-            OperationResult result = seanceService.createSeance(seance);
-            if (result.isSuccess()) {
-                reloadSessions();
-            }
-            return result;
-        } catch (IllegalArgumentException e) {
+            seanceService.add(seance);
+            reloadSessions();
+            return OperationResult.success("Seance ajoutee avec succes.");
+        } catch (RuntimeException e) {
             return OperationResult.failure(e.getMessage());
         }
     }
@@ -80,12 +78,10 @@ public class AdminSessionService {
             seance.setUpdatedAt(LocalDateTime.now());
             seance.setTuteurId(formData.tutorId());
 
-            OperationResult result = seanceService.updateSeance(seance);
-            if (result.isSuccess()) {
-                reloadSessions();
-            }
-            return result;
-        } catch (IllegalArgumentException e) {
+            seanceService.update(seance);
+            reloadSessions();
+            return OperationResult.success("Seance mise a jour.");
+        } catch (RuntimeException e) {
             return OperationResult.failure(e.getMessage());
         }
     }
@@ -96,7 +92,7 @@ public class AdminSessionService {
 
     private List<AdminSession> loadSessions() {
         List<AdminSession> adminSessions = new ArrayList<>();
-        for (Seance seance : seanceService.getAllSeances()) {
+        for (Seance seance : seanceService.getAll()) {
             adminSessions.add(new AdminSession(
                 seance.getId(),
                 seance.getMatiere(),
