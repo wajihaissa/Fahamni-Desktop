@@ -528,6 +528,213 @@ public final class UiTheme {
             -fx-spacing: 12px;
         }
 
+        .pagination-bar {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-padding: 12px 14px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.07), 16, 0.16, 0, 5);
+        }
+
+        .pagination-summary {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #5d78a2;
+        }
+
+        .pagination-nav-button, .pagination-page-button {
+            -fx-background-color: #f4f7fc;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-text-fill: #5e78a2;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-cursor: hand;
+        }
+
+        .pagination-nav-button {
+            -fx-padding: 9px 15px;
+        }
+
+        .pagination-page-button {
+            -fx-min-width: 42px;
+            -fx-min-height: 38px;
+            -fx-padding: 8px 13px;
+        }
+
+        .pagination-page-button.active {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #4f6df0 100%);
+            -fx-border-color: transparent;
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.28), 14, 0.25, 0, 6);
+            -fx-opacity: 1;
+        }
+
+        .pagination-nav-button:disabled {
+            -fx-background-color: #f6f8fc;
+            -fx-border-color: #edf2fa;
+            -fx-text-fill: #a8b5c8;
+            -fx-opacity: 1;
+        }
+
+        .pagination-per-page-label {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #263c63;
+        }
+
+        .pagination-page-size-combo {
+            -fx-pref-height: 40px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+        }
+
+        .session-detail-dialog {
+            -fx-background-color: transparent;
+        }
+
+
+        .session-detail-dialog > .content {
+            -fx-padding: 8px 10px 10px 10px;
+        }
+
+        .session-detail-dialog .button-bar .button {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-padding: 8px 18px;
+            -fx-cursor: hand;
+        }
+
+        .session-detail-root {
+            -fx-background-color:
+                radial-gradient(center 15% 0%, radius 70%, rgba(126, 182, 255, 0.22) 0%, rgba(126, 182, 255, 0.0) 72%),
+                linear-gradient(to bottom, #ffffff 0%, #f6f9ff 100%);
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 20px;
+            -fx-border-radius: 20px;
+            -fx-padding: 22px 24px 20px 24px;
+        }
+
+        .session-detail-header {
+            -fx-alignment: center-left;
+        }
+
+        .session-detail-title {
+            -fx-font-size: 24px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .session-detail-subtitle, .session-detail-muted {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .session-detail-reservation-chip {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #cfdcf7;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 8px 13px;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #2f5ca7;
+        }
+
+        .session-detail-metrics {
+            -fx-padding: 2px 0 0 0;
+        }
+
+        .session-detail-metric-card, .session-detail-description-card, .session-detail-occupancy-card {
+            -fx-background-color: rgba(255, 255, 255, 0.86);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 12px;
+        }
+
+        .session-detail-metric-label {
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #6682aa;
+        }
+
+        .session-detail-metric-value {
+            -fx-font-size: 15px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .session-detail-metric-hint, .session-detail-description-text {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .session-detail-section-title {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .session-detail-occupancy-value {
+            -fx-font-size: 18px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4968f2;
+        }
+
+        .session-detail-progress {
+            -fx-pref-height: 10px;
+        }
+
+        .session-detail-progress > .track {
+            -fx-background-color: #e4ecfb;
+            -fx-background-radius: 999px;
+        }
+
+        .session-detail-progress > .bar {
+            -fx-background-color: linear-gradient(to right, #6e97ff 0%, #4b67e8 100%);
+            -fx-background-radius: 999px;
+            -fx-background-insets: 0;
+        }
+
+        .session-detail-status-row {
+            -fx-padding: 2px 0 0 0;
+        }
+
+        .session-detail-status-chip {
+            -fx-background-color: #f7faff;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 6px 10px;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #48658d;
+        }
+
+        .session-detail-action-button {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-padding: 8px 14px;
+            -fx-cursor: hand;
+        }
+
+        .session-detail-footer {
+            -fx-padding: 0 2px 0 2px;
+        }
+
         .calendar-layout-root {
             -fx-padding: 2px;
         }

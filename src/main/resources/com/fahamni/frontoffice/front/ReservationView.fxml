@@ -74,8 +74,8 @@
         </VBox>
 
         <VBox spacing="12.0" styleClass="reservation-search-panel">
-            <Label text="Rechercher dans les seances recentes" styleClass="reservation-search-title"/>
-            <Label text="Filtre les seances par mot-cle, tuteur, date ou statut avant de les modifier ou supprimer." styleClass="reservation-section-copy"/>
+            <Label text="Rechercher dans les seances en base" styleClass="reservation-search-title"/>
+            <Label text="Cette liste affiche les seances presentes dans la base de donnees. Tu peux filtrer par mot-cle, tuteur, date ou statut." styleClass="reservation-section-copy"/>
 
             <HBox spacing="10.0">
                 <TextField fx:id="sessionSearchField" onAction="#handleSearchSessions" promptText="Ex: analyse, Ahmed, 09/04/2026, brouillon..." styleClass="search-field reservation-search-field" HBox.hgrow="ALWAYS"/>
@@ -148,14 +148,22 @@
 
         <VBox spacing="14.0" styleClass="reservation-section-panel">
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <Label text="Seances recemment publiees" styleClass="subsection-title"/>
+                <Label text="Catalogue des seances disponibles" styleClass="subsection-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Label text="Mise a jour auto" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
-            <Label text="Les dernieres seances en base s'affichent ici. Clique sur Modifier pour editer ou sur Supprimer pour retirer une seance." styleClass="reservation-section-copy"/>
-
             <VBox fx:id="recentSessionsContainer" spacing="12.0"/>
+
+            <HBox fx:id="sessionPaginationBar" alignment="CENTER_LEFT" spacing="12.0" styleClass="pagination-bar">
+                <Label fx:id="sessionPaginationSummaryLabel" text="0 seance affichee" styleClass="pagination-summary"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="sessionPreviousPageButton" text="Precedent" onAction="#handlePreviousSessionsPage" styleClass="pagination-nav-button"/>
+                <HBox fx:id="sessionPageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                <Button fx:id="sessionNextPageButton" text="Suivant" onAction="#handleNextSessionsPage" styleClass="pagination-nav-button"/>
+                <Label text="Par page" styleClass="pagination-per-page-label"/>
+                <ComboBox fx:id="sessionsPerPageComboBox" onAction="#handleChangeSessionsPageSize" prefWidth="92.0" styleClass="pagination-page-size-combo"/>
+            </HBox>
         </VBox>
     </VBox>
 </ScrollPane>

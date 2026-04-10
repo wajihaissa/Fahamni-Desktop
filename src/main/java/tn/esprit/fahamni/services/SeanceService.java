@@ -101,7 +101,7 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
             SELECT id, matiere, start_at, duration_min, max_participants, status,
                    description, created_at, updated_at, tuteur_id
             FROM seance
-            ORDER BY start_at DESC
+            ORDER BY id DESC
             """;
 
         try (PreparedStatement pst = cnx.prepareStatement(sql);

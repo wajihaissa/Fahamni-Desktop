@@ -4,6 +4,8 @@ import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.interfaces.ISeanceSearchService;
 import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
+import tn.esprit.fahamni.services.ReservationService;
+import tn.esprit.fahamni.services.ReservationService.ReservationStats;
 import tn.esprit.fahamni.services.SeanceService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -11,9 +13,13 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -28,6 +34,8 @@ import java.util.Optional;
 public class ReservationController {
 
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
+    private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
         DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"),
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
@@ -38,7 +46,9 @@ public class ReservationController {
     private final IServices<Seance> seanceCrudService = seanceService;
     private final ISeanceSearchService seanceSearchService = seanceService;
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
+    private final ReservationService reservationService = new ReservationService();
     private Integer editingSessionId;
+    private int currentSessionPage = 1;
 
     @FXML
     private Label publishedSessionsCountLabel;
@@ -86,6 +96,24 @@ public class ReservationController {
     private VBox recentSessionsContainer;
 
     @FXML
+    private HBox sessionPaginationBar;
+
+    @FXML
+    private Label sessionPaginationSummaryLabel;
+
+    @FXML
+    private Button sessionPreviousPageButton;
+
+    @FXML
+    private Button sessionNextPageButton;
+
+    @FXML
+    private HBox sessionPageButtonsContainer;
+
+    @FXML
+    private ComboBox<Integer> sessionsPerPageComboBox;
+
+    @FXML
     private void initialize() {
         tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
         tutorComboBox.setEditable(true);
@@ -95,6 +123,8 @@ public class ReservationController {
 
         sessionSearchModeComboBox.getItems().setAll(seanceSearchService.getAvailableSearchStatuses());
         sessionSearchModeComboBox.setValue("Toutes les seances");
+        sessionsPerPageComboBox.getItems().setAll(SESSION_PAGE_SIZE_OPTIONS);
+        sessionsPerPageComboBox.setValue(DEFAULT_SESSION_PAGE_SIZE);
 
         resetEditMode();
         hideFeedback();
@@ -103,6 +133,7 @@ public class ReservationController {
 
     @FXML
     private void handleSearchSessions() {
+        currentSessionPage = 1;
         applySessionFilters();
     }
 
@@ -110,6 +141,27 @@ public class ReservationController {
     private void handleClearSessionSearch() {
         sessionSearchField.clear();
         sessionSearchModeComboBox.setValue("Toutes les seances");
+        currentSessionPage = 1;
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handlePreviousSessionsPage() {
+        if (currentSessionPage > 1) {
+            currentSessionPage--;
+            applySessionFilters();
+        }
+    }
+
+    @FXML
+    private void handleNextSessionsPage() {
+        currentSessionPage++;
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handleChangeSessionsPageSize() {
+        currentSessionPage = 1;
         applySessionFilters();
     }
 
@@ -218,33 +270,47 @@ public class ReservationController {
         List<Seance> filteredSessions = seanceSearchService.search(
             sessionSearchField.getText(),
             sessionSearchModeComboBox.getValue(),
-            8
+            0
         );
+        boolean hasSessionsInDatabase = !seanceCrudService.getAll().isEmpty();
 
-        if (filteredSessions.isEmpty() && seanceCrudService.getAll().isEmpty()) {
-            Label emptyLabel = new Label("Aucune seance disponible pour le moment. La premiere publication apparaitra ici.");
+        if (filteredSessions.isEmpty() && !hasSessionsInDatabase) {
+            Label emptyLabel = new Label("Aucune seance en base de donnees n'est disponible pour le moment.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("reservation-section-copy");
             recentSessionsContainer.getChildren().add(emptyLabel);
+            hideSessionPagination();
             return;
         }
 
         if (filteredSessions.isEmpty()) {
-            Label emptyLabel = new Label("Aucune seance ne correspond aux filtres actuels.");
+            Label emptyLabel = new Label("Aucune seance en base ne correspond aux filtres actuels.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("reservation-section-copy");
             recentSessionsContainer.getChildren().add(emptyLabel);
+            hideSessionPagination();
             return;
         }
 
-        filteredSessions.stream()
+        int totalItems = filteredSessions.size();
+        int pageSize = getSelectedSessionPageSize();
+        int totalPages = calculateTotalPages(totalItems, pageSize);
+        currentSessionPage = clamp(currentSessionPage, 1, totalPages);
+
+        int fromIndex = (currentSessionPage - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, totalItems);
+
+        filteredSessions.subList(fromIndex, toIndex).stream()
             .map(this::buildRecentSessionCard)
             .forEach(recentSessionsContainer.getChildren()::add);
+
+        updateSessionPagination(totalItems, fromIndex + 1, toIndex, totalPages);
     }
 
     private VBox buildRecentSessionCard(Seance seance) {
         VBox card = new VBox(10.0);
         card.getStyleClass().add("reservation-form-shell");
+        ReservationStats reservationStats = reservationService.getStatsBySeanceId(seance.getId());
 
         HBox headerRow = new HBox(10.0);
         Label titleLabel = new Label(seance.getMatiere());
@@ -262,6 +328,7 @@ public class ReservationController {
                 + " | " + formatDateTime(seance.getStartAt())
                 + " | " + seance.getDurationMin() + " min"
                 + " | " + seance.getMaxParticipants() + " places"
+                + " | " + formatReservationCount(reservationStats.total())
         );
         metaLabel.setWrapText(true);
         metaLabel.getStyleClass().add("reservation-section-copy");
@@ -281,6 +348,10 @@ public class ReservationController {
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
 
+        Button detailsButton = new Button("Voir detail");
+        detailsButton.getStyleClass().addAll("action-button", "secondary");
+        detailsButton.setOnAction(event -> showSessionDetails(seance, reservationStats));
+
         Button editButton = new Button("Modifier");
         editButton.getStyleClass().addAll("action-button", "secondary");
         editButton.setOnAction(event -> startEditingSession(seance));
@@ -289,10 +360,206 @@ public class ReservationController {
         deleteButton.getStyleClass().addAll("action-button", "danger");
         deleteButton.setOnAction(event -> confirmDeleteSession(seance));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer, editButton, deleteButton);
+        actionRow.getChildren().addAll(idChip, actionSpacer, detailsButton, editButton, deleteButton);
 
         card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
         return card;
+    }
+
+    private void showSessionDetails(Seance seance, ReservationStats reservationStats) {
+        Dialog<ButtonType> detailsDialog = new Dialog<>();
+        ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
+        DialogPane dialogPane = detailsDialog.getDialogPane();
+
+        detailsDialog.setTitle("Detail de la seance");
+        dialogPane.getButtonTypes().setAll(closeButton);
+        dialogPane.setContent(buildSessionDetailsContent(seance, reservationStats, detailsDialog));
+        dialogPane.setPrefWidth(720);
+        dialogPane.getStyleClass().add("session-detail-dialog");
+        applyCurrentTheme(dialogPane);
+        detailsDialog.showAndWait();
+    }
+
+    private VBox buildSessionDetailsContent(Seance seance, ReservationStats reservationStats, Dialog<ButtonType> detailsDialog) {
+        LocalDateTime endAt = seance.getStartAt() != null
+            ? seance.getStartAt().plusMinutes(seance.getDurationMin())
+            : null;
+        int availableSeats = Math.max(0, seance.getMaxParticipants() - reservationStats.total());
+        double occupancyRate = calculateOccupancyRate(reservationStats.total(), seance.getMaxParticipants());
+
+        VBox root = new VBox(16.0);
+        root.getStyleClass().add("session-detail-root");
+
+        HBox header = new HBox(12.0);
+        header.getStyleClass().add("session-detail-header");
+
+        VBox titleBlock = new VBox(5.0);
+        HBox titleRow = new HBox(8.0);
+        Label titleLabel = new Label(safeText(seance.getMatiere()));
+        titleLabel.getStyleClass().add("session-detail-title");
+        Label statusChip = new Label(mapStatusLabel(seance.getStatus()));
+        statusChip.getStyleClass().addAll("reservation-status", mapStatusStyle(seance.getStatus()));
+        titleRow.getChildren().addAll(titleLabel, statusChip);
+
+        titleBlock.getChildren().add(titleRow);
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        Label reservationChip = new Label(formatReservationCount(reservationStats.total()));
+        reservationChip.getStyleClass().add("session-detail-reservation-chip");
+        header.getChildren().addAll(titleBlock, headerSpacer, reservationChip);
+
+        FlowPane metrics = new FlowPane(10.0, 10.0);
+        metrics.getStyleClass().add("session-detail-metrics");
+        metrics.setPrefWrapLength(560.0);
+        metrics.getChildren().addAll(
+            buildDetailMetric("Debut", formatDateTimeOrPlaceholder(seance.getStartAt()), "Date et heure"),
+            buildDetailMetric("Fin", formatDateTimeOrPlaceholder(endAt), "Fin calculee"),
+            buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance"),
+            buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
+            buildDetailMetric("Reservations", String.valueOf(reservationStats.total()), "Total lie a la seance"),
+            buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId())
+        );
+
+        VBox occupancyCard = new VBox(9.0);
+        occupancyCard.getStyleClass().add("session-detail-occupancy-card");
+        HBox occupancyHeader = new HBox(10.0);
+        Label occupancyTitle = new Label("Remplissage de la seance");
+        occupancyTitle.getStyleClass().add("session-detail-section-title");
+        Region occupancySpacer = new Region();
+        HBox.setHgrow(occupancySpacer, Priority.ALWAYS);
+        Label occupancyValue = new Label(formatPercent(occupancyRate));
+        occupancyValue.getStyleClass().add("session-detail-occupancy-value");
+        occupancyHeader.getChildren().addAll(occupancyTitle, occupancySpacer, occupancyValue);
+
+        ProgressBar occupancyProgress = new ProgressBar(occupancyRate);
+        occupancyProgress.setMaxWidth(Double.MAX_VALUE);
+        occupancyProgress.getStyleClass().add("session-detail-progress");
+
+        HBox statusRow = new HBox(8.0);
+        statusRow.getStyleClass().add("session-detail-status-row");
+        statusRow.getChildren().addAll(
+            buildReservationStatusChip("En attente", reservationStats.pending()),
+            buildReservationStatusChip("Acceptees", reservationStats.accepted()),
+            buildReservationStatusChip("Payees", reservationStats.paid())
+        );
+        occupancyCard.getChildren().addAll(occupancyHeader, occupancyProgress, statusRow);
+
+        VBox descriptionBox = new VBox(8.0);
+        descriptionBox.getStyleClass().add("session-detail-description-card");
+        Label descriptionTitle = new Label("Description");
+        descriptionTitle.getStyleClass().add("session-detail-section-title");
+        Label descriptionText = new Label(safeText(seance.getDescription()));
+        descriptionText.setWrapText(true);
+        descriptionText.getStyleClass().add("session-detail-description-text");
+        descriptionBox.getChildren().addAll(descriptionTitle, descriptionText);
+
+        HBox footer = new HBox(10.0);
+        footer.getStyleClass().add("session-detail-footer");
+        footer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label createdAtLabel = new Label("Creation: " + formatDateTimeOrPlaceholder(seance.getCreatedAt()));
+        createdAtLabel.getStyleClass().add("session-detail-muted");
+        Region footerSpacer = new Region();
+        HBox.setHgrow(footerSpacer, Priority.ALWAYS);
+        Button editActionButton = new Button("Modifier cette seance");
+        editActionButton.getStyleClass().add("session-detail-action-button");
+        editActionButton.setOnAction(event -> {
+            detailsDialog.close();
+            startEditingSession(seance);
+        });
+        footer.getChildren().add(createdAtLabel);
+        if (seance.getUpdatedAt() != null) {
+            Label updatedAtLabel = new Label("Mise a jour: " + formatDateTimeOrPlaceholder(seance.getUpdatedAt()));
+            updatedAtLabel.getStyleClass().add("session-detail-muted");
+            footer.getChildren().add(updatedAtLabel);
+        }
+        footer.getChildren().addAll(footerSpacer, editActionButton);
+
+        root.getChildren().addAll(header, metrics, occupancyCard, descriptionBox, footer);
+        return root;
+    }
+
+    private VBox buildDetailMetric(String label, String value, String hint) {
+        VBox metric = new VBox(4.0);
+        metric.getStyleClass().add("session-detail-metric-card");
+        metric.setPrefWidth(172.0);
+
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("session-detail-metric-label");
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.getStyleClass().add("session-detail-metric-value");
+        Label hintNode = new Label(hint);
+        hintNode.setWrapText(true);
+        hintNode.getStyleClass().add("session-detail-metric-hint");
+
+        metric.getChildren().addAll(labelNode, valueNode, hintNode);
+        return metric;
+    }
+
+    private Label buildReservationStatusChip(String label, int count) {
+        Label chip = new Label(label + ": " + count);
+        chip.getStyleClass().add("session-detail-status-chip");
+        return chip;
+    }
+
+    private int getSelectedSessionPageSize() {
+        Integer selectedValue = sessionsPerPageComboBox != null ? sessionsPerPageComboBox.getValue() : null;
+        return selectedValue != null && selectedValue > 0 ? selectedValue : DEFAULT_SESSION_PAGE_SIZE;
+    }
+
+    private int calculateTotalPages(int totalItems, int pageSize) {
+        if (totalItems <= 0) {
+            return 1;
+        }
+        return (int) Math.ceil((double) totalItems / pageSize);
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    private void updateSessionPagination(int totalItems, int fromItem, int toItem, int totalPages) {
+        sessionPaginationBar.setManaged(true);
+        sessionPaginationBar.setVisible(true);
+        sessionPaginationSummaryLabel.setText(fromItem + "-" + toItem + " sur " + totalItems + " seances affichees");
+        sessionPreviousPageButton.setDisable(currentSessionPage <= 1);
+        sessionNextPageButton.setDisable(currentSessionPage >= totalPages);
+
+        sessionPageButtonsContainer.getChildren().clear();
+        for (int page : buildVisiblePageNumbers(totalPages)) {
+            Button pageButton = new Button(String.valueOf(page));
+            pageButton.getStyleClass().add("pagination-page-button");
+            if (page == currentSessionPage) {
+                pageButton.getStyleClass().add("active");
+            }
+            pageButton.setDisable(page == currentSessionPage);
+            pageButton.setOnAction(event -> {
+                currentSessionPage = page;
+                applySessionFilters();
+            });
+            sessionPageButtonsContainer.getChildren().add(pageButton);
+        }
+    }
+
+    private List<Integer> buildVisiblePageNumbers(int totalPages) {
+        int firstPage = Math.max(1, currentSessionPage - 2);
+        int lastPage = Math.min(totalPages, firstPage + 4);
+        firstPage = Math.max(1, lastPage - 4);
+
+        java.util.ArrayList<Integer> pages = new java.util.ArrayList<>();
+        for (int page = firstPage; page <= lastPage; page++) {
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    private void hideSessionPagination() {
+        sessionPaginationBar.setManaged(false);
+        sessionPaginationBar.setVisible(false);
+        sessionPaginationSummaryLabel.setText("");
+        sessionPageButtonsContainer.getChildren().clear();
     }
 
     private void startEditingSession(Seance seance) {
@@ -404,6 +671,33 @@ public class ReservationController {
         return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
+    private String formatReservationCount(int reservationCount) {
+        if (reservationCount <= 0) {
+            return "0 reservation";
+        }
+        return reservationCount == 1 ? "1 reservation" : reservationCount + " reservations";
+    }
+
+    private double calculateOccupancyRate(int reservationCount, int capacity) {
+        if (reservationCount <= 0 || capacity <= 0) {
+            return 0.0;
+        }
+        return Math.min(1.0, (double) reservationCount / capacity);
+    }
+
+    private String formatPercent(double value) {
+        return Math.round(value * 100) + "%";
+    }
+
+    private String safeText(String value) {
+        String normalizedValue = normalizeText(value);
+        return normalizedValue != null ? normalizedValue : "Non renseigne";
+    }
+
+    private String formatDateTimeOrPlaceholder(LocalDateTime value) {
+        return value != null ? value.format(DISPLAY_FORMATTER) : "Non renseigne";
+    }
+
     private String formatDateTime(LocalDateTime value) {
         return value != null ? value.format(DISPLAY_FORMATTER) : "";
     }
@@ -470,6 +764,13 @@ public class ReservationController {
         publishFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
         publishFeedbackLabel.setManaged(false);
         publishFeedbackLabel.setVisible(false);
+    }
+
+    private void applyCurrentTheme(DialogPane dialogPane) {
+        if (dialogPane == null || recentSessionsContainer == null || recentSessionsContainer.getScene() == null) {
+            return;
+        }
+        dialogPane.getStylesheets().setAll(recentSessionsContainer.getScene().getStylesheets());
     }
 }
 
