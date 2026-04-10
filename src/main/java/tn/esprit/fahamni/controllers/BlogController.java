@@ -469,14 +469,51 @@ public class BlogController {
 
         Separator sepCom = new Separator(); sepCom.setStyle("-fx-opacity: 0.15;");
 
+        // ── Commentaires paginés (3 par défaut + "Voir plus") ──
+        List<Interaction> commentList = new ArrayList<>();
+        for (Interaction inter : interactions) {
+            if (inter.getCommentaire() != null && !inter.getCommentaire().isEmpty())
+                commentList.add(inter);
+        }
+        final int COMMENTS_PAGE = 3;
+        final int[] shownCount = {0};
+
         VBox commentsBox = new VBox(6);
         commentsBox.setPadding(new Insets(6, 0, 4, 0));
-        for (Interaction inter : interactions) {
-            if (inter.getCommentaire() != null && !inter.getCommentaire().isEmpty()) {
-                boolean mine = inter.getCreatedBy() != null && inter.getCreatedBy().equals(currentUserName);
-                commentsBox.getChildren().add(buildCommentRow(inter.getCreatedBy(), inter.getCommentaire(), mine, commentsBox, commentBtn));
+
+        // Bouton "Voir plus" réutilisable
+        Button voirPlusBtn = new Button();
+        voirPlusBtn.setStyle(
+            "-fx-background-color: transparent; -fx-text-fill: #3a7bd5; " +
+            "-fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand; " +
+            "-fx-padding: 4 0; -fx-underline: true;");
+
+        // Affiche les N prochains commentaires
+        Runnable loadNextComments = new Runnable() {
+            @Override public void run() {
+                // Retirer le bouton s'il est déjà là
+                commentsBox.getChildren().remove(voirPlusBtn);
+                int end = Math.min(shownCount[0] + COMMENTS_PAGE, commentList.size());
+                for (int i = shownCount[0]; i < end; i++) {
+                    Interaction inter = commentList.get(i);
+                    boolean mine = inter.getCreatedBy() != null && inter.getCreatedBy().equals(currentUserName);
+                    commentsBox.getChildren().add(
+                        buildCommentRow(inter.getCreatedBy(), inter.getCommentaire(), mine, commentsBox, commentBtn));
+                }
+                shownCount[0] = end;
+                // Remettre le bouton si encore des commentaires
+                if (shownCount[0] < commentList.size()) {
+                    int remaining = commentList.size() - shownCount[0];
+                    voirPlusBtn.setText("▼  Voir " + remaining + " commentaire(s) de plus");
+                    commentsBox.getChildren().add(voirPlusBtn);
+                }
             }
-        }
+        };
+
+        voirPlusBtn.setOnAction(e -> loadNextComments.run());
+
+        // Chargement initial
+        loadNextComments.run();
 
         HBox inputRow = new HBox(6);
         inputRow.setAlignment(Pos.CENTER);
@@ -497,7 +534,11 @@ public class BlogController {
                     new Alert(Alert.AlertType.ERROR, err).showAndWait();
                     return;
                 }
-                commentsBox.getChildren().add(buildCommentRow(currentUserName, comment, true, commentsBox, commentBtn));
+                // Ajouter le nouveau commentaire juste avant le bouton "Voir plus" (ou à la fin)
+                int insertIdx = commentsBox.getChildren().indexOf(voirPlusBtn);
+                HBox newRow = buildCommentRow(currentUserName, comment, true, commentsBox, commentBtn);
+                if (insertIdx >= 0) commentsBox.getChildren().add(insertIdx, newRow);
+                else commentsBox.getChildren().add(newRow);
                 commentField.clear();
                 long n = blogService.countComments(blog.getId());
                 animateCounter(commentBtn, "\uD83D\uDCAC " + n);
