@@ -75,6 +75,7 @@
             <ComboBox fx:id="correctChoiceComboBox" styleClass="backoffice-form-input"/>
             <HBox spacing="10.0">
                 <Button text="Ajouter" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" />
+                <Button text="Mettre à jour" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" />
                 <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" />
             </HBox>
             <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button"/>

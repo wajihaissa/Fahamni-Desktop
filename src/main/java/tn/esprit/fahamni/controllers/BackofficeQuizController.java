@@ -5,6 +5,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
@@ -138,13 +139,21 @@ private void initialize() {
     lastScoreColumn.setCellValueFactory(cellData -> 
             new SimpleStringProperty(getLastScoreLabel(cellData.getValue())));
 
-    applyBlackTextCellFactory(idColumn);
-    applyBlackTextCellFactory(titleColumn);
-    applyBlackTextCellFactory(keywordColumn);
-    applyBlackTextCellFactory(questionsColumn);
-    applyBlackTextCellFactory(resultsColumn);
-    applyBlackTextCellFactory(createdAtColumn);
-    applyBlackTextCellFactory(lastScoreColumn);
+    idColumn.setStyle("-fx-alignment: CENTER;");
+    titleColumn.setStyle("-fx-alignment: CENTER-LEFT;");
+    keywordColumn.setStyle("-fx-alignment: CENTER-LEFT;");
+    questionsColumn.setStyle("-fx-alignment: CENTER;");
+    resultsColumn.setStyle("-fx-alignment: CENTER;");
+    createdAtColumn.setStyle("-fx-alignment: CENTER;");
+    lastScoreColumn.setStyle("-fx-alignment: CENTER;");
+
+    applyBlackLabelCellFactory(idColumn, Pos.CENTER);
+    applyBlackLabelCellFactory(titleColumn, Pos.CENTER_LEFT);
+    applyBlackLabelCellFactory(keywordColumn, Pos.CENTER_LEFT);
+    applyBlackLabelCellFactory(questionsColumn, Pos.CENTER);
+    applyBlackLabelCellFactory(resultsColumn, Pos.CENTER);
+    applyBlackLabelCellFactory(createdAtColumn, Pos.CENTER);
+    applyBlackLabelCellFactory(lastScoreColumn, Pos.CENTER);
 
     correctChoiceComboBox.getItems().setAll("Choix A", "Choix B", "Choix C", "Choix D");
     correctChoiceComboBox.setValue("Choix A");
@@ -156,6 +165,30 @@ private void initialize() {
     refreshQuizData();
     hideFeedback();
 }
+
+    private <T> void applyBlackLabelCellFactory(TableColumn<Quiz, T> column, Pos alignment) {
+        column.setCellFactory(col -> new TableCell<Quiz, T>() {
+            private final Label content = new Label();
+            {
+                content.setTextFill(Color.BLACK);
+                content.setWrapText(true);
+            }
+
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    content.setText(item.toString());
+                    setText(null);
+                    setGraphic(content);
+                    setAlignment(alignment);
+                }
+            }
+        });
+    }
 
     @FXML
     private void handleCreateQuiz() {
@@ -214,6 +247,43 @@ private void initialize() {
         showFeedback("Données mises à jour.", true);
     }
 
+    @FXML
+    private void handleUpdateQuiz() {
+        hideFeedback();
+        Quiz selectedQuiz = quizzesTable.getSelectionModel().getSelectedItem();
+        if (selectedQuiz == null) {
+            showFeedback("Sélectionnez un quiz à mettre à jour.", false);
+            return;
+        }
+
+        Quiz quiz = new Quiz();
+        quiz.setTitre(titleField.getText());
+        quiz.setKeyword(keywordField.getText());
+
+        Question question = new Question();
+        question.setQuestion(questionField.getText());
+
+        Choice choiceA = createChoice(choice1Field.getText(), "Choix A".equals(correctChoiceComboBox.getValue()));
+        Choice choiceB = createChoice(choice2Field.getText(), "Choix B".equals(correctChoiceComboBox.getValue()));
+        Choice choiceC = createChoice(choice3Field.getText(), "Choix C".equals(correctChoiceComboBox.getValue()));
+        Choice choiceD = createChoice(choice4Field.getText(), "Choix D".equals(correctChoiceComboBox.getValue()));
+
+        question.addChoice(choiceA);
+        question.addChoice(choiceB);
+        question.addChoice(choiceC);
+        question.addChoice(choiceD);
+        quiz.addQuestion(question);
+
+        Quiz updatedQuiz = quizService.updateQuiz(selectedQuiz.getId(), quiz);
+        if (updatedQuiz == null) {
+            showFeedback("Impossible de mettre à jour le quiz. Vérifiez les champs.", false);
+            return;
+        }
+
+        refreshQuizData();
+        showFeedback("Quiz mis à jour avec succès.", true);
+    }
+
     private void refreshQuizData() {
         List<Quiz> quizzes = quizService.getAllQuizzes();
         System.out.println("Loaded " + quizzes.size() + " quizzes");
@@ -224,40 +294,6 @@ private void initialize() {
         quizzesTable.refresh();
         quizzesTable.setMinHeight(240);
         updateStats(quizzes);
-    }
-
-    private <S, T> void applyBlackTextCellFactory(TableColumn<S, T> column) {
-        column.setCellFactory(col -> new TableCell<>() {
-            private final Label content = new Label();
-            {
-                content.setTextFill(Color.BLACK);
-                content.setWrapText(true);
-            }
-
-            @Override
-            protected void updateItem(T item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setGraphic(null);
-                } else {
-                    content.setText(item.toString());
-                    content.setMaxWidth(Double.MAX_VALUE);
-                    
-                    // Right-align numeric values, center-left align text
-                    if (item instanceof Number) {
-                        content.setStyle("-fx-alignment: CENTER-RIGHT; -fx-padding: 0 8 0 0;");
-                        setStyle("-fx-alignment: CENTER-RIGHT;");
-                    } else {
-                        content.setStyle("-fx-alignment: CENTER-LEFT; -fx-padding: 0 0 0 8;");
-                        setStyle("-fx-alignment: CENTER-LEFT;");
-                    }
-                    
-                    setText(null);
-                    setGraphic(content);
-                }
-            }
-        });
     }
 
     private void updateStats(List<Quiz> quizzes) {
