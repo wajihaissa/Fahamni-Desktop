@@ -4,6 +4,7 @@ import tn.esprit.fahamni.Models.Blog;
 import tn.esprit.fahamni.Models.Notification;
 import tn.esprit.fahamni.services.AdminArticlesService;
 import tn.esprit.fahamni.services.NotificationService;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -18,7 +19,10 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class BackofficeArticlesController {
 
@@ -26,21 +30,27 @@ public class BackofficeArticlesController {
     private final NotificationService notifService = new NotificationService();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    @FXML private Label pendingCountLabel;
-    @FXML private Label approvedCountLabel;
-    @FXML private Label deletedCountLabel;
-    @FXML private HBox  notifBanner;
-    @FXML private Label notifLabel;
-    @FXML private Label feedbackLabel;
+    @FXML private Label  pendingCountLabel;
+    @FXML private Label  approvedCountLabel;
+    @FXML private Label  deletedCountLabel;
+    @FXML private HBox   notifBanner;
+    @FXML private Label  notifLabel;
+    @FXML private Label  feedbackLabel;
     @FXML private Button btnTous;
+    @FXML private HBox   bulkBar;
+    @FXML private Label  selectionCountLabel;
 
-    @FXML private TableView<Blog>           articlesTable;
-    @FXML private TableColumn<Blog, String> colTitre;
-    @FXML private TableColumn<Blog, String> colAuteur;
-    @FXML private TableColumn<Blog, String> colCategorie;
-    @FXML private TableColumn<Blog, String> colDate;
-    @FXML private TableColumn<Blog, String> colStatut;
-    @FXML private TableColumn<Blog, Void>   colActions;
+    @FXML private TableView<Blog>            articlesTable;
+    @FXML private TableColumn<Blog, Boolean> colSelect;
+    @FXML private TableColumn<Blog, String>  colTitre;
+    @FXML private TableColumn<Blog, String>  colAuteur;
+    @FXML private TableColumn<Blog, String>  colCategorie;
+    @FXML private TableColumn<Blog, String>  colDate;
+    @FXML private TableColumn<Blog, String>  colStatut;
+    @FXML private TableColumn<Blog, Void>    colActions;
+
+    /** Map blogId → état checkbox */
+    private final Map<Integer, SimpleBooleanProperty> checkMap = new HashMap<>();
 
     @FXML
     private void initialize() {
@@ -93,12 +103,81 @@ public class BackofficeArticlesController {
     }
 
     private void displayArticles(List<Blog> blogs) {
+        checkMap.clear();
         articlesTable.getItems().setAll(blogs);
+        refreshBulkBar();
+    }
+
+    private void refreshBulkBar() {
+        long count = checkMap.values().stream().filter(SimpleBooleanProperty::get).count();
+        if (count > 0) {
+            selectionCountLabel.setText(count + " sélectionné(s)");
+            bulkBar.setVisible(true);
+            bulkBar.setManaged(true);
+        } else {
+            bulkBar.setVisible(false);
+            bulkBar.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void handleBulkApprove() {
+        List<Integer> ids = getCheckedIds();
+        if (ids.isEmpty()) return;
+        ids.forEach(service::approveArticle);
+        loadAll();
+        showFeedback("✅  " + ids.size() + " article(s) approuve(s).", true);
+    }
+
+    @FXML
+    private void handleBulkDelete() {
+        List<Integer> ids = getCheckedIds();
+        if (ids.isEmpty()) return;
+        ids.forEach(service::deleteArticle);
+        loadAll();
+        showFeedback("🗑  " + ids.size() + " article(s) supprime(s).", false);
+    }
+
+    private List<Integer> getCheckedIds() {
+        return checkMap.entrySet().stream()
+            .filter(e -> e.getValue().get())
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
     }
 
     // ─── colonnes ─────────────────────────────────────────────────────────────
 
     private void setupColumns() {
+
+        // Checkbox sélection
+        colSelect.setCellValueFactory(c -> {
+            int id = c.getValue().getId();
+            checkMap.putIfAbsent(id, new SimpleBooleanProperty(false));
+            return checkMap.get(id).asObject();
+        });
+        colSelect.setCellFactory(col -> new TableCell<>() {
+            private final CheckBox cb = new CheckBox();
+            {
+                cb.setStyle("-fx-cursor: hand;");
+                cb.setOnAction(e -> {
+                    Blog b = getTableView().getItems().get(getIndex());
+                    int id = b.getId();
+                    checkMap.putIfAbsent(id, new SimpleBooleanProperty(false));
+                    checkMap.get(id).set(cb.isSelected());
+                    refreshBulkBar();
+                });
+            }
+            @Override protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) { setGraphic(null); return; }
+                Blog b = getTableView().getItems().get(getIndex());
+                int id = b.getId();
+                checkMap.putIfAbsent(id, new SimpleBooleanProperty(false));
+                cb.setSelected(checkMap.get(id).get());
+                setGraphic(cb);
+            }
+        });
+        colSelect.setSortable(false);
 
         // Titre
         colTitre.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getTitre()));

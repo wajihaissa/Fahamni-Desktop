@@ -119,19 +119,40 @@
         <VBox spacing="10"
               style="-fx-background-color: white; -fx-background-radius: 14;
                      -fx-padding: 18; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.07),8,0,0,2);">
-            <Label text="Liste des articles"
-                   style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+
+            <!-- Barre titre + actions groupées -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="Liste des articles"
+                       style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <!-- Barre sélection multiple (masquée par défaut) -->
+                <HBox fx:id="bulkBar" spacing="8" alignment="CENTER" managed="false" visible="false">
+                    <Label fx:id="selectionCountLabel" text="0 sélectionné(s)"
+                           style="-fx-font-size: 12; -fx-text-fill: #475569; -fx-font-weight: bold;"/>
+                    <Button fx:id="btnBulkApprove" text="✔  Approuver la sélection"
+                            focusTraversable="false" onAction="#handleBulkApprove"
+                            style="-fx-background-color: #10b981; -fx-text-fill: white;
+                                   -fx-background-radius: 8; -fx-padding: 6 14;
+                                   -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
+                    <Button fx:id="btnBulkDelete" text="✕  Supprimer la sélection"
+                            focusTraversable="false" onAction="#handleBulkDelete"
+                            style="-fx-background-color: #ef4444; -fx-text-fill: white;
+                                   -fx-background-radius: 8; -fx-padding: 6 14;
+                                   -fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;"/>
+                </HBox>
+            </HBox>
 
             <TableView fx:id="articlesTable" VBox.vgrow="ALWAYS" prefHeight="420"
                        style="-fx-background-color: transparent; -fx-border-color: #e2e8f0;
                               -fx-border-radius: 10; -fx-background-radius: 10;">
                 <columns>
-                    <TableColumn fx:id="colTitre"     minWidth="180" text="Titre"/>
+                    <TableColumn fx:id="colSelect"    minWidth="44" maxWidth="44" text=""/>
+                    <TableColumn fx:id="colTitre"     minWidth="160" text="Titre"/>
                     <TableColumn fx:id="colAuteur"    minWidth="100" text="Auteur"/>
-                    <TableColumn fx:id="colCategorie" minWidth="110" text="Categorie"/>
-                    <TableColumn fx:id="colDate"      minWidth="90"  text="Date"/>
-                    <TableColumn fx:id="colStatut"    minWidth="100" text="Statut"/>
-                    <TableColumn fx:id="colActions"   minWidth="180" text="Actions"/>
+                    <TableColumn fx:id="colCategorie" minWidth="100" text="Categorie"/>
+                    <TableColumn fx:id="colDate"      minWidth="85"  text="Date"/>
+                    <TableColumn fx:id="colStatut"    minWidth="95"  text="Statut"/>
+                    <TableColumn fx:id="colActions"   minWidth="220" text="Actions"/>
                 </columns>
                 <placeholder>
                     <Label text="Aucun article dans cette categorie."
