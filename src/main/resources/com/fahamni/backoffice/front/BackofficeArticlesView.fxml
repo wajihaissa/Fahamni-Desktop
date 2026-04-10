@@ -109,6 +109,17 @@
                            -fx-background-radius: 20; -fx-padding: 7 16; -fx-cursor: hand;
                            -fx-font-size: 12; -fx-border-color: #ef4444; -fx-border-radius: 20;"/>
             <Region HBox.hgrow="ALWAYS"/>
+            <!-- Recherche par auteur -->
+            <HBox spacing="6" alignment="CENTER_LEFT"
+                  style="-fx-background-color: #f8fafc; -fx-background-radius: 20;
+                         -fx-border-color: #cbd5e1; -fx-border-radius: 20; -fx-padding: 5 12;">
+                <Label text="👤" style="-fx-font-size: 13; -fx-text-fill: #94a3b8;"/>
+                <TextField fx:id="authorSearchField"
+                           promptText="Filtrer par auteur..."
+                           focusTraversable="true"
+                           style="-fx-background-color: transparent; -fx-border-width: 0;
+                                  -fx-font-size: 12; -fx-text-fill: #1e293b; -fx-pref-width: 160;"/>
+            </HBox>
             <Button text="↺  Actualiser" focusTraversable="false" onAction="#handleRefresh"
                     style="-fx-background-color: #f1f5f9; -fx-text-fill: #475569;
                            -fx-background-radius: 20; -fx-padding: 7 18; -fx-cursor: hand;

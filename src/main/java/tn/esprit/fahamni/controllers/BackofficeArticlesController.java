@@ -37,8 +37,12 @@ public class BackofficeArticlesController {
     @FXML private Label  notifLabel;
     @FXML private Label  feedbackLabel;
     @FXML private Button btnTous;
-    @FXML private HBox   bulkBar;
-    @FXML private Label  selectionCountLabel;
+    @FXML private HBox      bulkBar;
+    @FXML private Label     selectionCountLabel;
+    @FXML private TextField authorSearchField;
+
+    /** Liste complète en cours (avant filtre auteur) */
+    private List<Blog> currentFullList = new java.util.ArrayList<>();
 
     @FXML private TableView<Blog>            articlesTable;
     @FXML private TableColumn<Blog, Boolean> colSelect;
@@ -57,6 +61,20 @@ public class BackofficeArticlesController {
         articlesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         setupColumns();
         loadAll();
+
+        // Filtre temps réel par auteur
+        authorSearchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            String kw = newVal == null ? "" : newVal.trim().toLowerCase();
+            if (kw.isEmpty()) {
+                displayArticles(currentFullList, false);
+            } else {
+                List<Blog> filtered = currentFullList.stream()
+                    .filter(b -> b.getPublishedBy() != null &&
+                                 b.getPublishedBy().toLowerCase().contains(kw))
+                    .collect(Collectors.toList());
+                displayArticles(filtered, false);
+            }
+        });
     }
 
     // ─── filtres ──────────────────────────────────────────────────────────────
@@ -103,6 +121,11 @@ public class BackofficeArticlesController {
     }
 
     private void displayArticles(List<Blog> blogs) {
+        displayArticles(blogs, true);
+    }
+
+    private void displayArticles(List<Blog> blogs, boolean updateFullList) {
+        if (updateFullList) currentFullList = blogs;
         checkMap.clear();
         articlesTable.getItems().setAll(blogs);
         refreshBulkBar();
