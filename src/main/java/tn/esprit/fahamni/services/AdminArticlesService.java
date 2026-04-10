@@ -50,18 +50,47 @@ public class AdminArticlesService {
         return 0;
     }
 
-    /** Approuver un article : status → published + notification au tuteur */
+    /** Approuver un article : status → published + notification + journal */
     public void approveArticle(int blogId) {
         updateStatus(blogId, "published");
         notifyPublisher(blogId,
             "Votre article \"%s\" a ete approuve et publie sur Fahamni !");
+        logAction(blogId, "Approuve");
     }
 
-    /** Supprimer logiquement un article : status → deleted + notification au tuteur */
+    /** Supprimer logiquement un article : status → deleted + notification + journal */
     public void deleteArticle(int blogId) {
         updateStatus(blogId, "deleted");
         notifyPublisher(blogId,
             "Votre article \"%s\" a ete refuse par l'administrateur.");
+        logAction(blogId, "Refuse");
+    }
+
+    private void logAction(int blogId, String action) {
+        try {
+            Connection c = cnx();
+            if (c == null) return;
+            String titre = "", auteur = "";
+            String[] nameCols = {"fullName", "full_name", "name", "username"};
+            for (String col : nameCols) {
+                try (PreparedStatement ps = c.prepareStatement(
+                        "SELECT b.titre, u." + col + " AS pub FROM blog b " +
+                        "LEFT JOIN user u ON b.publisher_id = u.id WHERE b.id = ?")) {
+                    ps.setInt(1, blogId);
+                    ResultSet rs = ps.executeQuery();
+                    if (rs.next()) {
+                        titre  = rs.getString("titre");
+                        auteur = rs.getString("pub");
+                        if (auteur == null) auteur = "Anonyme";
+                    }
+                    break;
+                } catch (Exception ignored) {}
+            }
+            String adminName = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
+            new ActivityLogService().log(adminName, action, titre, auteur);
+        } catch (Exception e) {
+            System.err.println("logAction: " + e.getMessage());
+        }
     }
 
     /** Remettre un article en attente */

@@ -1,7 +1,9 @@
 package tn.esprit.fahamni.controllers;
 
+import tn.esprit.fahamni.Models.ActivityLog;
 import tn.esprit.fahamni.Models.Blog;
 import tn.esprit.fahamni.Models.Notification;
+import tn.esprit.fahamni.services.ActivityLogService;
 import tn.esprit.fahamni.services.AdminArticlesService;
 import tn.esprit.fahamni.services.NotificationService;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -26,9 +28,11 @@ import java.util.stream.Collectors;
 
 public class BackofficeArticlesController {
 
-    private final AdminArticlesService service = new AdminArticlesService();
-    private final NotificationService notifService = new NotificationService();
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private final AdminArticlesService service      = new AdminArticlesService();
+    private final NotificationService  notifService = new NotificationService();
+    private final ActivityLogService   logService   = new ActivityLogService();
+    private static final DateTimeFormatter FMT    = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @FXML private Label  pendingCountLabel;
     @FXML private Label  approvedCountLabel;
@@ -53,13 +57,22 @@ public class BackofficeArticlesController {
     @FXML private TableColumn<Blog, String>  colStatut;
     @FXML private TableColumn<Blog, Void>    colActions;
 
+    @FXML private TableView<ActivityLog>            activityTable;
+    @FXML private TableColumn<ActivityLog, String>  colLogDate;
+    @FXML private TableColumn<ActivityLog, String>  colLogAdmin;
+    @FXML private TableColumn<ActivityLog, String>  colLogAction;
+    @FXML private TableColumn<ActivityLog, String>  colLogTitle;
+    @FXML private TableColumn<ActivityLog, String>  colLogAuthor;
+
     /** Map blogId → état checkbox */
     private final Map<Integer, SimpleBooleanProperty> checkMap = new HashMap<>();
 
     @FXML
     private void initialize() {
         articlesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        activityTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         setupColumns();
+        setupActivityColumns();
         loadAll();
 
         // Filtre temps réel par auteur
@@ -91,6 +104,11 @@ public class BackofficeArticlesController {
         refreshCounters();
         displayArticles(service.getAllArticles());
         updateNotifBanner();
+        loadActivityLog();
+    }
+
+    private void loadActivityLog() {
+        activityTable.getItems().setAll(logService.getRecent(20));
     }
 
     private void refreshCounters() {
@@ -319,6 +337,68 @@ public class BackofficeArticlesController {
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
                 setGraphic(empty ? null : box);
+            }
+        });
+    }
+
+    // ─── colonnes journal ─────────────────────────────────────────────────────
+
+    private void setupActivityColumns() {
+        colLogDate.setCellValueFactory(c -> new SimpleStringProperty(
+            c.getValue().getCreatedAt() != null ? c.getValue().getCreatedAt().format(DT_FMT) : "—"));
+        colLogDate.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); return; }
+                setText(item);
+                setStyle("-fx-text-fill: #64748b; -fx-font-size: 11;");
+            }
+        });
+
+        colLogAdmin.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getAdminName()));
+        colLogAdmin.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); return; }
+                setText(item);
+                setStyle("-fx-text-fill: #3a7bd5; -fx-font-weight: bold; -fx-font-size: 12;");
+            }
+        });
+
+        colLogAction.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getAction()));
+        colLogAction.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setGraphic(null); return; }
+                boolean approved = "Approuve".equalsIgnoreCase(item);
+                Label badge = new Label(approved ? "✔  Approuvé" : "✕  Refusé");
+                badge.setPadding(new Insets(3, 10, 3, 10));
+                badge.setStyle(
+                    "-fx-background-color: " + (approved ? "#ecfdf5" : "#fff1f2") + "; " +
+                    "-fx-text-fill: " + (approved ? "#065f46" : "#991b1b") + "; " +
+                    "-fx-font-size: 11; -fx-font-weight: bold; -fx-background-radius: 20;");
+                setGraphic(badge);
+                setText(null);
+            }
+        });
+
+        colLogTitle.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getArticleTitle()));
+        colLogTitle.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); return; }
+                setText(item);
+                setStyle("-fx-text-fill: #1e293b; -fx-font-size: 12;");
+            }
+        });
+
+        colLogAuthor.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getArticleAuthor()));
+        colLogAuthor.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) { setText(null); return; }
+                setText(item);
+                setStyle("-fx-text-fill: #8e44ad; -fx-font-size: 12;");
             }
         });
     }
