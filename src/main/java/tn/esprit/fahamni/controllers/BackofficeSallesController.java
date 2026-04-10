@@ -10,7 +10,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
@@ -24,6 +23,7 @@ import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.services.AdminSalleService;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -95,9 +95,6 @@ public class BackofficeSallesController {
     private ComboBox<String> dispositionComboBox;
 
     @FXML
-    private DatePicker maintenanceDatePicker;
-
-    @FXML
     private CheckBox accesHandicapeCheckBox;
 
     @FXML
@@ -159,7 +156,7 @@ public class BackofficeSallesController {
         hideFeedback();
 
         try {
-            Salle salle = buildSalle(0);
+            Salle salle = buildSalle(0, null);
             salleService.add(salle);
 
             if (!loadSalles()) {
@@ -183,7 +180,7 @@ public class BackofficeSallesController {
         }
 
         try {
-            Salle salle = buildSalle(selectedSalle.getIdSalle());
+            Salle salle = buildSalle(selectedSalle.getIdSalle(), selectedSalle.getDateDerniereMaintenance());
             salleService.update(salle);
 
             if (!loadSalles()) {
@@ -320,7 +317,6 @@ public class BackofficeSallesController {
         etatComboBox.setValue(salle.getEtat());
         etageField.setText(salle.getEtage() == null ? "" : String.valueOf(salle.getEtage()));
         dispositionComboBox.setValue(salle.getTypeDisposition());
-        maintenanceDatePicker.setValue(salle.getDateDerniereMaintenance());
         accesHandicapeCheckBox.setSelected(salle.isAccesHandicape());
         statutDetailleField.setText(defaultString(salle.getStatutDetaille()));
         descriptionArea.setText(defaultString(salle.getDescription()));
@@ -337,7 +333,6 @@ public class BackofficeSallesController {
         etatComboBox.setValue(etatComboBox.getItems().isEmpty() ? null : etatComboBox.getItems().get(0));
         etageField.clear();
         dispositionComboBox.setValue(null);
-        maintenanceDatePicker.setValue(null);
         accesHandicapeCheckBox.setSelected(false);
         statutDetailleField.clear();
         descriptionArea.clear();
@@ -371,7 +366,7 @@ public class BackofficeSallesController {
             || contains(salle.getEtat(), filterText);
     }
 
-    private Salle buildSalle(int idSalle) {
+    private Salle buildSalle(int idSalle, LocalDate maintenanceDate) {
         String nom = requireText(nomField.getText(), "Le nom de la salle est obligatoire.");
         int capacite = parsePositiveInteger(capaciteSpinner.getEditor().getText(), "La capacite doit etre un entier positif.");
         String localisation = requireText(localisationField.getText(), "La localisation est obligatoire.");
@@ -391,7 +386,7 @@ public class BackofficeSallesController {
             trimToNull(dispositionComboBox.getValue()),
             accesHandicapeCheckBox.isSelected(),
             trimToNull(statutDetailleField.getText()),
-            maintenanceDatePicker.getValue()
+            maintenanceDate
         );
     }
 

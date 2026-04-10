@@ -50,6 +50,12 @@ public class BackofficeMainController {
     private Button sallesButton;
 
     @FXML
+    private Button reclamationsButton;
+
+    @FXML
+    private Button maintenanceButton;
+
+    @FXML
     private Button equipementsButton;
 
     @FXML
@@ -127,6 +133,28 @@ public class BackofficeMainController {
             "Administrez vos espaces, leur capacite et leur niveau de disponibilite."
         );
         setActiveButton(sallesButton);
+    }
+
+    @FXML
+    private void showReclamations() {
+        setInfrastructureExpanded(true);
+        loadView(
+            "BackofficeReclamationsView.fxml",
+            "Reclamations des salles",
+            "Centralisez les signalements des tuteurs et transformez-les en actions administratives claires."
+        );
+        setActiveButton(reclamationsButton);
+    }
+
+    @FXML
+    private void showMaintenance() {
+        setInfrastructureExpanded(true);
+        loadView(
+            "BackofficeMaintenanceView.fxml",
+            "Maintenance des salles",
+            "Suivez les interventions techniques et gardez une vision claire de l'etat des salles."
+        );
+        setActiveButton(maintenanceButton);
     }
 
     @FXML
@@ -221,6 +249,8 @@ public class BackofficeMainController {
         contentButton.getStyleClass().remove("active");
         infrastructureToggleButton.getStyleClass().remove("active");
         sallesButton.getStyleClass().remove("active");
+        reclamationsButton.getStyleClass().remove("active");
+        maintenanceButton.getStyleClass().remove("active");
         equipementsButton.getStyleClass().remove("active");
         infrastructureStatsButton.getStyleClass().remove("active");
 
@@ -228,7 +258,11 @@ public class BackofficeMainController {
             activeButton.getStyleClass().add("active");
         }
 
-        if (activeButton == sallesButton || activeButton == equipementsButton || activeButton == infrastructureStatsButton) {
+        if (activeButton == sallesButton
+            || activeButton == reclamationsButton
+            || activeButton == maintenanceButton
+            || activeButton == equipementsButton
+            || activeButton == infrastructureStatsButton) {
             if (!infrastructureToggleButton.getStyleClass().contains("active")) {
                 infrastructureToggleButton.getStyleClass().add("active");
             }
