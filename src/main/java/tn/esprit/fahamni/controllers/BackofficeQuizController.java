@@ -1,27 +1,27 @@
 package tn.esprit.fahamni.controllers;
-import javafx.beans.property.SimpleLongProperty;
-import javafx.beans.property.SimpleStringProperty;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-
-import tn.esprit.fahamni.Models.quiz.Choice;
-import tn.esprit.fahamni.Models.quiz.Question;
-import tn.esprit.fahamni.Models.quiz.Quiz;
-import tn.esprit.fahamni.services.QuizService;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.paint.Color;
+
+import tn.esprit.fahamni.Models.quiz.Choice;
+import tn.esprit.fahamni.Models.quiz.Question;
+import tn.esprit.fahamni.Models.quiz.Quiz;
+import tn.esprit.fahamni.services.QuizService;
 
 import java.text.NumberFormat;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -130,15 +130,21 @@ private void initialize() {
         if (createdAt == null) {
             return new SimpleStringProperty("-");
         }
-        // Convert Instant to LocalDateTime with system timezone, then format
-        String formatted = createdAt.atZone(java.time.ZoneId.systemDefault())
-                                   .toLocalDate()
-                                   .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+        String formatted = createdAt.atZone(ZoneId.systemDefault())
+                .toLocalDate()
+                .format(DateTimeFormatter.ISO_LOCAL_DATE);
         return new SimpleStringProperty(formatted);
     });
-    
     lastScoreColumn.setCellValueFactory(cellData -> 
-        new SimpleStringProperty(getLastScoreLabel(cellData.getValue())));
+            new SimpleStringProperty(getLastScoreLabel(cellData.getValue())));
+
+    applyBlackTextCellFactory(idColumn);
+    applyBlackTextCellFactory(titleColumn);
+    applyBlackTextCellFactory(keywordColumn);
+    applyBlackTextCellFactory(questionsColumn);
+    applyBlackTextCellFactory(resultsColumn);
+    applyBlackTextCellFactory(createdAtColumn);
+    applyBlackTextCellFactory(lastScoreColumn);
 
     correctChoiceComboBox.getItems().setAll("Choix A", "Choix B", "Choix C", "Choix D");
     correctChoiceComboBox.setValue("Choix A");
@@ -212,13 +218,46 @@ private void initialize() {
         List<Quiz> quizzes = quizService.getAllQuizzes();
         System.out.println("Loaded " + quizzes.size() + " quizzes");
         for (Quiz q : quizzes) {
-            System.out.println("  - Quiz ID: " + q.getId() + ", Title: " + q.getTitre() + ", Questions: " + q.getQuestions().size());
+            System.out.println("  - Quiz ID: " + q.getId() + ", Title: " + q.getTitre() + ", CreatedAt: " + q.getCreatedAt() + ", LastScore: " + getLastScoreLabel(q) + ", Questions: " + q.getQuestions().size() + ", Results: " + q.getQuizResults().size());
         }
         quizItems.setAll(quizzes);
         quizzesTable.refresh();
-        quizzesTable.setPrefHeight(-1);
         quizzesTable.setMinHeight(240);
         updateStats(quizzes);
+    }
+
+    private <S, T> void applyBlackTextCellFactory(TableColumn<S, T> column) {
+        column.setCellFactory(col -> new TableCell<>() {
+            private final Label content = new Label();
+            {
+                content.setTextFill(Color.BLACK);
+                content.setWrapText(true);
+            }
+
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    content.setText(item.toString());
+                    content.setMaxWidth(Double.MAX_VALUE);
+                    
+                    // Right-align numeric values, center-left align text
+                    if (item instanceof Number) {
+                        content.setStyle("-fx-alignment: CENTER-RIGHT; -fx-padding: 0 8 0 0;");
+                        setStyle("-fx-alignment: CENTER-RIGHT;");
+                    } else {
+                        content.setStyle("-fx-alignment: CENTER-LEFT; -fx-padding: 0 0 0 8;");
+                        setStyle("-fx-alignment: CENTER-LEFT;");
+                    }
+                    
+                    setText(null);
+                    setGraphic(content);
+                }
+            }
+        });
     }
 
     private void updateStats(List<Quiz> quizzes) {
@@ -275,12 +314,23 @@ private void initialize() {
 
     private String getLastScoreLabel(Quiz quiz) {
         return quiz.getQuizResults().stream()
-                .map(result -> result.getPercentage() != null ? result.getPercentage() : 0.0)
-                .mapToDouble(Double::doubleValue)
-                .max()
-                .stream()
-                .mapToObj(score -> NumberFormat.getPercentInstance(Locale.FRANCE).format(score / 100.0))
-                .findFirst()
+                .filter(result -> result.getCompletedAt() != null)
+                .max((r1, r2) -> r1.getCompletedAt().compareTo(r2.getCompletedAt()))
+                .map(result -> {
+                    Double percentage = result.getPercentage();
+                    if (percentage != null) {
+                        return NumberFormat.getPercentInstance(Locale.FRANCE).format(percentage / 100.0);
+                    }
+                    Integer score = result.getScore();
+                    Integer total = result.getTotalQuestions();
+                    if (score != null && total != null && total > 0) {
+                        return NumberFormat.getPercentInstance(Locale.FRANCE).format((double) score / total);
+                    }
+                    if (score != null) {
+                        return total != null ? score + "/" + total : score.toString();
+                    }
+                    return "-";
+                })
                 .orElse("-");
     }
 
