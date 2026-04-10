@@ -39,21 +39,24 @@
             </StackPane>
         </HBox>
 
-        <!-- Barre de recherche -->
+        <!-- Barre de recherche + Tri -->
         <HBox spacing="12" alignment="CENTER_LEFT"
-              style="-fx-background-color: white; -fx-padding: 14; -fx-background-radius: 12;
+              style="-fx-background-color: white; -fx-padding: 12 16; -fx-background-radius: 12;
                      -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);">
+            <Label text="🔍" style="-fx-font-size: 16; -fx-text-fill: #94a3b8;"/>
             <TextField fx:id="searchField"
                        promptText="Rechercher un article..."
                        styleClass="search-field"
                        focusTraversable="true"
-                       HBox.hgrow="ALWAYS"/>
-            <Button text="Rechercher"
-                    focusTraversable="false"
-                    onAction="#handleSearch"
-                    style="-fx-background-color: #3a7bd5; -fx-text-fill: white;
-                           -fx-font-weight: bold; -fx-background-radius: 8;
-                           -fx-padding: 8 18; -fx-font-size: 13; -fx-cursor: hand;"/>
+                       HBox.hgrow="ALWAYS"
+                       style="-fx-background-color: transparent; -fx-border-width: 0;
+                              -fx-font-size: 13; -fx-text-fill: #1e293b;"/>
+            <Separator orientation="VERTICAL" style="-fx-opacity: 0.3;"/>
+            <Label text="Trier par :" style="-fx-font-size: 12; -fx-text-fill: #64748b;"/>
+            <ComboBox fx:id="sortComboBox" focusTraversable="false"
+                      style="-fx-background-color: #f1f5f9; -fx-background-radius: 8;
+                             -fx-border-width: 0; -fx-font-size: 12; -fx-cursor: hand;
+                             -fx-padding: 4 8;"/>
         </HBox>
 
         <!-- Filtres + bouton Créer sur la même ligne -->

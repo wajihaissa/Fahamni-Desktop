@@ -46,6 +46,7 @@ public class BlogController {
     @FXML private Button btnInfo;
     @FXML private Button btnLangue;
     @FXML private Button btnAutre;
+    @FXML private ComboBox<String> sortComboBox;
 
     @FXML
     private void initialize() {
@@ -59,8 +60,26 @@ public class BlogController {
             errLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 13; -fx-padding: 30;");
             blogsContainer.getChildren().add(errLabel);
         }
-        // Recherche avec la touche Entrée
+        // Recherche en temps réel à chaque frappe
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            String kw = newVal == null ? "" : newVal.trim();
+            List<Blog> base = kw.isEmpty()
+                    ? blogService.getAllBlogs()
+                    : blogService.searchBlogs(kw);
+            loadBlogs(applySorting(base));
+        });
+        // Conserver aussi la touche Entrée
         searchField.setOnAction(ev -> handleSearch());
+
+        // Dropdown tri
+        sortComboBox.getItems().setAll(
+            "Les plus récents",
+            "Les plus aimés",
+            "Les plus commentés"
+        );
+        sortComboBox.setValue("Les plus récents");
+        sortComboBox.setOnAction(ev -> loadBlogs(applySorting(currentBlogList)));
+
         // Badge cloche + bannières
         refreshBellBadge();
         showTuteurNotifications();
@@ -1015,33 +1034,71 @@ public class BlogController {
         dialog.showAndWait();
     }
 
+    // ---- Tri ----
+    private List<Blog> applySorting(List<Blog> blogs) {
+        if (sortComboBox == null || sortComboBox.getValue() == null) return blogs;
+        List<Blog> sorted = new ArrayList<>(blogs);
+        switch (sortComboBox.getValue()) {
+            case "Les plus aimés":
+                sorted.sort((a, b) -> {
+                    long la = blogService.getInteractionsByBlogId(a.getId()).stream()
+                            .filter(i -> "like".equalsIgnoreCase(i.getType())).count();
+                    long lb = blogService.getInteractionsByBlogId(b.getId()).stream()
+                            .filter(i -> "like".equalsIgnoreCase(i.getType())).count();
+                    return Long.compare(lb, la);
+                });
+                break;
+            case "Les plus commentés":
+                sorted.sort((a, b) -> {
+                    long ca = blogService.getInteractionsByBlogId(a.getId()).stream()
+                            .filter(i -> i.getCommentaire() != null && !i.getCommentaire().isEmpty()).count();
+                    long cb = blogService.getInteractionsByBlogId(b.getId()).stream()
+                            .filter(i -> i.getCommentaire() != null && !i.getCommentaire().isEmpty()).count();
+                    return Long.compare(cb, ca);
+                });
+                break;
+            default: // Les plus récents
+                sorted.sort((a, b) -> {
+                    if (a.getCreatedAt() == null) return 1;
+                    if (b.getCreatedAt() == null) return -1;
+                    return b.getCreatedAt().compareTo(a.getCreatedAt());
+                });
+                break;
+        }
+        return sorted;
+    }
+
     // ---- Filtres ----
     @FXML private void handleSearch() {
-        loadBlogs(blogService.searchBlogs(searchField.getText().trim()));
+        String kw = searchField.getText().trim();
+        List<Blog> result = kw.isEmpty()
+                ? blogService.getAllBlogs()
+                : blogService.searchBlogs(kw);
+        loadBlogs(applySorting(result));
     }
 
     @FXML private void filterTous() {
-        loadBlogs(blogService.getAllBlogs());
+        loadBlogs(applySorting(blogService.getAllBlogs()));
     }
 
     @FXML private void filterMath() {
-        loadBlogs(blogService.filterByCategory("math"));
+        loadBlogs(applySorting(blogService.filterByCategory("math")));
     }
 
     @FXML private void filterScience() {
-        loadBlogs(blogService.filterByCategory("physique", "science"));
+        loadBlogs(applySorting(blogService.filterByCategory("physique", "science")));
     }
 
     @FXML private void filterInfo() {
-        loadBlogs(blogService.filterByCategory("informatique"));
+        loadBlogs(applySorting(blogService.filterByCategory("informatique")));
     }
 
     @FXML private void filterLangue() {
-        loadBlogs(blogService.filterByCategory("langue"));
+        loadBlogs(applySorting(blogService.filterByCategory("langue")));
     }
 
     @FXML private void filterAutre() {
-        loadBlogs(blogService.filterByCategory("autre", "study-tips"));
+        loadBlogs(applySorting(blogService.filterByCategory("autre", "study-tips")));
     }
 
     /** Popup informant le tuteur que son article est en attente de validation */
