@@ -345,6 +345,32 @@ public class BlogService {
         return "Echec INSERT (blogId=" + blogId + ", userId=" + userId + "): " + errors;
     }
 
+    /** Retourne le nombre de likes d'un article directement depuis la BD */
+    public long countLikes(int blogId) {
+        Connection c = cnx();
+        if (c == null || blogId <= 0) return 0;
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND reaction IS NOT NULL AND reaction <> 0")) {
+            ps.setInt(1, blogId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getLong(1);
+        } catch (Exception e) { System.err.println("countLikes: " + e.getMessage()); }
+        return 0;
+    }
+
+    /** Retourne le nombre de commentaires d'un article directement depuis la BD */
+    public long countComments(int blogId) {
+        Connection c = cnx();
+        if (c == null || blogId <= 0) return 0;
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND comment IS NOT NULL AND comment <> ''")) {
+            ps.setInt(1, blogId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getLong(1);
+        } catch (Exception e) { System.err.println("countComments: " + e.getMessage()); }
+        return 0;
+    }
+
     /** Recalcule et met à jour likes_count et comments_count dans la table blog */
     public void updateBlogCounts(int blogId) {
         Connection c = cnx();

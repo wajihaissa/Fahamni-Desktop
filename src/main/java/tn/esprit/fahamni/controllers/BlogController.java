@@ -5,9 +5,13 @@ import tn.esprit.fahamni.Models.Interaction;
 import tn.esprit.fahamni.Models.Notification;
 import tn.esprit.fahamni.services.BlogService;
 import tn.esprit.fahamni.services.NotificationService;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Popup;
+import javafx.util.Duration;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -365,23 +369,17 @@ public class BlogController {
         final boolean[] liked = {alreadyLiked};
         likeBtn.setOnAction(e -> {
             if (liked[0]) {
-                // Retirer le like (toggle OFF)
                 blogService.removeLike(blog.getId(), dbUserId);
-                long n = blogService.getInteractionsByBlogId(blog.getId()).stream()
-                        .filter(i -> "like".equalsIgnoreCase(i.getType())).count();
-                likeBtn.setText("\u2764 " + n);
+                liked[0] = false;
                 styleCompactBtn(likeBtn, "#fff0f0", "#e74c3c");
                 likeBtn.setTooltip(null);
-                liked[0] = false;
             } else {
-                // Ajouter le like (toggle ON)
                 blogService.addInteraction(blog.getId(), "like", null, currentUserName);
-                long n = blogService.getInteractionsByBlogId(blog.getId()).stream()
-                        .filter(i -> "like".equalsIgnoreCase(i.getType())).count();
-                likeBtn.setText("\u2764 " + n);
-                styleCompactBtn(likeBtn, "#ffcdd2", "#c62828");
                 liked[0] = true;
+                styleCompactBtn(likeBtn, "#ffcdd2", "#c62828");
             }
+            long n = blogService.countLikes(blog.getId());
+            animateCounter(likeBtn, "\u2764 " + n);
         });
 
         Button commentBtn = new Button("\uD83D\uDCAC " + commentsCount);
@@ -468,8 +466,8 @@ public class BlogController {
                 }
                 commentsBox.getChildren().add(buildCommentRow(currentUserName, comment, true, commentsBox, commentBtn));
                 commentField.clear();
-                long n = commentsBox.getChildren().size();
-                commentBtn.setText("\uD83D\uDCAC " + n);
+                long n = blogService.countComments(blog.getId());
+                animateCounter(commentBtn, "\uD83D\uDCAC " + n);
             }
         });
         inputRow.getChildren().addAll(commentField, sendBtn);
@@ -497,6 +495,22 @@ public class BlogController {
             .replaceAll("(?m)^[-*+]\\s+", "• ")         // listes
             .replaceAll("\\n{3,}", "\n\n")               // sauts multiples
             .trim();
+    }
+
+    private void animateCounter(Button btn, String newText) {
+        btn.setText(newText);
+        Timeline tl = new Timeline(
+            new KeyFrame(Duration.ZERO,
+                new KeyValue(btn.scaleXProperty(), 1.0),
+                new KeyValue(btn.scaleYProperty(), 1.0)),
+            new KeyFrame(Duration.millis(120),
+                new KeyValue(btn.scaleXProperty(), 1.25),
+                new KeyValue(btn.scaleYProperty(), 1.25)),
+            new KeyFrame(Duration.millis(240),
+                new KeyValue(btn.scaleXProperty(), 1.0),
+                new KeyValue(btn.scaleYProperty(), 1.0))
+        );
+        tl.play();
     }
 
     private void styleFooterBtn(Button btn, String bg, String fg, String border) {
