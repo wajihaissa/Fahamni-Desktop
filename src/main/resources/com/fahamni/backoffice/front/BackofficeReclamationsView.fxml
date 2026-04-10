@@ -67,7 +67,7 @@
                 </HBox>
             </VBox>
 
-            <HBox spacing="18.0" fillHeight="true">
+            <HBox alignment="TOP_LEFT" spacing="18.0">
                 <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
                     <HBox alignment="CENTER_LEFT" spacing="12.0">
                         <VBox spacing="4.0" HBox.hgrow="ALWAYS">

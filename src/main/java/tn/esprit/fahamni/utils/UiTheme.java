@@ -65,6 +65,37 @@ public final class UiTheme {
             -fx-padding: 14px 18px 0 18px;
         }
 
+        .backoffice-sidebar-scroll {
+            -fx-background-color: transparent;
+            -fx-background-insets: 0;
+            -fx-padding: 0;
+            -fx-border-color: transparent;
+            -fx-fit-to-width: true;
+        }
+
+        .backoffice-sidebar-scroll > .viewport {
+            -fx-background-color: transparent;
+        }
+
+        .backoffice-sidebar-scroll .scroll-bar:vertical {
+            -fx-background-color: transparent;
+            -fx-padding: 0 4px 0 0;
+        }
+
+        .backoffice-sidebar-scroll .scroll-bar:vertical .track {
+            -fx-background-color: rgba(255, 255, 255, 0.08);
+            -fx-background-radius: 999px;
+        }
+
+        .backoffice-sidebar-scroll .scroll-bar:vertical .thumb {
+            -fx-background-color: rgba(255, 255, 255, 0.24);
+            -fx-background-radius: 999px;
+        }
+
+        .backoffice-sidebar-scroll .scroll-bar:vertical .thumb:hover {
+            -fx-background-color: rgba(255, 255, 255, 0.34);
+        }
+
         .sidebar-button, .backoffice-nav-button {
             -fx-background-color: transparent;
             -fx-text-fill: rgba(231, 239, 251, 0.80);
