@@ -12,6 +12,7 @@ public class Blog {
     private String publishedBy;
     private LocalDateTime publishedAt;
     private int publisherId; // id du user qui a créé l'article
+    private String status;  // pending | published | deleted
 
     public Blog(int id, String titre, String content, String image, LocalDateTime createdAt,
                 String publishedBy, LocalDateTime publishedAt) {
@@ -48,4 +49,7 @@ public class Blog {
 
     public int getPublisherId() { return publisherId; }
     public void setPublisherId(int publisherId) { this.publisherId = publisherId; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

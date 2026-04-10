@@ -2,7 +2,12 @@ package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.Models.Blog;
 import tn.esprit.fahamni.Models.Interaction;
+import tn.esprit.fahamni.Models.Notification;
 import tn.esprit.fahamni.services.BlogService;
+import tn.esprit.fahamni.services.NotificationService;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.input.MouseEvent;
+import javafx.stage.Popup;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -22,7 +27,10 @@ import java.util.List;
 public class BlogController {
 
     private final BlogService blogService = new BlogService();
+    private final NotificationService notifService = new NotificationService();
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd MMM yyyy");
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private Popup notifPopup;
 
     private static final int PAGE_SIZE = 6;
     private int currentPage = 1;
@@ -31,6 +39,7 @@ public class BlogController {
     @FXML private TextField searchField;
     @FXML private VBox blogsContainer;
     @FXML private HBox paginationBar;
+    @FXML private Label notifBellBadge;
     @FXML private Button btnTous;
     @FXML private Button btnMath;
     @FXML private Button btnScience;
@@ -52,6 +61,48 @@ public class BlogController {
         }
         // Recherche avec la touche Entrée
         searchField.setOnAction(ev -> handleSearch());
+        // Badge cloche + bannières
+        refreshBellBadge();
+        showTuteurNotifications();
+    }
+
+    /** Affiche une bannière en haut de la liste si le tuteur a des notifications non lues */
+    private void showTuteurNotifications() {
+        try {
+            tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
+            if (u == null || u.getId() <= 0) return;
+            java.util.List<Notification> notifs = notifService.getUnreadForUser(u.getId());
+            if (notifs.isEmpty()) return;
+
+            for (Notification n : notifs) {
+                HBox banner = new HBox(12);
+                banner.setPadding(new Insets(10, 16, 10, 16));
+                banner.setAlignment(Pos.CENTER_LEFT);
+                banner.setStyle(
+                    "-fx-background-color: #d4edda; -fx-background-radius: 10; " +
+                    "-fx-border-color: #28a745; -fx-border-radius: 10; -fx-border-width: 1;");
+
+                Label icon = new Label("✅");
+                icon.setStyle("-fx-font-size: 16;");
+
+                Label msg = new Label(n.getMessage());
+                msg.setStyle("-fx-text-fill: #155724; -fx-font-size: 13; -fx-font-weight: bold;");
+                msg.setWrapText(true);
+                HBox.setHgrow(msg, Priority.ALWAYS);
+
+                Button close = new Button("✕");
+                close.setStyle("-fx-background-color: transparent; -fx-text-fill: #155724; " +
+                    "-fx-font-size: 12; -fx-cursor: hand; -fx-padding: 0 4;");
+                close.setOnAction(e -> blogsContainer.getChildren().remove(banner));
+
+                banner.getChildren().addAll(icon, msg, close);
+                blogsContainer.getChildren().add(0, banner);
+            }
+            // Marquer comme lu
+            notifService.markAllReadForUser(u.getId());
+        } catch (Exception e) {
+            System.err.println("showTuteurNotifications: " + e.getMessage());
+        }
     }
 
     private void loadBlogs(List<Blog> blogs) {
@@ -77,38 +128,27 @@ public class BlogController {
         int toIdx = Math.min(fromIdx + PAGE_SIZE, total);
         List<Blog> pageBlogs = blogs.subList(fromIdx, toIdx);
 
-        // Grille 2 colonnes
-        for (int i = 0; i < pageBlogs.size(); i += 2) {
-            HBox row = new HBox(20);
-            VBox card1;
-            try {
-                card1 = createBlogCard(pageBlogs.get(i));
-            } catch (Exception ex) {
-                System.err.println("Erreur carte blog: " + ex.getMessage());
-                card1 = new VBox();
-            }
-            card1.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(card1, Priority.ALWAYS);
-            row.getChildren().add(card1);
-
-            if (i + 1 < pageBlogs.size()) {
-                VBox card2;
-                try {
-                    card2 = createBlogCard(pageBlogs.get(i + 1));
-                } catch (Exception ex) {
-                    System.err.println("Erreur carte blog: " + ex.getMessage());
-                    card2 = new VBox();
+        // Grille 3 colonnes — toutes les cartes d'une rangée ont la même hauteur
+        final int COLS = 3;
+        for (int i = 0; i < pageBlogs.size(); i += COLS) {
+            HBox row = new HBox(14);
+            row.setFillHeight(true); // toutes les cartes s'étendent à la même hauteur
+            for (int j = 0; j < COLS; j++) {
+                if (i + j < pageBlogs.size()) {
+                    VBox card;
+                    try { card = createBlogCard(pageBlogs.get(i + j)); }
+                    catch (Exception ex) { card = new VBox(); }
+                    // largeur fixe égale pour toutes, hauteur dictée par la plus haute
+                    HBox.setHgrow(card, Priority.ALWAYS);
+                    row.getChildren().add(card);
+                } else {
+                    // cellule vide pour garder la grille alignée
+                    Region filler = new Region();
+                    HBox.setHgrow(filler, Priority.ALWAYS);
+                    row.getChildren().add(filler);
                 }
-                card2.setMaxWidth(Double.MAX_VALUE);
-                HBox.setHgrow(card2, Priority.ALWAYS);
-                row.getChildren().add(card2);
-            } else {
-                Region placeholder = new Region();
-                placeholder.setMaxWidth(Double.MAX_VALUE);
-                HBox.setHgrow(placeholder, Priority.ALWAYS);
-                row.getChildren().add(placeholder);
             }
-            VBox.setMargin(row, new Insets(0, 0, 20, 0));
+            VBox.setMargin(row, new Insets(0, 0, 14, 0));
             blogsContainer.getChildren().add(row);
         }
 
@@ -187,22 +227,25 @@ public class BlogController {
     private VBox createBlogCard(Blog blog) {
         String accent = getAvatarColor(blog.getImage());
 
-        // Carte compacte
+        // Carte — hauteur naturelle, toutes les cartes d'une même ligne s'égalisent via HBox
         VBox card = new VBox(0);
         card.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
                 "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.09), 10, 0, 0, 3);");
 
         // ── Bande colorée fine en haut ──
         HBox topBar = new HBox(8);
-        topBar.setPadding(new Insets(8, 12, 8, 12));
+        topBar.setPrefHeight(28);
+        topBar.setMinHeight(28);
+        topBar.setMaxHeight(28);
+        topBar.setPadding(new Insets(4, 10, 4, 10));
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setStyle("-fx-background-color: " + getBannerColor(blog.getImage()) + "; -fx-background-radius: 12 12 0 0;");
 
         Label catIcon = new Label(getCategoryIcon(blog.getImage()));
-        catIcon.setStyle("-fx-font-size: 18;");
+        catIcon.setStyle("-fx-font-size: 14;");
         Label catBadge = new Label(getCategoryLabel(blog.getImage()));
-        catBadge.setStyle("-fx-text-fill: white; -fx-font-size: 11; -fx-font-weight: bold; " +
-                "-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 2 8;");
+        catBadge.setStyle("-fx-text-fill: white; -fx-font-size: 10; -fx-font-weight: bold; " +
+                "-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 2 6;");
 
         Region barSpacer = new Region(); HBox.setHgrow(barSpacer, Priority.ALWAYS);
 
@@ -216,24 +259,25 @@ public class BlogController {
         card.getChildren().add(topBar);
 
         // ── Corps principal ──
-        VBox body = new VBox(7);
-        body.setPadding(new Insets(10, 12, 8, 12));
+        VBox body = new VBox(5);
+        body.setPadding(new Insets(8, 12, 6, 12));
 
-        // Titre
+        // Titre — 1 ligne tronquée
         Label title = new Label(blog.getTitre());
-        title.setWrapText(true);
-        title.setStyle("-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        title.setMaxWidth(Double.MAX_VALUE);
+        title.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        title.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
 
         // Auteur inline
-        HBox authorRow = new HBox(6);
+        HBox authorRow = new HBox(5);
         authorRow.setAlignment(Pos.CENTER_LEFT);
         StackPane avatar = new StackPane();
-        avatar.setPrefSize(24, 24); avatar.setMinSize(24, 24);
-        avatar.setStyle("-fx-background-radius: 12; -fx-background-color: " + accent + ";");
+        avatar.setPrefSize(20, 20); avatar.setMinSize(20, 20); avatar.setMaxSize(20, 20);
+        avatar.setStyle("-fx-background-radius: 10; -fx-background-color: " + accent + ";");
         String initial = (blog.getPublishedBy() != null && !blog.getPublishedBy().isEmpty())
                 ? String.valueOf(blog.getPublishedBy().charAt(0)).toUpperCase() : "?";
         Label avatarLabel = new Label(initial);
-        avatarLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10;");
+        avatarLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 9;");
         avatar.getChildren().add(avatarLabel);
         Label authorName = new Label(blog.getPublishedBy() != null ? blog.getPublishedBy() : "Anonyme");
         authorName.setStyle("-fx-font-size: 11; -fx-text-fill: #64748b;");
@@ -243,15 +287,15 @@ public class BlogController {
         Separator sep1 = new Separator();
         sep1.setStyle("-fx-opacity: 0.2;");
 
-        // Extrait (markdown nettoyé, max 120 chars)
+        // Extrait — tronqué à 80 chars, 2 lignes max
         String rawContent = blog.getContent() != null ? blog.getContent() : "";
         String cleanContent = cleanMarkdown(rawContent);
-        boolean isTruncated = cleanContent.length() > 120;
-        String excerpt = isTruncated ? cleanContent.substring(0, 120) + "..." : cleanContent;
+        boolean isTruncated = cleanContent.length() > 80;
+        String excerpt = isTruncated ? cleanContent.substring(0, 80) + "..." : cleanContent;
 
         Label contentLabel = new Label(excerpt);
         contentLabel.setWrapText(true);
-        contentLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12; -fx-line-spacing: 3;");
+        contentLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 11;");
 
         body.getChildren().addAll(title, authorRow, sep1, contentLabel);
         card.getChildren().add(body);
@@ -287,7 +331,7 @@ public class BlogController {
         Separator sepAct = new Separator(); sepAct.setStyle("-fx-opacity: 0.15;");
         card.getChildren().add(sepAct);
 
-        HBox actBar = new HBox(6);
+        HBox actBar = new HBox(5);
         actBar.setPadding(new Insets(6, 10, 8, 10));
         actBar.setAlignment(Pos.CENTER_LEFT);
 
@@ -948,19 +992,17 @@ public class BlogController {
             String currentUser = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
             Blog newBlog = new Blog(0, titre, content, cat,
                     LocalDateTime.now(), currentUser, LocalDateTime.now());
-            String errMsg = blogService.addBlog(newBlog);
-            if (errMsg != null) {
-                errorLabel.setText("⚠️ " + errMsg);
+            int createdId = blogService.addBlog(newBlog);
+            if (createdId < 0) {
+                errorLabel.setText("⚠️ Erreur lors de la création de l'article.");
                 return;
             }
-            // Recharger depuis BD; si BD vide/échec, ajouter manuellement en tête
+            // Recharger depuis BD (les articles published seulement)
             List<Blog> updated = blogService.getAllBlogsFromDB();
-            if (updated.isEmpty()) {
-                updated = new ArrayList<>(blogService.getAllBlogs());
-                updated.add(0, newBlog);
-            }
             loadBlogs(updated);
             dialog.close();
+            // Afficher popup "en attente"
+            showPendingPopup();
         });
 
         buttons.getChildren().addAll(cancelBtn, saveBtn);
@@ -1000,5 +1042,172 @@ public class BlogController {
 
     @FXML private void filterAutre() {
         loadBlogs(blogService.filterByCategory("autre", "study-tips"));
+    }
+
+    /** Popup informant le tuteur que son article est en attente de validation */
+    private void refreshBellBadge() {
+        try {
+            tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
+            if (u == null || u.getId() <= 0 || notifBellBadge == null) return;
+            int count = notifService.countUnreadForUser(u.getId());
+            if (count > 0) {
+                notifBellBadge.setText(count > 9 ? "9+" : String.valueOf(count));
+                notifBellBadge.setVisible(true);
+                notifBellBadge.setManaged(true);
+            } else {
+                notifBellBadge.setVisible(false);
+                notifBellBadge.setManaged(false);
+            }
+        } catch (Exception e) {
+            System.err.println("refreshBellBadge: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleNotifBellClick(MouseEvent event) {
+        if (notifPopup != null && notifPopup.isShowing()) {
+            notifPopup.hide();
+            return;
+        }
+
+        tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
+        List<Notification> notifs = (u != null && u.getId() > 0)
+                ? notifService.getUnreadForUser(u.getId())
+                : new ArrayList<>();
+
+        VBox container = new VBox(0);
+        container.setStyle(
+            "-fx-background-color: white; -fx-background-radius: 14;" +
+            "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);" +
+            "-fx-border-color: #e2e8f0; -fx-border-radius: 14; -fx-border-width: 1;");
+        container.setPrefWidth(320);
+
+        // En-tête
+        HBox header = new HBox(8);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(14, 16, 12, 16));
+        header.setStyle("-fx-background-color: linear-gradient(to right,#3a7bd5,#00d2ff);" +
+                        "-fx-background-radius: 14 14 0 0;");
+        Label titleLbl = new Label("🔔  Mes Notifications");
+        titleLbl.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white;");
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        Label cntLbl = new Label(notifs.isEmpty() ? "Aucune" : notifs.size() + " nouvelle(s)");
+        cntLbl.setStyle("-fx-font-size: 11; -fx-text-fill: rgba(255,255,255,0.85);");
+        header.getChildren().addAll(titleLbl, sp, cntLbl);
+        container.getChildren().add(header);
+
+        if (notifs.isEmpty()) {
+            Label empty = new Label("Aucune notification pour le moment.");
+            empty.setPadding(new Insets(24, 16, 24, 16));
+            empty.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12;");
+            container.getChildren().add(empty);
+        } else {
+            ScrollPane scroll = new ScrollPane();
+            scroll.setFitToWidth(true);
+            scroll.setPrefHeight(Math.min(notifs.size() * 72.0, 280));
+            scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+            scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+            VBox list = new VBox(0);
+            for (int i = 0; i < notifs.size(); i++) {
+                Notification n = notifs.get(i);
+                boolean approved = n.getMessage() != null &&
+                        (n.getMessage().contains("approuve") || n.getMessage().contains("publie"));
+
+                VBox item = new VBox(4);
+                item.setPadding(new Insets(12, 16, 12, 16));
+                item.setStyle("-fx-background-color: " + (approved ? "#f0fdf4" : "#fff7ed") + ";");
+
+                HBox row = new HBox(8);
+                row.setAlignment(Pos.CENTER_LEFT);
+                Label icon = new Label(approved ? "✅" : "❌");
+                icon.setStyle("-fx-font-size: 15;");
+                Label msg = new Label(n.getMessage() != null ? n.getMessage() : "");
+                msg.setWrapText(true);
+                msg.setStyle("-fx-font-size: 12; -fx-text-fill: " +
+                        (approved ? "#065f46" : "#92400e") + ";");
+                msg.setMaxWidth(250);
+                row.getChildren().addAll(icon, msg);
+
+                Label date = new Label(n.getCreatedAt() != null ? n.getCreatedAt().format(DT_FMT) : "");
+                date.setStyle("-fx-font-size: 10; -fx-text-fill: #94a3b8;");
+
+                item.getChildren().addAll(row, date);
+                list.getChildren().add(item);
+
+                if (i < notifs.size() - 1) {
+                    Separator sep = new Separator();
+                    sep.setStyle("-fx-opacity: 0.3;");
+                    list.getChildren().add(sep);
+                }
+            }
+            scroll.setContent(list);
+            container.getChildren().add(scroll);
+
+            Button markRead = new Button("✓  Tout marquer comme lu");
+            markRead.setMaxWidth(Double.MAX_VALUE);
+            markRead.setStyle(
+                "-fx-background-color: #f8faff; -fx-text-fill: #3a7bd5;" +
+                "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
+                "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
+                "-fx-border-width: 1 0 0 0;");
+            markRead.setOnAction(e -> {
+                if (u != null) notifService.markAllReadForUser(u.getId());
+                notifPopup.hide();
+                refreshBellBadge();
+            });
+            container.getChildren().add(markRead);
+        }
+
+        notifPopup = new Popup();
+        notifPopup.getContent().add(container);
+        notifPopup.setAutoHide(true);
+
+        javafx.scene.Node source = (javafx.scene.Node) event.getSource();
+        double x = source.localToScreen(source.getBoundsInLocal()).getMaxX() - 320;
+        double y = source.localToScreen(source.getBoundsInLocal()).getMaxY() + 8;
+        notifPopup.show(source.getScene().getWindow(), x, y);
+
+        if (!notifs.isEmpty() && u != null) {
+            notifService.markAllReadForUser(u.getId());
+            refreshBellBadge();
+        }
+    }
+
+    private void showPendingPopup() {
+        Stage popup = new Stage();
+        popup.initModality(Modality.APPLICATION_MODAL);
+        popup.setTitle("Article soumis");
+        popup.setResizable(false);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(30));
+        root.setAlignment(Pos.CENTER);
+        root.setStyle("-fx-background-color: white; -fx-background-radius: 14;");
+        root.setPrefWidth(400);
+
+        Label icon = new Label("⏳");
+        icon.setStyle("-fx-font-size: 40;");
+
+        Label title = new Label("Article soumis avec succès !");
+        title.setStyle("-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+
+        Label msg = new Label(
+            "Votre article a été soumis et est en attente de validation par l'administrateur.\n" +
+            "Vous recevrez une notification dès qu'il sera approuvé et publié.");
+        msg.setWrapText(true);
+        msg.setStyle("-fx-font-size: 13; -fx-text-fill: #64748b; -fx-text-alignment: center;");
+        msg.setMaxWidth(340);
+
+        Button ok = new Button("OK, compris !");
+        ok.setStyle(
+            "-fx-background-color: #3a7bd5; -fx-text-fill: white; " +
+            "-fx-font-weight: bold; -fx-font-size: 13; " +
+            "-fx-background-radius: 8; -fx-padding: 9 28; -fx-cursor: hand;");
+        ok.setOnAction(e -> popup.close());
+
+        root.getChildren().addAll(icon, title, msg, ok);
+        popup.setScene(new Scene(root));
+        popup.showAndWait();
     }
 }

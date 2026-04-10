@@ -1,5 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
+import tn.esprit.fahamni.services.AdminArticlesService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 import javafx.fxml.FXML;
@@ -10,30 +11,35 @@ import javafx.scene.layout.AnchorPane;
 
 public class BackofficeMainController {
 
-    @FXML
-    private AnchorPane contentPane;
+    private final AdminArticlesService articlesService = new AdminArticlesService();
 
-    @FXML
-    private Label pageTitle;
-
-    @FXML
-    private Button dashboardButton;
-
-    @FXML
-    private Button usersButton;
-
-    @FXML
-    private Button sessionsButton;
-
-    @FXML
-    private Button reservationsButton;
-
-    @FXML
-    private Button contentButton;
+    @FXML private AnchorPane contentPane;
+    @FXML private Label pageTitle;
+    @FXML private Button dashboardButton;
+    @FXML private Button usersButton;
+    @FXML private Button sessionsButton;
+    @FXML private Button reservationsButton;
+    @FXML private Button contentButton;
+    @FXML private Button articlesButton;
+    @FXML private Label  articlesBadge;
 
     @FXML
     private void initialize() {
         showDashboard();
+        refreshArticlesBadge();
+    }
+
+    /** Met à jour le badge rouge avec le nombre d'articles en attente */
+    public void refreshArticlesBadge() {
+        int pending = articlesService.countByStatus("pending");
+        if (pending > 0) {
+            articlesBadge.setText(String.valueOf(pending));
+            articlesBadge.setVisible(true);
+            articlesBadge.setManaged(true);
+        } else {
+            articlesBadge.setVisible(false);
+            articlesBadge.setManaged(false);
+        }
     }
 
     @FXML
@@ -64,6 +70,13 @@ public class BackofficeMainController {
     private void showContent() {
         loadView("BackofficeContentView.fxml", "Gestion du contenu");
         setActiveButton(contentButton);
+    }
+
+    @FXML
+    private void showArticles() {
+        loadView("BackofficeArticlesView.fxml", "Gestion des Articles");
+        setActiveButton(articlesButton);
+        refreshArticlesBadge();
     }
 
     @FXML
@@ -99,6 +112,7 @@ public class BackofficeMainController {
         sessionsButton.getStyleClass().remove("active");
         reservationsButton.getStyleClass().remove("active");
         contentButton.getStyleClass().remove("active");
+        articlesButton.getStyleClass().remove("active");
 
         if (!activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");

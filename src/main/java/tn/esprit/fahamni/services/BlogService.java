@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+// NotificationService est instancié à la demande pour éviter la dépendance circulaire
+
 public class BlogService {
 
     /** Toujours obtenir la connexion dynamiquement (gère reconnexion) */
@@ -94,9 +96,10 @@ public class BlogService {
         String[] userNameCols = {"fullName", "full_name", "name", "username"};
         for (String col : userNameCols) {
             blogs.clear();
-            String sql = "SELECT b.id, b.titre, b.content, b.images, b.category, b.publisher_id, " +
+            String sql = "SELECT b.id, b.titre, b.content, b.images, b.category, b.status, b.publisher_id, " +
                          "b.created_at, b.published_at, u." + col + " AS publisher_name " +
                          "FROM blog b LEFT JOIN user u ON b.publisher_id = u.id " +
+                         "WHERE (b.status = 'published' OR b.status IS NULL) " +
                          "ORDER BY b.created_at DESC";
             try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) blogs.add(mapBlog(rs));
@@ -120,22 +123,25 @@ public class BlogService {
         return blogs;
     }
 
-    /** @return null si succès, message d'erreur si échec */
-    public String addBlog(Blog blog) {
+    /**
+     * Crée un article (status=pending) et envoie une notification à l'admin.
+     * @return l'ID du blog créé (>0) si succès, -1 si échec
+     */
+    public int addBlog(Blog blog) {
         Connection c = cnx();
-        if (c == null) return "Connexion à la base de données impossible. Vérifiez que MySQL est démarré.";
+        if (c == null) return -1;
         int publisherId = getCurrentUserId();
         String cat = toCategoryDB(blog.getImage());
 
         String[] sqls = {
-            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id, likes_count, comments_count) VALUES (?, ?, NULL, 'published', ?, NOW(), NOW(), ?, 0, 0)",
-            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id) VALUES (?, ?, NULL, 'published', ?, NOW(), NOW(), ?)",
-            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, likes_count, comments_count) VALUES (?, ?, NULL, 'published', ?, NOW(), NOW(), 0, 0)",
-            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at) VALUES (?, ?, NULL, 'published', ?, NOW(), NOW())"
+            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id, likes_count, comments_count) VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?, 0, 0)",
+            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id) VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?)",
+            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, likes_count, comments_count) VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), 0, 0)",
+            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at) VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW())"
         };
 
         for (int i = 0; i < sqls.length; i++) {
-            try (PreparedStatement ps = c.prepareStatement(sqls[i])) {
+            try (PreparedStatement ps = c.prepareStatement(sqls[i], Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, blog.getTitre());
                 ps.setString(2, blog.getContent());
                 ps.setString(3, cat);
@@ -144,14 +150,25 @@ public class BlogService {
                     else ps.setNull(4, Types.INTEGER);
                 }
                 ps.executeUpdate();
-                System.out.println("Article sauvegardé (requête " + (i+1) + ", category=" + cat + ")");
-                return null; // succès
+                int blogId = -1;
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) blogId = keys.getInt(1);
+                }
+                System.out.println("Article sauvegarde (requete " + (i+1) + ", id=" + blogId + ", category=" + cat + ")");
+                // Notification admin
+                try {
+                    String tuteurName = SessionManager.getCurrentUserName();
+                    new NotificationService().createForAdmin(
+                        "Nouvel article en attente : \"" + blog.getTitre() + "\" soumis par " + tuteurName, blogId);
+                } catch (Exception ne) {
+                    System.err.println("addBlog: notif admin echouee: " + ne.getMessage());
+                }
+                return blogId;
             } catch (Exception e) {
-                System.err.println("addBlog requête " + (i+1) + ": " + e.getMessage());
-                if (i == sqls.length - 1) return "Erreur: " + e.getMessage();
+                System.err.println("addBlog requete " + (i+1) + ": " + e.getMessage());
             }
         }
-        return "Impossible de sauvegarder l'article.";
+        return -1;
     }
 
     public void updateBlog(Blog blog) {
@@ -359,6 +376,7 @@ public class BlogService {
         Blog blog = new Blog(rs.getInt("id"), rs.getString("titre"), rs.getString("content"),
                 fromCategoryDB(category), createdAt, publisher, publishedAt);
         try { blog.setPublisherId(rs.getInt("publisher_id")); } catch (Exception ignored) {}
+        try { blog.setStatus(rs.getString("status")); } catch (Exception ignored) {}
         return blog;
     }
 
