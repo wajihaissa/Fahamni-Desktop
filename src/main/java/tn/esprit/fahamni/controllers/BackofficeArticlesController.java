@@ -8,11 +8,14 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -166,14 +169,19 @@ public class BackofficeArticlesController {
             }
         });
 
-        // Actions — Approuver / Supprimer
+        // Actions — Voir / Approuver / Supprimer
         colActions.setCellFactory(col -> new TableCell<>() {
+            private final Button btnView    = new Button("👁  Voir");
             private final Button btnApprove = new Button("✔  Approuver");
             private final Button btnDelete  = new Button("✕  Supprimer");
-            private final HBox   box        = new HBox(6, btnApprove, btnDelete);
+            private final HBox   box        = new HBox(6, btnView, btnApprove, btnDelete);
 
             {
                 box.setAlignment(Pos.CENTER_LEFT);
+                btnView.setStyle(
+                    "-fx-background-color: #3a7bd5; -fx-text-fill: white; " +
+                    "-fx-background-radius: 8; -fx-padding: 5 12; " +
+                    "-fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;");
                 btnApprove.setStyle(
                     "-fx-background-color: #10b981; -fx-text-fill: white; " +
                     "-fx-background-radius: 8; -fx-padding: 5 12; " +
@@ -183,6 +191,10 @@ public class BackofficeArticlesController {
                     "-fx-background-radius: 8; -fx-padding: 5 12; " +
                     "-fx-cursor: hand; -fx-font-size: 11; -fx-font-weight: bold;");
 
+                btnView.setOnAction(e -> {
+                    Blog b = getTableView().getItems().get(getIndex());
+                    showPreviewPopup(b);
+                });
                 btnApprove.setOnAction(e -> {
                     Blog b = getTableView().getItems().get(getIndex());
                     if (b.getId() > 0) {
@@ -207,6 +219,107 @@ public class BackofficeArticlesController {
                 setGraphic(empty ? null : box);
             }
         });
+    }
+
+    // ─── popup aperçu ─────────────────────────────────────────────────────────
+
+    private void showPreviewPopup(Blog blog) {
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setTitle("Aperçu — " + blog.getTitre());
+        stage.setResizable(true);
+
+        VBox root = new VBox(0);
+        root.setStyle("-fx-background-color: #f8fafc;");
+
+        // En-tête gradient
+        VBox header = new VBox(6);
+        header.setPadding(new Insets(20, 28, 18, 28));
+        header.setStyle("-fx-background-color: linear-gradient(to right, #3a7bd5, #00d2ff);");
+
+        Label titre = new Label(blog.getTitre());
+        titre.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: white;");
+        titre.setWrapText(true);
+
+        HBox meta = new HBox(16);
+        meta.setAlignment(Pos.CENTER_LEFT);
+        Label auteur = new Label("✍  " + (blog.getPublishedBy() != null ? blog.getPublishedBy() : "Anonyme"));
+        auteur.setStyle("-fx-font-size: 12; -fx-text-fill: rgba(255,255,255,0.9);");
+        Label cat = new Label("🏷  " + prettyCat(blog.getImage()));
+        cat.setStyle("-fx-font-size: 12; -fx-text-fill: rgba(255,255,255,0.9);");
+        Label date = new Label("📅  " + (blog.getCreatedAt() != null ? blog.getCreatedAt().format(FMT) : "-"));
+        date.setStyle("-fx-font-size: 12; -fx-text-fill: rgba(255,255,255,0.9);");
+
+        // Badge statut
+        Label statut = new Label(prettyStatus(blog.getStatus()));
+        statut.setPadding(new Insets(3, 10, 3, 10));
+        statut.setStyle("-fx-background-color: " + statusBg(blog.getStatus()) + "; " +
+            "-fx-text-fill: " + statusFg(blog.getStatus()) + "; " +
+            "-fx-font-size: 11; -fx-font-weight: bold; -fx-background-radius: 20;");
+
+        meta.getChildren().addAll(auteur, cat, date, statut);
+        header.getChildren().addAll(titre, meta);
+
+        // Contenu scrollable
+        TextArea content = new TextArea(blog.getContent() != null ? blog.getContent() : "");
+        content.setEditable(false);
+        content.setWrapText(true);
+        content.setStyle(
+            "-fx-background-color: white; -fx-border-width: 0; " +
+            "-fx-font-size: 13; -fx-text-fill: #1e293b; -fx-padding: 20;");
+        content.setPrefHeight(380);
+        VBox.setVgrow(content, Priority.ALWAYS);
+
+        // Pied de page avec boutons action
+        HBox footer = new HBox(12);
+        footer.setPadding(new Insets(14, 20, 14, 20));
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setStyle("-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-width: 1 0 0 0;");
+
+        Button btnApprove = new Button("✔  Approuver");
+        btnApprove.setStyle(
+            "-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-radius: 8; -fx-padding: 8 20; -fx-cursor: hand;");
+        btnApprove.setOnAction(e -> {
+            if (blog.getId() > 0) {
+                service.approveArticle(blog.getId());
+                loadAll();
+                showFeedback("✅  Article \"" + blog.getTitre() + "\" approuve et publie.", true);
+            }
+            stage.close();
+        });
+
+        Button btnDelete = new Button("✕  Refuser");
+        btnDelete.setStyle(
+            "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; " +
+            "-fx-background-radius: 8; -fx-padding: 8 20; -fx-cursor: hand;");
+        btnDelete.setOnAction(e -> {
+            if (blog.getId() > 0) {
+                service.deleteArticle(blog.getId());
+                loadAll();
+                showFeedback("🗑  Article \"" + blog.getTitre() + "\" refuse.", false);
+            }
+            stage.close();
+        });
+
+        Button btnClose = new Button("Fermer");
+        btnClose.setStyle(
+            "-fx-background-color: #e2e8f0; -fx-text-fill: #475569; -fx-font-weight: bold; " +
+            "-fx-background-radius: 8; -fx-padding: 8 20; -fx-cursor: hand;");
+        btnClose.setOnAction(e -> stage.close());
+
+        // N'afficher Approuver/Refuser que si en attente
+        if ("pending".equalsIgnoreCase(blog.getStatus())) {
+            footer.getChildren().addAll(btnClose, btnDelete, btnApprove);
+        } else {
+            footer.getChildren().add(btnClose);
+        }
+
+        root.getChildren().addAll(header, content, footer);
+
+        Scene scene = new Scene(root, 640, 520);
+        stage.setScene(scene);
+        stage.show();
     }
 
     // ─── helpers d'affichage ──────────────────────────────────────────────────
