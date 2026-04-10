@@ -156,8 +156,8 @@ public class AdminEquipementService implements IServices<Equipement> {
         if (isBlank(equipement.getTypeEquipement())) {
             throw new IllegalArgumentException("Le type d'equipement est obligatoire.");
         }
-        if (equipement.getQuantiteDisponible() < 0) {
-            throw new IllegalArgumentException("La quantite disponible ne peut pas etre negative.");
+        if (equipement.getQuantiteDisponible() <= 0) {
+            throw new IllegalArgumentException("La quantite disponible doit etre strictement positive.");
         }
         if (isBlank(equipement.getEtat())) {
             throw new IllegalArgumentException("L'etat de l'equipement est obligatoire.");

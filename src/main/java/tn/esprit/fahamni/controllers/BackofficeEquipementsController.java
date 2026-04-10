@@ -260,7 +260,7 @@ public class BackofficeEquipementsController {
         typeComboBox.getItems().setAll(equipementService.getAvailableTypes());
         etatComboBox.getItems().setAll(equipementService.getAvailableEtats());
 
-        quantiteSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 5000, 1));
+        quantiteSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 5000, 1));
         quantiteSpinner.setEditable(true);
         etatComboBox.setDisable(true);
     }
@@ -306,7 +306,7 @@ public class BackofficeEquipementsController {
 
         nomField.setText(equipement.getNom());
         typeComboBox.setValue(equipement.getTypeEquipement());
-        quantiteSpinner.getValueFactory().setValue(equipement.getQuantiteDisponible());
+        quantiteSpinner.getValueFactory().setValue(Math.max(1, equipement.getQuantiteDisponible()));
         etatComboBox.setValue(equipement.getEtat());
         etatComboBox.setDisable(false);
         descriptionArea.setText(defaultString(equipement.getDescription()));
@@ -365,7 +365,7 @@ public class BackofficeEquipementsController {
             0,
             requireText(nomField.getText(), "Le nom de l'equipement est obligatoire."),
             requireText(typeComboBox.getValue(), "Le type d'equipement est obligatoire."),
-            parseNonNegativeInteger(quantiteSpinner.getEditor().getText(), "La quantite disponible doit etre un entier positif ou nul."),
+            parsePositiveInteger(quantiteSpinner.getEditor().getText(), "La quantite disponible doit etre un entier strictement positif."),
             DEFAULT_CREATION_STATUS,
             trimToNull(descriptionArea.getText())
         );
@@ -376,16 +376,16 @@ public class BackofficeEquipementsController {
             idEquipement,
             requireText(nomField.getText(), "Le nom de l'equipement est obligatoire."),
             requireText(typeComboBox.getValue(), "Le type d'equipement est obligatoire."),
-            parseNonNegativeInteger(quantiteSpinner.getEditor().getText(), "La quantite disponible doit etre un entier positif ou nul."),
+            parsePositiveInteger(quantiteSpinner.getEditor().getText(), "La quantite disponible doit etre un entier strictement positif."),
             requireText(etatComboBox.getValue(), "L'etat de l'equipement est obligatoire."),
             trimToNull(descriptionArea.getText())
         );
     }
 
-    private int parseNonNegativeInteger(String rawValue, String errorMessage) {
+    private int parsePositiveInteger(String rawValue, String errorMessage) {
         try {
             int value = Integer.parseInt(rawValue == null ? "" : rawValue.trim());
-            if (value < 0) {
+            if (value <= 0) {
                 throw new IllegalArgumentException(errorMessage);
             }
             return value;
