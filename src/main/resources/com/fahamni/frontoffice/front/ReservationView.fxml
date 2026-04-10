@@ -110,18 +110,18 @@
                 <HBox spacing="12.0">
                     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                         <Label text="Date et heure *" styleClass="form-label"/>
-                        <TextField fx:id="sessionStartAtField" promptText="09/04/2026 14:00" styleClass="form-field"/>
+                        <TextField fx:id="sessionStartAtField" promptText="Ex: 12/04/2026 14:00" styleClass="form-field"/>
                     </VBox>
                     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                         <Label text="Duree (min) *" styleClass="form-label"/>
-                        <TextField fx:id="sessionDurationField" promptText="60" styleClass="form-field"/>
+                        <TextField fx:id="sessionDurationField" promptText="Entre 15 et 480" styleClass="form-field"/>
                     </VBox>
                 </HBox>
 
                 <HBox spacing="12.0">
                     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label text="Participants max" styleClass="form-label"/>
-                        <TextField fx:id="sessionCapacityField" promptText="8" styleClass="form-field"/>
+                        <Label text="Participants max *" styleClass="form-label"/>
+                        <TextField fx:id="sessionCapacityField" promptText="Entre 1 et 50" styleClass="form-field"/>
                     </VBox>
                     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                         <Label text="Statut de creation" styleClass="form-label"/>
@@ -130,12 +130,12 @@
                 </HBox>
 
                 <VBox spacing="6.0">
-                    <Label text="Description" styleClass="form-label"/>
-                    <TextArea fx:id="sessionDescriptionArea" promptText="Explique le contenu de la seance, le chapitre vise et l'objectif." prefRowCount="4" styleClass="text-area"/>
+                    <Label text="Description *" styleClass="form-label"/>
+                    <TextArea fx:id="sessionDescriptionArea" promptText="Minimum 15 caracteres. Decris le contenu, le niveau vise et l'objectif de la seance." prefRowCount="4" styleClass="text-area"/>
                 </VBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
-                    <Label text="Conseil: utilise le format de date dd/MM/yyyy HH:mm pour que la seance soit acceptee." styleClass="reservation-section-copy"/>
+                    <Label text="Validation: date future, format dd/MM/yyyy HH:mm, duree 15 a 480 min, capacite 1 a 50, description minimum 15 caracteres." styleClass="reservation-section-copy" wrapText="true"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Button text="Reinitialiser" onAction="#handleClearSessionForm" styleClass="action-button secondary"/>
                     <Button text="Enregistrer brouillon" onAction="#handleSaveDraftSession" styleClass="action-button secondary"/>

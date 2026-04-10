@@ -161,13 +161,36 @@ public class ReservationController {
         String subject = requireText(sessionSubjectField.getText(), "Renseignez la matiere de la seance.");
         String tutorName = requireText(tutorComboBox.getValue(), "Choisissez un tuteur.");
         LocalDateTime startAt = parseStartAt(sessionStartAtField.getText());
-        int duration = parsePositiveInt(sessionDurationField.getText(), "La duree doit etre un entier positif.");
-        int capacity = parsePositiveInt(sessionCapacityField.getText(), "Le nombre de participants doit etre un entier positif.");
+        int duration = parseBoundedInt(
+            sessionDurationField.getText(),
+            SeanceService.MIN_DURATION_MINUTES,
+            SeanceService.MAX_DURATION_MINUTES,
+            "La duree doit etre comprise entre " + SeanceService.MIN_DURATION_MINUTES + " et " + SeanceService.MAX_DURATION_MINUTES + " minutes."
+        );
+        int capacity = parseBoundedInt(
+            sessionCapacityField.getText(),
+            SeanceService.MIN_CAPACITY,
+            SeanceService.MAX_CAPACITY,
+            "La capacite doit etre comprise entre " + SeanceService.MIN_CAPACITY + " et " + SeanceService.MAX_CAPACITY + " participants."
+        );
+        String description = requireMinimumLengthText(
+            sessionDescriptionArea.getText(),
+            SeanceService.MIN_DESCRIPTION_LENGTH,
+            "Ajoute une description de la seance.",
+            "La description doit contenir au moins " + SeanceService.MIN_DESCRIPTION_LENGTH + " caracteres."
+        );
         int tutorId = tutorDirectoryService.resolveTutorId(tutorName);
 
         if (tutorId <= 0) {
             throw new IllegalArgumentException("Le tuteur choisi est invalide pour le moment.");
         }
+
+        sessionSubjectField.setText(subject);
+        sessionStartAtField.setText(formatDateTime(startAt));
+        sessionDurationField.setText(String.valueOf(duration));
+        sessionCapacityField.setText(String.valueOf(capacity));
+        sessionDescriptionArea.setText(description);
+        tutorComboBox.setValue(tutorName);
 
         Seance seance = new Seance();
         seance.setMatiere(subject);
@@ -175,7 +198,7 @@ public class ReservationController {
         seance.setDurationMin(duration);
         seance.setMaxParticipants(capacity);
         seance.setStatus(status);
-        seance.setDescription(blankToNull(sessionDescriptionArea.getText()));
+        seance.setDescription(description);
         seance.setTuteurId(tutorId);
         return seance;
     }
@@ -332,7 +355,11 @@ public class ReservationController {
         String candidate = requireText(value, "Renseignez la date et l'heure de la seance.");
         for (DateTimeFormatter formatter : INPUT_FORMATTERS) {
             try {
-                return LocalDateTime.parse(candidate, formatter);
+                LocalDateTime parsedValue = LocalDateTime.parse(candidate, formatter);
+                if (!parsedValue.isAfter(LocalDateTime.now())) {
+                    throw new IllegalArgumentException("La date de la seance doit etre dans le futur.");
+                }
+                return parsedValue;
             } catch (DateTimeParseException ignored) {
                 // Try the next accepted format.
             }
@@ -340,11 +367,11 @@ public class ReservationController {
         throw new IllegalArgumentException("Utilisez le format dd/MM/yyyy HH:mm pour la date.");
     }
 
-    private int parsePositiveInt(String value, String errorMessage) {
+    private int parseBoundedInt(String value, int min, int max, String errorMessage) {
         String candidate = requireText(value, errorMessage);
         try {
             int parsedValue = Integer.parseInt(candidate);
-            if (parsedValue <= 0) {
+            if (parsedValue < min || parsedValue > max) {
                 throw new NumberFormatException();
             }
             return parsedValue;
@@ -354,14 +381,27 @@ public class ReservationController {
     }
 
     private String requireText(String value, String errorMessage) {
-        if (value == null || value.trim().isEmpty()) {
+        String normalizedValue = normalizeText(value);
+        if (normalizedValue == null || normalizedValue.isEmpty()) {
             throw new IllegalArgumentException(errorMessage);
         }
-        return value.trim();
+        return normalizedValue;
     }
 
-    private String blankToNull(String value) {
-        return value == null || value.trim().isEmpty() ? null : value.trim();
+    private String requireMinimumLengthText(String value, int minLength, String emptyMessage, String shortMessage) {
+        String normalizedValue = requireText(value, emptyMessage);
+        if (normalizedValue.length() < minLength) {
+            throw new IllegalArgumentException(shortMessage);
+        }
+        return normalizedValue;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalizedValue = value.trim().replaceAll("\\s+", " ");
+        return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
     private String formatDateTime(LocalDateTime value) {

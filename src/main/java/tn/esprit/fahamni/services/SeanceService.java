@@ -19,6 +19,12 @@ import java.util.Locale;
 
 public class SeanceService implements IServices<Seance>, ISeanceSearchService {
 
+    public static final int MIN_DURATION_MINUTES = 15;
+    public static final int MAX_DURATION_MINUTES = 480;
+    public static final int MIN_CAPACITY = 1;
+    public static final int MAX_CAPACITY = 50;
+    public static final int MIN_DESCRIPTION_LENGTH = 15;
+
     private static final DateTimeFormatter SEARCH_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final List<String> FALLBACK_SUBJECTS = List.of(
         "Mathematics",
@@ -141,12 +147,15 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             LocalDateTime now = LocalDateTime.now();
-            pst.setString(1, seance.getMatiere().trim());
+            String normalizedSubject = normalizeText(seance.getMatiere());
+            String normalizedDescription = normalizeText(seance.getDescription());
+
+            pst.setString(1, normalizedSubject);
             pst.setTimestamp(2, Timestamp.valueOf(seance.getStartAt()));
             pst.setInt(3, seance.getDurationMin());
             pst.setInt(4, seance.getMaxParticipants());
             pst.setInt(5, seance.getStatus());
-            pst.setString(6, blankToNull(seance.getDescription()));
+            pst.setString(6, blankToNull(normalizedDescription));
             pst.setTimestamp(7, Timestamp.valueOf(seance.getCreatedAt() != null ? seance.getCreatedAt() : now));
             pst.setTimestamp(8, seance.getUpdatedAt() != null ? Timestamp.valueOf(seance.getUpdatedAt()) : null);
             pst.setInt(9, seance.getTuteurId());
@@ -183,12 +192,15 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
             """;
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
-            pst.setString(1, seance.getMatiere().trim());
+            String normalizedSubject = normalizeText(seance.getMatiere());
+            String normalizedDescription = normalizeText(seance.getDescription());
+
+            pst.setString(1, normalizedSubject);
             pst.setTimestamp(2, Timestamp.valueOf(seance.getStartAt()));
             pst.setInt(3, seance.getDurationMin());
             pst.setInt(4, seance.getMaxParticipants());
             pst.setInt(5, seance.getStatus());
-            pst.setString(6, blankToNull(seance.getDescription()));
+            pst.setString(6, blankToNull(normalizedDescription));
             pst.setTimestamp(7, Timestamp.valueOf(seance.getUpdatedAt() != null ? seance.getUpdatedAt() : LocalDateTime.now()));
             pst.setInt(8, seance.getTuteurId());
             pst.setInt(9, seance.getId());
@@ -258,17 +270,26 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
         if (seance == null) {
             return "Aucune seance a enregistrer.";
         }
-        if (seance.getMatiere() == null || seance.getMatiere().trim().isEmpty()) {
+        String normalizedSubject = normalizeText(seance.getMatiere());
+        String normalizedDescription = normalizeText(seance.getDescription());
+
+        if (normalizedSubject == null || normalizedSubject.isEmpty()) {
             return "Renseignez la matiere.";
         }
         if (seance.getStartAt() == null) {
             return "Renseignez la date et l'heure de la seance.";
         }
-        if (seance.getDurationMin() <= 0) {
-            return "La duree doit etre superieure a 0.";
+        if (!seance.getStartAt().isAfter(LocalDateTime.now())) {
+            return "La date de la seance doit etre dans le futur.";
         }
-        if (seance.getMaxParticipants() <= 0) {
-            return "La capacite doit etre superieure a 0.";
+        if (seance.getDurationMin() < MIN_DURATION_MINUTES || seance.getDurationMin() > MAX_DURATION_MINUTES) {
+            return "La duree doit etre comprise entre " + MIN_DURATION_MINUTES + " et " + MAX_DURATION_MINUTES + " minutes.";
+        }
+        if (seance.getMaxParticipants() < MIN_CAPACITY || seance.getMaxParticipants() > MAX_CAPACITY) {
+            return "La capacite doit etre comprise entre " + MIN_CAPACITY + " et " + MAX_CAPACITY + " participants.";
+        }
+        if (normalizedDescription == null || normalizedDescription.length() < MIN_DESCRIPTION_LENGTH) {
+            return "Ajoutez une description d'au moins " + MIN_DESCRIPTION_LENGTH + " caracteres.";
         }
         if (seance.getTuteurId() <= 0) {
             return "Le tuteur doit avoir un identifiant valide.";
@@ -278,6 +299,14 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
 
     private String blankToNull(String value) {
         return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalizedValue = value.trim().replaceAll("\\s+", " ");
+        return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
     private Connection requireConnection() {

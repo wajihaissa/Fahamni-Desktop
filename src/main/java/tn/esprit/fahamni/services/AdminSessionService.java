@@ -110,7 +110,10 @@ public class AdminSessionService {
 
     private SessionFormData validateAndParse(String subject, String tutor, String schedule, int capacity,
                                              int durationMinutes, String description, String status) {
-        if (isBlank(subject)) {
+        String normalizedSubject = normalizeText(subject);
+        String normalizedDescription = normalizeText(description);
+
+        if (isBlank(normalizedSubject)) {
             throw new IllegalArgumentException("Renseignez la matiere de la seance.");
         }
         if (isBlank(tutor)) {
@@ -119,11 +122,15 @@ public class AdminSessionService {
         if (isBlank(schedule)) {
             throw new IllegalArgumentException("Renseignez le planning de la seance.");
         }
-        if (capacity <= 0) {
-            throw new IllegalArgumentException("La capacite doit etre superieure a 0.");
+        if (capacity < SeanceService.MIN_CAPACITY || capacity > SeanceService.MAX_CAPACITY) {
+            throw new IllegalArgumentException(
+                "La capacite doit etre comprise entre " + SeanceService.MIN_CAPACITY + " et " + SeanceService.MAX_CAPACITY + "."
+            );
         }
-        if (durationMinutes <= 0) {
-            throw new IllegalArgumentException("La duree doit etre superieure a 0.");
+        if (durationMinutes < SeanceService.MIN_DURATION_MINUTES || durationMinutes > SeanceService.MAX_DURATION_MINUTES) {
+            throw new IllegalArgumentException(
+                "La duree doit etre comprise entre " + SeanceService.MIN_DURATION_MINUTES + " et " + SeanceService.MAX_DURATION_MINUTES + " minutes."
+            );
         }
 
         int tutorId = tutorDirectoryService.resolveTutorId(tutor);
@@ -138,14 +145,22 @@ public class AdminSessionService {
         if (startAt == null) {
             throw new IllegalArgumentException("Utilisez le format de date dd/MM/yyyy HH:mm.");
         }
+        if (!startAt.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("La date de la seance doit etre dans le futur.");
+        }
+        if (isBlank(normalizedDescription) || normalizedDescription.length() < SeanceService.MIN_DESCRIPTION_LENGTH) {
+            throw new IllegalArgumentException(
+                "Ajoutez une description d'au moins " + SeanceService.MIN_DESCRIPTION_LENGTH + " caracteres."
+            );
+        }
 
         return new SessionFormData(
-            subject.trim(),
+            normalizedSubject,
             tutorId,
             startAt,
             capacity,
             durationMinutes,
-            normalizeDescription(description),
+            normalizedDescription,
             mapStatusToCode(status)
         );
     }
@@ -184,8 +199,12 @@ public class AdminSessionService {
         };
     }
 
-    private String normalizeDescription(String description) {
-        return isBlank(description) ? null : description.trim();
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalizedValue = value.trim().replaceAll("\\s+", " ");
+        return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
     private boolean isBlank(String value) {
