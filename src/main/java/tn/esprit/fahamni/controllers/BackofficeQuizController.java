@@ -1,4 +1,9 @@
 package tn.esprit.fahamni.controllers;
+import javafx.beans.property.SimpleLongProperty;
+import javafx.beans.property.SimpleStringProperty;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.quiz.Question;
@@ -88,32 +93,63 @@ public class BackofficeQuizController {
     private ObservableList<Quiz> quizItems = FXCollections.observableArrayList();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    @FXML
-    private void initialize() {
-        idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
-        titleColumn.setCellValueFactory(new PropertyValueFactory<>("titre"));
-        keywordColumn.setCellValueFactory(new PropertyValueFactory<>("keyword"));
-        questionsColumn.setCellValueFactory(cellData -> {
-            Quiz quiz = cellData.getValue();
-            return new SimpleIntegerProperty(quiz.getQuestions().size()).asObject();
-        });
-        resultsColumn.setCellValueFactory(cellData -> {
-            Quiz quiz = cellData.getValue();
-            return new SimpleIntegerProperty(quiz.getQuizResults().size()).asObject();
-        });
-        createdAtColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
-                Optional.ofNullable(cellData.getValue().getCreatedAt()).map(dateFormatter::format).orElse("-")));
-        lastScoreColumn.setCellValueFactory(cellData -> new SimpleStringProperty(getLastScoreLabel(cellData.getValue())));
-
-        correctChoiceComboBox.getItems().setAll("Choix A", "Choix B", "Choix C", "Choix D");
-        correctChoiceComboBox.setValue("Choix A");
-
-        quizzesTable.setItems(quizItems);
-        quizzesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
-
-        refreshQuizData();
-        hideFeedback();
+  @FXML
+private void initialize() {
+    System.out.println("Initializing BackofficeQuizController");
+      quizzesTable.setStyle("-fx-text-fill: black; -fx-background-color: white;");
+    
+    // Make column headers visible
+    for (TableColumn<?, ?> column : quizzesTable.getColumns()) {
+        column.setStyle("-fx-text-fill: black; -fx-background-color: #f0f0f0; -fx-font-weight: bold;");
     }
+    idColumn.setCellValueFactory(cellData -> {
+        Quiz quiz = cellData.getValue();
+        Long id = quiz.getId();
+        return id != null ? new SimpleLongProperty(id).asObject() : null;
+    });
+    
+    titleColumn.setCellValueFactory(cellData -> 
+        new SimpleStringProperty(cellData.getValue().getTitre()));
+    
+    keywordColumn.setCellValueFactory(cellData -> 
+        new SimpleStringProperty(cellData.getValue().getKeyword()));
+    
+    questionsColumn.setCellValueFactory(cellData -> {
+        Quiz quiz = cellData.getValue();
+        return new SimpleIntegerProperty(quiz.getQuestions().size()).asObject();
+    });
+    
+    resultsColumn.setCellValueFactory(cellData -> {
+        Quiz quiz = cellData.getValue();
+        return new SimpleIntegerProperty(quiz.getQuizResults().size()).asObject();
+    });
+    
+    // FIXED: Proper Instant formatting
+    createdAtColumn.setCellValueFactory(cellData -> {
+        Instant createdAt = cellData.getValue().getCreatedAt();
+        if (createdAt == null) {
+            return new SimpleStringProperty("-");
+        }
+        // Convert Instant to LocalDateTime with system timezone, then format
+        String formatted = createdAt.atZone(java.time.ZoneId.systemDefault())
+                                   .toLocalDate()
+                                   .format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE);
+        return new SimpleStringProperty(formatted);
+    });
+    
+    lastScoreColumn.setCellValueFactory(cellData -> 
+        new SimpleStringProperty(getLastScoreLabel(cellData.getValue())));
+
+    correctChoiceComboBox.getItems().setAll("Choix A", "Choix B", "Choix C", "Choix D");
+    correctChoiceComboBox.setValue("Choix A");
+
+    quizzesTable.setPlaceholder(new Label("Chargement des quiz..."));
+    quizzesTable.setItems(quizItems);
+    quizzesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+
+    refreshQuizData();
+    hideFeedback();
+}
 
     @FXML
     private void handleCreateQuiz() {
@@ -174,7 +210,14 @@ public class BackofficeQuizController {
 
     private void refreshQuizData() {
         List<Quiz> quizzes = quizService.getAllQuizzes();
+        System.out.println("Loaded " + quizzes.size() + " quizzes");
+        for (Quiz q : quizzes) {
+            System.out.println("  - Quiz ID: " + q.getId() + ", Title: " + q.getTitre() + ", Questions: " + q.getQuestions().size());
+        }
         quizItems.setAll(quizzes);
+        quizzesTable.refresh();
+        quizzesTable.setPrefHeight(-1);
+        quizzesTable.setMinHeight(240);
         updateStats(quizzes);
     }
 

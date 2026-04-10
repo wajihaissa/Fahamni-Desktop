@@ -498,8 +498,29 @@ public final class UiTheme {
             -fx-font-weight: bold;
         }
 
+        .backoffice-table .table-row-cell {
+            -fx-background-color: rgba(255, 255, 255, 0.95);
+            -fx-text-fill: #294365;
+            -fx-padding: 8px;
+            -fx-font-size: 13px;
+            -fx-border-color: #f0f4ff;
+            -fx-border-width: 0 0 1 0;
+        }
+
         .backoffice-table .table-row-cell:selected {
             -fx-background-color: #eaf1ff;
+            -fx-text-fill: #1a3864;
+        }
+
+        .backoffice-table .table-cell {
+            -fx-padding: 8px;
+            -fx-background-color: transparent;
+            -fx-text-fill: #294365;
+        }
+
+        .backoffice-table .table-cell .text,
+        .backoffice-table .table-row-cell .text {
+            -fx-fill: #294365;
         }
 
         .backoffice-feedback.success {

@@ -45,7 +45,7 @@
     <HBox spacing="20.0">
         <VBox spacing="12.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel">
             <Label text="Liste des quiz" styleClass="backoffice-section-title"/>
-            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" prefHeight="320.0" minHeight="240.0" styleClass="backoffice-table">
                 <columns>
                     <TableColumn fx:id="idColumn" text="ID" prefWidth="60.0"/>
                     <TableColumn fx:id="titleColumn" text="Titre" prefWidth="180.0"/>

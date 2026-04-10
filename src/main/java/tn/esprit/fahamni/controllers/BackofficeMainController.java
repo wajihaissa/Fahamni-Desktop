@@ -65,6 +65,7 @@ public class BackofficeMainController {
 
     @FXML
     private void showQuiz() {
+        System.out.println("Loading quiz view");
         loadView("BackofficeQuizView.fxml", "Gestion des quiz");
         setActiveButton(quizButton);
     }

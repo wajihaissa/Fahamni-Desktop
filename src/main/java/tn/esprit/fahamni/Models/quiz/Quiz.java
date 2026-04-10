@@ -1,4 +1,6 @@
 package tn.esprit.fahamni.Models.quiz;
+
+import javafx.beans.property.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -6,18 +8,20 @@ import java.util.List;
 public class Quiz {
     public static final double DEFAULT_PASS_PERCENTAGE = 60.0;
 
-    private Long id;
-    private String titre;
-    private String keyword;
-    private Instant createdAt;
+    // JavaFX Properties
+    private final LongProperty id = new SimpleLongProperty();
+    private final StringProperty titre = new SimpleStringProperty();
+    private final StringProperty keyword = new SimpleStringProperty();
+    private final ObjectProperty<Instant> createdAt = new SimpleObjectProperty<>();
+    
     private final List<Question> questions;
     private final List<QuizResult> quizResults;
 
     public Quiz(Long id, String titre, String keyword, Instant createdAt, List<Question> questions, List<QuizResult> quizResults) {
-        this.id = id;
-        this.titre = titre;
-        this.keyword = keyword;
-        this.createdAt = createdAt;
+        setId(id);
+        setTitre(titre);
+        setKeyword(keyword);
+        setCreatedAt(createdAt);
         this.questions = questions != null ? questions : new ArrayList<>();
         this.quizResults = quizResults != null ? quizResults : new ArrayList<>();
     }
@@ -25,39 +29,57 @@ public class Quiz {
     public Quiz() {
         this.questions = new ArrayList<>();
         this.quizResults = new ArrayList<>();
-        this.createdAt = Instant.now();
+        setCreatedAt(Instant.now());
     }
 
-    public Long getId() {
+    // JavaFX Property getters (CRITICAL for TableView)
+    public LongProperty idProperty() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getTitre() {
+    public StringProperty titreProperty() {
         return titre;
     }
 
-    public void setTitre(String titre) {
-        this.titre = titre;
-    }
-
-    public String getKeyword() {
+    public StringProperty keywordProperty() {
         return keyword;
     }
 
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
-
-    public Instant getCreatedAt() {
+    public ObjectProperty<Instant> createdAtProperty() {
         return createdAt;
     }
 
+    // Regular getters and setters
+    public Long getId() {
+        return id.get();
+    }
+
+    public void setId(Long id) {
+        this.id.set(id != null ? id : 0L);
+    }
+
+    public String getTitre() {
+        return titre.get();
+    }
+
+    public void setTitre(String titre) {
+        this.titre.set(titre != null ? titre : "");
+    }
+
+    public String getKeyword() {
+        return keyword.get();
+    }
+
+    public void setKeyword(String keyword) {
+        this.keyword.set(keyword != null ? keyword : "");
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt.get();
+    }
+
     public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
+        this.createdAt.set(createdAt);
     }
 
     public List<Question> getQuestions() {
