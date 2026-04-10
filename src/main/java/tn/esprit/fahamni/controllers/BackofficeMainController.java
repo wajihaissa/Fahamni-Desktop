@@ -160,11 +160,10 @@ public class BackofficeMainController {
     @FXML
     private void showEquipements() {
         setInfrastructureExpanded(true);
-        showPlaceholder(
+        loadView(
+            "BackofficeEquipementsView.fxml",
             "Gestion des equipements",
-            "Le sous-module equipements est prevu dans l'etape suivante de votre backoffice.",
-            "Preparation du module equipements",
-            "La navigation est deja en place pour garder une sidebar evolutive et harmonieuse."
+            "Suivez le parc materiel, les quantites disponibles et l'etat courant de chaque equipement."
         );
         setActiveButton(equipementsButton);
     }
