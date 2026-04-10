@@ -53,30 +53,15 @@ public class AdminArticlesService {
     /** Approuver un article : status → published + notification au tuteur */
     public void approveArticle(int blogId) {
         updateStatus(blogId, "published");
-        // Récupérer titre et publisher_id pour notifier le tuteur
-        try {
-            Connection c = cnx();
-            if (c == null) return;
-            try (PreparedStatement ps = c.prepareStatement(
-                    "SELECT titre, publisher_id FROM blog WHERE id = ?")) {
-                ps.setInt(1, blogId);
-                ResultSet rs = ps.executeQuery();
-                if (rs.next()) {
-                    String titre = rs.getString("titre");
-                    int publisherId = rs.getInt("publisher_id");
-                    new NotificationService().createForUser(publisherId,
-                        "Votre article \"" + titre + "\" a ete approuve et publie sur Fahamni !", blogId);
-                    System.out.println("Notification envoyee au tuteur (userId=" + publisherId + ")");
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("approveArticle: notif tuteur echouee: " + e.getMessage());
-        }
+        notifyPublisher(blogId,
+            "Votre article \"%s\" a ete approuve et publie sur Fahamni !");
     }
 
-    /** Supprimer logiquement un article : status → deleted */
+    /** Supprimer logiquement un article : status → deleted + notification au tuteur */
     public void deleteArticle(int blogId) {
         updateStatus(blogId, "deleted");
+        notifyPublisher(blogId,
+            "Votre article \"%s\" a ete refuse par l'administrateur.");
     }
 
     /** Remettre un article en attente */
@@ -85,6 +70,93 @@ public class AdminArticlesService {
     }
 
     // ─── helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * Envoie une notification au tuteur auteur du blog.
+     * Si publisher_id est NULL dans blog, tente de retrouver l'utilisateur
+     * par son nom via la table user.
+     */
+    private void notifyPublisher(int blogId, String messageTemplate) {
+        Connection c = cnx();
+        if (c == null) return;
+        try {
+            // Étape 1 : lire titre + publisher_id depuis blog
+            String titre = null;
+            int publisherId = 0;
+            try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT titre, publisher_id FROM blog WHERE id = ?")) {
+                ps.setInt(1, blogId);
+                ResultSet rs = ps.executeQuery();
+                if (!rs.next()) { System.err.println("notifyPublisher: blog " + blogId + " introuvable"); return; }
+                titre = rs.getString("titre");
+                publisherId = rs.getInt("publisher_id"); // 0 si NULL
+            }
+
+            String message = String.format(messageTemplate, titre);
+
+            // Étape 2 : si publisher_id connu, envoyer directement
+            if (publisherId > 0) {
+                new NotificationService().createForUser(publisherId, message, blogId);
+                System.out.println("Notification envoyee (userId=" + publisherId + "): " + message);
+                return;
+            }
+
+            // Étape 3 : publisher_id NULL → chercher par nom via user table (JOIN sur publisher_name)
+            String[] nameCols = {"fullName", "full_name", "name", "username"};
+            for (String col : nameCols) {
+                try (PreparedStatement ps = c.prepareStatement(
+                        "SELECT u.id FROM blog b JOIN user u ON u." + col + " = " +
+                        "(SELECT publisher_name FROM (SELECT " +
+                        "  COALESCE((SELECT u2." + col + " FROM user u2 WHERE u2.id = b2.publisher_id LIMIT 1), " +
+                        "           b2.titre) AS publisher_name FROM blog b2 WHERE b2.id = ?) sub) " +
+                        "WHERE b.id = ? LIMIT 1")) {
+                    // Requête trop complexe, utiliser approche simple
+                } catch (Exception ignored) {}
+            }
+
+            // Étape 3 simplifiée : chercher dans notification la notification admin liée à ce blog
+            // Le message contient "soumis par NomDuTuteur"
+            try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT message FROM notification WHERE blog_id = ? AND recipient_id = 0 ORDER BY id DESC LIMIT 1")) {
+                ps.setInt(1, blogId);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) {
+                    String notifMsg = rs.getString("message");
+                    // Format : "Nouvel article en attente : \"titre\" soumis par NomDuTuteur"
+                    int idx = notifMsg.indexOf("soumis par ");
+                    if (idx >= 0) {
+                        String authorName = notifMsg.substring(idx + "soumis par ".length()).trim();
+                        int foundId = findUserIdByName(c, authorName);
+                        if (foundId > 0) {
+                            new NotificationService().createForUser(foundId, message, blogId);
+                            System.out.println("Notification envoyee via nom '" + authorName + "' (userId=" + foundId + "): " + message);
+                            return;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("notifyPublisher fallback: " + e.getMessage());
+            }
+
+            System.err.println("notifyPublisher: publisher introuvable pour blogId=" + blogId + " (publisher_id=" + publisherId + ")");
+        } catch (Exception e) {
+            System.err.println("notifyPublisher: " + e.getMessage());
+        }
+    }
+
+    /** Cherche l'id d'un utilisateur par son nom complet */
+    private int findUserIdByName(Connection c, String name) {
+        String[] nameCols = {"fullName", "full_name", "name", "username"};
+        for (String col : nameCols) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT id FROM user WHERE " + col + " = ? LIMIT 1")) {
+                ps.setString(1, name);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) return rs.getInt("id");
+            } catch (Exception ignored) {}
+        }
+        return 0;
+    }
 
     private void updateStatus(int blogId, String status) {
         Connection c = cnx();

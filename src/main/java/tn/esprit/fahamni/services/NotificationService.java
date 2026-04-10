@@ -87,6 +87,11 @@ public class NotificationService {
         return getUnread(userId);
     }
 
+    /** Toutes les notifications d'un tuteur (lues + non lues), limitées aux 20 dernières */
+    public List<Notification> getAllForUser(int userId) {
+        return getAll(userId, 20);
+    }
+
     public int countUnreadForAdmin() {
         return countUnread(0);
     }
@@ -107,6 +112,23 @@ public class NotificationService {
             while (rs.next()) result.add(mapRow(rs));
         } catch (Exception e) {
             System.err.println("NotificationService.getUnread: " + e.getMessage());
+        }
+        return result;
+    }
+
+    private List<Notification> getAll(int recipientId, int limit) {
+        Connection c = cnx();
+        if (c == null) return new ArrayList<>();
+        List<Notification> result = new ArrayList<>();
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT * FROM notification WHERE recipient_id = ? " +
+                "ORDER BY created_at DESC LIMIT ?")) {
+            ps.setInt(1, recipientId);
+            ps.setInt(2, limit);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) result.add(mapRow(rs));
+        } catch (Exception e) {
+            System.err.println("NotificationService.getAll: " + e.getMessage());
         }
         return result;
     }

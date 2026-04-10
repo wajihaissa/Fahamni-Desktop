@@ -92,29 +92,32 @@ public class BlogController {
     /** Affiche une bannière en haut de la liste si le tuteur a des notifications non lues */
     private void showTuteurNotifications() {
         try {
-            tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
-            if (u == null || u.getId() <= 0) return;
-            java.util.List<Notification> notifs = notifService.getUnreadForUser(u.getId());
+            int uid = resolveCurrentUserId();
+            if (uid <= 0) return;
+            java.util.List<Notification> notifs = notifService.getUnreadForUser(uid);
             if (notifs.isEmpty()) return;
 
             for (Notification n : notifs) {
+                boolean approved = n.getMessage() != null &&
+                    (n.getMessage().contains("approuve") || n.getMessage().contains("publie"));
                 HBox banner = new HBox(12);
                 banner.setPadding(new Insets(10, 16, 10, 16));
                 banner.setAlignment(Pos.CENTER_LEFT);
-                banner.setStyle(
-                    "-fx-background-color: #d4edda; -fx-background-radius: 10; " +
-                    "-fx-border-color: #28a745; -fx-border-radius: 10; -fx-border-width: 1;");
+                banner.setStyle(approved
+                    ? "-fx-background-color: #d4edda; -fx-background-radius: 10; -fx-border-color: #28a745; -fx-border-radius: 10; -fx-border-width: 1;"
+                    : "-fx-background-color: #fde8e8; -fx-background-radius: 10; -fx-border-color: #e74c3c; -fx-border-radius: 10; -fx-border-width: 1;");
 
-                Label icon = new Label("✅");
+                Label icon = new Label(approved ? "✅" : "❌");
                 icon.setStyle("-fx-font-size: 16;");
 
                 Label msg = new Label(n.getMessage());
-                msg.setStyle("-fx-text-fill: #155724; -fx-font-size: 13; -fx-font-weight: bold;");
+                msg.setStyle("-fx-text-fill: " + (approved ? "#155724" : "#7b1818") +
+                    "; -fx-font-size: 13; -fx-font-weight: bold;");
                 msg.setWrapText(true);
                 HBox.setHgrow(msg, Priority.ALWAYS);
 
                 Button close = new Button("✕");
-                close.setStyle("-fx-background-color: transparent; -fx-text-fill: #155724; " +
+                close.setStyle("-fx-background-color: transparent; -fx-text-fill: #555; " +
                     "-fx-font-size: 12; -fx-cursor: hand; -fx-padding: 0 4;");
                 close.setOnAction(e -> blogsContainer.getChildren().remove(banner));
 
@@ -122,7 +125,7 @@ public class BlogController {
                 blogsContainer.getChildren().add(0, banner);
             }
             // Marquer comme lu
-            notifService.markAllReadForUser(u.getId());
+            notifService.markAllReadForUser(uid);
         } catch (Exception e) {
             System.err.println("showTuteurNotifications: " + e.getMessage());
         }
@@ -1116,11 +1119,31 @@ public class BlogController {
     }
 
     /** Popup informant le tuteur que son article est en attente de validation */
+    /** Retourne l'id effectif du user connecté (résout le fallback mock id=0 via la BD) */
+    private int resolveCurrentUserId() {
+        tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
+        if (u == null) return 0;
+        if (u.getId() > 0) return u.getId();
+        // Fallback : chercher par email dans la BD
+        try {
+            java.sql.Connection c = tn.esprit.fahamni.utils.MyDataBase.getInstance().getCnx();
+            if (c != null && u.getEmail() != null) {
+                try (java.sql.PreparedStatement ps = c.prepareStatement("SELECT id FROM user WHERE email = ? LIMIT 1")) {
+                    ps.setString(1, u.getEmail());
+                    java.sql.ResultSet rs = ps.executeQuery();
+                    if (rs.next()) return rs.getInt("id");
+                }
+            }
+        } catch (Exception ignored) {}
+        return 1; // fallback ultime
+    }
+
     private void refreshBellBadge() {
         try {
-            tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
-            if (u == null || u.getId() <= 0 || notifBellBadge == null) return;
-            int count = notifService.countUnreadForUser(u.getId());
+            if (notifBellBadge == null) return;
+            int uid = resolveCurrentUserId();
+            if (uid <= 0) return;
+            int count = notifService.countUnreadForUser(uid);
             if (count > 0) {
                 notifBellBadge.setText(count > 9 ? "9+" : String.valueOf(count));
                 notifBellBadge.setVisible(true);
@@ -1142,16 +1165,19 @@ public class BlogController {
         }
 
         tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
-        List<Notification> notifs = (u != null && u.getId() > 0)
-                ? notifService.getUnreadForUser(u.getId())
+        int uid = resolveCurrentUserId();
+        // Charger TOUTES les notifs (lues + non lues) pour ne rien manquer
+        List<Notification> notifs = uid > 0
+                ? notifService.getAllForUser(uid)
                 : new ArrayList<>();
+        long unreadCount = notifs.stream().filter(n -> !n.isRead()).count();
 
         VBox container = new VBox(0);
         container.setStyle(
             "-fx-background-color: white; -fx-background-radius: 14;" +
             "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);" +
             "-fx-border-color: #e2e8f0; -fx-border-radius: 14; -fx-border-width: 1;");
-        container.setPrefWidth(320);
+        container.setPrefWidth(340);
 
         // En-tête
         HBox header = new HBox(8);
@@ -1162,7 +1188,8 @@ public class BlogController {
         Label titleLbl = new Label("🔔  Mes Notifications");
         titleLbl.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white;");
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Label cntLbl = new Label(notifs.isEmpty() ? "Aucune" : notifs.size() + " nouvelle(s)");
+        String countText = unreadCount > 0 ? unreadCount + " non lu(s)" : (notifs.isEmpty() ? "Aucune" : notifs.size() + " au total");
+        Label cntLbl = new Label(countText);
         cntLbl.setStyle("-fx-font-size: 11; -fx-text-fill: rgba(255,255,255,0.85);");
         header.getChildren().addAll(titleLbl, sp, cntLbl);
         container.getChildren().add(header);
@@ -1175,7 +1202,7 @@ public class BlogController {
         } else {
             ScrollPane scroll = new ScrollPane();
             scroll.setFitToWidth(true);
-            scroll.setPrefHeight(Math.min(notifs.size() * 72.0, 280));
+            scroll.setPrefHeight(Math.min(notifs.size() * 76.0, 300));
             scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
             scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
@@ -1184,21 +1211,39 @@ public class BlogController {
                 Notification n = notifs.get(i);
                 boolean approved = n.getMessage() != null &&
                         (n.getMessage().contains("approuve") || n.getMessage().contains("publie"));
+                boolean refused = n.getMessage() != null && n.getMessage().contains("refuse");
+                boolean isUnread = !n.isRead();
 
                 VBox item = new VBox(4);
-                item.setPadding(new Insets(12, 16, 12, 16));
-                item.setStyle("-fx-background-color: " + (approved ? "#f0fdf4" : "#fff7ed") + ";");
+                item.setPadding(new Insets(10, 16, 10, 16));
+                String bg = isUnread
+                    ? (approved ? "#f0fdf4" : "#fff7ed")
+                    : "#f8fafc"; // lu = gris clair
+                item.setStyle("-fx-background-color: " + bg + ";");
 
                 HBox row = new HBox(8);
                 row.setAlignment(Pos.CENTER_LEFT);
-                Label icon = new Label(approved ? "✅" : "❌");
+                Label icon = new Label(approved ? "✅" : (refused ? "❌" : "📋"));
                 icon.setStyle("-fx-font-size: 15;");
                 Label msg = new Label(n.getMessage() != null ? n.getMessage() : "");
                 msg.setWrapText(true);
-                msg.setStyle("-fx-font-size: 12; -fx-text-fill: " +
-                        (approved ? "#065f46" : "#92400e") + ";");
-                msg.setMaxWidth(250);
-                row.getChildren().addAll(icon, msg);
+                String msgColor = isUnread
+                    ? (approved ? "#065f46" : "#92400e")
+                    : "#64748b"; // lu = couleur atténuée
+                msg.setStyle("-fx-font-size: 12; -fx-text-fill: " + msgColor + ";");
+                msg.setMaxWidth(230);
+                HBox.setHgrow(msg, Priority.ALWAYS);
+
+                HBox rightBox = new HBox(4);
+                rightBox.setAlignment(Pos.TOP_RIGHT);
+                if (isUnread) {
+                    Label badge = new Label("Nouveau");
+                    badge.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white;" +
+                        "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;" +
+                        "-fx-padding: 1 5;");
+                    rightBox.getChildren().add(badge);
+                }
+                row.getChildren().addAll(icon, msg, rightBox);
 
                 Label date = new Label(n.getCreatedAt() != null ? n.getCreatedAt().format(DT_FMT) : "");
                 date.setStyle("-fx-font-size: 10; -fx-text-fill: #94a3b8;");
@@ -1215,19 +1260,21 @@ public class BlogController {
             scroll.setContent(list);
             container.getChildren().add(scroll);
 
-            Button markRead = new Button("✓  Tout marquer comme lu");
-            markRead.setMaxWidth(Double.MAX_VALUE);
-            markRead.setStyle(
-                "-fx-background-color: #f8faff; -fx-text-fill: #3a7bd5;" +
-                "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
-                "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
-                "-fx-border-width: 1 0 0 0;");
-            markRead.setOnAction(e -> {
-                if (u != null) notifService.markAllReadForUser(u.getId());
-                notifPopup.hide();
-                refreshBellBadge();
-            });
-            container.getChildren().add(markRead);
+            if (unreadCount > 0) {
+                Button markRead = new Button("✓  Tout marquer comme lu");
+                markRead.setMaxWidth(Double.MAX_VALUE);
+                markRead.setStyle(
+                    "-fx-background-color: #f8faff; -fx-text-fill: #3a7bd5;" +
+                    "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
+                    "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
+                    "-fx-border-width: 1 0 0 0;");
+                markRead.setOnAction(e -> {
+                    notifService.markAllReadForUser(uid);
+                    notifPopup.hide();
+                    refreshBellBadge();
+                });
+                container.getChildren().add(markRead);
+            }
         }
 
         notifPopup = new Popup();
@@ -1235,12 +1282,13 @@ public class BlogController {
         notifPopup.setAutoHide(true);
 
         javafx.scene.Node source = (javafx.scene.Node) event.getSource();
-        double x = source.localToScreen(source.getBoundsInLocal()).getMaxX() - 320;
+        double x = source.localToScreen(source.getBoundsInLocal()).getMaxX() - 340;
         double y = source.localToScreen(source.getBoundsInLocal()).getMaxY() + 8;
         notifPopup.show(source.getScene().getWindow(), x, y);
 
-        if (!notifs.isEmpty() && u != null) {
-            notifService.markAllReadForUser(u.getId());
+        // Marquer comme lu après affichage
+        if (unreadCount > 0) {
+            notifService.markAllReadForUser(uid);
             refreshBellBadge();
         }
     }
