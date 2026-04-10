@@ -77,6 +77,8 @@ public class LoginController {
             return;
         }
 
+        tn.esprit.fahamni.utils.SessionManager.setCurrentUser(authenticatedUser);
+
         try {
             if (authenticatedUser.getRole() == UserRole.ADMIN) {
                 Main.showBackoffice();
