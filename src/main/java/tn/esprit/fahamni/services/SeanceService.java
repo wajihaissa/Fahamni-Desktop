@@ -139,6 +139,10 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
         if (validationError != null) {
             throw new IllegalArgumentException(validationError);
         }
+        String schedulingConflict = validateScheduleConflict(seance);
+        if (schedulingConflict != null) {
+            throw new IllegalArgumentException(schedulingConflict);
+        }
 
         String sql = """
             INSERT INTO seance (matiere, start_at, duration_min, max_participants, status, description, created_at, updated_at, tuteur_id)
@@ -182,6 +186,10 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
         }
         if (seance.getId() <= 0) {
             throw new IllegalArgumentException("Selectionnez une seance valide.");
+        }
+        String schedulingConflict = validateScheduleConflict(seance);
+        if (schedulingConflict != null) {
+            throw new IllegalArgumentException(schedulingConflict);
         }
 
         String sql = """
@@ -295,6 +303,56 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
             return "Le tuteur doit avoir un identifiant valide.";
         }
         return null;
+    }
+
+    private String validateScheduleConflict(Seance candidate) {
+        if (candidate == null || candidate.getStatus() == 2 || candidate.getStartAt() == null || candidate.getDurationMin() <= 0) {
+            return null;
+        }
+
+        LocalDateTime candidateEndAt = calculateEndAt(candidate.getStartAt(), candidate.getDurationMin());
+        if (candidateEndAt == null) {
+            return null;
+        }
+
+        return getAll().stream()
+            .filter(existing -> existing.getId() != candidate.getId())
+            .filter(existing -> existing.getTuteurId() == candidate.getTuteurId())
+            .filter(existing -> existing.getStatus() != 2)
+            .filter(existing -> existing.getStartAt() != null)
+            .filter(existing -> existing.getDurationMin() > 0)
+            .filter(existing -> hasOverlap(
+                candidate.getStartAt(),
+                candidateEndAt,
+                existing.getStartAt(),
+                calculateEndAt(existing.getStartAt(), existing.getDurationMin())
+            ))
+            .findFirst()
+            .map(this::buildConflictMessage)
+            .orElse(null);
+    }
+
+    private boolean hasOverlap(LocalDateTime firstStartAt, LocalDateTime firstEndAt,
+                               LocalDateTime secondStartAt, LocalDateTime secondEndAt) {
+        if (firstStartAt == null || firstEndAt == null || secondStartAt == null || secondEndAt == null) {
+            return false;
+        }
+        return firstStartAt.isBefore(secondEndAt) && secondStartAt.isBefore(firstEndAt);
+    }
+
+    private LocalDateTime calculateEndAt(LocalDateTime startAt, int durationMinutes) {
+        if (startAt == null || durationMinutes <= 0) {
+            return null;
+        }
+        return startAt.plusMinutes(durationMinutes);
+    }
+
+    private String buildConflictMessage(Seance conflictingSeance) {
+        String subject = normalizeText(conflictingSeance.getMatiere());
+        String safeSubject = subject != null ? subject : "sans titre";
+        return "Conflit d'horaire: ce tuteur a deja une seance \"" + safeSubject
+            + "\" prevue le " + formatDateTime(conflictingSeance.getStartAt())
+            + " pour " + conflictingSeance.getDurationMin() + " min.";
     }
 
     private String blankToNull(String value) {

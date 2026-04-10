@@ -135,7 +135,7 @@
                 </VBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
-                    <Label text="Validation: date future, format dd/MM/yyyy HH:mm, duree 15 a 480 min, capacite 1 a 50, description minimum 15 caracteres." styleClass="reservation-section-copy" wrapText="true"/>
+                    <Label text="Validation: date future, format dd/MM/yyyy HH:mm, duree 15 a 480 min, capacite 1 a 50, description minimum 15 caracteres, sans chevauchement pour le meme tuteur." styleClass="reservation-section-copy" wrapText="true"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Button text="Reinitialiser" onAction="#handleClearSessionForm" styleClass="action-button secondary"/>
                     <Button text="Enregistrer brouillon" onAction="#handleSaveDraftSession" styleClass="action-button secondary"/>
