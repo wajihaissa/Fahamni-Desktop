@@ -89,7 +89,7 @@ public class BlogController {
         showTuteurNotifications();
     }
 
-    /** Affiche une bannière en haut de la liste si le tuteur a des notifications non lues */
+    /** Affiche un toast temporaire (3 s) pour chaque notification non lue du tuteur */
     private void showTuteurNotifications() {
         try {
             int uid = resolveCurrentUserId();
@@ -97,38 +97,68 @@ public class BlogController {
             java.util.List<Notification> notifs = notifService.getUnreadForUser(uid);
             if (notifs.isEmpty()) return;
 
-            for (Notification n : notifs) {
-                boolean approved = n.getMessage() != null &&
-                    (n.getMessage().contains("approuve") || n.getMessage().contains("publie"));
-                HBox banner = new HBox(12);
-                banner.setPadding(new Insets(10, 16, 10, 16));
-                banner.setAlignment(Pos.CENTER_LEFT);
-                banner.setStyle(approved
-                    ? "-fx-background-color: #d4edda; -fx-background-radius: 10; -fx-border-color: #28a745; -fx-border-radius: 10; -fx-border-width: 1;"
-                    : "-fx-background-color: #fde8e8; -fx-background-radius: 10; -fx-border-color: #e74c3c; -fx-border-radius: 10; -fx-border-width: 1;");
-
-                Label icon = new Label(approved ? "✅" : "❌");
-                icon.setStyle("-fx-font-size: 16;");
-
-                Label msg = new Label(n.getMessage());
-                msg.setStyle("-fx-text-fill: " + (approved ? "#155724" : "#7b1818") +
-                    "; -fx-font-size: 13; -fx-font-weight: bold;");
-                msg.setWrapText(true);
-                HBox.setHgrow(msg, Priority.ALWAYS);
-
-                Button close = new Button("✕");
-                close.setStyle("-fx-background-color: transparent; -fx-text-fill: #555; " +
-                    "-fx-font-size: 12; -fx-cursor: hand; -fx-padding: 0 4;");
-                close.setOnAction(e -> blogsContainer.getChildren().remove(banner));
-
-                banner.getChildren().addAll(icon, msg, close);
-                blogsContainer.getChildren().add(0, banner);
+            // Afficher les toasts avec un léger décalage entre chacun
+            for (int i = 0; i < notifs.size(); i++) {
+                Notification n = notifs.get(i);
+                long delayMs = i * 400L;
+                Timeline delay = new Timeline(new KeyFrame(Duration.millis(delayMs), ev ->
+                    showToast(n.getMessage())
+                ));
+                delay.play();
             }
-            // Marquer comme lu
             notifService.markAllReadForUser(uid);
         } catch (Exception e) {
             System.err.println("showTuteurNotifications: " + e.getMessage());
         }
+    }
+
+    /** Affiche un toast en haut à droite qui disparaît après 3,5 secondes */
+    private void showToast(String message) {
+        if (blogsContainer == null || blogsContainer.getScene() == null) return;
+
+        boolean approved = message != null &&
+            (message.contains("approuve") || message.contains("publie"));
+
+        // Construction du toast
+        HBox toast = new HBox(10);
+        toast.setPadding(new Insets(12, 18, 12, 14));
+        toast.setAlignment(Pos.CENTER_LEFT);
+        toast.setMaxWidth(420);
+        toast.setStyle(
+            "-fx-background-color: " + (approved ? "#1e7e34" : "#c0392b") + ";" +
+            "-fx-background-radius: 10;" +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 4);");
+
+        Label icon = new Label(approved ? "✅" : "❌");
+        icon.setStyle("-fx-font-size: 15;");
+
+        Label msg = new Label(message != null ? message : "");
+        msg.setStyle("-fx-text-fill: white; -fx-font-size: 12; -fx-font-weight: bold;");
+        msg.setWrapText(true);
+        msg.setMaxWidth(360);
+
+        toast.getChildren().addAll(icon, msg);
+        toast.setOpacity(0);
+
+        // Insérer dans le conteneur (sera retiré après animation)
+        blogsContainer.getChildren().add(0, toast);
+
+        // Fade in → attendre → fade out → supprimer
+        Timeline fadeIn = new Timeline(
+            new KeyFrame(Duration.ZERO,     new KeyValue(toast.opacityProperty(), 0)),
+            new KeyFrame(Duration.millis(300), new KeyValue(toast.opacityProperty(), 1))
+        );
+        Timeline fadeOut = new Timeline(
+            new KeyFrame(Duration.ZERO,     new KeyValue(toast.opacityProperty(), 1)),
+            new KeyFrame(Duration.millis(400), new KeyValue(toast.opacityProperty(), 0))
+        );
+        fadeOut.setOnFinished(e -> blogsContainer.getChildren().remove(toast));
+
+        fadeIn.setOnFinished(e -> {
+            Timeline wait = new Timeline(new KeyFrame(Duration.millis(3000), ev -> fadeOut.play()));
+            wait.play();
+        });
+        fadeIn.play();
     }
 
     private void loadBlogs(List<Blog> blogs) {
