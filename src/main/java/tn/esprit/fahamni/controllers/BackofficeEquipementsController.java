@@ -30,6 +30,7 @@ public class BackofficeEquipementsController {
     private static final int DEFAULT_ROWS_PER_PAGE = 5;
     private static final int MAX_VISIBLE_PAGE_BUTTONS = 7;
     private static final String FILTER_ALL = "Tous les etats";
+    private static final String DEFAULT_CREATION_STATUS = "disponible";
 
     @FXML
     private TableView<Equipement> equipementsTable;
@@ -140,7 +141,7 @@ public class BackofficeEquipementsController {
         hideFeedback();
 
         try {
-            Equipement equipement = buildEquipement(0);
+            Equipement equipement = buildNewEquipement();
             equipementService.add(equipement);
 
             if (!loadEquipements()) {
@@ -165,7 +166,7 @@ public class BackofficeEquipementsController {
         }
 
         try {
-            Equipement equipement = buildEquipement(selectedEquipement.getIdEquipement());
+            Equipement equipement = buildUpdatedEquipement(selectedEquipement.getIdEquipement());
             equipementService.update(equipement);
 
             if (!loadEquipements()) {
@@ -261,6 +262,7 @@ public class BackofficeEquipementsController {
 
         quantiteSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 5000, 1));
         quantiteSpinner.setEditable(true);
+        etatComboBox.setDisable(true);
     }
 
     private void configurePagination() {
@@ -297,6 +299,7 @@ public class BackofficeEquipementsController {
 
     private void populateForm(Equipement equipement) {
         if (equipement == null) {
+            clearForm();
             updateSelectionBadge(null);
             return;
         }
@@ -305,6 +308,7 @@ public class BackofficeEquipementsController {
         typeComboBox.setValue(equipement.getTypeEquipement());
         quantiteSpinner.getValueFactory().setValue(equipement.getQuantiteDisponible());
         etatComboBox.setValue(equipement.getEtat());
+        etatComboBox.setDisable(false);
         descriptionArea.setText(defaultString(equipement.getDescription()));
 
         updateSelectionBadge(equipement);
@@ -314,7 +318,8 @@ public class BackofficeEquipementsController {
         nomField.clear();
         typeComboBox.setValue(typeComboBox.getItems().isEmpty() ? null : typeComboBox.getItems().get(0));
         quantiteSpinner.getValueFactory().setValue(1);
-        etatComboBox.setValue(etatComboBox.getItems().isEmpty() ? null : etatComboBox.getItems().get(0));
+        etatComboBox.setValue(resolveDefaultCreationStatus());
+        etatComboBox.setDisable(true);
         descriptionArea.clear();
 
         updateSelectionBadge(null);
@@ -355,7 +360,18 @@ public class BackofficeEquipementsController {
             || contains(equipement.getDescription(), normalizedSearch);
     }
 
-    private Equipement buildEquipement(int idEquipement) {
+    private Equipement buildNewEquipement() {
+        return new Equipement(
+            0,
+            requireText(nomField.getText(), "Le nom de l'equipement est obligatoire."),
+            requireText(typeComboBox.getValue(), "Le type d'equipement est obligatoire."),
+            parseNonNegativeInteger(quantiteSpinner.getEditor().getText(), "La quantite disponible doit etre un entier positif ou nul."),
+            DEFAULT_CREATION_STATUS,
+            trimToNull(descriptionArea.getText())
+        );
+    }
+
+    private Equipement buildUpdatedEquipement(int idEquipement) {
         return new Equipement(
             idEquipement,
             requireText(nomField.getText(), "Le nom de l'equipement est obligatoire."),
@@ -602,6 +618,15 @@ public class BackofficeEquipementsController {
 
     private boolean contains(String value, String normalizedSearch) {
         return value != null && normalize(value).contains(normalizedSearch);
+    }
+
+    private String resolveDefaultCreationStatus() {
+        for (String etat : etatComboBox.getItems()) {
+            if (DEFAULT_CREATION_STATUS.equalsIgnoreCase(etat)) {
+                return etat;
+            }
+        }
+        return etatComboBox.getItems().isEmpty() ? null : etatComboBox.getItems().get(0);
     }
 
     private String normalize(String value) {

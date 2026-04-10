@@ -137,8 +137,9 @@
                     </HBox>
 
                     <VBox spacing="6.0">
-                        <Label text="Etat" styleClass="backoffice-form-label"/>
+                        <Label text="Etat courant" styleClass="backoffice-form-label"/>
                         <ComboBox fx:id="etatComboBox" styleClass="backoffice-form-input"/>
+                        <Label text="A la creation, l'equipement est automatiquement en statut disponible. Selectionnez une fiche existante pour modifier cet etat." wrapText="true" styleClass="backoffice-panel-copy"/>
                     </VBox>
 
                     <VBox spacing="6.0">
