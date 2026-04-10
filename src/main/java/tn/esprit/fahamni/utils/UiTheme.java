@@ -349,6 +349,71 @@ public final class UiTheme {
             -fx-background-radius: 999px;
         }
 
+        .backoffice-pagination-bar {
+            -fx-background-color: transparent;
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px 0 0 0;
+            -fx-padding: 16px 0 0 0;
+        }
+
+        .backoffice-pagination-controls {
+            -fx-padding: 0;
+        }
+
+        .backoffice-pagination-nav {
+            -fx-padding: 0;
+            -fx-alignment: center;
+        }
+
+        .backoffice-pagination-summary {
+            -fx-text-fill: #6d82a0;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+        }
+
+        .backoffice-pagination-combo {
+            -fx-pref-height: 40px;
+        }
+
+        .backoffice-page-button {
+            -fx-background-color: rgba(231, 239, 251, 0.90);
+            -fx-border-color: #d4e0f5;
+            -fx-border-width: 1px;
+            -fx-text-fill: #294a78;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-min-width: 44px;
+            -fx-pref-width: 44px;
+            -fx-max-width: 44px;
+            -fx-min-height: 44px;
+            -fx-pref-height: 44px;
+            -fx-max-height: 44px;
+            -fx-padding: 0;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-alignment: center;
+            -fx-text-alignment: center;
+            -fx-cursor: hand;
+        }
+
+        .backoffice-page-button:hover {
+            -fx-background-color: #ecf3ff;
+        }
+
+        .backoffice-page-button.active-page {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-border-color: #5a80f4;
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(23, 52, 110, 0.18), 12, 0.16, 0, 4);
+        }
+
+        .backoffice-pagination-dots {
+            -fx-text-fill: #7b8ea9;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 0 2px;
+        }
+
         .seance-rating, .reservation-rating, .quiz-rating {
             -fx-font-size: 13px;
             -fx-font-weight: bold;

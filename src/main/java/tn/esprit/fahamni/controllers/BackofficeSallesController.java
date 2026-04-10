@@ -6,6 +6,7 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
@@ -18,6 +19,7 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.services.AdminSalleService;
 
@@ -26,6 +28,8 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class BackofficeSallesController {
+    private static final int DEFAULT_ROWS_PER_PAGE = 5;
+    private static final int MAX_VISIBLE_PAGE_BUTTONS = 7;
 
     @FXML
     private TableView<Salle> sallesTable;
@@ -50,6 +54,21 @@ public class BackofficeSallesController {
 
     @FXML
     private TextField searchField;
+
+    @FXML
+    private ComboBox<Integer> pageSizeComboBox;
+
+    @FXML
+    private Button previousPageButton;
+
+    @FXML
+    private Button nextPageButton;
+
+    @FXML
+    private Label paginationSummaryLabel;
+
+    @FXML
+    private HBox pageButtonsContainer;
 
     @FXML
     private TextField nomField;
@@ -108,13 +127,17 @@ public class BackofficeSallesController {
     private final AdminSalleService salleService = new AdminSalleService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
+    private final ObservableList<Salle> displayedSalles = FXCollections.observableArrayList();
+    private int currentPageIndex;
+    private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
 
     @FXML
     private void initialize() {
         configureTable();
         configureForm();
+        configurePagination();
 
-        sallesTable.setItems(filteredSalles);
+        sallesTable.setItems(displayedSalles);
         sallesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
         searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilter(newValue));
 
@@ -213,6 +236,26 @@ public class BackofficeSallesController {
         hideFeedback();
     }
 
+    @FXML
+    private void handlePreviousPage() {
+        if (currentPageIndex <= 0) {
+            return;
+        }
+
+        currentPageIndex--;
+        refreshTablePage();
+    }
+
+    @FXML
+    private void handleNextPage() {
+        if (currentPageIndex >= getTotalPages(filteredSalles.size()) - 1) {
+            return;
+        }
+
+        currentPageIndex++;
+        refreshTablePage();
+    }
+
     private void configureTable() {
         nomColumn.setCellValueFactory(new PropertyValueFactory<>("nom"));
         batimentColumn.setCellValueFactory(cellData -> new SimpleStringProperty(formatOptionalText(cellData.getValue().getBatiment())));
@@ -231,6 +274,12 @@ public class BackofficeSallesController {
         dispositionComboBox.getItems().setAll(salleService.getAvailableDispositions());
     }
 
+    private void configurePagination() {
+        pageSizeComboBox.getItems().setAll(5, 10, 15, 20);
+        pageSizeComboBox.setValue(rowsPerPage);
+        pageSizeComboBox.valueProperty().addListener((obs, oldValue, newValue) -> handlePageSizeChange(newValue));
+    }
+
     private boolean loadSalles() {
         Integer selectedSalleId = getSelectedSalleId();
 
@@ -238,16 +287,19 @@ public class BackofficeSallesController {
             salles.setAll(salleService.getAll());
             updateSummary();
 
-            if (selectedSalleId != null) {
-                selectSalleById(selectedSalleId);
-            } else {
-                updateSelectionBadge(null);
+            if (selectedSalleId != null && selectSalleById(selectedSalleId)) {
+                return true;
             }
 
+            refreshTablePage();
+            updateSelectionBadge(null);
             return true;
         } catch (SQLException | IllegalStateException exception) {
             salles.clear();
+            displayedSalles.clear();
+            currentPageIndex = 0;
             updateSummary();
+            refreshPaginationControls(0, 0, 0, 0);
             updateSelectionBadge(null);
             showFeedback("Chargement impossible : " + resolveMessage(exception), false);
             return false;
@@ -294,9 +346,17 @@ public class BackofficeSallesController {
     }
 
     private void applyFilter(String filterText) {
+        Integer selectedSalleId = getSelectedSalleId();
         String normalizedFilter = normalize(filterText);
         filteredSalles.setPredicate(salle -> matchesFilter(salle, normalizedFilter));
-        updateSelectionBadge(sallesTable.getSelectionModel().getSelectedItem());
+
+        if (selectedSalleId != null && selectSalleById(selectedSalleId)) {
+            return;
+        }
+
+        currentPageIndex = 0;
+        refreshTablePage();
+        updateSelectionBadge(null);
     }
 
     private boolean matchesFilter(Salle salle, String filterText) {
@@ -401,14 +461,24 @@ public class BackofficeSallesController {
         selectionBadgeLabel.setText("Nouvelle salle prete a etre configuree");
     }
 
-    private void selectSalleById(int idSalle) {
-        for (Salle salle : filteredSalles) {
+    private boolean selectSalleById(int idSalle) {
+        for (int index = 0; index < filteredSalles.size(); index++) {
+            Salle salle = filteredSalles.get(index);
             if (salle.getIdSalle() == idSalle) {
-                sallesTable.getSelectionModel().select(salle);
-                sallesTable.scrollTo(salle);
-                return;
+                currentPageIndex = index / rowsPerPage;
+                refreshTablePage();
+
+                for (Salle visibleSalle : displayedSalles) {
+                    if (visibleSalle.getIdSalle() == idSalle) {
+                        sallesTable.getSelectionModel().select(visibleSalle);
+                        sallesTable.scrollTo(visibleSalle);
+                        return true;
+                    }
+                }
             }
         }
+
+        return false;
     }
 
     private Integer getSelectedSalleId() {
@@ -453,6 +523,134 @@ public class BackofficeSallesController {
     private String resolveMessage(Exception exception) {
         String message = exception.getMessage();
         return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
+    }
+
+    private void refreshTablePage() {
+        int filteredSize = filteredSalles.size();
+        int totalPages = getTotalPages(filteredSize);
+
+        if (totalPages == 0) {
+            currentPageIndex = 0;
+            displayedSalles.clear();
+            refreshPaginationControls(0, 0, 0, 0);
+            return;
+        }
+
+        currentPageIndex = Math.max(0, Math.min(currentPageIndex, totalPages - 1));
+
+        int fromIndex = currentPageIndex * rowsPerPage;
+        int toIndex = Math.min(fromIndex + rowsPerPage, filteredSize);
+
+        displayedSalles.setAll(filteredSalles.subList(fromIndex, toIndex));
+        refreshPaginationControls(filteredSize, fromIndex, toIndex, totalPages);
+    }
+
+    private void refreshPaginationControls(int filteredSize, int fromIndex, int toIndex, int totalPages) {
+        if (filteredSize == 0) {
+            paginationSummaryLabel.setText("Aucune salle a afficher");
+            pageButtonsContainer.getChildren().clear();
+            previousPageButton.setDisable(true);
+            nextPageButton.setDisable(true);
+            return;
+        }
+
+        paginationSummaryLabel.setText(buildPaginationSummary(fromIndex + 1, toIndex, filteredSize));
+        refreshPageButtons(totalPages);
+        previousPageButton.setDisable(currentPageIndex == 0);
+        nextPageButton.setDisable(currentPageIndex >= totalPages - 1);
+    }
+
+    private int getTotalPages(int itemCount) {
+        if (itemCount <= 0) {
+            return 0;
+        }
+        return (itemCount + rowsPerPage - 1) / rowsPerPage;
+    }
+
+    private String buildPaginationSummary(int startIndex, int endIndex, int totalItems) {
+        if (totalItems == 1) {
+            return "1 salle affichee";
+        }
+        return startIndex + " a " + endIndex + " sur " + totalItems + " salles";
+    }
+
+    private void handlePageSizeChange(Integer newValue) {
+        if (newValue == null || newValue <= 0 || newValue == rowsPerPage) {
+            return;
+        }
+
+        Integer selectedSalleId = getSelectedSalleId();
+        rowsPerPage = newValue;
+
+        if (selectedSalleId != null && selectSalleById(selectedSalleId)) {
+            return;
+        }
+
+        currentPageIndex = 0;
+        refreshTablePage();
+        updateSelectionBadge(null);
+    }
+
+    private void refreshPageButtons(int totalPages) {
+        pageButtonsContainer.getChildren().clear();
+
+        if (totalPages <= 0) {
+            return;
+        }
+
+        if (totalPages <= MAX_VISIBLE_PAGE_BUTTONS) {
+            for (int pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+                addPageButton(pageIndex);
+            }
+            return;
+        }
+
+        addPageButton(0);
+
+        int windowStart = Math.max(1, currentPageIndex - 1);
+        int windowEnd = Math.min(totalPages - 2, currentPageIndex + 1);
+
+        if (windowStart <= 2) {
+            windowStart = 1;
+            windowEnd = 3;
+        } else if (windowEnd >= totalPages - 3) {
+            windowStart = totalPages - 4;
+            windowEnd = totalPages - 2;
+        }
+
+        if (windowStart > 1) {
+            addPaginationDots();
+        }
+
+        for (int pageIndex = windowStart; pageIndex <= windowEnd; pageIndex++) {
+            addPageButton(pageIndex);
+        }
+
+        if (windowEnd < totalPages - 2) {
+            addPaginationDots();
+        }
+
+        addPageButton(totalPages - 1);
+    }
+
+    private void addPageButton(int pageIndex) {
+        Button button = new Button(String.valueOf(pageIndex + 1));
+        button.getStyleClass().setAll("backoffice-page-button");
+        if (pageIndex == currentPageIndex) {
+            button.getStyleClass().add("active-page");
+            button.setDisable(true);
+        }
+        button.setOnAction(event -> {
+            currentPageIndex = pageIndex;
+            refreshTablePage();
+        });
+        pageButtonsContainer.getChildren().add(button);
+    }
+
+    private void addPaginationDots() {
+        Label dots = new Label("...");
+        dots.getStyleClass().add("backoffice-pagination-dots");
+        pageButtonsContainer.getChildren().add(dots);
     }
 
     private void showFeedback(String message, boolean success) {
