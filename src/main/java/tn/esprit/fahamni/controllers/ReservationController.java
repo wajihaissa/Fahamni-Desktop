@@ -18,6 +18,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DateCell;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
@@ -35,12 +37,16 @@ import javafx.scene.layout.VBox;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.IntStream;
+
+import javafx.util.StringConverter;
 
 public class ReservationController {
 
@@ -52,11 +58,13 @@ public class ReservationController {
     private static final String STATUS_AVAILABLE = "disponible";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
-    private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
-        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
-        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")
-    );
+    private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
+        .mapToObj(value -> String.format("%02d", value))
+        .toList();
+    private static final List<String> MINUTE_OPTIONS = IntStream.range(0, 60)
+        .mapToObj(value -> String.format("%02d", value))
+        .toList();
 
     private final SeanceService seanceService = new SeanceService();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
@@ -100,7 +108,13 @@ public class ReservationController {
     private TextField sessionSubjectField;
 
     @FXML
-    private TextField sessionStartAtField;
+    private DatePicker sessionDatePicker;
+
+    @FXML
+    private ComboBox<String> sessionHourComboBox;
+
+    @FXML
+    private ComboBox<String> sessionMinuteComboBox;
 
     @FXML
     private TextField sessionDurationField;
@@ -194,6 +208,7 @@ public class ReservationController {
         tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
         tutorComboBox.setEditable(true);
         selectTemporaryTutor();
+        configureDateTimeInputs();
         configureInfrastructureChoices();
 
         configureWorkspaceSections();
@@ -311,7 +326,7 @@ public class ReservationController {
     private Seance buildSeance(int status) {
         String subject = requireText(sessionSubjectField.getText(), "Renseignez la matiere de la seance.");
         String tutorName = requireText(tutorComboBox.getValue(), "Choisissez un tuteur.");
-        LocalDateTime startAt = parseStartAt(sessionStartAtField.getText());
+        LocalDateTime startAt = parseStartAt();
         int duration = parseBoundedInt(
             sessionDurationField.getText(),
             SeanceService.MIN_DURATION_MINUTES,
@@ -354,7 +369,7 @@ public class ReservationController {
         }
 
         sessionSubjectField.setText(subject);
-        sessionStartAtField.setText(formatDateTime(startAt));
+        setStartAtSelection(startAt);
         sessionDurationField.setText(String.valueOf(duration));
         sessionCapacityField.setText(String.valueOf(capacity));
         sessionDescriptionArea.setText(description);
@@ -1153,7 +1168,7 @@ public class ReservationController {
     private void startEditingSession(Seance seance) {
         editingSessionId = seance.getId();
         sessionSubjectField.setText(seance.getMatiere());
-        sessionStartAtField.setText(formatDateTime(seance.getStartAt()));
+        setStartAtSelection(seance.getStartAt());
         sessionDurationField.setText(String.valueOf(seance.getDurationMin()));
         sessionCapacityField.setText(String.valueOf(seance.getMaxParticipants()));
         sessionDescriptionArea.setText(seance.getDescription() != null ? seance.getDescription() : "");
@@ -1211,20 +1226,23 @@ public class ReservationController {
         }
     }
 
-    private LocalDateTime parseStartAt(String value) {
-        String candidate = requireText(value, "Renseignez la date et l'heure de la seance.");
-        for (DateTimeFormatter formatter : INPUT_FORMATTERS) {
-            try {
-                LocalDateTime parsedValue = LocalDateTime.parse(candidate, formatter);
-                if (!parsedValue.isAfter(LocalDateTime.now())) {
-                    throw new IllegalArgumentException("La date de la seance doit etre dans le futur.");
-                }
-                return parsedValue;
-            } catch (DateTimeParseException ignored) {
-                // Try the next accepted format.
-            }
+    private LocalDateTime parseStartAt() {
+        LocalDate selectedDate = sessionDatePicker.getValue();
+        if (selectedDate == null) {
+            throw new IllegalArgumentException("Choisissez la date de la seance.");
         }
-        throw new IllegalArgumentException("Utilisez le format dd/MM/yyyy HH:mm pour la date.");
+
+        String selectedHour = requireText(sessionHourComboBox.getValue(), "Choisissez l'heure de la seance.");
+        String selectedMinute = requireText(sessionMinuteComboBox.getValue(), "Choisissez les minutes de la seance.");
+
+        LocalDateTime parsedValue = LocalDateTime.of(
+            selectedDate,
+            LocalTime.of(Integer.parseInt(selectedHour), Integer.parseInt(selectedMinute))
+        );
+        if (!parsedValue.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("La date de la seance doit etre dans le futur.");
+        }
+        return parsedValue;
     }
 
     private int parseBoundedInt(String value, int min, int max, String errorMessage) {
@@ -1336,6 +1354,46 @@ public class ReservationController {
         return value != null ? value.format(DISPLAY_FORMATTER) : "";
     }
 
+    private void configureDateTimeInputs() {
+        sessionDatePicker.setEditable(false);
+        sessionDatePicker.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(LocalDate value) {
+                return value != null ? value.format(DATE_PICKER_FORMATTER) : "";
+            }
+
+            @Override
+            public LocalDate fromString(String value) {
+                return value == null || value.isBlank() ? null : LocalDate.parse(value, DATE_PICKER_FORMATTER);
+            }
+        });
+        sessionDatePicker.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate item, boolean empty) {
+                super.updateItem(item, empty);
+                setDisable(empty || item == null || item.isBefore(LocalDate.now()));
+            }
+        });
+
+        sessionHourComboBox.getItems().setAll(HOUR_OPTIONS);
+        sessionMinuteComboBox.getItems().setAll(MINUTE_OPTIONS);
+        sessionHourComboBox.setEditable(false);
+        sessionMinuteComboBox.setEditable(false);
+    }
+
+    private void setStartAtSelection(LocalDateTime value) {
+        if (value == null) {
+            sessionDatePicker.setValue(null);
+            sessionHourComboBox.getSelectionModel().clearSelection();
+            sessionMinuteComboBox.getSelectionModel().clearSelection();
+            return;
+        }
+
+        sessionDatePicker.setValue(value.toLocalDate());
+        sessionHourComboBox.setValue(String.format("%02d", value.getHour()));
+        sessionMinuteComboBox.setValue(String.format("%02d", value.getMinute()));
+    }
+
     private String mapStatusLabel(int status) {
         return switch (status) {
             case 1 -> "Publiee";
@@ -1404,7 +1462,7 @@ public class ReservationController {
 
     private void clearSessionForm() {
         sessionSubjectField.clear();
-        sessionStartAtField.clear();
+        setStartAtSelection(null);
         sessionDurationField.clear();
         sessionCapacityField.clear();
         sessionDescriptionArea.clear();

@@ -1235,6 +1235,21 @@ public final class UiTheme {
             -fx-padding: 12px;
         }
 
+        .reservation-time-picker-row {
+            -fx-alignment: center-left;
+        }
+
+        .reservation-time-combo {
+            -fx-pref-height: 40px;
+        }
+
+        .reservation-time-separator {
+            -fx-font-size: 18px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #5b78a4;
+            -fx-padding: 0 2px;
+        }
+
         .workspace-eyebrow, .workspace-label {
             -fx-font-size: 11px;
             -fx-font-weight: bold;

@@ -110,7 +110,12 @@
                 <HBox spacing="12.0">
                     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                         <Label text="Date et heure *" styleClass="form-label"/>
-                        <TextField fx:id="sessionStartAtField" promptText="Ex: 12/04/2026 14:00" styleClass="form-field"/>
+                        <HBox spacing="10.0" styleClass="reservation-time-picker-row">
+                            <DatePicker fx:id="sessionDatePicker" promptText="Choisir une date" HBox.hgrow="ALWAYS"/>
+                            <ComboBox fx:id="sessionHourComboBox" promptText="Heure" prefWidth="110.0" styleClass="filter-combo reservation-time-combo"/>
+                            <Label text=":" styleClass="reservation-time-separator"/>
+                            <ComboBox fx:id="sessionMinuteComboBox" promptText="Minute" prefWidth="110.0" styleClass="filter-combo reservation-time-combo"/>
+                        </HBox>
                     </VBox>
                     <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                         <Label text="Duree (min) *" styleClass="form-label"/>
