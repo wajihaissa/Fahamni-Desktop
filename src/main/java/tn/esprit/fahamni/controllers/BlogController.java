@@ -433,6 +433,30 @@ public class BlogController {
             readBtn.setText(expanded[0] ? "\u2191 Moins" : "Lire \u2192");
         });
 
+        // Bouton Partager
+        Button shareBtn = new Button("\uD83D\uDD17");
+        styleCompactBtn(shareBtn, "#f0f9ff", "#0284c7");
+        shareBtn.setTooltip(new Tooltip("Copier le titre et l'auteur"));
+        shareBtn.setOnAction(e -> {
+            String texte = "« " + blog.getTitre() + " »"
+                + " — par " + blog.getPublishedBy()
+                + "\n[Fahamni — Blog Éducatif]";
+            javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+            cc.putString(texte);
+            clipboard.setContent(cc);
+            // Feedback visuel temporaire
+            String oldStyle = shareBtn.getStyle();
+            shareBtn.setText("✔ Copié !");
+            shareBtn.setStyle("-fx-background-color: #dcfce7; -fx-text-fill: #16a34a; " +
+                "-fx-background-radius: 8; -fx-padding: 4 10; -fx-font-size: 11; -fx-cursor: hand;");
+            Timeline reset = new Timeline(new KeyFrame(Duration.millis(1800), ev -> {
+                shareBtn.setText("\uD83D\uDD17");
+                shareBtn.setStyle(oldStyle);
+            }));
+            reset.play();
+        });
+
         // Boutons Modifier et Supprimer — seulement pour l'auteur de l'article
         if (isMyArticle) {
             Button editBtn = new Button("\u270F");
@@ -453,9 +477,9 @@ public class BlogController {
                     }
                 });
             });
-            actBar.getChildren().addAll(likeBtn, commentBtn, actSpacer, editBtn, deleteArticleBtn, readBtn);
+            actBar.getChildren().addAll(likeBtn, commentBtn, actSpacer, shareBtn, editBtn, deleteArticleBtn, readBtn);
         } else {
-            actBar.getChildren().addAll(likeBtn, commentBtn, actSpacer, readBtn);
+            actBar.getChildren().addAll(likeBtn, commentBtn, actSpacer, shareBtn, readBtn);
         }
         card.getChildren().add(actBar);
 
