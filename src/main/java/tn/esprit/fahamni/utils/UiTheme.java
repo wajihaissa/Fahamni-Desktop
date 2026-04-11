@@ -292,18 +292,21 @@ public final class UiTheme {
             -fx-padding: 24px;
         }
 
-        .dashboard-scroll, .seance-scroll, .reservation-scroll, .planner-scroll, .messages-scroll, .quiz-scroll, .blog-scroll, .backoffice-scroll {
+        .dashboard-scroll, .seance-scroll, .reservation-scroll, .planner-scroll, .messages-scroll, .quiz-scroll, .blog-scroll,
+        .backoffice-scroll, .infrastructure-scroll {
             -fx-background-color: transparent;
             -fx-background-insets: 0;
             -fx-padding: 0;
         }
 
         .dashboard-scroll > .viewport, .seance-scroll > .viewport, .reservation-scroll > .viewport, .planner-scroll > .viewport,
-        .messages-scroll > .viewport, .quiz-scroll > .viewport, .blog-scroll > .viewport, .backoffice-scroll > .viewport {
+        .messages-scroll > .viewport, .quiz-scroll > .viewport, .blog-scroll > .viewport, .backoffice-scroll > .viewport,
+        .infrastructure-scroll > .viewport {
             -fx-background-color: transparent;
         }
 
-        .dashboard-content, .seance-content, .reservation-content, .planner-content, .messages-container, .quiz-content, .blog-content, .backoffice-page, .messenger-root {
+        .dashboard-content, .seance-content, .reservation-content, .planner-content, .messages-container, .quiz-content, .blog-content,
+        .backoffice-page, .messenger-root, .infrastructure-content {
             -fx-background-color: transparent;
         }
 
@@ -378,6 +381,128 @@ public final class UiTheme {
             -fx-font-weight: bold;
             -fx-padding: 8px 14px;
             -fx-background-radius: 999px;
+        }
+
+        .infrastructure-header, .infrastructure-panel, .infrastructure-note, .infrastructure-stat-card {
+            -fx-background-color: rgba(255, 255, 255, 0.92);
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.08), 18, 0.18, 0, 6);
+            -fx-padding: 20px;
+        }
+
+        .infrastructure-panel {
+            -fx-background-color: rgba(255, 255, 255, 0.86);
+        }
+
+        .infrastructure-note {
+            -fx-padding: 14px 18px;
+        }
+
+        .infrastructure-note-title {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #294a78;
+        }
+
+        .infrastructure-stat-card {
+            -fx-spacing: 5px;
+            -fx-min-height: 94px;
+        }
+
+        .infrastructure-card, .infrastructure-empty-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 16px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.07), 14, 0.14, 0, 5);
+        }
+
+        .infrastructure-card:hover {
+            -fx-border-color: #abc5f8;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f3f8ff 100%);
+        }
+
+        .infrastructure-empty-card {
+            -fx-padding: 24px;
+        }
+
+        .infrastructure-card-badge {
+            -fx-min-width: 34px;
+            -fx-min-height: 34px;
+            -fx-alignment: center;
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #cdddf8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 8px;
+            -fx-border-radius: 8px;
+            -fx-text-fill: #315bb4;
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+        }
+
+        .infrastructure-card-title {
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .infrastructure-card-meta {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4c6b95;
+        }
+
+        .infrastructure-card-copy {
+            -fx-font-size: 13px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .infrastructure-fact-label {
+            -fx-min-width: 92px;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #607897;
+        }
+
+        .infrastructure-fact-value {
+            -fx-font-size: 12px;
+            -fx-text-fill: #28415f;
+        }
+
+        .infrastructure-actions {
+            -fx-padding: 6px 0 0 0;
+        }
+
+        .infrastructure-small-chip, .status-chip {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 6px 10px;
+            -fx-background-radius: 999px;
+        }
+
+        .infrastructure-small-chip {
+            -fx-background-color: #eef4ff;
+            -fx-text-fill: #315bb4;
+        }
+
+        .status-chip.available {
+            -fx-background-color: #e2f5e8;
+            -fx-text-fill: #1f7a45;
+        }
+
+        .status-chip.maintenance {
+            -fx-background-color: #fff1d8;
+            -fx-text-fill: #a26a08;
+        }
+
+        .status-chip.unavailable {
+            -fx-background-color: #ffe8ec;
+            -fx-text-fill: #ba4658;
         }
 
         .backoffice-pagination-bar {

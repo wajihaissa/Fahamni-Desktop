@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" styleClass="infrastructure-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.SallesEquipementsController">
+    <VBox spacing="20.0" styleClass="infrastructure-content">
+        <padding>
+            <Insets top="20" right="20" bottom="20" left="20"/>
+        </padding>
+
+        <VBox spacing="8.0" styleClass="infrastructure-header">
+            <Label text="Salles &amp; materiel" styleClass="section-title"/>
+            <Label text="Consultez l'infrastructure disponible avant de creer une seance presentielle." wrapText="true" styleClass="section-subtitle"/>
+        </VBox>
+
+        <HBox spacing="14.0">
+            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
+                <Label fx:id="totalRoomsStatLabel" text="0" styleClass="stat-value"/>
+                <Label text="Salles referencees" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
+                <Label fx:id="availableRoomsStatLabel" text="0" styleClass="stat-value"/>
+                <Label text="Salles disponibles" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
+                <Label fx:id="totalEquipmentsStatLabel" text="0" styleClass="stat-value"/>
+                <Label text="Types de materiel" styleClass="stat-label"/>
+            </VBox>
+            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
+                <Label fx:id="availableEquipmentsStatLabel" text="0" styleClass="stat-value"/>
+                <Label text="Equipements disponibles" styleClass="stat-label"/>
+            </VBox>
+        </HBox>
+
+        <TabPane styleClass="reservation-tabs" tabClosingPolicy="UNAVAILABLE">
+            <tabs>
+                <Tab text="Salles">
+                    <VBox spacing="16.0" styleClass="infrastructure-panel">
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <TextField fx:id="roomSearchField" promptText="Rechercher une salle..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
+                            <ComboBox fx:id="roomTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
+                            <ComboBox fx:id="roomStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
+                            <CheckBox fx:id="accessibilityFilterCheckBox" text="Acces handicap" styleClass="backoffice-check"/>
+                            <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
+                        </HBox>
+
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <Label fx:id="roomCountLabel" text="Aucune salle chargee" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
+                            <Label text="Vue catalogue" styleClass="infrastructure-small-chip"/>
+                        </HBox>
+
+                        <FlowPane fx:id="roomCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="820.0"/>
+                    </VBox>
+                </Tab>
+
+                <Tab text="Materiel">
+                    <VBox spacing="16.0" styleClass="infrastructure-panel">
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <TextField fx:id="equipmentSearchField" promptText="Rechercher un equipement..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
+                            <ComboBox fx:id="equipmentTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
+                            <ComboBox fx:id="equipmentStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
+                            <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
+                        </HBox>
+
+                        <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <Label fx:id="equipmentCountLabel" text="Aucun equipement charge" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
+                            <Label text="Catalogue global" styleClass="infrastructure-small-chip"/>
+                        </HBox>
+
+                        <FlowPane fx:id="equipmentCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="820.0"/>
+                    </VBox>
+                </Tab>
+            </tabs>
+        </TabPane>
+
+        <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-note">
+            <Label text="Integration future" styleClass="infrastructure-note-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="L'action choisir pre-remplira la creation d'une seance quand le module seance sera branche." wrapText="true" styleClass="section-subtitle"/>
+        </HBox>
+
+        <Label fx:id="feedbackLabel" text="" wrapText="true" managed="false" visible="false" styleClass="backoffice-feedback"/>
+    </VBox>
+</ScrollPane>

@@ -23,6 +23,9 @@ public class MainController {
     private Button seancesButton;
 
     @FXML
+    private Button sallesEquipementsButton;
+
+    @FXML
     private Button reservationsButton;
 
     @FXML
@@ -55,6 +58,12 @@ public class MainController {
     private void showSeances() {
         loadView("SeanceListView.fxml", "SÃ©ances");
         setActiveButton(seancesButton);
+    }
+
+    @FXML
+    private void showSallesEquipements() {
+        loadView("SallesEquipementsView.fxml", "Salles & Materiel");
+        setActiveButton(sallesEquipementsButton);
     }
 
     @FXML
@@ -120,6 +129,7 @@ public class MainController {
         // Reset all buttons
         dashboardButton.getStyleClass().remove("active");
         seancesButton.getStyleClass().remove("active");
+        sallesEquipementsButton.getStyleClass().remove("active");
         reservationsButton.getStyleClass().remove("active");
         plannerButton.getStyleClass().remove("active");
         messengerButton.getStyleClass().remove("active");

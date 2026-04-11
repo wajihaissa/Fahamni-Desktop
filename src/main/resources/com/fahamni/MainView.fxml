@@ -26,6 +26,7 @@
             <VBox spacing="5.0" styleClass="sidebar-menu">
                 <Button fx:id="dashboardButton" maxWidth="Infinity" text="Dashboard" styleClass="sidebar-button" onAction="#showDashboard"/>
                 <Button fx:id="seancesButton" maxWidth="Infinity" text="Seances" styleClass="sidebar-button" onAction="#showSeances"/>
+                <Button fx:id="sallesEquipementsButton" maxWidth="Infinity" text="Salles &amp; Materiel" styleClass="sidebar-button" onAction="#showSallesEquipements"/>
                 <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" styleClass="sidebar-button" onAction="#showReservations"/>
                 <Button fx:id="plannerButton" maxWidth="Infinity" text="Planner" styleClass="sidebar-button" onAction="#showPlanner"/>
                 <Button fx:id="messengerButton" maxWidth="Infinity" text="Messagerie" styleClass="sidebar-button" onAction="#showMessenger"/>
