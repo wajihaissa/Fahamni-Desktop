@@ -34,6 +34,9 @@ public class BackofficeUsersController {
     private TextField searchField;
 
     @FXML
+    private ComboBox<String> statusFilterComboBox;
+
+    @FXML
     private TextField fullNameField;
 
     @FXML
@@ -66,13 +69,16 @@ public class BackofficeUsersController {
 
         roleComboBox.getItems().setAll(userService.getAvailableRoles());
         statusComboBox.getItems().setAll(userService.getAvailableStatuses());
+        statusFilterComboBox.getItems().setAll("Tous", "Active", "Suspended");
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
+        statusFilterComboBox.setValue("Tous");
 
         filteredUsers = new FilteredList<>(userService.getUsers(), user -> true);
         usersTable.setItems(filteredUsers);
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
-        searchField.textProperty().addListener((obs, oldValue, newValue) -> applySearchFilter(newValue));
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+        statusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
 
         hideFeedback();
 
@@ -144,21 +150,35 @@ public class BackofficeUsersController {
         OperationResult result = userService.refreshUsers();
         usersTable.getSelectionModel().clearSelection();
         clearForm();
-        applySearchFilter(searchField.getText());
+        applyFilters();
         usersTable.refresh();
         showFeedback(result.getMessage(), result.isSuccess());
     }
 
-    private void applySearchFilter(String rawSearch) {
-        String search = rawSearch == null ? "" : rawSearch.trim().toLowerCase();
-        filteredUsers.setPredicate(user -> {
-            if (search.isEmpty()) {
-                return true;
-            }
+    private void applyFilters() {
+        String search = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
+        String selectedStatus = statusFilterComboBox.getValue();
 
-            return user.getFullName().toLowerCase().contains(search)
+        filteredUsers.setPredicate(user -> {
+            boolean matchesSearch = search.isEmpty()
+                || user.getFullName().toLowerCase().contains(search)
                 || user.getEmail().toLowerCase().contains(search);
+
+            boolean matchesStatus = selectedStatus == null
+                || "Tous".equalsIgnoreCase(selectedStatus)
+                || user.getStatus().equalsIgnoreCase(selectedStatus);
+
+            return matchesSearch && matchesStatus;
         });
+    }
+
+    private void applySearchFilter(String rawSearch) {
+        if (rawSearch != null) {
+            searchField.setText(rawSearch);
+        } else {
+            applyFilters();
+            return;
+            }
     }
 
     private void populateForm(AdminUser user) {
