@@ -9,10 +9,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
@@ -97,7 +100,7 @@ public class SeanceService implements IServices<Seance> {
 
         String sql = """
             SELECT id, matiere, start_at, duration_min, max_participants, status,
-                   description, created_at, updated_at, tuteur_id
+                   description, created_at, updated_at, tuteur_id, mode_seance, salle_id
             FROM seance
             ORDER BY id DESC
             """;
@@ -110,6 +113,7 @@ public class SeanceService implements IServices<Seance> {
         } catch (SQLException e) {
             System.out.println("Erreur chargement seances: " + e.getMessage());
         }
+        attachEquipementIds(seances);
         return seances;
     }
 
@@ -132,6 +136,7 @@ public class SeanceService implements IServices<Seance> {
 
     @Override
     public void add(Seance seance) {
+        normalizeInfrastructureFields(seance);
         String validationError = validateSeance(seance);
         if (validationError != null) {
             throw new IllegalArgumentException(validationError);
@@ -140,13 +145,20 @@ public class SeanceService implements IServices<Seance> {
         if (schedulingConflict != null) {
             throw new IllegalArgumentException(schedulingConflict);
         }
+        String roomConflict = validateRoomScheduleConflict(seance);
+        if (roomConflict != null) {
+            throw new IllegalArgumentException(roomConflict);
+        }
 
         String sql = """
-            INSERT INTO seance (matiere, start_at, duration_min, max_participants, status, description, created_at, updated_at, tuteur_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO seance (
+                matiere, start_at, duration_min, max_participants, status, description,
+                created_at, updated_at, tuteur_id, mode_seance, salle_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
-        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             LocalDateTime now = LocalDateTime.now();
             String normalizedSubject = normalizeText(seance.getMatiere());
             String normalizedDescription = normalizeText(seance.getDescription());
@@ -160,7 +172,16 @@ public class SeanceService implements IServices<Seance> {
             pst.setTimestamp(7, Timestamp.valueOf(seance.getCreatedAt() != null ? seance.getCreatedAt() : now));
             pst.setTimestamp(8, seance.getUpdatedAt() != null ? Timestamp.valueOf(seance.getUpdatedAt()) : null);
             pst.setInt(9, seance.getTuteurId());
+            pst.setString(10, seance.getMode());
+            setNullableInteger(pst, 11, seance.getSalleId());
             pst.executeUpdate();
+
+            try (ResultSet generatedKeys = pst.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    seance.setId(generatedKeys.getInt(1));
+                }
+            }
+            replaceSeanceEquipements(seance);
         } catch (SQLException e) {
             throw new IllegalStateException("Ajout impossible: " + e.getMessage(), e);
         }
@@ -177,6 +198,7 @@ public class SeanceService implements IServices<Seance> {
 
     @Override
     public void update(Seance seance) {
+        normalizeInfrastructureFields(seance);
         String validationError = validateSeance(seance);
         if (validationError != null) {
             throw new IllegalArgumentException(validationError);
@@ -188,11 +210,16 @@ public class SeanceService implements IServices<Seance> {
         if (schedulingConflict != null) {
             throw new IllegalArgumentException(schedulingConflict);
         }
+        String roomConflict = validateRoomScheduleConflict(seance);
+        if (roomConflict != null) {
+            throw new IllegalArgumentException(roomConflict);
+        }
 
         String sql = """
             UPDATE seance
             SET matiere = ?, start_at = ?, duration_min = ?, max_participants = ?,
-                status = ?, description = ?, updated_at = ?, tuteur_id = ?
+                status = ?, description = ?, updated_at = ?, tuteur_id = ?,
+                mode_seance = ?, salle_id = ?
             WHERE id = ?
             """;
 
@@ -208,12 +235,15 @@ public class SeanceService implements IServices<Seance> {
             pst.setString(6, blankToNull(normalizedDescription));
             pst.setTimestamp(7, Timestamp.valueOf(seance.getUpdatedAt() != null ? seance.getUpdatedAt() : LocalDateTime.now()));
             pst.setInt(8, seance.getTuteurId());
-            pst.setInt(9, seance.getId());
+            pst.setString(9, seance.getMode());
+            setNullableInteger(pst, 10, seance.getSalleId());
+            pst.setInt(11, seance.getId());
 
             int updatedRows = pst.executeUpdate();
             if (updatedRows == 0) {
                 throw new IllegalStateException("Aucune seance mise a jour.");
             }
+            replaceSeanceEquipements(seance);
         } catch (SQLException e) {
             throw new IllegalStateException("Mise a jour impossible: " + e.getMessage(), e);
         }
@@ -238,6 +268,7 @@ public class SeanceService implements IServices<Seance> {
 
         String sql = "DELETE FROM seance WHERE id = ?";
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+            deleteSeanceEquipements(seance.getId());
             pst.setInt(1, seance.getId());
             int deletedRows = pst.executeUpdate();
             if (deletedRows == 0) {
@@ -252,7 +283,7 @@ public class SeanceService implements IServices<Seance> {
     }
 
     private Seance mapSeance(ResultSet rs) throws SQLException {
-        return new Seance(
+        Seance seance = new Seance(
             rs.getInt("id"),
             rs.getString("matiere"),
             readDateTime(rs, "start_at"),
@@ -264,11 +295,19 @@ public class SeanceService implements IServices<Seance> {
             readDateTime(rs, "updated_at"),
             rs.getInt("tuteur_id")
         );
+        seance.setMode(normalizeMode(rs.getString("mode_seance")));
+        seance.setSalleId(getNullableInteger(rs, "salle_id"));
+        return seance;
     }
 
     private LocalDateTime readDateTime(ResultSet rs, String columnName) throws SQLException {
         Timestamp timestamp = rs.getTimestamp(columnName);
         return timestamp != null ? timestamp.toLocalDateTime() : null;
+    }
+
+    private Integer getNullableInteger(ResultSet rs, String columnName) throws SQLException {
+        int value = rs.getInt(columnName);
+        return rs.wasNull() ? null : value;
     }
 
     private String validateSeance(Seance seance) {
@@ -298,6 +337,96 @@ public class SeanceService implements IServices<Seance> {
         }
         if (seance.getTuteurId() <= 0) {
             return "Le tuteur doit avoir un identifiant valide.";
+        }
+        String infrastructureError = validateInfrastructure(seance);
+        if (infrastructureError != null) {
+            return infrastructureError;
+        }
+        return null;
+    }
+
+    private String validateInfrastructure(Seance seance) {
+        String mode = normalizeMode(seance.getMode());
+        if (!Seance.MODE_ONLINE.equals(mode) && !Seance.MODE_ONSITE.equals(mode)) {
+            return "Choisissez un mode de seance valide.";
+        }
+
+        if (!Seance.MODE_ONSITE.equals(mode)) {
+            return null;
+        }
+
+        if (seance.getSalleId() == null || seance.getSalleId() <= 0) {
+            return "Choisissez une salle pour la seance presentielle.";
+        }
+
+        String roomError = validateSelectedRoom(seance);
+        if (roomError != null) {
+            return roomError;
+        }
+
+        return validateSelectedEquipements(seance);
+    }
+
+    private String validateSelectedRoom(Seance seance) {
+        if (cnx == null) {
+            return "Connexion a la base indisponible pour verifier la salle.";
+        }
+
+        String sql = "SELECT nom, capacite, etat FROM salle WHERE idSalle = ?";
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, seance.getSalleId());
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return "La salle choisie est introuvable.";
+                }
+                String roomName = rs.getString("nom");
+                int capacity = rs.getInt("capacite");
+                String status = rs.getString("etat");
+
+                if (!isAvailable(status)) {
+                    return "La salle \"" + roomName + "\" n'est pas disponible.";
+                }
+                if (seance.getMaxParticipants() > capacity) {
+                    return "La capacite de la salle \"" + roomName + "\" est limitee a " + capacity + " places.";
+                }
+            }
+        } catch (SQLException e) {
+            return "Verification de la salle impossible: " + e.getMessage();
+        }
+        return null;
+    }
+
+    private String validateSelectedEquipements(Seance seance) {
+        if (seance.getEquipementIds().isEmpty()) {
+            return null;
+        }
+        if (cnx == null) {
+            return "Connexion a la base indisponible pour verifier le materiel.";
+        }
+
+        String sql = "SELECT nom, quantiteDisponible, etat FROM equipement WHERE idEquipement = ?";
+        for (Integer equipementId : seance.getEquipementIds()) {
+            if (equipementId == null || equipementId <= 0) {
+                return "Le materiel choisi est invalide.";
+            }
+
+            try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+                pst.setInt(1, equipementId);
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (!rs.next()) {
+                        return "Le materiel #" + equipementId + " est introuvable.";
+                    }
+                    String equipmentName = rs.getString("nom");
+                    int quantity = rs.getInt("quantiteDisponible");
+                    String status = rs.getString("etat");
+
+                    if (!isAvailable(status) || quantity <= 0) {
+                        return "Le materiel \"" + equipmentName + "\" n'est pas disponible.";
+                    }
+                }
+            } catch (SQLException e) {
+                return "Verification du materiel impossible: " + e.getMessage();
+            }
         }
         return null;
     }
@@ -329,6 +458,41 @@ public class SeanceService implements IServices<Seance> {
             .orElse(null);
     }
 
+    private String validateRoomScheduleConflict(Seance candidate) {
+        if (candidate == null
+            || !candidate.isPresentiel()
+            || candidate.getSalleId() == null
+            || candidate.getStatus() == 2
+            || candidate.getStartAt() == null
+            || candidate.getDurationMin() <= 0) {
+            return null;
+        }
+
+        LocalDateTime candidateEndAt = calculateEndAt(candidate.getStartAt(), candidate.getDurationMin());
+        if (candidateEndAt == null) {
+            return null;
+        }
+
+        return getAll().stream()
+            .filter(existing -> existing.getId() != candidate.getId())
+            .filter(Seance::isPresentiel)
+            .filter(existing -> candidate.getSalleId().equals(existing.getSalleId()))
+            .filter(existing -> existing.getStatus() != 2)
+            .filter(existing -> existing.getStartAt() != null)
+            .filter(existing -> existing.getDurationMin() > 0)
+            .filter(existing -> hasOverlap(
+                candidate.getStartAt(),
+                candidateEndAt,
+                existing.getStartAt(),
+                calculateEndAt(existing.getStartAt(), existing.getDurationMin())
+            ))
+            .findFirst()
+            .map(conflict -> "Conflit de salle: cette salle est deja utilisee le "
+                + formatDateTime(conflict.getStartAt())
+                + " pour la seance \"" + safe(conflict.getMatiere()) + "\".")
+            .orElse(null);
+    }
+
     private boolean hasOverlap(LocalDateTime firstStartAt, LocalDateTime firstEndAt,
                                LocalDateTime secondStartAt, LocalDateTime secondEndAt) {
         if (firstStartAt == null || firstEndAt == null || secondStartAt == null || secondEndAt == null) {
@@ -352,8 +516,111 @@ public class SeanceService implements IServices<Seance> {
             + " pour " + conflictingSeance.getDurationMin() + " min.";
     }
 
+    private void normalizeInfrastructureFields(Seance seance) {
+        if (seance == null) {
+            return;
+        }
+
+        String mode = normalizeMode(seance.getMode());
+        seance.setMode(mode);
+        if (!Seance.MODE_ONSITE.equals(mode)) {
+            seance.setSalleId(null);
+            seance.setEquipementIds(List.of());
+            return;
+        }
+
+        seance.setEquipementIds(new ArrayList<>(new LinkedHashSet<>(seance.getEquipementIds())));
+    }
+
+    private void attachEquipementIds(List<Seance> seances) {
+        if (seances == null || seances.isEmpty()) {
+            return;
+        }
+
+        for (Seance seance : seances) {
+            seance.setEquipementIds(loadEquipementIdsBySeanceId(seance.getId()));
+        }
+    }
+
+    private List<Integer> loadEquipementIdsBySeanceId(int seanceId) {
+        List<Integer> equipementIds = new ArrayList<>();
+        if (seanceId <= 0 || cnx == null) {
+            return equipementIds;
+        }
+
+        String sql = "SELECT idEquipement FROM seance_equipement WHERE seance_id = ? ORDER BY idEquipement";
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    equipementIds.add(rs.getInt("idEquipement"));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Chargement materiel seance impossible: " + e.getMessage());
+        }
+        return equipementIds;
+    }
+
+    private void replaceSeanceEquipements(Seance seance) throws SQLException {
+        if (seance == null || seance.getId() <= 0) {
+            return;
+        }
+
+        deleteSeanceEquipements(seance.getId());
+        if (!seance.isPresentiel() || seance.getEquipementIds().isEmpty()) {
+            return;
+        }
+
+        String sql = "INSERT INTO seance_equipement (seance_id, idEquipement, quantite) VALUES (?, ?, ?)";
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+            for (Integer equipementId : seance.getEquipementIds()) {
+                if (equipementId == null || equipementId <= 0) {
+                    continue;
+                }
+                pst.setInt(1, seance.getId());
+                pst.setInt(2, equipementId);
+                pst.setInt(3, 1);
+                pst.addBatch();
+            }
+            pst.executeBatch();
+        }
+    }
+
+    private void deleteSeanceEquipements(int seanceId) throws SQLException {
+        if (seanceId <= 0) {
+            return;
+        }
+
+        String sql = "DELETE FROM seance_equipement WHERE seance_id = ?";
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            pst.executeUpdate();
+        }
+    }
+
     private String blankToNull(String value) {
         return value == null || value.trim().isEmpty() ? null : value.trim();
+    }
+
+    private void setNullableInteger(PreparedStatement statement, int index, Integer value) throws SQLException {
+        if (value == null) {
+            statement.setNull(index, Types.INTEGER);
+            return;
+        }
+        statement.setInt(index, value);
+    }
+
+    private String normalizeMode(String value) {
+        String normalized = normalize(value);
+        if ("presentiel".equals(normalized)) {
+            return Seance.MODE_ONSITE;
+        }
+        return Seance.MODE_ONLINE;
+    }
+
+    private boolean isAvailable(String status) {
+        return "disponible".equals(normalize(status));
     }
 
     private String normalizeText(String value) {
@@ -396,7 +663,10 @@ public class SeanceService implements IServices<Seance> {
             String.valueOf(seance.getTuteurId()),
             safe(tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())),
             safe(formatDateTime(seance.getStartAt())),
-            safe(mapStatusLabel(seance.getStatus()))
+            safe(mapStatusLabel(seance.getStatus())),
+            safe(mapModeLabel(seance.getMode())),
+            seance.getSalleId() == null ? "" : "salle " + seance.getSalleId(),
+            seance.getEquipementIds().toString()
         );
         return normalize(searchableText).contains(normalizedKeyword);
     }
@@ -407,6 +677,10 @@ public class SeanceService implements IServices<Seance> {
             case 2 -> "Archivee";
             default -> "Brouillon";
         };
+    }
+
+    private String mapModeLabel(String mode) {
+        return Seance.MODE_ONSITE.equals(mode) ? "Presentiel" : "En ligne";
     }
 
     private String formatDateTime(LocalDateTime value) {

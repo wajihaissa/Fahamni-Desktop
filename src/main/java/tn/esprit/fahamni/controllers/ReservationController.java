@@ -1,6 +1,10 @@
 package tn.esprit.fahamni.controllers;
 
+import tn.esprit.fahamni.Models.Equipement;
+import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.services.AdminEquipementService;
+import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
@@ -12,6 +16,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
@@ -25,10 +30,14 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class ReservationController {
@@ -36,6 +45,9 @@ public class ReservationController {
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
     private static final String SECTION_ADD_SESSION = "Ajouter une seance";
+    private static final String MODE_ONLINE_LABEL = "En ligne";
+    private static final String MODE_ONSITE_LABEL = "Presentiel";
+    private static final String STATUS_AVAILABLE = "disponible";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
@@ -47,6 +59,11 @@ public class ReservationController {
     private final SeanceService seanceService = new SeanceService();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final ReservationService reservationService = new ReservationService();
+    private final AdminSalleService salleService = new AdminSalleService();
+    private final AdminEquipementService equipementService = new AdminEquipementService();
+    private final List<Salle> availableSalles = new ArrayList<>();
+    private final List<Equipement> availableEquipements = new ArrayList<>();
+    private final Map<CheckBox, Integer> equipmentCheckBoxes = new LinkedHashMap<>();
     private Integer editingSessionId;
     private int currentSessionPage = 1;
 
@@ -88,6 +105,24 @@ public class ReservationController {
 
     @FXML
     private TextField sessionCapacityField;
+
+    @FXML
+    private ComboBox<String> sessionModeComboBox;
+
+    @FXML
+    private ComboBox<String> sessionRoomComboBox;
+
+    @FXML
+    private VBox onsiteSessionOptionsBox;
+
+    @FXML
+    private VBox onsiteEquipmentOptionsBox;
+
+    @FXML
+    private FlowPane sessionEquipmentChoicesContainer;
+
+    @FXML
+    private Label infrastructureHintLabel;
 
     @FXML
     private TextArea sessionDescriptionArea;
@@ -133,6 +168,7 @@ public class ReservationController {
         tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
         tutorComboBox.setEditable(true);
         selectTemporaryTutor();
+        configureInfrastructureChoices();
 
         configureWorkspaceSections();
         sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
@@ -202,6 +238,11 @@ public class ReservationController {
     }
 
     @FXML
+    private void handleSessionModeChange() {
+        updateOnsiteOptionsVisibility();
+    }
+
+    @FXML
     private void handleClearSessionForm() {
         clearSessionForm();
         resetEditMode();
@@ -264,12 +305,30 @@ public class ReservationController {
             throw new IllegalArgumentException("Le tuteur choisi est invalide pour le moment.");
         }
 
+        String mode = resolveSelectedMode();
+        Integer salleId = null;
+        List<Integer> equipementIds = List.of();
+        if (Seance.MODE_ONSITE.equals(mode)) {
+            Salle selectedSalle = resolveSelectedSalle();
+            if (selectedSalle == null) {
+                throw new IllegalArgumentException("Choisissez une salle disponible pour une seance presentielle.");
+            }
+            if (capacity > selectedSalle.getCapacite()) {
+                throw new IllegalArgumentException(
+                    "La salle choisie accepte seulement " + selectedSalle.getCapacite() + " participants."
+                );
+            }
+            salleId = selectedSalle.getIdSalle();
+            equipementIds = getSelectedEquipmentIds();
+        }
+
         sessionSubjectField.setText(subject);
         sessionStartAtField.setText(formatDateTime(startAt));
         sessionDurationField.setText(String.valueOf(duration));
         sessionCapacityField.setText(String.valueOf(capacity));
         sessionDescriptionArea.setText(description);
         tutorComboBox.setValue(tutorName);
+        sessionModeComboBox.setValue(mapModeLabel(mode));
 
         Seance seance = new Seance();
         seance.setMatiere(subject);
@@ -279,7 +338,161 @@ public class ReservationController {
         seance.setStatus(status);
         seance.setDescription(description);
         seance.setTuteurId(tutorId);
+        seance.setMode(mode);
+        seance.setSalleId(salleId);
+        seance.setEquipementIds(equipementIds);
         return seance;
+    }
+
+    private void configureInfrastructureChoices() {
+        sessionModeComboBox.getItems().setAll(MODE_ONLINE_LABEL, MODE_ONSITE_LABEL);
+        sessionModeComboBox.setValue(MODE_ONLINE_LABEL);
+        loadInfrastructureChoices();
+        updateOnsiteOptionsVisibility();
+    }
+
+    private void loadInfrastructureChoices() {
+        try {
+            availableSalles.clear();
+            availableSalles.addAll(
+                salleService.getAll().stream()
+                    .filter(salle -> isAvailable(salle.getEtat()))
+                    .toList()
+            );
+
+            availableEquipements.clear();
+            availableEquipements.addAll(
+                equipementService.getAll().stream()
+                    .filter(equipement -> isAvailable(equipement.getEtat()))
+                    .filter(equipement -> equipement.getQuantiteDisponible() > 0)
+                    .toList()
+            );
+
+            sessionRoomComboBox.getItems().setAll(
+                availableSalles.stream()
+                    .map(this::formatSalleChoice)
+                    .toList()
+            );
+            sessionRoomComboBox.setDisable(availableSalles.isEmpty());
+            renderEquipmentChoices();
+            updateInfrastructureHint();
+        } catch (SQLException | IllegalStateException exception) {
+            availableSalles.clear();
+            availableEquipements.clear();
+            sessionRoomComboBox.getItems().clear();
+            sessionRoomComboBox.setDisable(true);
+            renderEquipmentChoices();
+            infrastructureHintLabel.setText("Chargement des salles et materiels impossible: " + resolveMessage(exception));
+        }
+    }
+
+    private void renderEquipmentChoices() {
+        sessionEquipmentChoicesContainer.getChildren().clear();
+        equipmentCheckBoxes.clear();
+
+        if (availableEquipements.isEmpty()) {
+            Label emptyLabel = new Label("Aucun materiel disponible pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            sessionEquipmentChoicesContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        for (Equipement equipement : availableEquipements) {
+            CheckBox checkBox = new CheckBox(formatEquipementChoice(equipement));
+            checkBox.setWrapText(true);
+            checkBox.getStyleClass().add("backoffice-check");
+            equipmentCheckBoxes.put(checkBox, equipement.getIdEquipement());
+            sessionEquipmentChoicesContainer.getChildren().add(checkBox);
+        }
+    }
+
+    private void updateOnsiteOptionsVisibility() {
+        boolean onsite = Seance.MODE_ONSITE.equals(resolveSelectedMode());
+        setSectionVisible(onsiteSessionOptionsBox, onsite);
+        setSectionVisible(onsiteEquipmentOptionsBox, onsite);
+
+        if (!onsite) {
+            sessionRoomComboBox.getSelectionModel().clearSelection();
+            clearEquipmentSelection();
+        } else if (sessionRoomComboBox.getValue() == null && !sessionRoomComboBox.getItems().isEmpty()) {
+            sessionRoomComboBox.getSelectionModel().selectFirst();
+        }
+    }
+
+    private String resolveSelectedMode() {
+        return MODE_ONSITE_LABEL.equals(sessionModeComboBox.getValue()) ? Seance.MODE_ONSITE : Seance.MODE_ONLINE;
+    }
+
+    private Salle resolveSelectedSalle() {
+        int selectedIndex = sessionRoomComboBox.getSelectionModel().getSelectedIndex();
+        if (selectedIndex < 0 || selectedIndex >= availableSalles.size()) {
+            return null;
+        }
+        return availableSalles.get(selectedIndex);
+    }
+
+    private List<Integer> getSelectedEquipmentIds() {
+        return equipmentCheckBoxes.entrySet().stream()
+            .filter(entry -> entry.getKey().isSelected())
+            .map(Map.Entry::getValue)
+            .toList();
+    }
+
+    private void selectSalleById(Integer salleId) {
+        sessionRoomComboBox.getSelectionModel().clearSelection();
+        if (salleId == null || salleId <= 0) {
+            return;
+        }
+
+        for (int index = 0; index < availableSalles.size(); index++) {
+            if (availableSalles.get(index).getIdSalle() == salleId) {
+                sessionRoomComboBox.getSelectionModel().select(index);
+                return;
+            }
+        }
+    }
+
+    private void selectEquipementsByIds(List<Integer> equipementIds) {
+        clearEquipmentSelection();
+        if (equipementIds == null || equipementIds.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<CheckBox, Integer> entry : equipmentCheckBoxes.entrySet()) {
+            entry.getKey().setSelected(equipementIds.contains(entry.getValue()));
+        }
+    }
+
+    private void clearEquipmentSelection() {
+        equipmentCheckBoxes.keySet().forEach(checkBox -> checkBox.setSelected(false));
+    }
+
+    private String formatSalleChoice(Salle salle) {
+        return salle.getNom()
+            + " | "
+            + salle.getLocalisation()
+            + " | "
+            + salle.getCapacite()
+            + " places";
+    }
+
+    private String formatEquipementChoice(Equipement equipement) {
+        return equipement.getNom()
+            + " ("
+            + equipement.getTypeEquipement()
+            + ", "
+            + equipement.getQuantiteDisponible()
+            + " dispo)";
+    }
+
+    private void updateInfrastructureHint() {
+        infrastructureHintLabel.setText(
+            availableSalles.size()
+                + " salle(s) disponible(s), "
+                + availableEquipements.size()
+                + " type(s) de materiel disponible(s). La demande de materiel inexistant n'est pas encore activee."
+        );
     }
 
     private void loadSessionDashboard() {
@@ -355,6 +568,7 @@ public class ReservationController {
                 + " | " + formatDateTime(seance.getStartAt())
                 + " | " + seance.getDurationMin() + " min"
                 + " | " + seance.getMaxParticipants() + " places"
+                + " | " + buildInfrastructureSummary(seance)
                 + " | " + formatReservationCount(reservationStats.total())
         );
         metaLabel.setWrapText(true);
@@ -500,7 +714,10 @@ public class ReservationController {
             buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance"),
             buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
             buildDetailMetric("Reservations", String.valueOf(reservationStats.total()), "Total lie a la seance"),
-            buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId())
+            buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId()),
+            buildDetailMetric("Mode", mapModeLabel(seance.getMode()), "Format choisi"),
+            buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel"),
+            buildDetailMetric("Materiel", resolveEquipementNames(seance.getEquipementIds()), "Existant")
         );
 
         VBox occupancyCard = new VBox(9.0);
@@ -653,6 +870,10 @@ public class ReservationController {
 
         String tutorValue = resolveTutorValueForEdit(seance.getTuteurId());
         tutorComboBox.setValue(tutorValue);
+        sessionModeComboBox.setValue(mapModeLabel(seance.getMode()));
+        updateOnsiteOptionsVisibility();
+        selectSalleById(seance.getSalleId());
+        selectEquipementsByIds(seance.getEquipementIds());
 
         sessionFormTitleLabel.setText("Modifier une seance");
         sessionFormModeChipLabel.setText("Modification");
@@ -753,6 +974,16 @@ public class ReservationController {
         return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
+    private boolean isAvailable(String status) {
+        String normalizedStatus = status == null ? "" : status.toLowerCase().trim();
+        return STATUS_AVAILABLE.equals(normalizedStatus);
+    }
+
+    private String resolveMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
+    }
+
     private String formatReservationCount(int reservationCount) {
         if (reservationCount <= 0) {
             return "0 reservation";
@@ -800,12 +1031,66 @@ public class ReservationController {
         };
     }
 
+    private String mapModeLabel(String mode) {
+        return Seance.MODE_ONSITE.equals(mode) ? MODE_ONSITE_LABEL : MODE_ONLINE_LABEL;
+    }
+
+    private String buildInfrastructureSummary(Seance seance) {
+        if (seance == null || !seance.isPresentiel()) {
+            return MODE_ONLINE_LABEL;
+        }
+
+        String equipmentSummary = seance.getEquipementIds().isEmpty()
+            ? "sans materiel"
+            : seance.getEquipementIds().size() + " materiel(s)";
+        return MODE_ONSITE_LABEL + " - " + resolveSalleName(seance.getSalleId()) + " - " + equipmentSummary;
+    }
+
+    private String resolveSalleName(Integer salleId) {
+        if (salleId == null || salleId <= 0) {
+            return "Non requis";
+        }
+
+        return availableSalles.stream()
+            .filter(salle -> salle.getIdSalle() == salleId)
+            .map(Salle::getNom)
+            .findFirst()
+            .orElse("Salle #" + salleId);
+    }
+
+    private String resolveEquipementNames(List<Integer> equipementIds) {
+        if (equipementIds == null || equipementIds.isEmpty()) {
+            return "Aucun materiel";
+        }
+
+        List<String> names = equipementIds.stream()
+            .map(this::resolveEquipementName)
+            .toList();
+        return String.join(", ", names);
+    }
+
+    private String resolveEquipementName(Integer equipementId) {
+        if (equipementId == null || equipementId <= 0) {
+            return "Materiel inconnu";
+        }
+
+        return availableEquipements.stream()
+            .filter(equipement -> equipement.getIdEquipement() == equipementId)
+            .map(Equipement::getNom)
+            .findFirst()
+            .orElse("Materiel #" + equipementId);
+    }
+
     private void clearSessionForm() {
         sessionSubjectField.clear();
         sessionStartAtField.clear();
         sessionDurationField.clear();
         sessionCapacityField.clear();
         sessionDescriptionArea.clear();
+        sessionModeComboBox.setValue(MODE_ONLINE_LABEL);
+        sessionRoomComboBox.getSelectionModel().clearSelection();
+        clearEquipmentSelection();
+        updateOnsiteOptionsVisibility();
         selectTemporaryTutor();
     }
 

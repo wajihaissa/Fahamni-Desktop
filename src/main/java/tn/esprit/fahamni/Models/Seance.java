@@ -2,8 +2,13 @@ package tn.esprit.fahamni.Models;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Seance {
+
+    public static final String MODE_ONLINE = "en_ligne";
+    public static final String MODE_ONSITE = "presentiel";
 
     private static final DateTimeFormatter SCHEDULE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -17,6 +22,9 @@ public class Seance {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private int tuteurId;
+    private String mode = MODE_ONLINE;
+    private Integer salleId;
+    private List<Integer> equipementIds = new ArrayList<>();
 
     // Optional display helpers kept for current mock views.
     private String displayTitle;
@@ -136,6 +144,34 @@ public class Seance {
 
     public void setTuteurId(int tuteurId) {
         this.tuteurId = tuteurId;
+    }
+
+    public String getMode() {
+        return mode == null || mode.isBlank() ? MODE_ONLINE : mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode == null || mode.isBlank() ? MODE_ONLINE : mode;
+    }
+
+    public boolean isPresentiel() {
+        return MODE_ONSITE.equals(getMode());
+    }
+
+    public Integer getSalleId() {
+        return salleId;
+    }
+
+    public void setSalleId(Integer salleId) {
+        this.salleId = salleId;
+    }
+
+    public List<Integer> getEquipementIds() {
+        return new ArrayList<>(equipementIds);
+    }
+
+    public void setEquipementIds(List<Integer> equipementIds) {
+        this.equipementIds = equipementIds == null ? new ArrayList<>() : new ArrayList<>(equipementIds);
     }
 
     public String getTitle() {

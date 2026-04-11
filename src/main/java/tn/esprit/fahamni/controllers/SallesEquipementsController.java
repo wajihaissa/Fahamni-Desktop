@@ -643,7 +643,7 @@ public class SallesEquipementsController {
 
     private String buildChoiceNote(String status, String elementName) {
         if (isUsable(status)) {
-            return "Statut: " + elementName + " est disponible. La verification par horaire sera ajoutee avec le module seance.";
+            return "Statut: " + elementName + " est disponible. Les conflits de salle sont verifies lors de la publication de la seance.";
         }
 
         return "Statut: " + elementName + " necessitera une validation admin avant publication de la seance.";

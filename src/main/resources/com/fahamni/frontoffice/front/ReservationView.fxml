@@ -128,6 +128,25 @@
                     </VBox>
                 </HBox>
 
+                <VBox spacing="10.0">
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Mode de seance *" styleClass="form-label"/>
+                            <ComboBox fx:id="sessionModeComboBox" onAction="#handleSessionModeChange" promptText="Choisir le mode" maxWidth="Infinity" styleClass="filter-combo"/>
+                        </VBox>
+                        <VBox fx:id="onsiteSessionOptionsBox" spacing="6.0" HBox.hgrow="ALWAYS" managed="false" visible="false">
+                            <Label text="Salle *" styleClass="form-label"/>
+                            <ComboBox fx:id="sessionRoomComboBox" promptText="Choisir une salle disponible" maxWidth="Infinity" styleClass="filter-combo"/>
+                        </VBox>
+                    </HBox>
+
+                    <VBox fx:id="onsiteEquipmentOptionsBox" spacing="6.0" managed="false" visible="false">
+                        <Label text="Materiel necessaire" styleClass="form-label"/>
+                        <FlowPane fx:id="sessionEquipmentChoicesContainer" hgap="10.0" vgap="8.0" prefWrapLength="780.0"/>
+                        <Label fx:id="infrastructureHintLabel" text="Choisis uniquement le materiel existant et disponible." wrapText="true" styleClass="reservation-section-copy"/>
+                    </VBox>
+                </VBox>
+
                 <VBox spacing="6.0">
                     <Label text="Description *" styleClass="form-label"/>
                     <TextArea fx:id="sessionDescriptionArea" promptText="Minimum 15 caracteres. Decris le contenu, le niveau vise et l'objectif de la seance." prefRowCount="4" styleClass="text-area"/>

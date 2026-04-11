@@ -261,6 +261,9 @@ public class SeanceController {
             buildSelectedInfoRow("Horaire", formatDateTime(selectedSeance.getStartAt()) + " -> " + formatTime(endAt)),
             buildSelectedInfoRow("Duree", selectedSeance.getDurationMin() + " min"),
             buildSelectedInfoRow("Capacite", selectedSeance.getMaxParticipants() + " participants"),
+            buildSelectedInfoRow("Mode", mapModeLabel(selectedSeance.getMode())),
+            buildSelectedInfoRow("Salle", formatSalleReference(selectedSeance)),
+            buildSelectedInfoRow("Materiel", formatEquipementReferences(selectedSeance)),
             buildSelectedInfoRow("Reservations", formatReservationCount(stats.total()))
         );
 
@@ -351,6 +354,26 @@ public class SeanceController {
             case 2 -> "completed";
             default -> "pending";
         };
+    }
+
+    private String mapModeLabel(String mode) {
+        return Seance.MODE_ONSITE.equals(mode) ? "Presentiel" : "En ligne";
+    }
+
+    private String formatSalleReference(Seance seance) {
+        if (seance == null || !seance.isPresentiel() || seance.getSalleId() == null) {
+            return "Non requis";
+        }
+        return "Salle #" + seance.getSalleId();
+    }
+
+    private String formatEquipementReferences(Seance seance) {
+        if (seance == null || !seance.isPresentiel() || seance.getEquipementIds().isEmpty()) {
+            return "Aucun materiel";
+        }
+        return seance.getEquipementIds().stream()
+            .map(id -> "Materiel #" + id)
+            .collect(Collectors.joining(", "));
     }
 
     private boolean isSelected(Seance seance) {

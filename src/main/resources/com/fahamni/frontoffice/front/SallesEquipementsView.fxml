@@ -92,9 +92,9 @@
                 </TabPane>
 
                 <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-note">
-                    <Label text="Integration future" styleClass="infrastructure-note-title"/>
+                    <Label text="Integration seances" styleClass="infrastructure-note-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="L'action utiliser pre-remplira la creation d'une seance quand le module seance sera branche." wrapText="true" styleClass="section-subtitle"/>
+                    <Label text="Les salles et materiels disponibles sont maintenant selectionnables depuis la creation d'une seance presentielle." wrapText="true" styleClass="section-subtitle"/>
                 </HBox>
             </VBox>
 
