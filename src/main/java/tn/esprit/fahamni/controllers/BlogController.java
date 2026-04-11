@@ -691,8 +691,16 @@ public class BlogController {
     // ---- Construction d'une ligne de commentaire ----
     private HBox buildCommentRow(String author, String commentText, boolean isMine,
                                   VBox commentsBox, Button commentBtn) {
+        return buildCommentRow(author, commentText, isMine, commentsBox, commentBtn, false);
+    }
+
+    private HBox buildCommentRow(String author, String commentText, boolean isMine,
+                                  VBox commentsBox, Button commentBtn, boolean isReply) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.TOP_LEFT);
+        if (isReply) {
+            row.setPadding(new Insets(0, 0, 0, 42)); // indentation réponse
+        }
 
         // Avatar avec initiale de l'auteur
         StackPane avatar = new StackPane();
@@ -720,6 +728,65 @@ public class BlogController {
         textLabel.setStyle("-fx-text-fill: #2c3e50; -fx-font-size: 12;");
 
         bubble.getChildren().addAll(nameLabel, textLabel);
+
+        // Bouton Répondre (visible pour tous sauf les réponses déjà imbriquées)
+        if (!isReply) {
+            Button replyBtn = new Button("↩ Répondre");
+            replyBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #64748b; " +
+                "-fx-font-size: 10; -fx-cursor: hand; -fx-padding: 2 0; -fx-underline: false;");
+
+            // Champ de réponse (caché par défaut)
+            HBox replyInput = new HBox(6);
+            replyInput.setAlignment(Pos.CENTER);
+            replyInput.setManaged(false);
+            replyInput.setVisible(false);
+            replyInput.setPadding(new Insets(4, 0, 0, 0));
+
+            TextField replyField = new TextField();
+            replyField.setPromptText("Répondre à " + (author != null ? author : "Anonyme") + "...");
+            replyField.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
+                "-fx-border-radius: 12; -fx-border-color: #3a7bd5; -fx-padding: 5 10; -fx-font-size: 11;");
+            HBox.setHgrow(replyField, Priority.ALWAYS);
+
+            Button sendReply = new Button("→");
+            sendReply.setDisable(true);
+            sendReply.setStyle("-fx-background-color: #3a7bd5; -fx-text-fill: white; " +
+                "-fx-background-radius: 12; -fx-padding: 5 10; -fx-font-size: 11; -fx-cursor: hand;");
+
+            replyField.textProperty().addListener((obs, o, n) ->
+                sendReply.setDisable(n == null || n.trim().isEmpty()));
+
+            String currentUserName2 = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
+            sendReply.setOnAction(e -> {
+                String replyText = replyField.getText().trim();
+                if (replyText.isEmpty()) return;
+                // Construire la ligne de réponse indentée
+                HBox replyRow = buildCommentRow(currentUserName2,
+                    "@" + (author != null ? author : "Anonyme") + " " + replyText,
+                    true, commentsBox, commentBtn, true);
+                // Insérer après ce commentaire
+                int idx = commentsBox.getChildren().indexOf(row);
+                commentsBox.getChildren().add(idx + 1 >= commentsBox.getChildren().size()
+                    ? commentsBox.getChildren().size() : idx + 1, replyRow);
+                replyField.clear();
+                replyInput.setVisible(false);
+                replyInput.setManaged(false);
+                replyBtn.setText("↩ Répondre");
+                long n2 = commentsBox.getChildren().stream().filter(c -> c instanceof HBox).count();
+                commentBtn.setText("💬 " + n2);
+            });
+
+            replyInput.getChildren().addAll(replyField, sendReply);
+            bubble.getChildren().addAll(replyBtn, replyInput);
+
+            replyBtn.setOnAction(e -> {
+                boolean showing = replyInput.isVisible();
+                replyInput.setVisible(!showing);
+                replyInput.setManaged(!showing);
+                replyBtn.setText(showing ? "↩ Répondre" : "✕ Annuler");
+                if (!showing) replyField.requestFocus();
+            });
+        }
 
         if (isMine) {
             // Zone d'édition inline (cachée par défaut)
