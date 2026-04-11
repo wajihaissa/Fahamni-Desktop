@@ -40,6 +40,7 @@ public class QuizController {
     @FXML private Label quizzesTakenValue;
     @FXML private Label averageScoreValue;
     @FXML private Label subjectsMasteredValue;
+    @FXML private Label quizResultsSummaryLabel;
     @FXML private TextField quizSearchField;
 
     private final QuizService quizService = new QuizService();
@@ -75,7 +76,21 @@ public class QuizController {
                         || quiz.getKeyword().toLowerCase(Locale.ROOT).contains(normalizedQuery))
                 .toList();
 
+        updateQuizResultsSummary(filteredQuizzes.size(), normalizedQuery.isBlank());
         renderQuizCards(filteredQuizzes);
+    }
+
+    private void updateQuizResultsSummary(int resultCount, boolean showingAll) {
+        if (quizResultsSummaryLabel == null) {
+            return;
+        }
+
+        if (showingAll) {
+            quizResultsSummaryLabel.setText(resultCount + " quiz available");
+            return;
+        }
+
+        quizResultsSummaryLabel.setText(resultCount + " quiz match your search");
     }
 
     private void seedTestQuizzes() {
