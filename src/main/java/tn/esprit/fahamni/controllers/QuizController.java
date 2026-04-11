@@ -99,38 +99,42 @@ public class QuizController {
         }
 
         for (Quiz quiz : quizzes) {
-            HBox quizCard = new HBox(15);
-            quizCard.getStyleClass().add("quiz-card");
-            quizCard.setAlignment(Pos.CENTER_LEFT);
-            quizCard.setPadding(new Insets(14));
-            quizCard.setPrefWidth(320);
-            quizCard.setMaxWidth(320);
-
-            VBox cardBody = new VBox(6);
-            cardBody.setAlignment(Pos.CENTER_LEFT);
-            cardBody.setPrefWidth(220);
-            Label titleLabel = new Label(quiz.getTitre());
-            titleLabel.getStyleClass().add("quiz-title");
-            Label infoLabel = new Label(quiz.getQuestions().size() + " questions • " + (quiz.getQuizResults().size() > 0 ? "Résultats disponibles" : "Pas encore joué"));
-            infoLabel.getStyleClass().add("quiz-info");
-            Label descriptionLabel = new Label("Un quiz rapide sur le thème '" + quiz.getKeyword() + "'.");
-            descriptionLabel.setWrapText(true);
-            descriptionLabel.getStyleClass().add("quiz-description");
-            cardBody.getChildren().addAll(titleLabel, infoLabel, descriptionLabel);
-            HBox.setHgrow(cardBody, Priority.ALWAYS);
-
-            VBox actionBox = new VBox(10);
-            actionBox.setAlignment(Pos.CENTER);
-            Label ratingLabel = new Label("★ " + buildRatingLabel(quiz));
-            ratingLabel.getStyleClass().add("quiz-rating");
-            Button startButton = new Button("Start Quiz");
-            startButton.getStyleClass().add("start-quiz-button");
-            startButton.setOnAction(event -> handleStartQuiz(quiz));
-            actionBox.getChildren().addAll(ratingLabel, startButton);
-
-            quizCard.getChildren().addAll(cardBody, actionBox);
-            availableQuizzesBox.getChildren().add(quizCard);
+            availableQuizzesBox.getChildren().add(buildQuizCard(quiz));
         }
+    }
+
+    private HBox buildQuizCard(Quiz quiz) {
+        HBox quizCard = new HBox(15);
+        quizCard.getStyleClass().add("quiz-card");
+        quizCard.setAlignment(Pos.CENTER_LEFT);
+        quizCard.setPadding(new Insets(14));
+        quizCard.setPrefWidth(320);
+        quizCard.setMaxWidth(320);
+
+        VBox cardBody = new VBox(6);
+        cardBody.setAlignment(Pos.CENTER_LEFT);
+        cardBody.setPrefWidth(220);
+        Label titleLabel = new Label(quiz.getTitre());
+        titleLabel.getStyleClass().add("quiz-title");
+        Label infoLabel = new Label(quiz.getQuestions().size() + " questions • " + (quiz.getQuizResults().size() > 0 ? "Résultats disponibles" : "Pas encore joué"));
+        infoLabel.getStyleClass().add("quiz-info");
+        Label descriptionLabel = new Label("Un quiz rapide sur le thème '" + quiz.getKeyword() + "'.");
+        descriptionLabel.setWrapText(true);
+        descriptionLabel.getStyleClass().add("quiz-description");
+        cardBody.getChildren().addAll(titleLabel, infoLabel, descriptionLabel);
+        HBox.setHgrow(cardBody, Priority.ALWAYS);
+
+        VBox actionBox = new VBox(10);
+        actionBox.setAlignment(Pos.CENTER);
+        Label ratingLabel = new Label("★ " + buildRatingLabel(quiz));
+        ratingLabel.getStyleClass().add("quiz-rating");
+        Button startButton = new Button("Start Quiz");
+        startButton.getStyleClass().add("start-quiz-button");
+        startButton.setOnAction(event -> handleStartQuiz(quiz));
+        actionBox.getChildren().addAll(ratingLabel, startButton);
+
+        quizCard.getChildren().addAll(cardBody, actionBox);
+        return quizCard;
     }
 
     private void renderRecentResults(List<Quiz> quizzes) {
@@ -147,39 +151,47 @@ public class QuizController {
                 .flatMap(q -> q.getQuizResults().stream())
                 .sorted((r1, r2) -> r2.getCompletedAt().compareTo(r1.getCompletedAt()))
                 .limit(5)
-                .forEach(result -> {
-                    HBox resultCard = new HBox(15);
-                    resultCard.getStyleClass().add("result-card");
-                    resultCard.setAlignment(Pos.CENTER_LEFT);
-                    resultCard.setPadding(new Insets(14));
-
-                    VBox resultBody = new VBox(4);
-                    resultBody.setAlignment(Pos.CENTER_LEFT);
-                    Label resultTitle = new Label(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz inconnu");
-                    resultTitle.getStyleClass().add("result-title");
-                    Label resultDate = new Label("Terminé le " + (result.getCompletedAt() != null ? result.getCompletedAt().toString().substring(0, 10) : "--"));
-                    resultDate.getStyleClass().add("result-date");
-                    resultBody.getChildren().addAll(resultTitle, resultDate);
-                    HBox.setHgrow(resultBody, Priority.ALWAYS);
-
-                    VBox resultScore = new VBox(2);
-                    resultScore.setAlignment(Pos.CENTER);
-                    Label scoreLabel = new Label(result.getScore() + "/" + result.getTotalQuestions() + " (" + formatPercentage(result.getPercentage()) + ")");
-                    scoreLabel.getStyleClass().add("result-score");
-                    Label gradeLabel = new Label(result.getPassed() != null && result.getPassed() ? "Passed" : "Try again");
-                    gradeLabel.getStyleClass().add("result-grade");
-                    resultScore.getChildren().addAll(scoreLabel, gradeLabel);
-
-                    Button reviewButton = new Button("Review");
-                    reviewButton.getStyleClass().add("review-button");
-                    reviewButton.setOnAction(event -> showResultDetails(result));
-
-                    resultCard.getChildren().addAll(resultBody, resultScore, reviewButton);
-                    recentResultsBox.getChildren().add(resultCard);
-                });
+                .forEach(result -> recentResultsBox.getChildren().add(buildResultCard(result)));
 
         if (recentResultsBox.getChildren().isEmpty()) {
             Label emptyLabel = new Label("Aucun résultat récent enregistré.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("result-empty-message");
+            recentResultsBox.getChildren().add(emptyLabel);
+        }
+    }
+
+    private HBox buildResultCard(QuizResult result) {
+        HBox resultCard = new HBox(15);
+        resultCard.getStyleClass().add("result-card");
+        resultCard.setAlignment(Pos.CENTER_LEFT);
+        resultCard.setPadding(new Insets(14));
+
+        VBox resultBody = new VBox(4);
+        resultBody.setAlignment(Pos.CENTER_LEFT);
+        Label resultTitle = new Label(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz inconnu");
+        resultTitle.getStyleClass().add("result-title");
+        Label resultDate = new Label("Terminé le " + (result.getCompletedAt() != null ? result.getCompletedAt().toString().substring(0, 10) : "--"));
+        resultDate.getStyleClass().add("result-date");
+        resultBody.getChildren().addAll(resultTitle, resultDate);
+        HBox.setHgrow(resultBody, Priority.ALWAYS);
+
+        VBox resultScore = new VBox(2);
+        resultScore.setAlignment(Pos.CENTER);
+        Label scoreLabel = new Label(result.getScore() + "/" + result.getTotalQuestions() + " (" + formatPercentage(result.getPercentage()) + ")");
+        scoreLabel.getStyleClass().add("result-score");
+        Label gradeLabel = new Label(result.getPassed() != null && result.getPassed() ? "Passed" : "Try again");
+        gradeLabel.getStyleClass().add("result-grade");
+        resultScore.getChildren().addAll(scoreLabel, gradeLabel);
+
+        Button reviewButton = new Button("Review");
+        reviewButton.getStyleClass().add("review-button");
+        reviewButton.setOnAction(event -> showResultDetails(result));
+
+        resultCard.getChildren().addAll(resultBody, resultScore, reviewButton);
+        return resultCard;
+    }
+
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("result-empty-message");
             recentResultsBox.getChildren().add(emptyLabel);
@@ -349,6 +361,12 @@ public class QuizController {
                 "Leaderboard",
                 "Top 5 des meilleurs scores :",
                 content.toString());
+    }
+
+    @FXML
+    private void handleRefreshQuizzes() {
+        refreshQuizData();
+        showAlert(Alert.AlertType.INFORMATION, "Actualisation", "La liste des quiz a été rafraîchie.", null);
     }
 
     private void showResultDetails(QuizResult result) {

@@ -20,6 +20,7 @@
                 <Label text="Test your knowledge with our comprehensive quiz collection." styleClass="section-subtitle"/>
             </VBox>
             <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="Refresh" styleClass="action-button secondary" onAction="#handleRefreshQuizzes"/>
             <Button text="Leaderboard" styleClass="action-button secondary" onAction="#handleShowLeaderboard"/>
         </HBox>
 
