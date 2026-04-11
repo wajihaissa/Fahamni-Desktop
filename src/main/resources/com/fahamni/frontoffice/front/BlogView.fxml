@@ -5,6 +5,7 @@
 <?import javafx.scene.layout.*?>
 
 <ScrollPane fitToWidth="true"
+            hbarPolicy="NEVER"
             focusTraversable="false"
             styleClass="blog-scroll"
             xmlns="http://javafx.com/javafx/17"

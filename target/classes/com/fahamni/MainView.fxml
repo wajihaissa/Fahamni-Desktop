@@ -31,7 +31,18 @@
                 <Button fx:id="plannerButton" maxWidth="Infinity" text="Planner" styleClass="sidebar-button" onAction="#showPlanner"/>
                 <Button fx:id="messengerButton" maxWidth="Infinity" text="Messagerie" styleClass="sidebar-button" onAction="#showMessenger"/>
                 <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" styleClass="sidebar-button" onAction="#showQuiz"/>
-                <Button fx:id="blogButton" maxWidth="Infinity" text="Blog" styleClass="sidebar-button" onAction="#showBlog"/>
+                <StackPane>
+                    <Button fx:id="blogButton" maxWidth="Infinity" text="Blog" styleClass="sidebar-button" onAction="#showBlog"/>
+                    <Label fx:id="blogNotifBadge" text=""
+                           style="-fx-background-color: #e74c3c; -fx-text-fill: white;
+                                  -fx-font-size: 10; -fx-font-weight: bold;
+                                  -fx-background-radius: 10; -fx-padding: 2 6;
+                                  -fx-min-width: 18; -fx-alignment: center;"
+                           StackPane.alignment="CENTER_RIGHT"
+                           managed="false" visible="false">
+                        <StackPane.margin><Insets right="10"/></StackPane.margin>
+                    </Label>
+                </StackPane>
             </VBox>
 
             <VBox alignment="BOTTOM_CENTER" spacing="10.0" VBox.vgrow="ALWAYS" styleClass="sidebar-footer">

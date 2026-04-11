@@ -362,11 +362,9 @@ public class BlogController {
         long commentsCount = interactions.stream()
                 .filter(i -> i.getCommentaire() != null && !i.getCommentaire().isEmpty()).count();
 
-        // Identité du user connecté
+        // Identité du user connecté — toujours résoudre le vrai ID en BD
         tn.esprit.fahamni.Models.User currentUser = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
-        int currentUserId = currentUser != null ? currentUser.getId() : 0;
-        // Pour les opérations DB, utiliser au minimum id=1 si id=0 (user mock)
-        int dbUserId = currentUserId > 0 ? currentUserId : 1;
+        int dbUserId = resolveCurrentUserId();
         String currentUserName = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
 
         // DEBUG : afficher les valeurs pour diagnostiquer isMyArticle
@@ -386,10 +384,13 @@ public class BlogController {
 
         Separator sepAct = new Separator(); sepAct.setStyle("-fx-opacity: 0.15;");
         card.getChildren().add(sepAct);
+        card.setMinWidth(0);
 
+        // Ligne 1 : réactions + commentaires
         HBox actBar = new HBox(5);
-        actBar.setPadding(new Insets(6, 10, 8, 10));
+        actBar.setPadding(new Insets(6, 10, 2, 10));
         actBar.setAlignment(Pos.CENTER_LEFT);
+        actBar.setMinWidth(0);
 
         // ── Réactions multiples 👍 ❤️ 😮 ──
         int userReaction = blogService.getUserReaction(blog.getId(), dbUserId);
@@ -476,6 +477,14 @@ public class BlogController {
         });
 
         // Boutons Modifier et Supprimer — seulement pour l'auteur de l'article
+        // Ligne 2 : partage + lire + modifier/supprimer
+        HBox actBar2 = new HBox(5);
+        actBar2.setPadding(new Insets(2, 10, 8, 10));
+        actBar2.setAlignment(Pos.CENTER_LEFT);
+        actBar2.setMinWidth(0);
+
+        Region actSpacer2 = new Region(); HBox.setHgrow(actSpacer2, Priority.ALWAYS);
+
         if (isMyArticle) {
             Button editBtn = new Button("\u270F");
             styleCompactBtn(editBtn, "#f5f0ff", "#8e44ad");
@@ -495,11 +504,16 @@ public class BlogController {
                     }
                 });
             });
-            actBar.getChildren().addAll(btn1, btn2, btn3, commentBtn, actSpacer, shareBtn, editBtn, deleteArticleBtn, readBtn);
+            actBar.getChildren().addAll(btn1, btn2, btn3, actSpacer, commentBtn);
+            actBar2.getChildren().addAll(shareBtn, editBtn, deleteArticleBtn, actSpacer2, readBtn);
         } else {
-            actBar.getChildren().addAll(btn1, btn2, btn3, commentBtn, actSpacer, shareBtn, readBtn);
+            actBar.getChildren().addAll(btn1, btn2, btn3, actSpacer, commentBtn);
+            actBar2.getChildren().addAll(shareBtn, actSpacer2, readBtn);
         }
-        card.getChildren().add(actBar);
+
+        VBox actionsBox = new VBox(0, actBar, actBar2);
+        actionsBox.setMinWidth(0);
+        card.getChildren().add(actionsBox);
 
         // ── Section commentaires (cachée par défaut) ──
 
