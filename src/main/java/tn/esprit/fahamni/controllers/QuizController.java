@@ -5,6 +5,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -25,7 +26,7 @@ import java.util.Optional;
 
 public class QuizController {
 
-    @FXML private VBox availableQuizzesBox;
+    @FXML private FlowPane availableQuizzesBox;
     @FXML private VBox recentResultsBox;
     @FXML private Label quizzesTakenValue;
     @FXML private Label averageScoreValue;

@@ -36,7 +36,7 @@
 
         <VBox spacing="15.0" styleClass="available-quizzes">
             <Label text="Available Quizzes" styleClass="section-title"/>
-            <VBox fx:id="availableQuizzesBox" spacing="10.0"/>
+            <FlowPane fx:id="availableQuizzesBox" hgap="20.0" vgap="20.0" prefWrapLength="940.0"/>
         </VBox>
 
         <VBox spacing="15.0" styleClass="recent-results">
