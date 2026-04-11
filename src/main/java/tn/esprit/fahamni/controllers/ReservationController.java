@@ -34,6 +34,8 @@ import java.util.Optional;
 public class ReservationController {
 
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
+    private static final String SECTION_ADD_SESSION = "Ajouter une seance";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
@@ -58,6 +60,18 @@ public class ReservationController {
 
     @FXML
     private ComboBox<String> tutorComboBox;
+
+    @FXML
+    private ComboBox<String> sectionMenuComboBox;
+
+    @FXML
+    private VBox sessionSearchPanel;
+
+    @FXML
+    private VBox sessionFormPanel;
+
+    @FXML
+    private VBox sessionListPanel;
 
     @FXML
     private TextField sessionSearchField;
@@ -121,6 +135,8 @@ public class ReservationController {
             tutorComboBox.setValue(tutorComboBox.getItems().get(0));
         }
 
+        sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_ADD_SESSION);
+        sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
         sessionSearchModeComboBox.getItems().setAll(seanceSearchService.getAvailableSearchStatuses());
         sessionSearchModeComboBox.setValue("Toutes les seances");
         sessionsPerPageComboBox.getItems().setAll(SESSION_PAGE_SIZE_OPTIONS);
@@ -129,6 +145,16 @@ public class ReservationController {
         resetEditMode();
         hideFeedback();
         loadSessionDashboard();
+        showAvailableSessionsSection();
+    }
+
+    @FXML
+    private void handleChangeWorkspaceSection() {
+        if (SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
+            showAddSessionSection();
+        } else {
+            showAvailableSessionsSection();
+        }
     }
 
     @FXML
@@ -200,6 +226,7 @@ public class ReservationController {
             clearSessionForm();
             resetEditMode();
             loadSessionDashboard();
+            showAvailableSessionsSection();
             showFeedback(
                 editing ? "La seance a ete modifiee avec succes." : successMessage,
                 true
@@ -582,6 +609,7 @@ public class ReservationController {
         editingSessionLabel.setManaged(true);
         editingSessionLabel.setVisible(true);
         hideFeedback();
+        showAddSessionSection();
     }
 
     private void confirmDeleteSession(Seance seance) {
@@ -738,6 +766,32 @@ public class ReservationController {
         editingSessionLabel.setText("");
         editingSessionLabel.setManaged(false);
         editingSessionLabel.setVisible(false);
+    }
+
+    private void showAvailableSessionsSection() {
+        if (sectionMenuComboBox != null && !SECTION_AVAILABLE_SESSIONS.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
+        }
+        setSectionVisible(sessionSearchPanel, true);
+        setSectionVisible(sessionListPanel, true);
+        setSectionVisible(sessionFormPanel, false);
+    }
+
+    private void showAddSessionSection() {
+        if (sectionMenuComboBox != null && !SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_ADD_SESSION);
+        }
+        setSectionVisible(sessionSearchPanel, false);
+        setSectionVisible(sessionListPanel, false);
+        setSectionVisible(sessionFormPanel, true);
+    }
+
+    private void setSectionVisible(VBox section, boolean visible) {
+        if (section == null) {
+            return;
+        }
+        section.setManaged(visible);
+        section.setVisible(visible);
     }
 
     private String resolveTutorValueForEdit(int tutorId) {

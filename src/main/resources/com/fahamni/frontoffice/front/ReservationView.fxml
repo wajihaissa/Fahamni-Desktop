@@ -22,10 +22,9 @@
                 </VBox>
 
                 <VBox alignment="TOP_RIGHT" spacing="10.0">
-                    <Label text="Frontoffice" styleClass="workspace-chip"/>
                     <VBox alignment="CENTER_RIGHT" spacing="6.0">
                         <Label text="MENU DE LA SECTION" styleClass="workspace-label"/>
-                        <ComboBox value="Trouver un tuteur" styleClass="filter-combo workspace-menu-combo" prefWidth="210.0"/>
+                        <ComboBox fx:id="sectionMenuComboBox" onAction="#handleChangeWorkspaceSection" styleClass="filter-combo workspace-menu-combo" prefWidth="210.0"/>
                     </VBox>
                 </VBox>
             </HBox>
@@ -73,7 +72,7 @@
             </FlowPane>
         </VBox>
 
-        <VBox spacing="12.0" styleClass="reservation-search-panel">
+        <VBox fx:id="sessionSearchPanel" spacing="12.0" styleClass="reservation-search-panel">
             <Label text="Rechercher dans les seances en base" styleClass="reservation-search-title"/>
             <Label text="Cette liste affiche les seances presentes dans la base de donnees. Tu peux filtrer par mot-cle, tuteur, date ou statut." styleClass="reservation-section-copy"/>
 
@@ -85,7 +84,7 @@
             </HBox>
         </VBox>
 
-        <VBox spacing="14.0" styleClass="reservation-section-panel">
+        <VBox fx:id="sessionFormPanel" spacing="14.0" styleClass="reservation-section-panel">
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label fx:id="sessionFormTitleLabel" text="Publier une seance" styleClass="subsection-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
@@ -146,7 +145,7 @@
             </VBox>
         </VBox>
 
-        <VBox spacing="14.0" styleClass="reservation-section-panel">
+        <VBox fx:id="sessionListPanel" spacing="14.0" styleClass="reservation-section-panel">
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label text="Catalogue des seances disponibles" styleClass="subsection-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
