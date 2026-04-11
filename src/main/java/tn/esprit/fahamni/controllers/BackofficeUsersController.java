@@ -130,6 +130,17 @@ public class BackofficeUsersController {
         showFeedback(result.getMessage(), result.isSuccess());
     }
 
+    @FXML
+    private void handleRefreshUsers() {
+        hideFeedback();
+
+        OperationResult result = userService.refreshUsers();
+        usersTable.getSelectionModel().clearSelection();
+        clearForm();
+        usersTable.refresh();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
     private void populateForm(AdminUser user) {
         if (user == null) {
             return;
