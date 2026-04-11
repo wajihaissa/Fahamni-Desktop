@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.utils.SceneManager;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
@@ -15,6 +16,15 @@ public class MainController {
 
     @FXML
     private Label pageTitle;
+
+    @FXML
+    private Label profileAvatarLabel;
+
+    @FXML
+    private Label profileNameLabel;
+
+    @FXML
+    private Label profileRoleLabel;
 
     @FXML
     private Button dashboardButton;
@@ -40,6 +50,7 @@ public class MainController {
     @FXML
     private void initialize() {
         System.out.println("MainController initialized");
+        configureProfileCard();
         showDashboard();
     }
 
@@ -89,10 +100,17 @@ public class MainController {
     @FXML
     private void handleLogout() {
         try {
+            TemporaryUserContext.resetToStudent();
             Main.showLogin();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void configureProfileCard() {
+        profileAvatarLabel.setText(TemporaryUserContext.getCurrentUserInitials());
+        profileNameLabel.setText(TemporaryUserContext.getCurrentUserName());
+        profileRoleLabel.setText(TemporaryUserContext.getCurrentRoleLabel());
     }
 
     private void loadView(String fxmlFile, String title) {

@@ -13,7 +13,7 @@ public class MockTutorDirectoryService {
     public MockTutorDirectoryService() {
         tutorsById.put(3, "Ahmed Ben Ali");
         tutorsById.put(8, "Sarah Mansour");
-        tutorsById.put(9, "Leila Khemiri");
+        tutorsById.put(TemporaryUserContext.getCurrentTutorId(), TemporaryUserContext.getCurrentTutorName());
     }
 
     public int resolveTutorId(String value) {

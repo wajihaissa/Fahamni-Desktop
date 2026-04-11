@@ -56,10 +56,10 @@
                 <Button text="Alertes" styleClass="topbar-pill-button"/>
                 <Button text="Compte" styleClass="topbar-pill-button"/>
                 <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="topbar-profile-card">
-                    <Label text="FS" styleClass="profile-avatar"/>
+                    <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar"/>
                     <VBox spacing="2.0">
-                        <Label text="Etudiant Fahamni" styleClass="profile-name"/>
-                        <Label text="Espace Etudiant" styleClass="profile-role"/>
+                        <Label fx:id="profileNameLabel" text="Etudiant Fahamni" styleClass="profile-name"/>
+                        <Label fx:id="profileRoleLabel" text="Espace Etudiant" styleClass="profile-role"/>
                     </VBox>
                 </HBox>
             </HBox>

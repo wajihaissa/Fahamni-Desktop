@@ -166,5 +166,17 @@
                 <ComboBox fx:id="sessionsPerPageComboBox" onAction="#handleChangeSessionsPageSize" prefWidth="92.0" styleClass="pagination-page-size-combo"/>
             </HBox>
         </VBox>
+
+        <VBox fx:id="reservationRequestsPanel" managed="false" visible="false" spacing="14.0" styleClass="reservation-section-panel">
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Demandes de reservation recues" styleClass="subsection-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="tutorReservationRequestsSummaryLabel" text="0 demande" styleClass="workspace-chip workspace-chip-muted"/>
+            </HBox>
+
+            <Label text="Le tuteur peut accepter ici les reservations en attente pour ses propres seances." styleClass="reservation-section-copy" wrapText="true"/>
+            <Label fx:id="tutorReservationRequestsFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
+            <VBox fx:id="tutorReservationRequestsContainer" spacing="12.0"/>
+        </VBox>
     </VBox>
 </ScrollPane>

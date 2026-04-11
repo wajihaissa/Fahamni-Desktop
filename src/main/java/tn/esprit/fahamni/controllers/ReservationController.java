@@ -6,7 +6,9 @@ import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
+import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SeanceService;
+import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.utils.OperationResult;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -37,7 +39,7 @@ public class ReservationController {
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
     private static final String SECTION_ADD_SESSION = "Ajouter une seance";
-    private static final int CURRENT_STUDENT_ID = 5;
+    private static final String SECTION_RESERVATION_REQUESTS = "Demandes de reservation";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
@@ -115,6 +117,18 @@ public class ReservationController {
     private Label reservationActionFeedbackLabel;
 
     @FXML
+    private VBox reservationRequestsPanel;
+
+    @FXML
+    private Label tutorReservationRequestsSummaryLabel;
+
+    @FXML
+    private Label tutorReservationRequestsFeedbackLabel;
+
+    @FXML
+    private VBox tutorReservationRequestsContainer;
+
+    @FXML
     private HBox sessionPaginationBar;
 
     @FXML
@@ -136,11 +150,9 @@ public class ReservationController {
     private void initialize() {
         tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
         tutorComboBox.setEditable(true);
-        if (!tutorComboBox.getItems().isEmpty()) {
-            tutorComboBox.setValue(tutorComboBox.getItems().get(0));
-        }
+        selectTemporaryTutor();
 
-        sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_ADD_SESSION);
+        configureWorkspaceSections();
         sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
         sessionSearchModeComboBox.getItems().setAll(seanceSearchService.getAvailableSearchStatuses());
         sessionSearchModeComboBox.setValue("Toutes les seances");
@@ -150,6 +162,7 @@ public class ReservationController {
         resetEditMode();
         hideFeedback();
         hideReservationActionFeedback();
+        hideTutorReservationRequestsFeedback();
         loadSessionDashboard();
         showAvailableSessionsSection();
     }
@@ -158,6 +171,8 @@ public class ReservationController {
     private void handleChangeWorkspaceSection() {
         if (SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
             showAddSessionSection();
+        } else if (SECTION_RESERVATION_REQUESTS.equals(sectionMenuComboBox.getValue())) {
+            showReservationRequestsSection();
         } else {
             showAvailableSessionsSection();
         }
@@ -395,15 +410,34 @@ public class ReservationController {
         deleteButton.getStyleClass().addAll("action-button", "danger");
         deleteButton.setOnAction(event -> confirmDeleteSession(seance));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer, reserveButton, detailsButton, editButton, deleteButton);
+        actionRow.getChildren().addAll(idChip, actionSpacer);
+        if (TemporaryUserContext.isCurrentStudent()) {
+            actionRow.getChildren().add(reserveButton);
+        }
+        actionRow.getChildren().add(detailsButton);
+        if (canManageSession(seance)) {
+            actionRow.getChildren().addAll(editButton, deleteButton);
+        }
 
         card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
         return card;
     }
 
+    private boolean canManageSession(Seance seance) {
+        return TemporaryUserContext.isCurrentTutor()
+            && seance != null
+            && seance.getTuteurId() == TemporaryUserContext.getCurrentTutorId();
+    }
+
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
         Button reserveButton = new Button("Reserver");
         reserveButton.getStyleClass().addAll("action-button", "primary");
+
+        if (!TemporaryUserContext.isCurrentStudent()) {
+            reserveButton.setText("Compte etudiant requis");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
 
         if (seance.getStatus() != 1) {
             reserveButton.setText("Indisponible");
@@ -417,7 +451,7 @@ public class ReservationController {
             return reserveButton;
         }
 
-        if (reservationService.hasActiveReservation(seance.getId(), CURRENT_STUDENT_ID)) {
+        if (reservationService.hasActiveReservation(seance.getId(), TemporaryUserContext.getCurrentStudentId())) {
             reserveButton.setText("Deja reserve");
             reserveButton.setDisable(true);
             return reserveButton;
@@ -428,10 +462,91 @@ public class ReservationController {
     }
 
     private void reserveSession(Seance seance) {
-        OperationResult result = reservationService.reserveSeance(seance, CURRENT_STUDENT_ID);
+        OperationResult result = reservationService.reserveSeance(seance, TemporaryUserContext.getCurrentStudentId());
         loadSessionDashboard();
         showAvailableSessionsSection();
         showReservationActionFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void loadTutorReservationRequests() {
+        tutorReservationRequestsContainer.getChildren().clear();
+
+        List<TutorReservationRequest> requests = reservationService.getTutorReservationRequests(
+            TemporaryUserContext.getCurrentTutorId()
+        );
+        long pendingCount = requests.stream().filter(TutorReservationRequest::isPending).count();
+        tutorReservationRequestsSummaryLabel.setText(formatTutorRequestsSummary(requests.size(), pendingCount));
+
+        if (requests.isEmpty()) {
+            Label emptyLabel = new Label("Aucune demande de reservation pour vos seances pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            tutorReservationRequestsContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        requests.stream()
+            .map(this::buildTutorReservationRequestCard)
+            .forEach(tutorReservationRequestsContainer.getChildren()::add);
+    }
+
+    private VBox buildTutorReservationRequestCard(TutorReservationRequest request) {
+        VBox card = new VBox(10.0);
+        card.getStyleClass().add("reservation-form-shell");
+
+        HBox headerRow = new HBox(10.0);
+        Label titleLabel = new Label(safeText(request.seanceTitle()));
+        titleLabel.getStyleClass().add("subsection-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label statusChip = new Label(mapReservationRequestStatusLabel(request.status()));
+        statusChip.getStyleClass().addAll("reservation-status", mapReservationRequestStatusStyle(request.status()));
+        headerRow.getChildren().addAll(titleLabel, spacer, statusChip);
+
+        Label studentLabel = new Label(
+            "Etudiant: " + safeText(request.participantName())
+                + " | Email: " + safeText(request.participantEmail())
+                + " | Demande envoyee: " + formatDateTimeOrPlaceholder(request.reservedAt())
+        );
+        studentLabel.setWrapText(true);
+        studentLabel.getStyleClass().add("reservation-section-copy");
+
+        Label sessionLabel = new Label(
+            "Seance: " + formatDateTimeOrPlaceholder(request.seanceStartAt())
+                + " | " + request.durationMin() + " min"
+                + " | capacite " + request.maxParticipants()
+                + " | ID reservation #" + request.id()
+        );
+        sessionLabel.setWrapText(true);
+        sessionLabel.getStyleClass().add("reservation-section-copy");
+
+        HBox actionRow = new HBox(10.0);
+        Label idChip = new Label("Seance #" + request.seanceId());
+        idChip.getStyleClass().add("workspace-chip");
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+        Button acceptButton = new Button(request.isPending() ? "Accepter" : mapReservationRequestStatusLabel(request.status()));
+        acceptButton.getStyleClass().addAll("action-button", request.isPending() ? "primary" : "secondary");
+        acceptButton.setDisable(!request.isPending());
+        acceptButton.setOnAction(event -> acceptTutorReservationRequest(request));
+
+        actionRow.getChildren().addAll(idChip, actionSpacer, acceptButton);
+        card.getChildren().addAll(headerRow, studentLabel, sessionLabel, actionRow);
+        return card;
+    }
+
+    private void acceptTutorReservationRequest(TutorReservationRequest request) {
+        hideTutorReservationRequestsFeedback();
+        OperationResult result = reservationService.acceptReservation(
+            request.id(),
+            TemporaryUserContext.getCurrentTutorId()
+        );
+        loadSessionDashboard();
+        loadTutorReservationRequests();
+        showTutorReservationRequestsFeedback(result.getMessage(), result.isSuccess());
     }
 
     private void showSessionDetails(Seance seance, ReservationStats reservationStats) {
@@ -542,7 +657,10 @@ public class ReservationController {
             updatedAtLabel.getStyleClass().add("session-detail-muted");
             footer.getChildren().add(updatedAtLabel);
         }
-        footer.getChildren().addAll(footerSpacer, editActionButton);
+        footer.getChildren().add(footerSpacer);
+        if (canManageSession(seance)) {
+            footer.getChildren().add(editActionButton);
+        }
 
         root.getChildren().addAll(header, metrics, occupancyCard, descriptionBox, footer);
         return root;
@@ -631,6 +749,12 @@ public class ReservationController {
     }
 
     private void startEditingSession(Seance seance) {
+        if (!canManageSession(seance)) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback("Seul le tuteur proprietaire peut modifier cette seance.", false);
+            return;
+        }
+
         editingSessionId = seance.getId();
         sessionSubjectField.setText(seance.getMatiere());
         sessionStartAtField.setText(formatDateTime(seance.getStartAt()));
@@ -654,6 +778,12 @@ public class ReservationController {
     }
 
     private void confirmDeleteSession(Seance seance) {
+        if (!canManageSession(seance)) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback("Seul le tuteur proprietaire peut supprimer cette seance.", false);
+            return;
+        }
+
         ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
         ButtonType deleteButton = new ButtonType("Supprimer", ButtonBar.ButtonData.OK_DONE);
 
@@ -787,17 +917,35 @@ public class ReservationController {
         };
     }
 
+    private String mapReservationRequestStatusLabel(int status) {
+        return switch (status) {
+            case ReservationService.STATUS_ACCEPTED -> "Acceptee";
+            case ReservationService.STATUS_PAID -> "Payee";
+            default -> "En attente";
+        };
+    }
+
+    private String mapReservationRequestStatusStyle(int status) {
+        return switch (status) {
+            case ReservationService.STATUS_ACCEPTED -> "confirmed";
+            case ReservationService.STATUS_PAID -> "completed";
+            default -> "pending";
+        };
+    }
+
+    private String formatTutorRequestsSummary(int totalRequests, long pendingRequests) {
+        String totalLabel = totalRequests <= 1 ? totalRequests + " demande" : totalRequests + " demandes";
+        String pendingLabel = pendingRequests <= 1 ? pendingRequests + " en attente" : pendingRequests + " en attente";
+        return totalLabel + " | " + pendingLabel;
+    }
+
     private void clearSessionForm() {
         sessionSubjectField.clear();
         sessionStartAtField.clear();
         sessionDurationField.clear();
         sessionCapacityField.clear();
         sessionDescriptionArea.clear();
-        if (!tutorComboBox.getItems().isEmpty()) {
-            tutorComboBox.setValue(tutorComboBox.getItems().get(0));
-        } else {
-            tutorComboBox.setValue(null);
-        }
+        selectTemporaryTutor();
     }
 
     private void resetEditMode() {
@@ -816,15 +964,66 @@ public class ReservationController {
         setSectionVisible(sessionSearchPanel, true);
         setSectionVisible(sessionListPanel, true);
         setSectionVisible(sessionFormPanel, false);
+        setSectionVisible(reservationRequestsPanel, false);
     }
 
     private void showAddSessionSection() {
+        if (!TemporaryUserContext.isCurrentTutor()) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback("Connectez-vous avec le compte tuteur pour ajouter une seance.", false);
+            return;
+        }
+
         if (sectionMenuComboBox != null && !SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
             sectionMenuComboBox.setValue(SECTION_ADD_SESSION);
         }
         setSectionVisible(sessionSearchPanel, false);
         setSectionVisible(sessionListPanel, false);
         setSectionVisible(sessionFormPanel, true);
+        setSectionVisible(reservationRequestsPanel, false);
+    }
+
+    private void showReservationRequestsSection() {
+        if (!TemporaryUserContext.isCurrentTutor()) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback("Connectez-vous avec le compte tuteur pour consulter les demandes.", false);
+            return;
+        }
+
+        if (sectionMenuComboBox != null && !SECTION_RESERVATION_REQUESTS.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_RESERVATION_REQUESTS);
+        }
+
+        hideTutorReservationRequestsFeedback();
+        setSectionVisible(sessionSearchPanel, false);
+        setSectionVisible(sessionListPanel, false);
+        setSectionVisible(sessionFormPanel, false);
+        setSectionVisible(reservationRequestsPanel, true);
+        loadTutorReservationRequests();
+    }
+
+    private void configureWorkspaceSections() {
+        if (TemporaryUserContext.isCurrentTutor()) {
+            sectionMenuComboBox.getItems().setAll(
+                SECTION_AVAILABLE_SESSIONS,
+                SECTION_ADD_SESSION,
+                SECTION_RESERVATION_REQUESTS
+            );
+            return;
+        }
+
+        sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS);
+    }
+
+    private void selectTemporaryTutor() {
+        String temporaryTutorName = tutorDirectoryService.getTutorDisplayName(TemporaryUserContext.getCurrentTutorId());
+        if (tutorComboBox.getItems().contains(temporaryTutorName)) {
+            tutorComboBox.setValue(temporaryTutorName);
+        } else if (!tutorComboBox.getItems().isEmpty()) {
+            tutorComboBox.setValue(tutorComboBox.getItems().get(0));
+        } else {
+            tutorComboBox.setValue(null);
+        }
     }
 
     private void setSectionVisible(VBox section, boolean visible) {
@@ -873,6 +1072,20 @@ public class ReservationController {
         reservationActionFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
         reservationActionFeedbackLabel.setManaged(false);
         reservationActionFeedbackLabel.setVisible(false);
+    }
+
+    private void showTutorReservationRequestsFeedback(String message, boolean success) {
+        tutorReservationRequestsFeedbackLabel.setText(message);
+        tutorReservationRequestsFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", success ? "success" : "error");
+        tutorReservationRequestsFeedbackLabel.setManaged(true);
+        tutorReservationRequestsFeedbackLabel.setVisible(true);
+    }
+
+    private void hideTutorReservationRequestsFeedback() {
+        tutorReservationRequestsFeedbackLabel.setText("");
+        tutorReservationRequestsFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
+        tutorReservationRequestsFeedbackLabel.setManaged(false);
+        tutorReservationRequestsFeedbackLabel.setVisible(false);
     }
 
     private void applyCurrentTheme(DialogPane dialogPane) {

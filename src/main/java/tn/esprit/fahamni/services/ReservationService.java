@@ -17,6 +17,10 @@ import java.util.stream.Collectors;
 
 public class ReservationService {
 
+    public static final int STATUS_PENDING = 0;
+    public static final int STATUS_ACCEPTED = 1;
+    public static final int STATUS_PAID = 2;
+
     private final Connection cnx = MyDataBase.getInstance().getCnx();
 
     private final List<Reservation> reservations = new ArrayList<>(List.of(
@@ -86,6 +90,134 @@ public class ReservationService {
         }
     }
 
+    public List<TutorReservationRequest> getTutorReservationRequests(int tutorId) {
+        List<TutorReservationRequest> requests = new ArrayList<>();
+        if (tutorId <= 0 || cnx == null) {
+            return requests;
+        }
+
+        String sql = """
+            SELECT
+                r.id AS reservation_id,
+                r.status AS reservation_status,
+                r.reserved_at,
+                r.notes,
+                r.seance_id,
+                r.participant_id,
+                s.matiere,
+                s.start_at,
+                s.duration_min,
+                s.max_participants,
+                u.full_name AS participant_name,
+                u.email AS participant_email
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            INNER JOIN user u ON u.id = r.participant_id
+            WHERE s.tuteur_id = ? AND r.cancell_at IS NULL
+            ORDER BY
+                CASE WHEN r.status = 0 THEN 0 ELSE 1 END,
+                r.reserved_at DESC
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, tutorId);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    requests.add(new TutorReservationRequest(
+                        rs.getInt("reservation_id"),
+                        rs.getInt("reservation_status"),
+                        readDateTime(rs, "reserved_at"),
+                        rs.getString("notes"),
+                        rs.getInt("seance_id"),
+                        rs.getString("matiere"),
+                        readDateTime(rs, "start_at"),
+                        rs.getInt("duration_min"),
+                        rs.getInt("max_participants"),
+                        rs.getInt("participant_id"),
+                        rs.getString("participant_name"),
+                        rs.getString("participant_email")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur chargement demandes reservation: " + e.getMessage());
+        }
+        return requests;
+    }
+
+    public OperationResult acceptReservation(int reservationId, int tutorId) {
+        if (cnx == null) {
+            return OperationResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0) {
+            return OperationResult.failure("Selectionnez une reservation valide.");
+        }
+        if (tutorId <= 0) {
+            return OperationResult.failure("Tuteur invalide pour cette action.");
+        }
+
+        String selectSql = """
+            SELECT r.status, r.cancell_at, r.seance_id, s.max_participants
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            WHERE r.id = ? AND s.tuteur_id = ?
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(selectSql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, tutorId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return OperationResult.failure("Reservation introuvable pour les seances de ce tuteur.");
+                }
+
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return OperationResult.failure("Cette reservation est annulee.");
+                }
+
+                int currentStatus = rs.getInt("status");
+                if (currentStatus == STATUS_ACCEPTED) {
+                    return OperationResult.success("Cette reservation est deja acceptee.");
+                }
+                if (currentStatus == STATUS_PAID) {
+                    return OperationResult.success("Cette reservation est deja payee.");
+                }
+                if (currentStatus != STATUS_PENDING) {
+                    return OperationResult.failure("Cette reservation ne peut pas etre acceptee dans son etat actuel.");
+                }
+
+                int seanceId = rs.getInt("seance_id");
+                int maxParticipants = rs.getInt("max_participants");
+                if (countAcceptedOrPaidReservationsBySeanceId(seanceId) >= maxParticipants) {
+                    return OperationResult.failure("La capacite de cette seance est deja atteinte.");
+                }
+            }
+        } catch (SQLException e) {
+            return OperationResult.failure("Verification impossible: " + e.getMessage());
+        }
+
+        String updateSql = """
+            UPDATE reservation
+            SET status = ?, acceptance_email_sent_at = ?
+            WHERE id = ? AND status = ? AND cancell_at IS NULL
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
+            pst.setInt(1, STATUS_ACCEPTED);
+            pst.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            pst.setInt(3, reservationId);
+            pst.setInt(4, STATUS_PENDING);
+
+            int updatedRows = pst.executeUpdate();
+            if (updatedRows == 0) {
+                return OperationResult.failure("Aucune reservation mise a jour.");
+            }
+            return OperationResult.success("Reservation acceptee avec succes.");
+        } catch (SQLException e) {
+            return OperationResult.failure("Acceptation impossible: " + e.getMessage());
+        }
+    }
+
     public boolean hasActiveReservation(int seanceId, int participantId) {
         if (seanceId <= 0 || participantId <= 0 || cnx == null) {
             return false;
@@ -149,9 +281,46 @@ public class ReservationService {
         }
     }
 
+    public record TutorReservationRequest(
+        int id,
+        int status,
+        LocalDateTime reservedAt,
+        String notes,
+        int seanceId,
+        String seanceTitle,
+        LocalDateTime seanceStartAt,
+        int durationMin,
+        int maxParticipants,
+        int participantId,
+        String participantName,
+        String participantEmail
+    ) {
+        public boolean isPending() {
+            return status == STATUS_PENDING;
+        }
+    }
+
     public record ReservationStats(int total, int pending, int accepted, int paid) {
         public static ReservationStats empty() {
             return new ReservationStats(0, 0, 0, 0);
+        }
+    }
+
+    private int countAcceptedOrPaidReservationsBySeanceId(int seanceId) throws SQLException {
+        String sql = """
+            SELECT COUNT(*) AS total
+            FROM reservation
+            WHERE seance_id = ?
+              AND cancell_at IS NULL
+              AND status IN (?, ?)
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            pst.setInt(2, STATUS_ACCEPTED);
+            pst.setInt(3, STATUS_PAID);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next() ? rs.getInt("total") : 0;
+            }
         }
     }
 
@@ -186,5 +355,10 @@ public class ReservationService {
             pst.setTimestamp(9, null);
             pst.executeUpdate();
         }
+    }
+
+    private LocalDateTime readDateTime(ResultSet rs, String columnName) throws SQLException {
+        Timestamp timestamp = rs.getTimestamp(columnName);
+        return timestamp != null ? timestamp.toLocalDateTime() : null;
     }
 }
