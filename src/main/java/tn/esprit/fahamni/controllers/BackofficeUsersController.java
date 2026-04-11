@@ -3,6 +3,7 @@ package tn.esprit.fahamni.controllers;
 import tn.esprit.fahamni.Models.AdminUser;
 import tn.esprit.fahamni.services.AdminUserService;
 import tn.esprit.fahamni.utils.OperationResult;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -30,6 +31,9 @@ public class BackofficeUsersController {
     private TableColumn<AdminUser, String> statusColumn;
 
     @FXML
+    private TextField searchField;
+
+    @FXML
     private TextField fullNameField;
 
     @FXML
@@ -51,6 +55,7 @@ public class BackofficeUsersController {
     private Label feedbackLabel;
 
     private final AdminUserService userService = new AdminUserService();
+    private FilteredList<AdminUser> filteredUsers;
 
     @FXML
     private void initialize() {
@@ -64,8 +69,10 @@ public class BackofficeUsersController {
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
 
-        usersTable.setItems(userService.getUsers());
+        filteredUsers = new FilteredList<>(userService.getUsers(), user -> true);
+        usersTable.setItems(filteredUsers);
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> applySearchFilter(newValue));
 
         hideFeedback();
 
@@ -137,8 +144,21 @@ public class BackofficeUsersController {
         OperationResult result = userService.refreshUsers();
         usersTable.getSelectionModel().clearSelection();
         clearForm();
+        applySearchFilter(searchField.getText());
         usersTable.refresh();
         showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void applySearchFilter(String rawSearch) {
+        String search = rawSearch == null ? "" : rawSearch.trim().toLowerCase();
+        filteredUsers.setPredicate(user -> {
+            if (search.isEmpty()) {
+                return true;
+            }
+
+            return user.getFullName().toLowerCase().contains(search)
+                || user.getEmail().toLowerCase().contains(search);
+        });
     }
 
     private void populateForm(AdminUser user) {

@@ -28,6 +28,7 @@
     <HBox spacing="18.0">
         <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
             <Label text="Liste des comptes" styleClass="backoffice-section-title"/>
+            <TextField fx:id="searchField" promptText="Rechercher par nom ou email" styleClass="backoffice-form-input"/>
             <TableView fx:id="usersTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
                 <columns>
                     <TableColumn fx:id="fullNameColumn" prefWidth="190.0" text="Nom complet"/>
