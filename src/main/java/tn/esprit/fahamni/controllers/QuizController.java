@@ -4,7 +4,14 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -60,24 +67,24 @@ public class QuizController {
             quiz.setKeyword("Valorant");
 
             Question q1 = new Question();
-            q1.setQuestion("Quel est le rôle du Spike dans Valorant ?");
-            q1.addChoice(buildChoice("Désamorcer les objets", false));
-            q1.addChoice(buildChoice("Activer une arme spéciale", false));
-            q1.addChoice(buildChoice("Poser une bombe pour gagner une manche", true));
-            q1.addChoice(buildChoice("Soigner une équipe", false));
+            q1.setQuestion("What is the role of the Spike in Valorant?");
+            q1.addChoice(buildChoice("Disarm enemy items", false));
+            q1.addChoice(buildChoice("Activate a special weapon", false));
+            q1.addChoice(buildChoice("Plant the bomb to win the round", true));
+            q1.addChoice(buildChoice("Heal your team", false));
             quiz.addQuestion(q1);
 
             Question q2 = new Question();
-            q2.setQuestion("Quelle capacité permet de voir les ennemis à travers les murs ?");
-            q2.addChoice(buildChoice("Cypher - Fil de caméra", false));
-            q2.addChoice(buildChoice("Sova - Flèche éclairante", false));
-            q2.addChoice(buildChoice("Sage - Barrière de lumière", false));
-            q2.addChoice(buildChoice("Skye - Suivi des traces", true));
+            q2.setQuestion("Which ability helps reveal enemies through walls?");
+            q2.addChoice(buildChoice("Cypher - Camera Wire", false));
+            q2.addChoice(buildChoice("Sova - Recon Bolt", true));
+            q2.addChoice(buildChoice("Sage - Barrier Orb", false));
+            q2.addChoice(buildChoice("Skye - Trailblazer", false));
             quiz.addQuestion(q2);
 
             quizService.createQuiz(quiz);
         } catch (Exception ignored) {
-            // Ignore seed failures in environments with no DB access
+            // Ignore seed failures in environments with no DB access.
         }
     }
 
@@ -91,7 +98,7 @@ public class QuizController {
     private void renderQuizCards(List<Quiz> quizzes) {
         availableQuizzesBox.getChildren().clear();
         if (quizzes == null || quizzes.isEmpty()) {
-            Label emptyLabel = new Label("Aucun quiz disponible pour le moment. Contactez l'administrateur.");
+            Label emptyLabel = new Label("No quizzes are available right now. Please check back later.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("quiz-empty-message");
             availableQuizzesBox.getChildren().add(emptyLabel);
@@ -114,11 +121,15 @@ public class QuizController {
         VBox cardBody = new VBox(6);
         cardBody.setAlignment(Pos.CENTER_LEFT);
         cardBody.setPrefWidth(220);
+
         Label titleLabel = new Label(quiz.getTitre());
         titleLabel.getStyleClass().add("quiz-title");
-        Label infoLabel = new Label(quiz.getQuestions().size() + " questions • " + (quiz.getQuizResults().size() > 0 ? "Résultats disponibles" : "Pas encore joué"));
+
+        String resultStatus = quiz.getQuizResults().isEmpty() ? "Not attempted yet" : "Results available";
+        Label infoLabel = new Label(quiz.getQuestions().size() + " questions | " + resultStatus);
         infoLabel.getStyleClass().add("quiz-info");
-        Label descriptionLabel = new Label("Un quiz rapide sur le thème '" + quiz.getKeyword() + "'.");
+
+        Label descriptionLabel = new Label("A quick knowledge check about '" + quiz.getKeyword() + "'.");
         descriptionLabel.setWrapText(true);
         descriptionLabel.getStyleClass().add("quiz-description");
         cardBody.getChildren().addAll(titleLabel, infoLabel, descriptionLabel);
@@ -126,8 +137,10 @@ public class QuizController {
 
         VBox actionBox = new VBox(10);
         actionBox.setAlignment(Pos.CENTER);
-        Label ratingLabel = new Label("★ " + buildRatingLabel(quiz));
+
+        Label ratingLabel = new Label("* " + buildRatingLabel(quiz));
         ratingLabel.getStyleClass().add("quiz-rating");
+
         Button startButton = new Button("Start Quiz");
         startButton.getStyleClass().add("start-quiz-button");
         startButton.setOnAction(event -> handleStartQuiz(quiz));
@@ -140,7 +153,7 @@ public class QuizController {
     private void renderRecentResults(List<Quiz> quizzes) {
         recentResultsBox.getChildren().clear();
         if (quizzes == null || quizzes.isEmpty()) {
-            Label emptyLabel = new Label("Aucun résultat récent disponible.");
+            Label emptyLabel = new Label("No recent quiz results are available.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("result-empty-message");
             recentResultsBox.getChildren().add(emptyLabel);
@@ -148,13 +161,14 @@ public class QuizController {
         }
 
         quizzes.stream()
-                .flatMap(q -> q.getQuizResults().stream())
-                .sorted((r1, r2) -> r2.getCompletedAt().compareTo(r1.getCompletedAt()))
+                .flatMap(quiz -> quiz.getQuizResults().stream())
+                .filter(result -> result.getCompletedAt() != null)
+                .sorted((left, right) -> right.getCompletedAt().compareTo(left.getCompletedAt()))
                 .limit(5)
                 .forEach(result -> recentResultsBox.getChildren().add(buildResultCard(result)));
 
         if (recentResultsBox.getChildren().isEmpty()) {
-            Label emptyLabel = new Label("Aucun résultat récent enregistré.");
+            Label emptyLabel = new Label("No recent quiz results have been recorded yet.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("result-empty-message");
             recentResultsBox.getChildren().add(emptyLabel);
@@ -169,18 +183,26 @@ public class QuizController {
 
         VBox resultBody = new VBox(4);
         resultBody.setAlignment(Pos.CENTER_LEFT);
-        Label resultTitle = new Label(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz inconnu");
+
+        Label resultTitle = new Label(result.getQuiz() != null ? result.getQuiz().getTitre() : "Unknown quiz");
         resultTitle.getStyleClass().add("result-title");
-        Label resultDate = new Label("Terminé le " + (result.getCompletedAt() != null ? result.getCompletedAt().toString().substring(0, 10) : "--"));
+
+        String completedOn = result.getCompletedAt() != null
+                ? result.getCompletedAt().toString().substring(0, 10)
+                : "--";
+        Label resultDate = new Label("Completed on " + completedOn);
         resultDate.getStyleClass().add("result-date");
         resultBody.getChildren().addAll(resultTitle, resultDate);
         HBox.setHgrow(resultBody, Priority.ALWAYS);
 
         VBox resultScore = new VBox(2);
         resultScore.setAlignment(Pos.CENTER);
-        Label scoreLabel = new Label(result.getScore() + "/" + result.getTotalQuestions() + " (" + formatPercentage(result.getPercentage()) + ")");
+
+        String percentageLabel = formatPercentage(result.getPercentage() != null ? result.getPercentage() : 0.0);
+        Label scoreLabel = new Label(result.getScore() + "/" + result.getTotalQuestions() + " (" + percentageLabel + ")");
         scoreLabel.getStyleClass().add("result-score");
-        Label gradeLabel = new Label(result.getPassed() != null && result.getPassed() ? "Passed" : "Try again");
+
+        Label gradeLabel = new Label(Boolean.TRUE.equals(result.getPassed()) ? "Passed" : "Try again");
         gradeLabel.getStyleClass().add("result-grade");
         resultScore.getChildren().addAll(scoreLabel, gradeLabel);
 
@@ -190,12 +212,6 @@ public class QuizController {
 
         resultCard.getChildren().addAll(resultBody, resultScore, reviewButton);
         return resultCard;
-    }
-
-            emptyLabel.setWrapText(true);
-            emptyLabel.getStyleClass().add("result-empty-message");
-            recentResultsBox.getChildren().add(emptyLabel);
-        }
     }
 
     private void updateStats(List<Quiz> quizzes) {
@@ -220,12 +236,12 @@ public class QuizController {
 
     private void handleStartQuiz(Quiz quiz) {
         if (quiz == null || quiz.getQuestions().isEmpty()) {
-            showAlert(Alert.AlertType.INFORMATION, "Quiz non disponible", "Ce quiz n'est pas prêt ou ne contient aucune question.");
+            showAlert(Alert.AlertType.INFORMATION, "Quiz unavailable", "This quiz is not ready or does not have any questions yet.");
             return;
         }
 
         Dialog<QuizResult> dialog = new Dialog<>();
-        dialog.setTitle("Démarrer le quiz");
+        dialog.setTitle("Start quiz");
         dialog.setHeaderText(quiz.getTitre());
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
@@ -236,11 +252,14 @@ public class QuizController {
         Map<Long, ToggleGroup> answers = new HashMap<>();
         for (int index = 0; index < quiz.getQuestions().size(); index++) {
             Question question = quiz.getQuestions().get(index);
+
             VBox questionBox = new VBox(8);
             questionBox.getStyleClass().add("quiz-question-box");
+
             Label questionLabel = new Label((index + 1) + ". " + question.getQuestion());
             questionLabel.getStyleClass().add("quiz-question-label");
             questionLabel.setWrapText(true);
+            questionBox.getChildren().add(questionLabel);
 
             ToggleGroup group = new ToggleGroup();
             answers.put(question.getId(), group);
@@ -263,9 +282,9 @@ public class QuizController {
 
         Node submitButton = dialog.getDialogPane().lookupButton(ButtonType.OK);
         submitButton.setDisable(true);
-        answers.values().forEach(group -> group.selectedToggleProperty().addListener((obs, oldToggle, newToggle) -> {
-            submitButton.setDisable(answers.values().stream().anyMatch(g -> g.getSelectedToggle() == null));
-        }));
+        answers.values().forEach(group -> group.selectedToggleProperty().addListener((obs, oldToggle, newToggle) ->
+                submitButton.setDisable(answers.values().stream().anyMatch(currentGroup -> currentGroup.getSelectedToggle() == null))
+        ));
 
         dialog.setResultConverter(button -> {
             if (button == ButtonType.OK) {
@@ -284,13 +303,15 @@ public class QuizController {
         Optional<QuizResult> result = dialog.showAndWait();
         result.ifPresent(quizResult -> {
             if (quizResult.getId() != null) {
-                showAlert(Alert.AlertType.INFORMATION,
-                        "Quiz terminé",
-                        "Score : " + quizResult.getScore() + "/" + quizResult.getTotalQuestions() + " (" + formatPercentage(quizResult.getPercentage()) + ")", 
-                        "Résultat enregistré pour l'utilisateur de test.");
+                showAlert(
+                        Alert.AlertType.INFORMATION,
+                        "Quiz completed",
+                        "Score: " + quizResult.getScore() + "/" + quizResult.getTotalQuestions() + " (" + formatPercentage(quizResult.getPercentage()) + ")",
+                        "The result was saved for the current placeholder test user."
+                );
                 refreshQuizData();
             } else {
-                showAlert(Alert.AlertType.ERROR, "Erreur", "Impossible de sauvegarder le résultat du quiz.");
+                showAlert(Alert.AlertType.ERROR, "Save failed", "The quiz result could not be saved.");
             }
         });
     }
@@ -299,6 +320,7 @@ public class QuizController {
         if (quiz == null || quiz.getQuizResults().isEmpty()) {
             return "N/A";
         }
+
         double average = quiz.getQuizResults().stream()
                 .mapToDouble(result -> result.getPercentage() != null ? result.getPercentage() : 0.0)
                 .average()
@@ -334,7 +356,7 @@ public class QuizController {
                 .toList();
 
         if (topResults.isEmpty()) {
-            showAlert(Alert.AlertType.INFORMATION, "Leaderboard", "Aucun résultat disponible pour le moment.", null);
+            showAlert(Alert.AlertType.INFORMATION, "Leaderboard", "No quiz results are available yet.", null);
             return;
         }
 
@@ -343,13 +365,13 @@ public class QuizController {
             QuizResult result = topResults.get(index);
             content.append(index + 1)
                     .append(". ")
-                    .append(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz inconnu")
+                    .append(result.getQuiz() != null ? result.getQuiz().getTitre() : "Unknown quiz")
                     .append(" - ")
                     .append(result.getScore())
                     .append("/")
                     .append(result.getTotalQuestions())
                     .append(" (")
-                    .append(formatPercentage(result.getPercentage()))
+                    .append(formatPercentage(result.getPercentage() != null ? result.getPercentage() : 0.0))
                     .append(")");
             if (result.getUser() != null) {
                 content.append(" - ").append(result.getUser().getFullName());
@@ -357,27 +379,28 @@ public class QuizController {
             content.append("\n");
         }
 
-        showAlert(Alert.AlertType.INFORMATION,
-                "Leaderboard",
-                "Top 5 des meilleurs scores :",
-                content.toString());
+        showAlert(Alert.AlertType.INFORMATION, "Leaderboard", "Top 5 scores", content.toString());
     }
 
     @FXML
     private void handleRefreshQuizzes() {
         refreshQuizData();
-        showAlert(Alert.AlertType.INFORMATION, "Actualisation", "La liste des quiz a été rafraîchie.", null);
+        showAlert(Alert.AlertType.INFORMATION, "Refresh complete", "The quiz list has been refreshed.", null);
     }
 
     private void showResultDetails(QuizResult result) {
-        String userInfo = result.getUser() != null ? result.getUser().getFullName() + " (" + result.getUser().getEmail() + ")" : "Utilisateur inconnu";
-        showAlert(Alert.AlertType.INFORMATION,
-                "Détails du résultat",
-                "Quiz : " + (result.getQuiz() != null ? result.getQuiz().getTitre() : "-"),
-                "Score : " + result.getScore() + "/" + result.getTotalQuestions() + "\n" +
-                        "Pourcentage : " + formatPercentage(result.getPercentage()) + "\n" +
-                        "Statut : " + (Boolean.TRUE.equals(result.getPassed()) ? "Validé" : "Non validé") + "\n" +
-                        "Joué par : " + userInfo
+        String userInfo = result.getUser() != null
+                ? result.getUser().getFullName() + " (" + result.getUser().getEmail() + ")"
+                : "Unknown user";
+
+        showAlert(
+                Alert.AlertType.INFORMATION,
+                "Result details",
+                "Quiz: " + (result.getQuiz() != null ? result.getQuiz().getTitre() : "-"),
+                "Score: " + result.getScore() + "/" + result.getTotalQuestions() + "\n"
+                        + "Percentage: " + formatPercentage(result.getPercentage() != null ? result.getPercentage() : 0.0) + "\n"
+                        + "Status: " + (Boolean.TRUE.equals(result.getPassed()) ? "Passed" : "Not passed") + "\n"
+                        + "Played by: " + userInfo
         );
     }
 }
