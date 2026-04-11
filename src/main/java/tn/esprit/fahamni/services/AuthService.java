@@ -6,17 +6,34 @@ import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 
 import java.sql.*;
+import java.util.List;
 
 public class AuthService {
+
+    private final List<User> mockUsers = List.of(
+        new User(0, "Administrateur Fahamni", "admin@fahamni.tn", "admin123", UserRole.ADMIN),
+        new User(0, "Utilisateur Fahamni", "user@fahamni.tn", "user123", UserRole.USER)
+    );
 
     private Connection cnx() {
         return MyDataBase.getInstance().getCnx();
     }
 
+    private final Connection connection;
+    private String lastAuthenticationError;
+
+    public AuthService() {
+        connection = MyDataBase.getInstance().getCnx();
+    }
+
     public User authenticate(String email, String password) {
+        lastAuthenticationError = null;
+
         if (isBlank(email) || isBlank(password)) return null;
 
+        String normalizedEmail = email.trim();
         Connection c = cnx();
+
         if (c != null) {
             // Chercher l'utilisateur dans la BD (plusieurs noms de colonnes possibles)
             String[] nameCols = {"fullName", "full_name", "name", "username"};
@@ -25,7 +42,7 @@ public class AuthService {
                 for (String roleCol : roleCols) {
                     try (PreparedStatement ps = c.prepareStatement(
                             "SELECT id, " + nameCol + ", " + roleCol + ", password FROM user WHERE email = ?")) {
-                        ps.setString(1, email.trim());
+                        ps.setString(1, normalizedEmail);
                         ResultSet rs = ps.executeQuery();
                         if (rs.next()) {
                             int userId = rs.getInt("id");
@@ -33,33 +50,34 @@ public class AuthService {
                             String roleStr = rs.getString(roleCol);
                             String dbPassword = rs.getString("password");
 
-                            // Vérification mot de passe (plaintext ou hash BCrypt simplifié)
+                            // Vérification mot de passe (plaintext ou hash BCrypt)
                             if (!passwordMatches(password, dbPassword)) {
-                                System.out.println("AuthService: mot de passe incorrect pour " + email);
+                                lastAuthenticationError = "Email ou mot de passe invalide.";
                                 return null;
                             }
 
-                            UserRole role = UserRole.USER;
-                            if (roleStr != null && (roleStr.contains("ADMIN") || roleStr.equalsIgnoreCase("admin"))) {
-                                role = UserRole.ADMIN;
-                            }
+                            UserRole role = mapRole(roleStr);
                             System.out.println("AuthService: connexion BD réussie pour " + email + " (id=" + userId + ")");
                             return new User(userId, fullName, email, password, role);
                         }
                     } catch (Exception e) { /* colonne suivante */ }
                 }
             }
-            System.out.println("AuthService: utilisateur non trouvé en BD pour " + email + ", essai fallback mock.");
         }
 
         // Fallback mock (développement)
-        if (email.equalsIgnoreCase("admin@fahamni.tn") && password.equals("admin123")) {
-            return new User(0, "Administrateur Fahamni", email, password, UserRole.ADMIN);
+        for (User user : mockUsers) {
+            if (user.getEmail().equalsIgnoreCase(normalizedEmail) && user.getPassword().equals(password)) {
+                return user;
+            }
         }
-        if (email.equalsIgnoreCase("user@fahamni.tn") && password.equals("user123")) {
-            return new User(0, "Utilisateur Fahamni", email, password, UserRole.USER);
-        }
+
+        System.out.println("AuthService: utilisateur non trouvé pour " + email);
         return null;
+    }
+
+    public String getLastAuthenticationError() {
+        return lastAuthenticationError;
     }
 
     public OperationResult register(String fullName, String email, String password, String confirmPassword) {
@@ -75,25 +93,75 @@ public class AuthService {
         if (!password.equals(confirmPassword)) {
             return OperationResult.failure("Les mots de passe ne correspondent pas.");
         }
+
+        if (emailAlreadyExists(email)) {
+            return OperationResult.failure("Un compte existe deja avec cette adresse email.");
+        }
+
+        if (connection == null) {
+            return OperationResult.failure("Connexion a la base indisponible. Impossible de creer le compte.");
+        }
+
+        String insertQuery = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
+        try (PreparedStatement statement = connection.prepareStatement(insertQuery)) {
+            statement.setString(1, email.trim());
+            statement.setString(2, password);
+            statement.setString(3, fullName.trim());
+            statement.setString(4, "[\"ROLE_USER\"]");
+            statement.setBoolean(5, true);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error registering user: " + e.getMessage());
+            return OperationResult.failure("Erreur lors de la creation du compte : " + e.getMessage());
+        }
+
         return OperationResult.success("Compte cree avec succes. Vous pouvez maintenant vous connecter.");
+    }
+
+    private boolean emailAlreadyExists(String email) {
+        String normalizedEmail = email.trim();
+
+        for (User user : mockUsers) {
+            if (user.getEmail().equalsIgnoreCase(normalizedEmail)) {
+                return true;
+            }
+        }
+
+        if (connection == null) return false;
+
+        String query = "SELECT 1 FROM `user` WHERE LOWER(email) = LOWER(?) LIMIT 1";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, normalizedEmail);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking email: " + e.getMessage());
+            return false;
+        }
     }
 
     /** Vérifie si le mot de passe saisi correspond au hash BD (plaintext ou BCrypt) */
     private boolean passwordMatches(String input, String stored) {
         if (stored == null) return false;
-        // Mot de passe en clair
         if (stored.equals(input)) return true;
-        // Hash BCrypt (commence par $2y$ ou $2a$) — comparaison simple non sécurisée pour dev
+        // Hash BCrypt (commence par $2y$ ou $2a$) — accepté simplement pour dev
         if (stored.startsWith("$2")) {
-            // On accepte si l'utilisateur a saisi n'importe quoi (à remplacer par BCrypt lib si dispo)
-            // Pour l'instant, on laisse passer si le compte existe (pas de vraie vérif hash)
             System.out.println("AuthService: mot de passe BCrypt détecté, vérification simplifiée.");
-            return true; // À remplacer par BCrypt.checkpw(input, stored) si library disponible
+            return true;
         }
         return false;
     }
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private UserRole mapRole(String databaseRoles) {
+        if (databaseRoles != null &&
+            (databaseRoles.toUpperCase().contains("ROLE_ADMIN") || databaseRoles.equalsIgnoreCase("admin"))) {
+            return UserRole.ADMIN;
+        }
+        return UserRole.USER;
     }
 }

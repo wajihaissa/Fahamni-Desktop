@@ -3,9 +3,11 @@ package tn.esprit.fahamni.controllers;
 import tn.esprit.fahamni.Models.AdminUser;
 import tn.esprit.fahamni.services.AdminUserService;
 import tn.esprit.fahamni.utils.OperationResult;
+import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -29,10 +31,25 @@ public class BackofficeUsersController {
     private TableColumn<AdminUser, String> statusColumn;
 
     @FXML
+    private TextField searchField;
+
+    @FXML
+    private ComboBox<String> statusFilterComboBox;
+
+    @FXML
+    private ComboBox<String> roleFilterComboBox;
+
+    @FXML
     private TextField fullNameField;
 
     @FXML
     private TextField emailField;
+
+    @FXML
+    private PasswordField passwordField;
+
+    @FXML
+    private PasswordField confirmPasswordField;
 
     @FXML
     private ComboBox<String> roleComboBox;
@@ -44,6 +61,7 @@ public class BackofficeUsersController {
     private Label feedbackLabel;
 
     private final AdminUserService userService = new AdminUserService();
+    private FilteredList<AdminUser> filteredUsers;
 
     @FXML
     private void initialize() {
@@ -54,13 +72,25 @@ public class BackofficeUsersController {
 
         roleComboBox.getItems().setAll(userService.getAvailableRoles());
         statusComboBox.getItems().setAll(userService.getAvailableStatuses());
+        statusFilterComboBox.getItems().setAll("Tous", "Active", "Suspended");
+        roleFilterComboBox.getItems().setAll("Tous", "Student", "Tutor", "Administrator");
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
+        statusFilterComboBox.setValue("Tous");
+        roleFilterComboBox.setValue("Tous");
 
-        usersTable.setItems(userService.getUsers());
+        filteredUsers = new FilteredList<>(userService.getUsers(), user -> true);
+        usersTable.setItems(filteredUsers);
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+        statusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+        roleFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
 
         hideFeedback();
+
+        if (userService.getLastLoadError() != null) {
+            showFeedback(userService.getLastLoadError(), false);
+        }
     }
 
     @FXML
@@ -70,6 +100,8 @@ public class BackofficeUsersController {
         OperationResult result = userService.createUser(
             fullNameField.getText(),
             emailField.getText(),
+            passwordField.getText(),
+            confirmPasswordField.getText(),
             roleComboBox.getValue(),
             statusComboBox.getValue()
         );
@@ -103,6 +135,54 @@ public class BackofficeUsersController {
         hideFeedback();
     }
 
+    @FXML
+    private void handleDeleteUser() {
+        hideFeedback();
+
+        AdminUser selectedUser = usersTable.getSelectionModel().getSelectedItem();
+        OperationResult result = userService.deleteUser(selectedUser);
+        if (result.isSuccess()) {
+            usersTable.refresh();
+            statusComboBox.setValue("Suspended");
+        }
+
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
+    private void handleRefreshUsers() {
+        hideFeedback();
+
+        OperationResult result = userService.refreshUsers();
+        usersTable.getSelectionModel().clearSelection();
+        clearForm();
+        applyFilters();
+        usersTable.refresh();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void applyFilters() {
+        String search = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
+        String selectedStatus = statusFilterComboBox.getValue();
+        String selectedRole = roleFilterComboBox.getValue();
+
+        filteredUsers.setPredicate(user -> {
+            boolean matchesSearch = search.isEmpty()
+                || user.getFullName().toLowerCase().contains(search)
+                || user.getEmail().toLowerCase().contains(search);
+
+            boolean matchesStatus = selectedStatus == null
+                || "Tous".equalsIgnoreCase(selectedStatus)
+                || user.getStatus().equalsIgnoreCase(selectedStatus);
+
+            boolean matchesRole = selectedRole == null
+                || "Tous".equalsIgnoreCase(selectedRole)
+                || user.getRole().equalsIgnoreCase(selectedRole);
+
+            return matchesSearch && matchesStatus && matchesRole;
+        });
+    }
+
     private void populateForm(AdminUser user) {
         if (user == null) {
             return;
@@ -117,6 +197,8 @@ public class BackofficeUsersController {
     private void clearForm() {
         fullNameField.clear();
         emailField.clear();
+        passwordField.clear();
+        confirmPasswordField.clear();
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
     }
