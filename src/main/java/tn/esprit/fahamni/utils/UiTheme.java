@@ -1173,11 +1173,6 @@ public final class UiTheme {
             -fx-pref-height: 40px;
         }
 
-        .reservation-submit-button {
-            -fx-padding: 0 18px;
-            -fx-pref-height: 40px;
-        }
-
         .tutor-profile-card {
             -fx-spacing: 12px;
         }
@@ -1196,43 +1191,6 @@ public final class UiTheme {
             -fx-font-size: 13px;
             -fx-font-weight: bold;
             -fx-text-fill: #5d78a2;
-        }
-
-        .pagination-nav-button, .pagination-page-button {
-            -fx-background-color: #f4f7fc;
-            -fx-border-color: #dce7f8;
-            -fx-border-width: 1px;
-            -fx-background-radius: 14px;
-            -fx-border-radius: 14px;
-            -fx-text-fill: #5e78a2;
-            -fx-font-size: 12px;
-            -fx-font-weight: bold;
-            -fx-cursor: hand;
-        }
-
-        .pagination-nav-button {
-            -fx-padding: 9px 15px;
-        }
-
-        .pagination-page-button {
-            -fx-min-width: 42px;
-            -fx-min-height: 38px;
-            -fx-padding: 8px 13px;
-        }
-
-        .pagination-page-button.active {
-            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #4f6df0 100%);
-            -fx-border-color: transparent;
-            -fx-text-fill: white;
-            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.28), 14, 0.25, 0, 6);
-            -fx-opacity: 1;
-        }
-
-        .pagination-nav-button:disabled {
-            -fx-background-color: #f6f8fc;
-            -fx-border-color: #edf2fa;
-            -fx-text-fill: #a8b5c8;
-            -fx-opacity: 1;
         }
 
         .pagination-per-page-label {
@@ -1373,15 +1331,6 @@ public final class UiTheme {
             -fx-font-size: 11px;
             -fx-font-weight: bold;
             -fx-text-fill: #48658d;
-        }
-
-        .session-detail-action-button {
-            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
-            -fx-text-fill: white;
-            -fx-font-weight: bold;
-            -fx-background-radius: 12px;
-            -fx-padding: 8px 14px;
-            -fx-cursor: hand;
         }
 
         .session-detail-footer {
@@ -1548,25 +1497,6 @@ public final class UiTheme {
             -fx-padding: 6px 10px;
         }
 
-        .calendar-nav-button {
-            -fx-background-color: #ffffff;
-            -fx-border-color: #d9e5f8;
-            -fx-border-width: 1px;
-            -fx-border-radius: 999px;
-            -fx-background-radius: 999px;
-            -fx-text-fill: #214f93;
-            -fx-font-size: 13px;
-            -fx-font-weight: bold;
-            -fx-min-width: 34px;
-            -fx-min-height: 34px;
-            -fx-cursor: hand;
-        }
-
-        .calendar-nav-button:hover {
-            -fx-background-color: #eff5ff;
-            -fx-border-color: #aac4f6;
-        }
-
         .calendar-month-label {
             -fx-min-width: 118px;
             -fx-alignment: center;
@@ -1582,24 +1512,6 @@ public final class UiTheme {
             -fx-border-radius: 999px;
             -fx-background-radius: 999px;
             -fx-padding: 4px;
-        }
-
-        .calendar-view-button {
-            -fx-background-color: transparent;
-            -fx-border-color: transparent;
-            -fx-text-fill: #6d82a0;
-            -fx-font-size: 12px;
-            -fx-font-weight: bold;
-            -fx-background-radius: 999px;
-            -fx-border-radius: 999px;
-            -fx-padding: 8px 14px;
-            -fx-cursor: hand;
-        }
-
-        .calendar-view-button.active {
-            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
-            -fx-text-fill: white;
-            -fx-effect: dropshadow(gaussian, rgba(23, 52, 110, 0.18), 12, 0.16, 0, 3);
         }
 
         .calendar-board-shell {
