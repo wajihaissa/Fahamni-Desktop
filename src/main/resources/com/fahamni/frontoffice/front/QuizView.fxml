@@ -14,10 +14,14 @@
             <Insets top="20" right="20" bottom="20" left="20"/>
         </padding>
 
-        <VBox spacing="15.0" styleClass="quiz-header">
-            <Label text="Quiz Center" styleClass="section-title"/>
-            <Label text="Test your knowledge and track your progress" styleClass="section-subtitle"/>
-        </VBox>
+        <HBox spacing="15.0" alignment="CENTER_LEFT">
+            <VBox spacing="15.0" styleClass="quiz-header">
+                <Label text="Available Quizzes" styleClass="section-title"/>
+                <Label text="Test your knowledge with our comprehensive quiz collection." styleClass="section-subtitle"/>
+            </VBox>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="Leaderboard" styleClass="action-button secondary"/>
+        </HBox>
 
         <HBox spacing="20.0" styleClass="quiz-stats">
             <VBox styleClass="stat-card">
