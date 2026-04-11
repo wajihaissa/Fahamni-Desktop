@@ -2,6 +2,7 @@ package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -68,6 +69,7 @@ public class BackofficeMainController {
 
     @FXML
     private void handleLogout() {
+        UserSession.clear();
         try {
             Main.showLogin();
         } catch (Exception e) {

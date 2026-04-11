@@ -14,8 +14,8 @@ import java.util.List;
 public class AuthService {
 
     private final List<User> mockUsers = List.of(
-        new User("Administrateur Fahamni", "admin@fahamni.tn", "admin123", UserRole.ADMIN),
-        new User("Utilisateur Fahamni", "user@fahamni.tn", "user123", UserRole.USER)
+        new User(0, "Administrateur Fahamni", "admin@fahamni.tn", "admin123", UserRole.ADMIN),
+        new User(0, "Utilisateur Fahamni", "user@fahamni.tn", "user123", UserRole.USER)
     );
 
     private final Connection connection;
@@ -31,17 +31,16 @@ public class AuthService {
 
         String normalizedEmail = email.trim();
 
-        for (User user : mockUsers) {
-            if (user.getEmail().equalsIgnoreCase(normalizedEmail) && user.getPassword().equals(password)) {
-                return user;
-            }
-        }
-
         if (connection == null) {
+            for (User user : mockUsers) {
+                if (user.getEmail().equalsIgnoreCase(normalizedEmail) && user.getPassword().equals(password)) {
+                    return user;
+                }
+            }
             return null;
         }
 
-        String query = "SELECT full_name, email, password, roles FROM `user` WHERE LOWER(email) = LOWER(?) AND password = ? LIMIT 1";
+        String query = "SELECT id, full_name, email, password, roles FROM `user` WHERE LOWER(email) = LOWER(?) AND password = ? LIMIT 1";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, normalizedEmail);
             statement.setString(2, password);
@@ -49,6 +48,7 @@ public class AuthService {
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     return new User(
+                        resultSet.getInt("id"),
                         resultSet.getString("full_name"),
                         resultSet.getString("email"),
                         resultSet.getString("password"),
@@ -58,6 +58,12 @@ public class AuthService {
             }
         } catch (SQLException e) {
             System.out.println("Error authenticating user: " + e.getMessage());
+        }
+
+        for (User user : mockUsers) {
+            if (user.getEmail().equalsIgnoreCase(normalizedEmail) && user.getPassword().equals(password)) {
+                return user;
+            }
         }
 
         return null;

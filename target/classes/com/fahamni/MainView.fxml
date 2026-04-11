@@ -7,9 +7,10 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="800.0" prefWidth="1200.0" styleClass="main-root"
+<BorderPane fx:id="rootPane" prefHeight="800.0" prefWidth="1200.0" styleClass="main-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.MainController">
@@ -54,12 +55,26 @@
 
             <HBox spacing="10.0" alignment="CENTER_RIGHT" styleClass="topbar-actions">
                 <Button text="Alertes" styleClass="topbar-pill-button"/>
-                <Button text="Compte" styleClass="topbar-pill-button"/>
+
+                <StackPane pickOnBounds="false" styleClass="account-menu-wrapper">
+                    <children>
+                        <Button text="Compte" styleClass="topbar-pill-button" onAction="#toggleAccountMenu"/>
+                        <VBox fx:id="accountMenuPane" managed="false" visible="false" spacing="6.0"
+                              styleClass="account-menu-panel" translateY="48.0" StackPane.alignment="TOP_CENTER">
+                            <children>
+                                <Button maxWidth="Infinity" onAction="#showProfile" styleClass="account-menu-item" text="Mon profil"/>
+                                <Button maxWidth="Infinity" onAction="#showSettings" styleClass="account-menu-item" text="Parametres"/>
+                                <Button maxWidth="Infinity" onAction="#handleLogout" styleClass="account-menu-item-danger" text="Deconnexion"/>
+                            </children>
+                        </VBox>
+                    </children>
+                </StackPane>
+
                 <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="topbar-profile-card">
-                    <Label text="FS" styleClass="profile-avatar"/>
+                    <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar"/>
                     <VBox spacing="2.0">
-                        <Label text="Etudiant Fahamni" styleClass="profile-name"/>
-                        <Label text="Espace Etudiant" styleClass="profile-role"/>
+                        <Label fx:id="profileNameLabel" text="Etudiant Fahamni" styleClass="profile-name"/>
+                        <Label fx:id="profileRoleLabel" text="Espace Etudiant" styleClass="profile-role"/>
                     </VBox>
                 </HBox>
             </HBox>
@@ -70,4 +85,3 @@
         <AnchorPane fx:id="contentPane" styleClass="content-pane" BorderPane.alignment="CENTER"/>
     </center>
 </BorderPane>
-

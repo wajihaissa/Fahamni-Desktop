@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" styleClass="dashboard-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.ProfileSettingsController">
+    <VBox spacing="20.0" styleClass="dashboard-content">
+        <padding>
+            <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
+        </padding>
+
+        <VBox spacing="14.0" styleClass="profile-hero-card">
+            <HBox alignment="CENTER_LEFT" spacing="16.0">
+                <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar-large"/>
+                <VBox spacing="4.0">
+                    <Label fx:id="profileNameLabel" text="Etudiant Fahamni" styleClass="welcome-title"/>
+                    <Label fx:id="profileEmailLabel" text="etudiant@fahamni.tn" styleClass="welcome-subtitle"/>
+                    <Label fx:id="profileRoleLabel" text="Espace Etudiant" styleClass="profile-role-badge"/>
+                </VBox>
+            </HBox>
+            <VBox spacing="6.0">
+                <Label fx:id="sectionTitleLabel" text="Mon profil" styleClass="section-title"/>
+                <Label fx:id="sectionCopyLabel"
+                       text="Retrouvez vos informations personnelles et ajustez votre compte quand vous en avez besoin."
+                       styleClass="section-subtitle" wrapText="true"/>
+            </VBox>
+        </VBox>
+
+        <HBox spacing="20.0">
+            <VBox spacing="14.0" styleClass="profile-form-card" HBox.hgrow="ALWAYS">
+                <Label text="Informations du compte" styleClass="section-title"/>
+
+                <VBox spacing="6.0">
+                    <Label text="Nom complet" styleClass="form-label"/>
+                    <TextField fx:id="fullNameField" promptText="Nom complet" styleClass="form-field"/>
+                </VBox>
+
+                <VBox spacing="6.0">
+                    <Label text="Adresse email" styleClass="form-label"/>
+                    <TextField fx:id="emailField" promptText="Adresse email" styleClass="form-field"/>
+                </VBox>
+
+                <VBox spacing="6.0">
+                    <Label text="Nouveau mot de passe" styleClass="form-label"/>
+                    <PasswordField fx:id="passwordField" promptText="Laisser vide pour conserver l'actuel" styleClass="form-field"/>
+                </VBox>
+
+                <VBox spacing="6.0">
+                    <Label text="Confirmer le mot de passe" styleClass="form-label"/>
+                    <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="form-field"/>
+                </VBox>
+
+                <HBox spacing="12.0" styleClass="profile-form-actions">
+                    <Button text="Enregistrer" onAction="#handleSaveProfile" styleClass="profile-save-button"/>
+                    <Button text="Reinitialiser" onAction="#handleResetForm" styleClass="profile-reset-button"/>
+                </HBox>
+
+                <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="profile-danger-card" prefWidth="300.0" minWidth="300.0">
+                <Label text="Zone sensible" styleClass="section-title"/>
+                <Label text="La suppression de votre compte efface l'acces a cet espace. Utilisez-la seulement si vous etes certain."
+                       styleClass="section-subtitle" wrapText="true"/>
+                <Button maxWidth="Infinity" text="Supprimer mon compte" onAction="#handleDeleteAccount" styleClass="profile-delete-button"/>
+                <VBox VBox.vgrow="ALWAYS"/>
+                <Label text="Astuce : utilisez le menu Compte pour ouvrir rapidement ce panneau ou vous deconnecter."
+                       styleClass="section-subtitle" wrapText="true"/>
+            </VBox>
+        </HBox>
+    </VBox>
+</ScrollPane>

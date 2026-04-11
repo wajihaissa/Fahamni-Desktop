@@ -4,8 +4,8 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.ScrollPane?>
 <?import javafx.scene.layout.VBox?>
 
 <ScrollPane fitToWidth="true" styleClass="dashboard-scroll"
@@ -18,8 +18,8 @@
         </padding>
 
         <VBox spacing="10.0" styleClass="welcome-section">
-            <Label text="Welcome back, Student!" styleClass="welcome-title"/>
-            <Label text="Continue your learning journey" styleClass="welcome-subtitle"/>
+            <Label fx:id="welcomeTitleLabel" text="Bon retour !" styleClass="welcome-title"/>
+            <Label fx:id="welcomeSubtitleLabel" text="Continue your learning journey" styleClass="welcome-subtitle"/>
         </VBox>
 
         <HBox spacing="20.0" styleClass="stats-row">
@@ -100,29 +100,29 @@
             <Label text="Recommended Tutors" styleClass="section-title"/>
             <HBox spacing="15.0">
                 <VBox styleClass="tutor-card" spacing="10.0">
-                    <Label text="ðŸ‘¤" styleClass="tutor-avatar"/>
+                    <Label text="Tutor" styleClass="tutor-avatar"/>
                     <VBox spacing="5.0" alignment="CENTER">
                         <Label text="Ahmed Ben Ali" styleClass="tutor-name"/>
                         <Label text="Mathematics" styleClass="tutor-subject"/>
-                        <Label text="â­ 4.8" styleClass="tutor-rating"/>
+                        <Label text="4.8" styleClass="tutor-rating"/>
                         <Button text="Contact" styleClass="contact-button"/>
                     </VBox>
                 </VBox>
                 <VBox styleClass="tutor-card" spacing="10.0">
-                    <Label text="ðŸ‘¤" styleClass="tutor-avatar"/>
+                    <Label text="Tutor" styleClass="tutor-avatar"/>
                     <VBox spacing="5.0" alignment="CENTER">
                         <Label text="Sarah Mansour" styleClass="tutor-name"/>
                         <Label text="Physics" styleClass="tutor-subject"/>
-                        <Label text="â­ 4.9" styleClass="tutor-rating"/>
+                        <Label text="4.9" styleClass="tutor-rating"/>
                         <Button text="Contact" styleClass="contact-button"/>
                     </VBox>
                 </VBox>
                 <VBox styleClass="tutor-card" spacing="10.0">
-                    <Label text="ðŸ‘¤" styleClass="tutor-avatar"/>
+                    <Label text="Tutor" styleClass="tutor-avatar"/>
                     <VBox spacing="5.0" alignment="CENTER">
                         <Label text="Mohamed Trabelsi" styleClass="tutor-name"/>
                         <Label text="Chemistry" styleClass="tutor-subject"/>
-                        <Label text="â­ 4.7" styleClass="tutor-rating"/>
+                        <Label text="4.7" styleClass="tutor-rating"/>
                         <Button text="Contact" styleClass="contact-button"/>
                     </VBox>
                 </VBox>
@@ -130,4 +130,3 @@
         </VBox>
     </VBox>
 </ScrollPane>
-

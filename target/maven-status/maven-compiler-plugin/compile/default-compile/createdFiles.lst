@@ -34,7 +34,6 @@ tn\esprit\fahamni\services\ReservationService.class
 tn\esprit\fahamni\Models\AdminSession.class
 tn\esprit\fahamni\utils\OperationResult.class
 tn\esprit\fahamni\Models\Seance.class
-com\fahimni\test\main.class
 com\fahimni\utils\bd.class
 tn\esprit\fahamni\utils\UiTheme.class
 tn\esprit\fahamni\services\AdminDashboardService.class

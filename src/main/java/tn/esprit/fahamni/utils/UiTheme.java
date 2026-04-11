@@ -137,6 +137,51 @@ public final class UiTheme {
             -fx-padding: 2px 0 2px 0;
         }
 
+        .account-menu-wrapper {
+            -fx-padding: 0;
+        }
+
+        .account-menu-panel {
+            -fx-background-color: rgba(255, 255, 255, 0.98);
+            -fx-border-color: #d8e3f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 10px;
+            -fx-min-width: 190px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.16), 18, 0.18, 0, 8);
+        }
+
+        .account-menu-item {
+            -fx-background-color: transparent;
+            -fx-text-fill: #21406d;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 10px 12px;
+            -fx-background-radius: 12px;
+            -fx-alignment: CENTER_LEFT;
+            -fx-cursor: hand;
+        }
+
+        .account-menu-item-danger {
+            -fx-background-color: transparent;
+            -fx-text-fill: #ba4658;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 10px 12px;
+            -fx-background-radius: 12px;
+            -fx-alignment: CENTER_LEFT;
+            -fx-cursor: hand;
+        }
+
+        .account-menu-item:hover {
+            -fx-background-color: #eef4ff;
+        }
+
+        .account-menu-item-danger:hover {
+            -fx-background-color: #ffe8ec;
+        }
+
         .topbar-button {
             -fx-background-color: white;
             -fx-border-color: #d8e3f8;
@@ -205,6 +250,26 @@ public final class UiTheme {
             -fx-text-fill: #7b8ea9;
         }
 
+        .profile-avatar-large {
+            -fx-alignment: center;
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-background-radius: 999px;
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-min-width: 56px;
+            -fx-min-height: 56px;
+            -fx-font-size: 18px;
+        }
+
+        .profile-role-badge {
+            -fx-background-color: #edf4ff;
+            -fx-text-fill: #29589f;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 6px 10px;
+            -fx-background-radius: 999px;
+        }
+
         .backoffice-badge {
             -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
             -fx-text-fill: white;
@@ -238,7 +303,7 @@ public final class UiTheme {
         .stat-card, .upcoming-sessions, .learning-progress, .recommended-tutors, .seance-header, .seance-card, .reservation-header,
         .tab-content, .planner-header, .planner-form, .current-plan, .previous-plans, .quiz-header, .available-quizzes, .recent-results,
         .blog-header, .featured-article, .recent-articles, .categories-section, .blog-controls, .conversations-list, .chat-area,
-        .backoffice-panel, .backoffice-stat-card, .backoffice-mini-card {
+        .backoffice-panel, .backoffice-stat-card, .backoffice-mini-card, .profile-hero-card, .profile-form-card, .profile-danger-card {
             -fx-background-color: rgba(255, 255, 255, 0.92);
             -fx-border-color: #dbe5f6;
             -fx-border-width: 1px;
@@ -371,6 +436,53 @@ public final class UiTheme {
         }
 
         .action-button.danger:hover {
+            -fx-background-color: #ffdce3;
+        }
+
+        .profile-form-actions {
+            -fx-padding: 6px 0 0 0;
+        }
+
+        .profile-save-button {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-cursor: hand;
+            -fx-background-radius: 12px;
+            -fx-effect: dropshadow(gaussian, rgba(23, 52, 110, 0.20), 12, 0.18, 0, 4);
+        }
+
+        .profile-save-button:hover {
+            -fx-background-color: linear-gradient(to bottom, #7ca2ff 0%, #6388ff 100%);
+        }
+
+        .profile-reset-button {
+            -fx-background-color: rgba(231, 239, 251, 0.90);
+            -fx-border-color: #d4e0f5;
+            -fx-border-width: 1px;
+            -fx-text-fill: #294a78;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+        }
+
+        .profile-reset-button:hover {
+            -fx-background-color: #ecf3ff;
+        }
+
+        .profile-delete-button {
+            -fx-background-color: #ffe8ec;
+            -fx-border-color: #ffcbd3;
+            -fx-border-width: 1px;
+            -fx-text-fill: #ba4658;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+        }
+
+        .profile-delete-button:hover {
             -fx-background-color: #ffdce3;
         }
 
