@@ -82,6 +82,8 @@ public class BackofficeUsersController {
         OperationResult result = userService.createUser(
             fullNameField.getText(),
             emailField.getText(),
+            passwordField.getText(),
+            confirmPasswordField.getText(),
             roleComboBox.getValue(),
             statusComboBox.getValue()
         );

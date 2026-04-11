@@ -69,12 +69,48 @@ public class AdminUserService {
         }
     }
 
-    public OperationResult createUser(String fullName, String email, String role, String status) {
-        if (isBlank(fullName) || isBlank(email)) {
-            return OperationResult.failure("Veuillez renseigner le nom et l'email.");
+    public OperationResult createUser(String fullName, String email, String password, String confirmPassword, String role, String status) {
+        if (isBlank(fullName) || isBlank(email) || isBlank(password) || isBlank(confirmPassword)) {
+            return OperationResult.failure("Veuillez renseigner tous les champs obligatoires.");
         }
 
-        return OperationResult.failure("Ajout backoffice non disponible pour le moment : utilisez l'inscription pour creer un compte avec mot de passe.");
+        if (!email.contains("@")) {
+            return OperationResult.failure("Veuillez saisir une adresse email valide.");
+        }
+
+        if (password.length() < 4) {
+            return OperationResult.failure("Le mot de passe doit contenir au moins 4 caracteres.");
+        }
+
+        if (!password.equals(confirmPassword)) {
+            return OperationResult.failure("Les mots de passe ne correspondent pas.");
+        }
+
+        if (connection == null) {
+            return OperationResult.failure("Connexion a la base indisponible. Creation impossible.");
+        }
+
+        if (emailAlreadyExists(email)) {
+            return OperationResult.failure("Un compte existe deja avec cette adresse email.");
+        }
+
+        String normalizedRole = isBlank(role) ? "Student" : role.trim();
+        String normalizedStatus = normalizeStatus(status);
+        String query = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, email.trim());
+            statement.setString(2, password);
+            statement.setString(3, fullName.trim());
+            statement.setString(4, mapRoleToDatabaseValue(normalizedRole));
+            statement.setBoolean(5, toDatabaseStatus(normalizedStatus));
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error creating user: " + e.getMessage());
+            return OperationResult.failure("Erreur lors de la creation : " + e.getMessage());
+        }
+
+        refreshUsers();
+        return OperationResult.success("Utilisateur ajoute avec succes.");
     }
 
     public OperationResult updateUser(AdminUser user, String fullName, String email, String role, String status) {
@@ -137,6 +173,10 @@ public class AdminUserService {
     }
 
     private String inferRole(String roles) {
+        if (roles != null && roles.toUpperCase().contains("ROLE_TUTOR")) {
+            return "Tutor";
+        }
+
         if (roles != null && roles.toUpperCase().contains("ROLE_ADMIN")) {
             return "Administrator";
         }
@@ -158,6 +198,32 @@ public class AdminUserService {
 
     private boolean toDatabaseStatus(String status) {
         return !"Suspended".equalsIgnoreCase(status);
+    }
+
+    private boolean emailAlreadyExists(String email) {
+        String query = "SELECT 1 FROM `user` WHERE LOWER(email) = LOWER(?) LIMIT 1";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, email.trim());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking duplicate admin email: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private String mapRoleToDatabaseValue(String role) {
+        if ("Administrator".equalsIgnoreCase(role)) {
+            return "[\"ROLE_ADMIN\"]";
+        }
+
+        if ("Tutor".equalsIgnoreCase(role)) {
+            return "[\"ROLE_TUTOR\"]";
+        }
+
+        return "[\"ROLE_USER\"]";
     }
 
     private boolean isBlank(String value) {
