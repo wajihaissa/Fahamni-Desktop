@@ -167,6 +167,18 @@
             </HBox>
         </VBox>
 
+        <VBox fx:id="studentReservationsPanel" managed="false" visible="false" spacing="14.0" styleClass="reservation-section-panel">
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Mes reservations" styleClass="subsection-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="studentReservationsSummaryLabel" text="0 reservation" styleClass="workspace-chip workspace-chip-muted"/>
+            </HBox>
+
+            <Label text="Suis ici l'etat de tes demandes: en attente, acceptees ou refusees par le tuteur." styleClass="reservation-section-copy" wrapText="true"/>
+            <Label fx:id="studentReservationsFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
+            <VBox fx:id="studentReservationsContainer" spacing="12.0"/>
+        </VBox>
+
         <VBox fx:id="reservationRequestsPanel" managed="false" visible="false" spacing="14.0" styleClass="reservation-section-panel">
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label text="Demandes de reservation recues" styleClass="subsection-title"/>
