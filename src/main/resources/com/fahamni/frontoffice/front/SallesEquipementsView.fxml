@@ -48,51 +48,83 @@
             </VBox>
         </HBox>
 
-        <TabPane styleClass="reservation-tabs" tabClosingPolicy="UNAVAILABLE">
-            <tabs>
-                <Tab text="Salles">
-                    <VBox spacing="16.0" styleClass="infrastructure-panel">
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <TextField fx:id="roomSearchField" promptText="Rechercher une salle..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                            <ComboBox fx:id="roomTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
-                            <ComboBox fx:id="roomStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
-                            <CheckBox fx:id="accessibilityFilterCheckBox" text="Acces handicap" styleClass="backoffice-check"/>
-                            <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
-                        </HBox>
+        <HBox spacing="20.0" alignment="TOP_LEFT">
+            <VBox spacing="14.0" HBox.hgrow="ALWAYS">
+                <TabPane styleClass="reservation-tabs" tabClosingPolicy="UNAVAILABLE">
+                    <tabs>
+                        <Tab text="Salles">
+                            <VBox spacing="16.0" styleClass="infrastructure-panel">
+                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                    <TextField fx:id="roomSearchField" promptText="Rechercher une salle..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
+                                    <ComboBox fx:id="roomTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
+                                    <ComboBox fx:id="roomStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
+                                    <CheckBox fx:id="accessibilityFilterCheckBox" text="Acces handicap" styleClass="backoffice-check"/>
+                                    <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
+                                </HBox>
 
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <Label fx:id="roomCountLabel" text="Aucune salle chargee" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
-                            <Label text="Vue catalogue" styleClass="infrastructure-small-chip"/>
-                        </HBox>
+                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                    <Label fx:id="roomCountLabel" text="Aucune salle chargee" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
+                                    <Label text="Vue catalogue" styleClass="infrastructure-small-chip"/>
+                                </HBox>
 
-                        <FlowPane fx:id="roomCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="820.0"/>
-                    </VBox>
-                </Tab>
+                                <FlowPane fx:id="roomCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="720.0"/>
+                            </VBox>
+                        </Tab>
 
-                <Tab text="Materiel">
-                    <VBox spacing="16.0" styleClass="infrastructure-panel">
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <TextField fx:id="equipmentSearchField" promptText="Rechercher un equipement..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
-                            <ComboBox fx:id="equipmentTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
-                            <ComboBox fx:id="equipmentStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
-                            <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
-                        </HBox>
+                        <Tab text="Materiel">
+                            <VBox spacing="16.0" styleClass="infrastructure-panel">
+                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                    <TextField fx:id="equipmentSearchField" promptText="Rechercher un equipement..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
+                                    <ComboBox fx:id="equipmentTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
+                                    <ComboBox fx:id="equipmentStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
+                                    <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
+                                </HBox>
 
-                        <HBox spacing="10.0" alignment="CENTER_LEFT">
-                            <Label fx:id="equipmentCountLabel" text="Aucun equipement charge" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
-                            <Label text="Catalogue global" styleClass="infrastructure-small-chip"/>
-                        </HBox>
+                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                    <Label fx:id="equipmentCountLabel" text="Aucun equipement charge" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
+                                    <Label text="Catalogue global" styleClass="infrastructure-small-chip"/>
+                                </HBox>
 
-                        <FlowPane fx:id="equipmentCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="820.0"/>
-                    </VBox>
-                </Tab>
-            </tabs>
-        </TabPane>
+                                <FlowPane fx:id="equipmentCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="720.0"/>
+                            </VBox>
+                        </Tab>
+                    </tabs>
+                </TabPane>
 
-        <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-note">
-            <Label text="Integration future" styleClass="infrastructure-note-title"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Label text="L'action choisir pre-remplira la creation d'une seance quand le module seance sera branche." wrapText="true" styleClass="section-subtitle"/>
+                <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-note">
+                    <Label text="Integration future" styleClass="infrastructure-note-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="L'action utiliser pre-remplira la creation d'une seance quand le module seance sera branche." wrapText="true" styleClass="section-subtitle"/>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="14.0" prefWidth="340.0" minWidth="320.0" styleClass="infrastructure-detail-panel">
+                <HBox spacing="8.0" alignment="CENTER_LEFT">
+                    <Label fx:id="detailTypeLabel" text="Selection" styleClass="infrastructure-small-chip"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="detailStatusLabel" text="En attente" styleClass="status-chip"/>
+                </HBox>
+
+                <VBox spacing="5.0">
+                    <Label fx:id="detailTitleLabel" text="Selectionnez une carte" wrapText="true" styleClass="infrastructure-detail-title"/>
+                    <Label fx:id="detailSubtitleLabel" text="Les informations detaillees apparaitront ici." wrapText="true" styleClass="section-subtitle"/>
+                </VBox>
+
+                <FlowPane fx:id="detailFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="300.0"/>
+
+                <VBox spacing="8.0" styleClass="infrastructure-detail-section">
+                    <Label text="Description" styleClass="infrastructure-detail-section-title"/>
+                    <Label fx:id="detailDescriptionLabel" text="Aucun element selectionne." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
+                </VBox>
+
+                <VBox fx:id="sessionPreviewContainer" spacing="8.0" managed="false" visible="false" styleClass="infrastructure-detail-preview">
+                    <Label text="Apercu creation seance" styleClass="infrastructure-detail-section-title"/>
+                    <Label fx:id="sessionPreviewLabel" text="" wrapText="true" styleClass="infrastructure-detail-section-copy"/>
+                </VBox>
+
+                <Button fx:id="detailUseButton" text="Utiliser pour une seance" maxWidth="Infinity" disable="true" onAction="#handleUseSelectedElement" styleClass="backoffice-primary-button"/>
+                <Label fx:id="detailHintLabel" text="Choisissez une salle ou un materiel pour preparer l'integration future." wrapText="true" styleClass="section-subtitle"/>
+            </VBox>
         </HBox>
 
         <Label fx:id="feedbackLabel" text="" wrapText="true" managed="false" visible="false" styleClass="backoffice-feedback"/>

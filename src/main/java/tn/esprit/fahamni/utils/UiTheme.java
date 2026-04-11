@@ -383,7 +383,7 @@ public final class UiTheme {
             -fx-background-radius: 999px;
         }
 
-        .infrastructure-header, .infrastructure-panel, .infrastructure-note, .infrastructure-stat-card {
+        .infrastructure-header, .infrastructure-panel, .infrastructure-note, .infrastructure-stat-card, .infrastructure-detail-panel {
             -fx-background-color: rgba(255, 255, 255, 0.92);
             -fx-border-color: #dbe5f6;
             -fx-border-width: 1px;
@@ -425,6 +425,13 @@ public final class UiTheme {
         .infrastructure-card:hover {
             -fx-border-color: #abc5f8;
             -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f3f8ff 100%);
+        }
+
+        .infrastructure-card.selected {
+            -fx-border-color: #6e97ff;
+            -fx-border-width: 2px;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f1f6ff 100%);
+            -fx-effect: dropshadow(gaussian, rgba(37, 91, 190, 0.16), 18, 0.18, 0, 7);
         }
 
         .infrastructure-empty-card {
@@ -503,6 +510,62 @@ public final class UiTheme {
         .status-chip.unavailable {
             -fx-background-color: #ffe8ec;
             -fx-text-fill: #ba4658;
+        }
+
+        .infrastructure-detail-panel {
+            -fx-padding: 18px;
+        }
+
+        .infrastructure-detail-title {
+            -fx-font-size: 21px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #183f82;
+        }
+
+        .infrastructure-detail-fact-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
+            -fx-border-color: #dfe8f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-padding: 10px;
+        }
+
+        .infrastructure-detail-fact-label {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #7186a4;
+        }
+
+        .infrastructure-detail-fact-value {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1b3761;
+        }
+
+        .infrastructure-detail-section, .infrastructure-detail-preview {
+            -fx-background-color: #f8fbff;
+            -fx-border-color: #dfe8f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-padding: 13px;
+        }
+
+        .infrastructure-detail-preview {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #cbdaf8;
+        }
+
+        .infrastructure-detail-section-title {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .infrastructure-detail-section-copy {
+            -fx-font-size: 13px;
+            -fx-text-fill: #617792;
         }
 
         .backoffice-pagination-bar {

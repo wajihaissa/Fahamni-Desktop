@@ -4,18 +4,14 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -81,6 +77,36 @@ public class SallesEquipementsController {
     private Label availableEquipmentsStatLabel;
 
     @FXML
+    private Label detailTypeLabel;
+
+    @FXML
+    private Label detailStatusLabel;
+
+    @FXML
+    private Label detailTitleLabel;
+
+    @FXML
+    private Label detailSubtitleLabel;
+
+    @FXML
+    private FlowPane detailFactsContainer;
+
+    @FXML
+    private Label detailDescriptionLabel;
+
+    @FXML
+    private VBox sessionPreviewContainer;
+
+    @FXML
+    private Label sessionPreviewLabel;
+
+    @FXML
+    private Button detailUseButton;
+
+    @FXML
+    private Label detailHintLabel;
+
+    @FXML
     private Label feedbackLabel;
 
     private final AdminSalleService salleService = new AdminSalleService();
@@ -89,11 +115,14 @@ public class SallesEquipementsController {
     private final ObservableList<Equipement> equipements = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final FilteredList<Equipement> filteredEquipements = new FilteredList<>(equipements, equipement -> true);
+    private Object selectedElement;
+    private Node selectedCard;
 
     @FXML
     private void initialize() {
         configureFilters();
         hideFeedback();
+        resetDetailPanel();
         loadCatalog(false);
     }
 
@@ -101,6 +130,23 @@ public class SallesEquipementsController {
     private void handleRefresh() {
         hideFeedback();
         loadCatalog(true);
+    }
+
+    @FXML
+    private void handleUseSelectedElement() {
+        hideFeedback();
+
+        if (selectedElement instanceof Salle salle) {
+            showRoomPreview(salle);
+            return;
+        }
+
+        if (selectedElement instanceof Equipement equipement) {
+            showEquipmentPreview(equipement);
+            return;
+        }
+
+        showFeedback("Selectionnez une salle ou un materiel avant de continuer.", false);
     }
 
     private void configureFilters() {
@@ -211,6 +257,7 @@ public class SallesEquipementsController {
 
     private Node createRoomCard(Salle salle) {
         VBox card = createCard();
+        card.setOnMouseClicked(event -> selectRoom(salle, card, false));
 
         HBox header = createCardHeader("S", salle.getNom(), salle.getEtat());
         Label metaLine = createCardMeta(
@@ -231,10 +278,16 @@ public class SallesEquipementsController {
         );
 
         Button detailsButton = createSecondaryButton("Voir details");
-        detailsButton.setOnAction(event -> showRoomDetails(salle));
+        detailsButton.setOnAction(event -> {
+            selectRoom(salle, card, false);
+            event.consume();
+        });
 
         Button chooseButton = createPrimaryButton("Choisir");
-        chooseButton.setOnAction(event -> showRoomChoiceDialog(salle));
+        chooseButton.setOnAction(event -> {
+            selectRoom(salle, card, true);
+            event.consume();
+        });
 
         HBox actions = createActions(detailsButton, chooseButton);
         card.getChildren().addAll(header, metaLine, description, details, actions);
@@ -243,6 +296,7 @@ public class SallesEquipementsController {
 
     private Node createEquipmentCard(Equipement equipement) {
         VBox card = createCard();
+        card.setOnMouseClicked(event -> selectEquipment(equipement, card, false));
 
         HBox header = createCardHeader("M", equipement.getNom(), equipement.getEtat());
         Label metaLine = createCardMeta(
@@ -260,10 +314,16 @@ public class SallesEquipementsController {
         );
 
         Button detailsButton = createSecondaryButton("Voir details");
-        detailsButton.setOnAction(event -> showEquipmentDetails(equipement));
+        detailsButton.setOnAction(event -> {
+            selectEquipment(equipement, card, false);
+            event.consume();
+        });
 
         Button chooseButton = createPrimaryButton("Choisir");
-        chooseButton.setOnAction(event -> showEquipmentChoiceDialog(equipement));
+        chooseButton.setOnAction(event -> {
+            selectEquipment(equipement, card, true);
+            event.consume();
+        });
 
         HBox actions = createActions(detailsButton, chooseButton);
         card.getChildren().addAll(header, metaLine, description, details, actions);
@@ -364,148 +424,145 @@ public class SallesEquipementsController {
         return emptyState;
     }
 
-    private void showRoomDetails(Salle salle) {
-        showDetailsDialog(
-            "Details de la salle",
-            formatOptionalText(salle.getNom()),
-            new String[][] {
-                {"Identifiant", String.valueOf(salle.getIdSalle())},
-                {"Nom", formatOptionalText(salle.getNom())},
-                {"Capacite", salle.getCapacite() + " places"},
-                {"Localisation", formatOptionalText(salle.getLocalisation())},
-                {"Batiment", formatOptionalText(salle.getBatiment())},
-                {"Etage", salle.getEtage() == null ? "Non renseigne" : String.valueOf(salle.getEtage())},
-                {"Type", formatOptionalText(salle.getTypeSalle())},
-                {"Etat", formatLabel(salle.getEtat())},
-                {"Disposition", formatOptionalText(salle.getTypeDisposition())},
-                {"Acces handicap", salle.isAccesHandicape() ? "Oui" : "Non"},
-                {"Statut detaille", formatOptionalText(salle.getStatutDetaille())},
-                {"Derniere maintenance", formatDate(salle.getDateDerniereMaintenance())},
-                {"Description", formatDescription(salle.getDescription())}
-            }
+    private void selectRoom(Salle salle, Node card, boolean showPreview) {
+        selectCard(card);
+        selectedElement = salle;
+
+        detailTypeLabel.setText("Salle");
+        detailStatusLabel.setText(formatLabel(salle.getEtat()));
+        detailStatusLabel.getStyleClass().setAll("status-chip", resolveStatusStyle(salle.getEtat()));
+        detailTitleLabel.setText(formatOptionalText(salle.getNom()));
+        detailSubtitleLabel.setText(
+            formatOptionalText(salle.getTypeSalle())
+                + " | "
+                + salle.getCapacite()
+                + " places | "
+                + formatOptionalText(salle.getLocalisation())
         );
-    }
+        detailDescriptionLabel.setText(formatDescription(salle.getDescription()));
+        detailUseButton.setDisable(false);
+        detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
 
-    private void showEquipmentDetails(Equipement equipement) {
-        showDetailsDialog(
-            "Details de l'equipement",
-            formatOptionalText(equipement.getNom()),
-            new String[][] {
-                {"Identifiant", String.valueOf(equipement.getIdEquipement())},
-                {"Nom", formatOptionalText(equipement.getNom())},
-                {"Type", formatLabel(equipement.getTypeEquipement())},
-                {"Quantite disponible", equipement.getQuantiteDisponible() + " unite(s)"},
-                {"Etat", formatLabel(equipement.getEtat())},
-                {"Description", formatDescription(equipement.getDescription())}
-            }
+        detailFactsContainer.getChildren().setAll(
+            createDetailInfoCard("Identifiant", String.valueOf(salle.getIdSalle())),
+            createDetailInfoCard("Batiment", formatOptionalText(salle.getBatiment())),
+            createDetailInfoCard("Etage", salle.getEtage() == null ? "Non renseigne" : String.valueOf(salle.getEtage())),
+            createDetailInfoCard("Disposition", formatOptionalText(salle.getTypeDisposition())),
+            createDetailInfoCard("Acces", salle.isAccesHandicape() ? "Handicap oui" : "Standard"),
+            createDetailInfoCard("Maintenance", formatDate(salle.getDateDerniereMaintenance()))
         );
+
+        if (showPreview) {
+            showRoomPreview(salle);
+        } else {
+            hideSessionPreview();
+        }
     }
 
-    private void showRoomChoiceDialog(Salle salle) {
-        showFutureSessionDialog(
-            "Salle choisie pour une future seance",
-            "La creation de seance n'est pas encore branchee ici. Cet apercu montre les champs qui pourront etre pre-remplis.",
-            new String[][] {
-                {"Mode", "Presentielle"},
-                {"Salle", formatOptionalText(salle.getNom())},
-                {"Id salle", String.valueOf(salle.getIdSalle())},
-                {"Localisation", formatOptionalText(salle.getLocalisation())},
-                {"Capacite", salle.getCapacite() + " places"},
-                {"Etat", formatLabel(salle.getEtat())}
-            },
-            buildChoiceNote(salle.getEtat(), "cette salle")
+    private void selectEquipment(Equipement equipement, Node card, boolean showPreview) {
+        selectCard(card);
+        selectedElement = equipement;
+
+        detailTypeLabel.setText("Materiel");
+        detailStatusLabel.setText(formatLabel(equipement.getEtat()));
+        detailStatusLabel.getStyleClass().setAll("status-chip", resolveStatusStyle(equipement.getEtat()));
+        detailTitleLabel.setText(formatOptionalText(equipement.getNom()));
+        detailSubtitleLabel.setText(formatLabel(equipement.getTypeEquipement()) + " | Stock global: " + equipement.getQuantiteDisponible());
+        detailDescriptionLabel.setText(formatDescription(equipement.getDescription()));
+        detailUseButton.setDisable(false);
+        detailHintLabel.setText(buildChoiceNote(equipement.getEtat(), "ce materiel"));
+
+        detailFactsContainer.getChildren().setAll(
+            createDetailInfoCard("Identifiant", String.valueOf(equipement.getIdEquipement())),
+            createDetailInfoCard("Type", formatLabel(equipement.getTypeEquipement())),
+            createDetailInfoCard("Quantite", equipement.getQuantiteDisponible() + " unite(s)"),
+            createDetailInfoCard("Etat", formatLabel(equipement.getEtat()))
         );
+
+        if (showPreview) {
+            showEquipmentPreview(equipement);
+        } else {
+            hideSessionPreview();
+        }
     }
 
-    private void showEquipmentChoiceDialog(Equipement equipement) {
-        showFutureSessionDialog(
-            "Materiel choisi pour une future seance",
-            "La creation de seance n'est pas encore branchee ici. Cet apercu montre les champs qui pourront etre pre-remplis.",
-            new String[][] {
-                {"Mode", "Presentielle"},
-                {"Materiel demande", formatOptionalText(equipement.getNom())},
-                {"Id equipement", String.valueOf(equipement.getIdEquipement())},
-                {"Type", formatLabel(equipement.getTypeEquipement())},
-                {"Quantite disponible", equipement.getQuantiteDisponible() + " unite(s)"},
-                {"Etat", formatLabel(equipement.getEtat())}
-            },
-            buildChoiceNote(equipement.getEtat(), "ce materiel")
-        );
+    private Node createDetailInfoCard(String label, String value) {
+        VBox card = new VBox(5);
+        card.setPrefWidth(145);
+        card.getStyleClass().add("infrastructure-detail-fact-card");
+
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("infrastructure-detail-fact-label");
+
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.getStyleClass().add("infrastructure-detail-fact-value");
+
+        card.getChildren().addAll(labelNode, valueNode);
+        return card;
     }
 
-    private void showDetailsDialog(String title, String header, String[][] rows) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle(title);
-        dialog.setHeaderText(header);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        dialog.getDialogPane().setContent(createDetailsGrid(rows));
-        dialog.setResizable(true);
-        dialog.showAndWait();
-    }
-
-    private void showFutureSessionDialog(String header, String copy, String[][] rows, String note) {
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Creation de seance - apercu");
-        dialog.setHeaderText(header);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-
-        VBox content = new VBox(12);
-        content.setPadding(new Insets(4, 0, 0, 0));
-
-        Label copyLabel = new Label(copy);
-        copyLabel.setWrapText(true);
-        copyLabel.getStyleClass().add("section-subtitle");
-
-        Label noteLabel = new Label(note);
-        noteLabel.setWrapText(true);
-        noteLabel.getStyleClass().setAll("backoffice-feedback", isAvailableStatusNote(note) ? "success" : "error");
-        noteLabel.setManaged(true);
-        noteLabel.setVisible(true);
-
-        content.getChildren().addAll(copyLabel, createPrefilledForm(rows), noteLabel);
-        dialog.getDialogPane().setContent(content);
-        dialog.setResizable(true);
-        dialog.showAndWait();
-    }
-
-    private GridPane createDetailsGrid(String[][] rows) {
-        GridPane grid = new GridPane();
-        grid.setHgap(14);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(4, 0, 0, 0));
-
-        for (int row = 0; row < rows.length; row++) {
-            Label key = new Label(rows[row][0]);
-            key.getStyleClass().add("backoffice-form-label");
-
-            Label value = new Label(rows[row][1]);
-            value.setWrapText(true);
-            value.setMaxWidth(420);
-            value.getStyleClass().add("backoffice-panel-copy");
-
-            grid.add(key, 0, row);
-            grid.add(value, 1, row);
+    private void selectCard(Node card) {
+        if (selectedCard != null) {
+            selectedCard.getStyleClass().remove("selected");
         }
 
-        return grid;
+        selectedCard = card;
+        if (selectedCard != null && !selectedCard.getStyleClass().contains("selected")) {
+            selectedCard.getStyleClass().add("selected");
+        }
     }
 
-    private VBox createPrefilledForm(String[][] rows) {
-        VBox form = new VBox(10);
+    private void showRoomPreview(Salle salle) {
+        sessionPreviewLabel.setText(
+            "Mode: presentielle\n"
+                + "Salle pre-remplie: "
+                + formatOptionalText(salle.getNom())
+                + "\nCapacite: "
+                + salle.getCapacite()
+                + " places\nLocalisation: "
+                + formatOptionalText(salle.getLocalisation())
+        );
+        sessionPreviewContainer.setManaged(true);
+        sessionPreviewContainer.setVisible(true);
+        detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+    }
 
-        for (String[] row : rows) {
-            Label label = new Label(row[0]);
-            label.getStyleClass().add("backoffice-form-label");
+    private void showEquipmentPreview(Equipement equipement) {
+        sessionPreviewLabel.setText(
+            "Mode: presentielle\n"
+                + "Materiel demande: "
+                + formatOptionalText(equipement.getNom())
+                + "\nType: "
+                + formatLabel(equipement.getTypeEquipement())
+                + "\nQuantite disponible: "
+                + equipement.getQuantiteDisponible()
+                + " unite(s)"
+        );
+        sessionPreviewContainer.setManaged(true);
+        sessionPreviewContainer.setVisible(true);
+        detailHintLabel.setText(buildChoiceNote(equipement.getEtat(), "ce materiel"));
+    }
 
-            TextField field = new TextField(row[1]);
-            field.setEditable(false);
-            field.setFocusTraversable(false);
-            field.getStyleClass().add("backoffice-form-input");
+    private void hideSessionPreview() {
+        sessionPreviewLabel.setText("");
+        sessionPreviewContainer.setManaged(false);
+        sessionPreviewContainer.setVisible(false);
+    }
 
-            form.getChildren().addAll(label, field);
-        }
-
-        return form;
+    private void resetDetailPanel() {
+        selectedElement = null;
+        selectCard(null);
+        detailTypeLabel.setText("Selection");
+        detailStatusLabel.setText("En attente");
+        detailStatusLabel.getStyleClass().setAll("status-chip", "unavailable");
+        detailTitleLabel.setText("Selectionnez une carte");
+        detailSubtitleLabel.setText("Les informations detaillees apparaitront ici.");
+        detailFactsContainer.getChildren().clear();
+        detailDescriptionLabel.setText("Aucun element selectionne.");
+        detailUseButton.setDisable(true);
+        detailHintLabel.setText("Choisissez une salle ou un materiel pour preparer l'integration future.");
+        hideSessionPreview();
     }
 
     private boolean matchesRoomSearch(Salle salle, String normalizedSearch) {
@@ -583,10 +640,6 @@ public class SallesEquipementsController {
         }
 
         return "Statut: " + elementName + " necessitera une validation admin avant publication de la seance.";
-    }
-
-    private boolean isAvailableStatusNote(String note) {
-        return note != null && note.contains("est disponible");
     }
 
     private String resolveStatusStyle(String status) {
