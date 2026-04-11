@@ -157,7 +157,7 @@
                             <FlowPane fx:id="sessionRoomFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="360.0"/>
 
                             <VBox styleClass="infrastructure-detail-preview">
-                                <Label text="Apercu detaille" styleClass="infrastructure-detail-section-title"/>
+                                <Label text="Description de la salle" styleClass="infrastructure-detail-section-title"/>
                                 <Label fx:id="sessionRoomPreviewDescriptionLabel" text="Aucune salle selectionnee." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
                             </VBox>
                         </VBox>
