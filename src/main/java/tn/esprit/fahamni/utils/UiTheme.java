@@ -1069,6 +1069,645 @@ public final class UiTheme {
         .login-message-label.success {
             -fx-text-fill: #d6ffe1;
         }
+
+        /* Style de module seances et reservations */
+
+        .reservation-workspace, .reservation-search-panel, .reservation-section-panel {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.08), 18, 0.18, 0, 6);
+            -fx-padding: 16px;
+        }
+
+        .reservation-form-shell, .workspace-stat-card, .tutor-profile-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7faff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-padding: 14px;
+        }
+
+        .workspace-eyebrow, .workspace-label {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4a6ea9;
+        }
+
+        .workspace-title {
+            -fx-font-size: 26px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .workspace-subtitle, .reservation-section-copy, .tutor-card-meta {
+            -fx-font-size: 13px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .workspace-chip {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #d0def8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 7px 12px;
+            -fx-text-fill: #2f5ca7;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+        }
+
+        .workspace-chip-muted {
+            -fx-background-color: #f7faff;
+            -fx-border-color: #dbe7f7;
+            -fx-text-fill: #5e78a2;
+        }
+
+        .workspace-menu-combo, .reservation-mode-combo {
+            -fx-pref-height: 38px;
+        }
+
+        .workspace-stat-card {
+            -fx-min-height: 76px;
+        }
+
+        .workspace-stat-icon {
+            -fx-min-width: 38px;
+            -fx-min-height: 38px;
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #d6e2f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 12px;
+            -fx-background-radius: 12px;
+            -fx-alignment: center;
+        }
+
+        .workspace-stat-icon-text {
+            -fx-text-fill: #4a6ff5;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+        }
+
+        .workspace-stat-title {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #5d78a2;
+        }
+
+        .workspace-stat-value {
+            -fx-font-size: 28px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4968f2;
+        }
+
+        .reservation-search-title, .tutor-card-name {
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .reservation-search-field {
+            -fx-pref-height: 40px;
+        }
+
+        .reservation-submit-button {
+            -fx-padding: 0 18px;
+            -fx-pref-height: 40px;
+        }
+
+        .tutor-profile-card {
+            -fx-spacing: 12px;
+        }
+
+        .pagination-bar {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-padding: 12px 14px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.07), 16, 0.16, 0, 5);
+        }
+
+        .pagination-summary {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #5d78a2;
+        }
+
+        .pagination-nav-button, .pagination-page-button {
+            -fx-background-color: #f4f7fc;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-text-fill: #5e78a2;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-cursor: hand;
+        }
+
+        .pagination-nav-button {
+            -fx-padding: 9px 15px;
+        }
+
+        .pagination-page-button {
+            -fx-min-width: 42px;
+            -fx-min-height: 38px;
+            -fx-padding: 8px 13px;
+        }
+
+        .pagination-page-button.active {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #4f6df0 100%);
+            -fx-border-color: transparent;
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.28), 14, 0.25, 0, 6);
+            -fx-opacity: 1;
+        }
+
+        .pagination-nav-button:disabled {
+            -fx-background-color: #f6f8fc;
+            -fx-border-color: #edf2fa;
+            -fx-text-fill: #a8b5c8;
+            -fx-opacity: 1;
+        }
+
+        .pagination-per-page-label {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #263c63;
+        }
+
+        .pagination-page-size-combo {
+            -fx-pref-height: 40px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+        }
+
+        .session-detail-dialog {
+            -fx-background-color: transparent;
+        }
+
+        .session-detail-dialog > .content {
+            -fx-padding: 8px 10px 10px 10px;
+        }
+
+        .session-detail-dialog .button-bar .button {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-padding: 8px 18px;
+            -fx-cursor: hand;
+        }
+
+        .session-detail-root {
+            -fx-background-color:
+                radial-gradient(center 15% 0%, radius 70%, rgba(126, 182, 255, 0.22) 0%, rgba(126, 182, 255, 0.0) 72%),
+                linear-gradient(to bottom, #ffffff 0%, #f6f9ff 100%);
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 20px;
+            -fx-border-radius: 20px;
+            -fx-padding: 22px 24px 20px 24px;
+        }
+
+        .session-detail-header {
+            -fx-alignment: center-left;
+        }
+
+        .session-detail-title {
+            -fx-font-size: 24px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .session-detail-subtitle, .session-detail-muted {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .session-detail-reservation-chip {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #cfdcf7;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 8px 13px;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #2f5ca7;
+        }
+
+        .session-detail-metrics {
+            -fx-padding: 2px 0 0 0;
+        }
+
+        .session-detail-metric-card, .session-detail-description-card, .session-detail-occupancy-card {
+            -fx-background-color: rgba(255, 255, 255, 0.86);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 12px;
+        }
+
+        .session-detail-metric-label {
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #6682aa;
+        }
+
+        .session-detail-metric-value {
+            -fx-font-size: 15px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .session-detail-metric-hint, .session-detail-description-text {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .session-detail-section-title {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .session-detail-occupancy-value {
+            -fx-font-size: 18px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #4968f2;
+        }
+
+        .session-detail-progress {
+            -fx-pref-height: 10px;
+        }
+
+        .session-detail-progress > .track {
+            -fx-background-color: #e4ecfb;
+            -fx-background-radius: 999px;
+        }
+
+        .session-detail-progress > .bar {
+            -fx-background-color: linear-gradient(to right, #6e97ff 0%, #4b67e8 100%);
+            -fx-background-radius: 999px;
+            -fx-background-insets: 0;
+        }
+
+        .session-detail-status-row {
+            -fx-padding: 2px 0 0 0;
+        }
+
+        .session-detail-status-chip {
+            -fx-background-color: #f7faff;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 6px 10px;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #48658d;
+        }
+
+        .session-detail-action-button {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-padding: 8px 14px;
+            -fx-cursor: hand;
+        }
+
+        .session-detail-footer {
+            -fx-padding: 0 2px 0 2px;
+        }
+
+        .calendar-layout-root {
+            -fx-padding: 2px;
+        }
+
+        .calendar-sidebar-panel, .calendar-toolbar, .calendar-board-shell {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 22px;
+            -fx-border-radius: 22px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.08), 18, 0.18, 0, 6);
+        }
+
+        .calendar-sidebar-panel {
+            -fx-padding: 16px;
+        }
+
+        .calendar-main-column {
+            -fx-spacing: 16px;
+        }
+
+        .calendar-toolbar {
+            -fx-padding: 14px 16px;
+        }
+
+        .calendar-page-title {
+            -fx-font-size: 24px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .calendar-side-icon {
+            -fx-min-width: 26px;
+            -fx-min-height: 26px;
+            -fx-alignment: center;
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-background-radius: 999px;
+            -fx-text-fill: white;
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+        }
+
+        .calendar-side-title {
+            -fx-font-size: 16px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .calendar-upcoming-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7faff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 12px;
+            -fx-spacing: 6px;
+            -fx-cursor: hand;
+        }
+
+        .calendar-upcoming-card:hover, .calendar-upcoming-card.selected {
+            -fx-border-color: #90afff;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #eef5ff 100%);
+            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.16), 14, 0.18, 0, 4);
+        }
+
+        .calendar-upcoming-chip {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #d3e0f7;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 4px 8px;
+            -fx-text-fill: #4a6ff5;
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+        }
+
+        .calendar-upcoming-title {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .calendar-upcoming-meta {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6d82a0;
+        }
+
+        .calendar-upcoming-empty {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .calendar-selected-panel {
+            -fx-background-color: rgba(247, 250, 255, 0.86);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-padding: 12px;
+        }
+
+        .calendar-selected-empty-card, .calendar-selected-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7faff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 12px;
+            -fx-spacing: 8px;
+        }
+
+        .calendar-selected-empty-title, .calendar-selected-title {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .calendar-selected-header {
+            -fx-alignment: center-left;
+        }
+
+        .calendar-selected-row {
+            -fx-alignment: top-left;
+        }
+
+        .calendar-selected-label {
+            -fx-min-width: 76px;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #6682aa;
+        }
+
+        .calendar-selected-value {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .calendar-selected-description {
+            -fx-background-color: #f8fbff;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-padding: 9px;
+            -fx-font-size: 12px;
+            -fx-text-fill: #5f789c;
+        }
+
+        .calendar-month-toolbar {
+            -fx-background-color: #ffffff;
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 6px 10px;
+        }
+
+        .calendar-nav-button {
+            -fx-background-color: #ffffff;
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-text-fill: #214f93;
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-min-width: 34px;
+            -fx-min-height: 34px;
+            -fx-cursor: hand;
+        }
+
+        .calendar-nav-button:hover {
+            -fx-background-color: #eff5ff;
+            -fx-border-color: #aac4f6;
+        }
+
+        .calendar-month-label {
+            -fx-min-width: 118px;
+            -fx-alignment: center;
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .calendar-view-switch {
+            -fx-background-color: #f8fbff;
+            -fx-border-color: #d9e5f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-padding: 4px;
+        }
+
+        .calendar-view-button {
+            -fx-background-color: transparent;
+            -fx-border-color: transparent;
+            -fx-text-fill: #6d82a0;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-background-radius: 999px;
+            -fx-border-radius: 999px;
+            -fx-padding: 8px 14px;
+            -fx-cursor: hand;
+        }
+
+        .calendar-view-button.active {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(23, 52, 110, 0.18), 12, 0.16, 0, 3);
+        }
+
+        .calendar-board-shell {
+            -fx-padding: 10px;
+            -fx-spacing: 10px;
+        }
+
+        .calendar-weekday {
+            -fx-background-color: #f6f9ff;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-padding: 10px 0;
+            -fx-alignment: center;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #58769e;
+        }
+
+        .calendar-day-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fbfdff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 8px;
+            -fx-spacing: 6px;
+        }
+
+        .calendar-day-card.outside-month {
+            -fx-background-color: linear-gradient(to bottom, #f6f9ff 0%, #f2f6fd 100%);
+            -fx-border-color: #e7edf8;
+        }
+
+        .calendar-day-card.today {
+            -fx-border-color: #90afff;
+            -fx-effect: dropshadow(gaussian, rgba(87, 120, 255, 0.16), 12, 0.16, 0, 2);
+        }
+
+        .calendar-day-number {
+            -fx-background-color: #edf3ff;
+            -fx-background-radius: 10px;
+            -fx-padding: 5px 9px;
+            -fx-text-fill: #244776;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+        }
+
+        .calendar-day-number.muted {
+            -fx-background-color: #eef2f8;
+            -fx-text-fill: #b7c2d6;
+        }
+
+        .calendar-day-number.active {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #4b67e8 100%);
+            -fx-text-fill: white;
+        }
+
+        .calendar-day-sessions {
+            -fx-spacing: 4px;
+        }
+
+        .calendar-session-pill {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #d5e2f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 10px;
+            -fx-border-radius: 10px;
+            -fx-padding: 4px 6px;
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #234671;
+            -fx-cursor: hand;
+        }
+
+        .calendar-session-pill:hover {
+            -fx-background-color: #e4efff;
+            -fx-border-color: #9bb9f8;
+        }
+
+        .calendar-session-pill.selected {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #4f6df0 100%);
+            -fx-border-color: transparent;
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.18), 10, 0.18, 0, 3);
+        }
+
+        .calendar-session-more {
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #6d82a0;
+            -fx-padding: 2px 2px 0 2px;
+        }
+
+        .frontoffice-feedback.success {
+            -fx-background-color: #e2f5e8;
+            -fx-text-fill: #1d7a46;
+            -fx-background-radius: 12px;
+            -fx-padding: 10px 12px;
+        }
+
+        .frontoffice-feedback.error {
+            -fx-background-color: #ffe8ec;
+            -fx-text-fill: #c43b49;
+            -fx-background-radius: 12px;
+            -fx-padding: 10px 12px;
+        }
         """;
 
     private static final String STYLESHEET_URI = createStylesheetUri();
