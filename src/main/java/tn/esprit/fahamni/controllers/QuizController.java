@@ -7,6 +7,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -42,6 +43,7 @@ public class QuizController {
     @FXML private Label averageScoreValue;
     @FXML private Label subjectsMasteredValue;
     @FXML private Label quizResultsSummaryLabel;
+    @FXML private CheckBox attemptedOnlyCheckBox;
     @FXML private ComboBox<String> quizSortCombo;
     @FXML private TextField quizSearchField;
 
@@ -56,6 +58,7 @@ public class QuizController {
         quizSortCombo.getItems().addAll("Most Recent", "Title A-Z", "Most Played");
         quizSortCombo.setValue("Most Recent");
         quizSortCombo.valueProperty().addListener((obs, oldValue, newValue) -> renderFilteredQuizCards());
+        attemptedOnlyCheckBox.selectedProperty().addListener((obs, oldValue, newValue) -> renderFilteredQuizCards());
         refreshQuizData();
     }
 
@@ -79,6 +82,9 @@ public class QuizController {
                 .filter(quiz -> normalizedQuery.isBlank()
                         || quiz.getTitre().toLowerCase(Locale.ROOT).contains(normalizedQuery)
                         || quiz.getKeyword().toLowerCase(Locale.ROOT).contains(normalizedQuery))
+                .filter(quiz -> attemptedOnlyCheckBox == null
+                        || !attemptedOnlyCheckBox.isSelected()
+                        || !quiz.getQuizResults().isEmpty())
                 .sorted(resolveQuizComparator())
                 .toList();
 
