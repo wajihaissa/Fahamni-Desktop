@@ -60,7 +60,7 @@
                     <children>
                         <Button text="Compte" styleClass="topbar-pill-button" onAction="#toggleAccountMenu"/>
                         <VBox fx:id="accountMenuPane" managed="false" visible="false" spacing="6.0"
-                              styleClass="account-menu-panel" translateY="48.0" StackPane.alignment="TOP_CENTER">
+                              styleClass="account-menu-panel" StackPane.alignment="TOP_RIGHT">
                             <children>
                                 <Button maxWidth="Infinity" onAction="#showProfile" styleClass="account-menu-item" text="Mon profil"/>
                                 <Button maxWidth="Infinity" onAction="#showSettings" styleClass="account-menu-item" text="Parametres"/>

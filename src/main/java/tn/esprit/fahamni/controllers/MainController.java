@@ -21,6 +21,9 @@ import java.io.IOException;
 
 public class MainController {
 
+    private static final double ACCOUNT_MENU_HIDDEN_OFFSET = -8.0;
+    private static final double ACCOUNT_MENU_VISIBLE_OFFSET = 10.0;
+
     @FXML
     private BorderPane rootPane;
 
@@ -56,6 +59,9 @@ public class MainController {
 
     @FXML
     private StackPane accountMenuWrapper;
+
+    private FadeTransition accountMenuFadeTransition;
+    private TranslateTransition accountMenuTranslateTransition;
 
     @FXML
     private Label profileAvatarLabel;
@@ -203,43 +209,47 @@ public class MainController {
     }
 
     private void showAccountMenuAnimated() {
+        stopAccountMenuAnimations();
         accountMenuPane.setManaged(true);
         accountMenuPane.setVisible(true);
         accountMenuPane.setOpacity(0.0);
-        accountMenuPane.setTranslateY(36.0);
+        accountMenuPane.setTranslateY(ACCOUNT_MENU_HIDDEN_OFFSET);
 
-        FadeTransition fadeTransition = new FadeTransition(Duration.millis(160), accountMenuPane);
-        fadeTransition.setFromValue(0.0);
-        fadeTransition.setToValue(1.0);
+        accountMenuFadeTransition = new FadeTransition(Duration.millis(160), accountMenuPane);
+        accountMenuFadeTransition.setFromValue(0.0);
+        accountMenuFadeTransition.setToValue(1.0);
 
-        TranslateTransition translateTransition = new TranslateTransition(Duration.millis(160), accountMenuPane);
-        translateTransition.setFromY(36.0);
-        translateTransition.setToY(48.0);
+        accountMenuTranslateTransition = new TranslateTransition(Duration.millis(160), accountMenuPane);
+        accountMenuTranslateTransition.setFromY(ACCOUNT_MENU_HIDDEN_OFFSET);
+        accountMenuTranslateTransition.setToY(ACCOUNT_MENU_VISIBLE_OFFSET);
 
-        fadeTransition.play();
-        translateTransition.play();
+        accountMenuFadeTransition.play();
+        accountMenuTranslateTransition.play();
     }
 
     private void hideAccountMenuAnimated() {
-        FadeTransition fadeTransition = new FadeTransition(Duration.millis(130), accountMenuPane);
-        fadeTransition.setFromValue(accountMenuPane.getOpacity());
-        fadeTransition.setToValue(0.0);
+        stopAccountMenuAnimations();
 
-        TranslateTransition translateTransition = new TranslateTransition(Duration.millis(130), accountMenuPane);
-        translateTransition.setFromY(accountMenuPane.getTranslateY());
-        translateTransition.setToY(36.0);
+        accountMenuFadeTransition = new FadeTransition(Duration.millis(130), accountMenuPane);
+        accountMenuFadeTransition.setFromValue(accountMenuPane.getOpacity());
+        accountMenuFadeTransition.setToValue(0.0);
 
-        fadeTransition.setOnFinished(event -> hideAccountMenuInstant());
+        accountMenuTranslateTransition = new TranslateTransition(Duration.millis(130), accountMenuPane);
+        accountMenuTranslateTransition.setFromY(accountMenuPane.getTranslateY());
+        accountMenuTranslateTransition.setToY(ACCOUNT_MENU_HIDDEN_OFFSET);
 
-        fadeTransition.play();
-        translateTransition.play();
+        accountMenuFadeTransition.setOnFinished(event -> hideAccountMenuInstant());
+
+        accountMenuFadeTransition.play();
+        accountMenuTranslateTransition.play();
     }
 
     private void hideAccountMenuInstant() {
+        stopAccountMenuAnimations();
         accountMenuPane.setVisible(false);
         accountMenuPane.setManaged(false);
-        accountMenuPane.setOpacity(1.0);
-        accountMenuPane.setTranslateY(48.0);
+        accountMenuPane.setOpacity(0.0);
+        accountMenuPane.setTranslateY(ACCOUNT_MENU_HIDDEN_OFFSET);
     }
 
     private boolean isInsideAccountMenu(Node node) {
@@ -251,6 +261,15 @@ public class MainController {
             current = current.getParent();
         }
         return false;
+    }
+
+    private void stopAccountMenuAnimations() {
+        if (accountMenuFadeTransition != null) {
+            accountMenuFadeTransition.stop();
+        }
+        if (accountMenuTranslateTransition != null) {
+            accountMenuTranslateTransition.stop();
+        }
     }
 
     private void setActiveButton(Button activeButton) {
