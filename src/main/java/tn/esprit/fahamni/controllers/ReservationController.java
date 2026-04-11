@@ -1,7 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.Models.Seance;
-import tn.esprit.fahamni.interfaces.ISeanceSearchService;
 import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
@@ -52,7 +51,6 @@ public class ReservationController {
 
     private final SeanceService seanceService = new SeanceService();
     private final IServices<Seance> seanceCrudService = seanceService;
-    private final ISeanceSearchService seanceSearchService = seanceService;
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final ReservationService reservationService = new ReservationService();
     private Integer editingSessionId;
@@ -168,7 +166,7 @@ public class ReservationController {
 
         configureWorkspaceSections();
         sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
-        sessionSearchModeComboBox.getItems().setAll(seanceSearchService.getAvailableSearchStatuses());
+        sessionSearchModeComboBox.getItems().setAll(seanceService.getAvailableSearchStatuses());
         sessionSearchModeComboBox.setValue("Toutes les seances");
         sessionsPerPageComboBox.getItems().setAll(SESSION_PAGE_SIZE_OPTIONS);
         sessionsPerPageComboBox.setValue(DEFAULT_SESSION_PAGE_SIZE);
@@ -332,7 +330,7 @@ public class ReservationController {
 
     private void applySessionFilters() {
         recentSessionsContainer.getChildren().clear();
-        List<Seance> filteredSessions = seanceSearchService.search(
+        List<Seance> filteredSessions = seanceService.search(
             sessionSearchField.getText(),
             sessionSearchModeComboBox.getValue(),
             0

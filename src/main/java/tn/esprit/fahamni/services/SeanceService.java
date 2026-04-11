@@ -1,7 +1,6 @@
 package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Seance;
-import tn.esprit.fahamni.interfaces.ISeanceSearchService;
 import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
@@ -17,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class SeanceService implements IServices<Seance>, ISeanceSearchService {
+public class SeanceService implements IServices<Seance> {
 
     public static final int MIN_DURATION_MINUTES = 15;
     public static final int MAX_DURATION_MINUTES = 480;
@@ -76,7 +75,6 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
         return "Searching for: " + searchText + " in " + selectedSubject;
     }
 
-    @Override
     public List<String> getAvailableSearchStatuses() {
         return List.of(
             "Toutes les seances",
@@ -115,7 +113,6 @@ public class SeanceService implements IServices<Seance>, ISeanceSearchService {
         return seances;
     }
 
-    @Override
     public List<Seance> search(String keyword, String statusFilter, int limit) {
         return getAll().stream()
             .filter(seance -> matchesStatusFilter(seance, statusFilter))
