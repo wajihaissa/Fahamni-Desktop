@@ -1057,9 +1057,10 @@ public class BlogController {
         imageRow.getChildren().addAll(imagePathLabel, browseBtn);
         imageGroup.getChildren().addAll(imageLabel, imageRow);
 
-        // Contenu + compteur caractères
+        // Contenu + compteur X/500
+        final int MAX_CONTENT = 500;
         VBox contentGroup = new VBox(4);
-        Label contentLabel = new Label("Contenu de l'article *  (min. 20 caractères)");
+        Label contentLabel = new Label("Contenu de l'article *  (min. 20 · max. 500 caractères)");
         contentLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
         TextArea contentArea = new TextArea();
         contentArea.setPromptText("Rédigez votre article ici...");
@@ -1067,12 +1068,17 @@ public class BlogController {
         contentArea.setWrapText(true);
         contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
                 "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
-        Label contentCounter = new Label("0 caractère(s)");
+        Label contentCounter = new Label("0/" + MAX_CONTENT);
         contentCounter.setStyle("-fx-font-size: 11; -fx-text-fill: #94a3b8;");
         contentArea.textProperty().addListener((obs, o, n) -> {
+            if (n != null && n.length() > MAX_CONTENT) {
+                contentArea.setText(o); // bloquer au-delà de 500
+                return;
+            }
             int len = n == null ? 0 : n.trim().length();
-            contentCounter.setText(len + " caractère(s)");
-            contentCounter.setStyle("-fx-font-size: 11; -fx-text-fill: " + (len < 20 ? "#e74c3c" : "#10b981") + ";");
+            contentCounter.setText(len + "/" + MAX_CONTENT);
+            String color = len < 20 ? "#e74c3c" : (len > 450 ? "#f59e0b" : "#10b981");
+            contentCounter.setStyle("-fx-font-size: 11; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
         });
         contentGroup.getChildren().addAll(contentLabel, contentArea, contentCounter);
 
@@ -1093,8 +1099,8 @@ public class BlogController {
         errorLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 12; -fx-font-weight: bold;");
         errorLabel.setWrapText(true);
 
-        // Anti-spam : timestamp dernière soumission
-        final long[] lastSubmitTime = {0};
+        // Anti-spam : bloquer si 2 soumissions en moins de 30 secondes
+        final long[] submitTimes = {0, 0}; // [0]=avant-dernière, [1]=dernière
 
         // Boutons
         HBox buttons = new HBox(12);
@@ -1136,12 +1142,11 @@ public class BlogController {
                 return;
             }
 
-            // ── Contrôle 4 : Anti-spam (30 secondes entre 2 soumissions) ──
+            // ── Contrôle 4 : Anti-spam (max 2 soumissions par 30 secondes) ──
             long now = System.currentTimeMillis();
-            long elapsed = now - lastSubmitTime[0];
-            if (lastSubmitTime[0] > 0 && elapsed < 30_000) {
-                long restant = (30_000 - elapsed) / 1000;
-                errorLabel.setText("⏳  Patientez encore " + restant + " seconde(s) avant de soumettre à nouveau.");
+            if (submitTimes[0] > 0 && (now - submitTimes[0]) < 30_000) {
+                long restant = (30_000 - (now - submitTimes[0])) / 1000;
+                errorLabel.setText("⏳  Trop de soumissions. Patientez encore " + restant + " seconde(s).");
                 return;
             }
 
@@ -1152,7 +1157,9 @@ public class BlogController {
             contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
                 "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
 
-            lastSubmitTime[0] = now;
+            // Décaler les timestamps : [0]=avant-dernière, [1]=dernière
+            submitTimes[0] = submitTimes[1];
+            submitTimes[1] = now;
 
             String currentUser = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
             Blog newBlog = new Blog(0, titre, content, cat,
