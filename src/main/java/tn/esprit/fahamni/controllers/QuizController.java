@@ -43,9 +43,48 @@ public class QuizController {
 
     private void refreshQuizData() {
         List<Quiz> quizzes = quizService.getAllQuizzes();
+        if (quizzes.isEmpty()) {
+            seedTestQuizzes();
+            quizzes = quizService.getAllQuizzes();
+        }
         renderQuizCards(quizzes);
         renderRecentResults(quizzes);
         updateStats(quizzes);
+    }
+
+    private void seedTestQuizzes() {
+        try {
+            Quiz quiz = new Quiz();
+            quiz.setTitre("Valorant Certification Quiz");
+            quiz.setKeyword("Valorant");
+
+            Question q1 = new Question();
+            q1.setQuestion("Quel est le rôle du Spike dans Valorant ?");
+            q1.addChoice(buildChoice("Désamorcer les objets", false));
+            q1.addChoice(buildChoice("Activer une arme spéciale", false));
+            q1.addChoice(buildChoice("Poser une bombe pour gagner une manche", true));
+            q1.addChoice(buildChoice("Soigner une équipe", false));
+            quiz.addQuestion(q1);
+
+            Question q2 = new Question();
+            q2.setQuestion("Quelle capacité permet de voir les ennemis à travers les murs ?");
+            q2.addChoice(buildChoice("Cypher - Fil de caméra", false));
+            q2.addChoice(buildChoice("Sova - Flèche éclairante", false));
+            q2.addChoice(buildChoice("Sage - Barrière de lumière", false));
+            q2.addChoice(buildChoice("Skye - Suivi des traces", true));
+            quiz.addQuestion(q2);
+
+            quizService.createQuiz(quiz);
+        } catch (Exception ignored) {
+            // Ignore seed failures in environments with no DB access
+        }
+    }
+
+    private Choice buildChoice(String text, boolean isCorrect) {
+        Choice choice = new Choice();
+        choice.setChoice(text);
+        choice.setIsCorrect(isCorrect);
+        return choice;
     }
 
     private void renderQuizCards(List<Quiz> quizzes) {
