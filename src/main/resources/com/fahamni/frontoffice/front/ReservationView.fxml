@@ -152,6 +152,8 @@
                 <Label text="Mise a jour auto" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
+            <Label fx:id="reservationActionFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
+
             <VBox fx:id="recentSessionsContainer" spacing="12.0"/>
 
             <HBox fx:id="sessionPaginationBar" alignment="CENTER_LEFT" spacing="12.0" styleClass="pagination-bar">

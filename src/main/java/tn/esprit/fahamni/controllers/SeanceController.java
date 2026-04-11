@@ -7,9 +7,7 @@ import tn.esprit.fahamni.services.ReservationService.ReservationStats;
 import tn.esprit.fahamni.services.SeanceService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -23,7 +21,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -36,31 +33,14 @@ public class SeanceController {
     private static final DateTimeFormatter UPCOMING_FORMATTER = DateTimeFormatter.ofPattern("dd MMM - HH:mm", Locale.ENGLISH);
     private static final DateTimeFormatter DETAILS_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DAY_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String DEFAULT_CALENDAR_SORT = "Ajout recent";
-    private static final List<String> CALENDAR_SORT_OPTIONS = List.of(
-        DEFAULT_CALENDAR_SORT,
-        "Date la plus proche",
-        "Date la plus lointaine",
-        "Matiere A-Z",
-        "Tuteur A-Z",
-        "Statut",
-        "Capacite decroissante"
-    );
-    private static final List<DateTimeFormatter> DATE_FILTER_FORMATTERS = List.of(
-        DateTimeFormatter.ofPattern("dd/MM/yyyy"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd"),
-        DateTimeFormatter.ofPattern("dd-MM-yyyy")
-    );
 
     private final SeanceService seanceService = new SeanceService();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final ReservationService reservationService = new ReservationService();
 
     private YearMonth displayedMonth;
-    private List<Seance> allSeances = List.of();
-    private List<Seance> visibleSeances = List.of();
+    private List<Seance> seances = List.of();
     private Seance selectedSeance;
-    private boolean initializingView;
 
     @FXML
     private Label monthLabel;
@@ -75,26 +55,9 @@ public class SeanceController {
     private VBox selectedSessionDetailsBox;
 
     @FXML
-    private TextField calendarStartDateField;
-
-    @FXML
-    private TextField calendarEndDateField;
-
-    @FXML
-    private ComboBox<String> calendarSortComboBox;
-
-    @FXML
-    private Label calendarFilterFeedbackLabel;
-
-    @FXML
     private void initialize() {
-        initializingView = true;
         displayedMonth = YearMonth.from(LocalDate.now());
-        calendarSortComboBox.getItems().setAll(CALENDAR_SORT_OPTIONS);
-        calendarSortComboBox.setValue(DEFAULT_CALENDAR_SORT);
         configureGrid();
-        hideCalendarFilterFeedback();
-        initializingView = false;
         reloadCalendarData();
         renderSelectedSessionDetails();
     }
@@ -111,137 +74,16 @@ public class SeanceController {
         renderCalendar();
     }
 
-    @FXML
-    private void handleApplyCalendarFilters() {
-        if (initializingView) {
-            return;
-        }
-        applyCalendarFilters();
-    }
-
-    @FXML
-    private void handleResetCalendarFilters() {
-        initializingView = true;
-        calendarStartDateField.clear();
-        calendarEndDateField.clear();
-        calendarSortComboBox.setValue(DEFAULT_CALENDAR_SORT);
-        selectedSeance = null;
-        initializingView = false;
-        applyCalendarFilters();
-    }
-
     private void reloadCalendarData() {
-        allSeances = seanceService.getAll();
-        applyCalendarFilters();
-    }
-
-    private void applyCalendarFilters() {
-        hideCalendarFilterFeedback();
-
-        try {
-            visibleSeances = sortSeances(filterSeancesByDate(allSeances));
-        } catch (IllegalArgumentException exception) {
-            showCalendarFilterFeedback(exception.getMessage());
-            return;
-        }
-
-        if (selectedSeance != null && visibleSeances.stream().noneMatch(this::isSelected)) {
-            selectedSeance = null;
-        }
+        seances = seanceService.getAll();
         renderUpcomingSessions();
         renderCalendar();
-        renderSelectedSessionDetails();
-    }
-
-    private List<Seance> filterSeancesByDate(List<Seance> source) {
-        LocalDate startDate = parseOptionalFilterDate(calendarStartDateField.getText(), "date debut");
-        LocalDate endDate = parseOptionalFilterDate(calendarEndDateField.getText(), "date fin");
-
-        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
-            throw new IllegalArgumentException("La date debut doit etre avant la date fin.");
-        }
-
-        return source.stream()
-            .filter(seance -> matchesDateRange(seance, startDate, endDate))
-            .toList();
-    }
-
-    private boolean matchesDateRange(Seance seance, LocalDate startDate, LocalDate endDate) {
-        if (startDate == null && endDate == null) {
-            return true;
-        }
-        if (seance.getStartAt() == null) {
-            return false;
-        }
-
-        LocalDate sessionDate = seance.getStartAt().toLocalDate();
-        boolean afterStart = startDate == null || !sessionDate.isBefore(startDate);
-        boolean beforeEnd = endDate == null || !sessionDate.isAfter(endDate);
-        return afterStart && beforeEnd;
-    }
-
-    private LocalDate parseOptionalFilterDate(String value, String fieldName) {
-        String candidate = normalizeText(value);
-        if (candidate == null) {
-            return null;
-        }
-
-        for (DateTimeFormatter formatter : DATE_FILTER_FORMATTERS) {
-            try {
-                return LocalDate.parse(candidate, formatter);
-            } catch (DateTimeParseException ignored) {
-                // Try the next supported date format.
-            }
-        }
-        throw new IllegalArgumentException("Format invalide pour " + fieldName + ". Utilisez jj/mm/aaaa.");
-    }
-
-    private List<Seance> sortSeances(List<Seance> source) {
-        return source.stream()
-            .sorted(buildCalendarComparator())
-            .toList();
-    }
-
-    private Comparator<Seance> buildCalendarComparator() {
-        String selectedSort = calendarSortComboBox != null ? calendarSortComboBox.getValue() : DEFAULT_CALENDAR_SORT;
-        Comparator<Seance> dateAscending = Comparator.comparing(
-            Seance::getStartAt,
-            Comparator.nullsLast(Comparator.naturalOrder())
-        );
-
-        if ("Date la plus proche".equals(selectedSort)) {
-            return dateAscending;
-        }
-        if ("Date la plus lointaine".equals(selectedSort)) {
-            return dateAscending.reversed();
-        }
-        if ("Matiere A-Z".equals(selectedSort)) {
-            return Comparator.comparing((Seance seance) -> safe(seance.getMatiere()), String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(dateAscending);
-        }
-        if ("Tuteur A-Z".equals(selectedSort)) {
-            return Comparator.comparing(
-                    (Seance seance) -> safe(tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())),
-                    String.CASE_INSENSITIVE_ORDER
-                )
-                .thenComparing(dateAscending);
-        }
-        if ("Statut".equals(selectedSort)) {
-            return Comparator.comparingInt(Seance::getStatus)
-                .thenComparing(dateAscending);
-        }
-        if ("Capacite decroissante".equals(selectedSort)) {
-            return Comparator.comparingInt(Seance::getMaxParticipants)
-                .reversed()
-                .thenComparing(dateAscending);
-        }
-        return Comparator.comparingInt(Seance::getId).reversed();
     }
 
     private void renderUpcomingSessions() {
         upcomingSessionsBox.getChildren().clear();
 
-        List<Seance> upcomingSessions = visibleSeances.stream()
+        List<Seance> upcomingSessions = seances.stream()
             .filter(this::isUpcoming)
             .sorted(Comparator.comparing(Seance::getStartAt))
             .limit(3)
@@ -295,7 +137,7 @@ public class SeanceController {
         monthLabel.setText(displayedMonth.format(MONTH_FORMATTER));
         calendarGrid.getChildren().clear();
 
-        Map<LocalDate, List<Seance>> sessionsByDay = visibleSeances.stream()
+        Map<LocalDate, List<Seance>> sessionsByDay = seances.stream()
             .filter(seance -> seance.getStartAt() != null)
             .collect(Collectors.groupingBy(seance -> seance.getStartAt().toLocalDate()));
 
@@ -520,30 +362,12 @@ public class SeanceController {
         return normalizedValue != null ? normalizedValue : "Non renseigne";
     }
 
-    private String safe(String value) {
-        return value != null ? value : "";
-    }
-
     private String normalizeText(String value) {
         if (value == null) {
             return null;
         }
         String normalizedValue = value.trim().replaceAll("\\s+", " ");
         return normalizedValue.isEmpty() ? null : normalizedValue;
-    }
-
-    private void showCalendarFilterFeedback(String message) {
-        calendarFilterFeedbackLabel.setText(message);
-        calendarFilterFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", "error");
-        calendarFilterFeedbackLabel.setManaged(true);
-        calendarFilterFeedbackLabel.setVisible(true);
-    }
-
-    private void hideCalendarFilterFeedback() {
-        calendarFilterFeedbackLabel.setText("");
-        calendarFilterFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", "error");
-        calendarFilterFeedbackLabel.setManaged(false);
-        calendarFilterFeedbackLabel.setVisible(false);
     }
 
     private String buildDaySessionText(Seance seance) {

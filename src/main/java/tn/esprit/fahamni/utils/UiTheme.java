@@ -739,7 +739,7 @@ public final class UiTheme {
             -fx-padding: 2px;
         }
 
-        .calendar-sidebar-panel, .calendar-toolbar, .calendar-filter-panel, .calendar-board-shell {
+        .calendar-sidebar-panel, .calendar-toolbar, .calendar-board-shell {
             -fx-background-color: rgba(255, 255, 255, 0.94);
             -fx-border-color: #d9e5f8;
             -fx-border-width: 1px;
@@ -757,10 +757,6 @@ public final class UiTheme {
         }
 
         .calendar-toolbar {
-            -fx-padding: 14px 16px;
-        }
-
-        .calendar-filter-panel {
             -fx-padding: 14px 16px;
         }
 

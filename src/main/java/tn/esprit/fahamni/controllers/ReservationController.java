@@ -7,6 +7,7 @@ import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
 import tn.esprit.fahamni.services.SeanceService;
+import tn.esprit.fahamni.utils.OperationResult;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
@@ -36,6 +37,7 @@ public class ReservationController {
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
     private static final String SECTION_ADD_SESSION = "Ajouter une seance";
+    private static final int CURRENT_STUDENT_ID = 5;
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
@@ -110,6 +112,9 @@ public class ReservationController {
     private VBox recentSessionsContainer;
 
     @FXML
+    private Label reservationActionFeedbackLabel;
+
+    @FXML
     private HBox sessionPaginationBar;
 
     @FXML
@@ -144,6 +149,7 @@ public class ReservationController {
 
         resetEditMode();
         hideFeedback();
+        hideReservationActionFeedback();
         loadSessionDashboard();
         showAvailableSessionsSection();
     }
@@ -379,6 +385,8 @@ public class ReservationController {
         detailsButton.getStyleClass().addAll("action-button", "secondary");
         detailsButton.setOnAction(event -> showSessionDetails(seance, reservationStats));
 
+        Button reserveButton = buildReserveButton(seance, reservationStats);
+
         Button editButton = new Button("Modifier");
         editButton.getStyleClass().addAll("action-button", "secondary");
         editButton.setOnAction(event -> startEditingSession(seance));
@@ -387,10 +395,43 @@ public class ReservationController {
         deleteButton.getStyleClass().addAll("action-button", "danger");
         deleteButton.setOnAction(event -> confirmDeleteSession(seance));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer, detailsButton, editButton, deleteButton);
+        actionRow.getChildren().addAll(idChip, actionSpacer, reserveButton, detailsButton, editButton, deleteButton);
 
         card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
         return card;
+    }
+
+    private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
+        Button reserveButton = new Button("Reserver");
+        reserveButton.getStyleClass().addAll("action-button", "primary");
+
+        if (seance.getStatus() != 1) {
+            reserveButton.setText("Indisponible");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        if (reservationStats.total() >= seance.getMaxParticipants()) {
+            reserveButton.setText("Complet");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        if (reservationService.hasActiveReservation(seance.getId(), CURRENT_STUDENT_ID)) {
+            reserveButton.setText("Deja reserve");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        reserveButton.setOnAction(event -> reserveSession(seance));
+        return reserveButton;
+    }
+
+    private void reserveSession(Seance seance) {
+        OperationResult result = reservationService.reserveSeance(seance, CURRENT_STUDENT_ID);
+        loadSessionDashboard();
+        showAvailableSessionsSection();
+        showReservationActionFeedback(result.getMessage(), result.isSuccess());
     }
 
     private void showSessionDetails(Seance seance, ReservationStats reservationStats) {
@@ -818,6 +859,20 @@ public class ReservationController {
         publishFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
         publishFeedbackLabel.setManaged(false);
         publishFeedbackLabel.setVisible(false);
+    }
+
+    private void showReservationActionFeedback(String message, boolean success) {
+        reservationActionFeedbackLabel.setText(message);
+        reservationActionFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", success ? "success" : "error");
+        reservationActionFeedbackLabel.setManaged(true);
+        reservationActionFeedbackLabel.setVisible(true);
+    }
+
+    private void hideReservationActionFeedback() {
+        reservationActionFeedbackLabel.setText("");
+        reservationActionFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
+        reservationActionFeedbackLabel.setManaged(false);
+        reservationActionFeedbackLabel.setVisible(false);
     }
 
     private void applyCurrentTheme(DialogPane dialogPane) {
