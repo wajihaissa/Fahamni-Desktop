@@ -193,7 +193,12 @@ public class QuizController {
         Label descriptionLabel = new Label("A quick knowledge check about '" + quiz.getKeyword() + "'.");
         descriptionLabel.setWrapText(true);
         descriptionLabel.getStyleClass().add("quiz-description");
-        cardBody.getChildren().addAll(titleLabel, keywordBadge, infoLabel, descriptionLabel);
+
+        String bestScoreText = buildBestScoreLabel(quiz);
+        Label bestScoreLabel = new Label(bestScoreText);
+        bestScoreLabel.getStyleClass().add("quiz-info");
+
+        cardBody.getChildren().addAll(titleLabel, keywordBadge, infoLabel, descriptionLabel, bestScoreLabel);
         HBox.setHgrow(cardBody, Priority.ALWAYS);
 
         VBox actionBox = new VBox(10);
@@ -387,6 +392,15 @@ public class QuizController {
                 .average()
                 .orElse(0.0);
         return formatPercentage(average);
+    }
+
+    private String buildBestScoreLabel(Quiz quiz) {
+        return quiz.getQuizResults().stream()
+                .map(QuizResult::getPercentage)
+                .filter(percentage -> percentage != null)
+                .max(Double::compareTo)
+                .map(score -> "Best score: " + formatPercentage(score))
+                .orElse("Best score: No attempts yet");
     }
 
     private String formatPercentage(double value) {
