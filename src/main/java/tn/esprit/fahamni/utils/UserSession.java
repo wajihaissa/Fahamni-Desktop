@@ -50,8 +50,16 @@ public final class UserSession {
     }
 
     public static String getRoleLabel() {
-        if (currentUser != null && currentUser.getRole() == UserRole.ADMIN) {
+        if (currentUser == null) {
+            return "Espace Etudiant";
+        }
+
+        if (currentUser.getRole() == UserRole.ADMIN) {
             return "Espace Administrateur";
+        }
+
+        if (currentUser.getRole() == UserRole.TUTOR) {
+            return "Espace Tuteur";
         }
 
         return "Espace Etudiant";

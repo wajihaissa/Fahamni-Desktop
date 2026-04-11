@@ -9,6 +9,7 @@
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
@@ -155,6 +156,13 @@
                                                             <children>
                                                                 <Label text="Confirmer le mot de passe" styleClass="login-input-label"/>
                                                                 <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Role" styleClass="login-input-label"/>
+                                                                <ComboBox fx:id="registerRoleComboBox" styleClass="login-input"/>
                                                             </children>
                                                         </VBox>
                                                     </children>
