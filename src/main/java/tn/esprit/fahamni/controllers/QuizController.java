@@ -11,6 +11,7 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -39,13 +40,16 @@ public class QuizController {
     @FXML private Label quizzesTakenValue;
     @FXML private Label averageScoreValue;
     @FXML private Label subjectsMasteredValue;
+    @FXML private TextField quizSearchField;
 
     private final QuizService quizService = new QuizService();
     // Static test user used while the user session system is being integrated.
     private static final User TEST_USER = new User(1L, "Quiz Tester", "quiz.tester@fahamni.tn", "", UserRole.USER);
+    private List<Quiz> allQuizzes = List.of();
 
     @FXML
     private void initialize() {
+        quizSearchField.textProperty().addListener((obs, oldValue, newValue) -> renderFilteredQuizCards());
         refreshQuizData();
     }
 
@@ -55,9 +59,23 @@ public class QuizController {
             seedTestQuizzes();
             quizzes = quizService.getAllQuizzes();
         }
-        renderQuizCards(quizzes);
+        allQuizzes = quizzes;
+        renderFilteredQuizCards();
         renderRecentResults(quizzes);
         updateStats(quizzes);
+    }
+
+    private void renderFilteredQuizCards() {
+        String query = quizSearchField != null ? quizSearchField.getText() : "";
+        String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+
+        List<Quiz> filteredQuizzes = allQuizzes.stream()
+                .filter(quiz -> normalizedQuery.isBlank()
+                        || quiz.getTitre().toLowerCase(Locale.ROOT).contains(normalizedQuery)
+                        || quiz.getKeyword().toLowerCase(Locale.ROOT).contains(normalizedQuery))
+                .toList();
+
+        renderQuizCards(filteredQuizzes);
     }
 
     private void seedTestQuizzes() {
