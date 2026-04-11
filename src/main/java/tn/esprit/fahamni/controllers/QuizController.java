@@ -270,6 +270,14 @@ public class QuizController {
         alert.showAndWait();
     }
 
+    @FXML
+    private void handleShowLeaderboard() {
+        showAlert(Alert.AlertType.INFORMATION,
+                "Leaderboard",
+                "Leaderboard temporaire",
+                "Le leaderboard sera disponible lorsque la gestion des utilisateurs sera intégrée.");
+    }
+
     private void showResultDetails(QuizResult result) {
         String userInfo = result.getUser() != null ? result.getUser().getFullName() + " (" + result.getUser().getEmail() + ")" : "Utilisateur inconnu";
         showAlert(Alert.AlertType.INFORMATION,

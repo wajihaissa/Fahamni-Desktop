@@ -20,7 +20,7 @@
                 <Label text="Test your knowledge with our comprehensive quiz collection." styleClass="section-subtitle"/>
             </VBox>
             <Pane HBox.hgrow="ALWAYS"/>
-            <Button text="Leaderboard" styleClass="action-button secondary"/>
+            <Button text="Leaderboard" styleClass="action-button secondary" onAction="#handleShowLeaderboard"/>
         </HBox>
 
         <HBox spacing="20.0" styleClass="quiz-stats">
