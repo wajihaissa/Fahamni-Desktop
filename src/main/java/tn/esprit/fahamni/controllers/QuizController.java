@@ -7,6 +7,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
@@ -41,6 +42,7 @@ public class QuizController {
     @FXML private Label averageScoreValue;
     @FXML private Label subjectsMasteredValue;
     @FXML private Label quizResultsSummaryLabel;
+    @FXML private ComboBox<String> quizSortCombo;
     @FXML private TextField quizSearchField;
 
     private final QuizService quizService = new QuizService();
@@ -51,6 +53,9 @@ public class QuizController {
     @FXML
     private void initialize() {
         quizSearchField.textProperty().addListener((obs, oldValue, newValue) -> renderFilteredQuizCards());
+        quizSortCombo.getItems().addAll("Most Recent", "Title A-Z", "Most Played");
+        quizSortCombo.setValue("Most Recent");
+        quizSortCombo.valueProperty().addListener((obs, oldValue, newValue) -> renderFilteredQuizCards());
         refreshQuizData();
     }
 
@@ -74,6 +79,7 @@ public class QuizController {
                 .filter(quiz -> normalizedQuery.isBlank()
                         || quiz.getTitre().toLowerCase(Locale.ROOT).contains(normalizedQuery)
                         || quiz.getKeyword().toLowerCase(Locale.ROOT).contains(normalizedQuery))
+                .sorted(resolveQuizComparator())
                 .toList();
 
         updateQuizResultsSummary(filteredQuizzes.size(), normalizedQuery.isBlank());
@@ -91,6 +97,19 @@ public class QuizController {
         }
 
         quizResultsSummaryLabel.setText(resultCount + " quiz match your search");
+    }
+
+    private Comparator<Quiz> resolveQuizComparator() {
+        String selectedSort = quizSortCombo != null ? quizSortCombo.getValue() : "Most Recent";
+        if ("Title A-Z".equals(selectedSort)) {
+            return Comparator.comparing(Quiz::getTitre, String.CASE_INSENSITIVE_ORDER);
+        }
+        if ("Most Played".equals(selectedSort)) {
+            return Comparator.comparingInt((Quiz quiz) -> quiz.getQuizResults().size()).reversed()
+                    .thenComparing(Quiz::getTitre, String.CASE_INSENSITIVE_ORDER);
+        }
+        return Comparator.comparing(Quiz::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(Quiz::getTitre, String.CASE_INSENSITIVE_ORDER);
     }
 
     private void seedTestQuizzes() {
