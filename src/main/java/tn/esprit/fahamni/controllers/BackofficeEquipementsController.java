@@ -22,6 +22,8 @@ import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.services.AdminEquipementService;
 
 import java.sql.SQLException;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -120,6 +122,7 @@ public class BackofficeEquipementsController {
 
         equipementsTable.setItems(displayedEquipements);
         equipementsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+        equipementsTable.comparatorProperty().addListener((obs, oldValue, newValue) -> handleTableSortChange());
         searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilters());
         statusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
 
@@ -310,7 +313,6 @@ public class BackofficeEquipementsController {
         etatComboBox.setValue(equipement.getEtat());
         etatComboBox.setDisable(false);
         descriptionArea.setText(defaultString(equipement.getDescription()));
-
         updateSelectionBadge(equipement);
     }
 
@@ -321,7 +323,6 @@ public class BackofficeEquipementsController {
         etatComboBox.setValue(resolveDefaultCreationStatus());
         etatComboBox.setDisable(true);
         descriptionArea.clear();
-
         updateSelectionBadge(null);
     }
 
@@ -331,6 +332,18 @@ public class BackofficeEquipementsController {
         String selectedStatus = statusFilterComboBox.getValue();
 
         filteredEquipements.setPredicate(equipement -> matchesFilters(equipement, normalizedSearch, selectedStatus));
+
+        if (selectedEquipementId != null && selectEquipementById(selectedEquipementId)) {
+            return;
+        }
+
+        currentPageIndex = 0;
+        refreshTablePage();
+        updateSelectionBadge(null);
+    }
+
+    private void handleTableSortChange() {
+        Integer selectedEquipementId = getSelectedEquipementId();
 
         if (selectedEquipementId != null && selectEquipementById(selectedEquipementId)) {
             return;
@@ -441,8 +454,10 @@ public class BackofficeEquipementsController {
     }
 
     private boolean selectEquipementById(int idEquipement) {
-        for (int index = 0; index < filteredEquipements.size(); index++) {
-            Equipement equipement = filteredEquipements.get(index);
+        List<Equipement> sortedEquipements = getSortedEquipements();
+
+        for (int index = 0; index < sortedEquipements.size(); index++) {
+            Equipement equipement = sortedEquipements.get(index);
             if (equipement.getIdEquipement() == idEquipement) {
                 currentPageIndex = index / rowsPerPage;
                 refreshTablePage();
@@ -466,7 +481,8 @@ public class BackofficeEquipementsController {
     }
 
     private void refreshTablePage() {
-        int filteredSize = filteredEquipements.size();
+        List<Equipement> sortedEquipements = getSortedEquipements();
+        int filteredSize = sortedEquipements.size();
         int totalPages = getTotalPages(filteredSize);
 
         if (totalPages == 0) {
@@ -481,7 +497,7 @@ public class BackofficeEquipementsController {
         int fromIndex = currentPageIndex * rowsPerPage;
         int toIndex = Math.min(fromIndex + rowsPerPage, filteredSize);
 
-        displayedEquipements.setAll(filteredEquipements.subList(fromIndex, toIndex));
+        displayedEquipements.setAll(sortedEquipements.subList(fromIndex, toIndex));
         refreshPaginationControls(filteredSize, fromIndex, toIndex, totalPages);
     }
 
@@ -604,6 +620,14 @@ public class BackofficeEquipementsController {
         }
 
         return normalizedDescription.substring(0, 57) + "...";
+    }
+
+    private List<Equipement> getSortedEquipements() {
+        Comparator<Equipement> comparator = equipementsTable.getComparator();
+        if (comparator == null) {
+            return filteredEquipements.stream().toList();
+        }
+        return filteredEquipements.stream().sorted(comparator).toList();
     }
 
     private String formatLabel(String value) {
