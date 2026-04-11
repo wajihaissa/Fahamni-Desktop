@@ -17,12 +17,15 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import tn.esprit.fahamni.Models.Equipement;
+import tn.esprit.fahamni.Models.Place;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.services.AdminEquipementService;
+import tn.esprit.fahamni.services.AdminPlaceService;
 import tn.esprit.fahamni.services.AdminSalleService;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Locale;
 
 public class SallesEquipementsController {
@@ -111,8 +114,10 @@ public class SallesEquipementsController {
 
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
+    private final AdminPlaceService placeService = new AdminPlaceService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipements = FXCollections.observableArrayList();
+    private final ObservableList<Place> places = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final FilteredList<Equipement> filteredEquipements = new FilteredList<>(equipements, equipement -> true);
     private Object selectedElement;
@@ -180,6 +185,7 @@ public class SallesEquipementsController {
         try {
             salles.setAll(salleService.getAll());
             equipements.setAll(equipementService.getAll());
+            places.setAll(placeService.getAll());
             updateStats();
             applyRoomFilters();
             applyEquipmentFilters();
@@ -190,6 +196,7 @@ public class SallesEquipementsController {
         } catch (SQLException | IllegalStateException exception) {
             salles.clear();
             equipements.clear();
+            places.clear();
             updateStats();
             applyRoomFilters();
             applyEquipmentFilters();
@@ -267,7 +274,7 @@ public class SallesEquipementsController {
                 + " places | "
                 + formatOptionalText(salle.getLocalisation())
         );
-        Label description = createCardDescription(salle.getDescription());
+        Region descriptionSpace = createCardDescriptionSpace();
 
         VBox details = new VBox(7);
         details.getChildren().addAll(
@@ -284,13 +291,14 @@ public class SallesEquipementsController {
         });
 
         Button chooseButton = createPrimaryButton("Choisir");
+        chooseButton.setDisable(!isUsable(salle.getEtat()));
         chooseButton.setOnAction(event -> {
             selectRoom(salle, card, true);
             event.consume();
         });
 
         HBox actions = createActions(detailsButton, chooseButton);
-        card.getChildren().addAll(header, metaLine, description, details, actions);
+        card.getChildren().addAll(header, metaLine, descriptionSpace, details, actions);
         return card;
     }
 
@@ -304,7 +312,7 @@ public class SallesEquipementsController {
                 + " | Stock global: "
                 + equipement.getQuantiteDisponible()
         );
-        Label description = createCardDescription(equipement.getDescription());
+        Region descriptionSpace = createCardDescriptionSpace();
 
         VBox details = new VBox(7);
         details.getChildren().addAll(
@@ -320,13 +328,14 @@ public class SallesEquipementsController {
         });
 
         Button chooseButton = createPrimaryButton("Choisir");
+        chooseButton.setDisable(!isUsable(equipement.getEtat()));
         chooseButton.setOnAction(event -> {
             selectEquipment(equipement, card, true);
             event.consume();
         });
 
         HBox actions = createActions(detailsButton, chooseButton);
-        card.getChildren().addAll(header, metaLine, description, details, actions);
+        card.getChildren().addAll(header, metaLine, descriptionSpace, details, actions);
         return card;
     }
 
@@ -363,12 +372,11 @@ public class SallesEquipementsController {
         return label;
     }
 
-    private Label createCardDescription(String description) {
-        Label label = new Label(buildDescriptionPreview(description));
-        label.setWrapText(true);
-        label.setMinHeight(46);
-        label.getStyleClass().add("infrastructure-card-copy");
-        return label;
+    private Region createCardDescriptionSpace() {
+        Region space = new Region();
+        space.setMinHeight(28);
+        space.setPrefHeight(28);
+        return space;
     }
 
     private HBox createFact(String label, String value) {
@@ -427,6 +435,8 @@ public class SallesEquipementsController {
     private void selectRoom(Salle salle, Node card, boolean showPreview) {
         selectCard(card);
         selectedElement = salle;
+        RoomAvailability availability = resolveRoomAvailability(salle);
+        boolean usable = isUsable(salle.getEtat());
 
         detailTypeLabel.setText("Salle");
         detailStatusLabel.setText(formatLabel(salle.getEtat()));
@@ -440,11 +450,13 @@ public class SallesEquipementsController {
                 + formatOptionalText(salle.getLocalisation())
         );
         detailDescriptionLabel.setText(formatDescription(salle.getDescription()));
-        detailUseButton.setDisable(false);
+        detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
 
         detailFactsContainer.getChildren().setAll(
             createDetailInfoCard("Identifiant", String.valueOf(salle.getIdSalle())),
+            createDetailInfoCard("Disponibles", availability.availablePlaces() + " / " + availability.totalPlaces()),
+            createDetailInfoCard("Occupees", String.valueOf(availability.occupiedPlaces())),
             createDetailInfoCard("Batiment", formatOptionalText(salle.getBatiment())),
             createDetailInfoCard("Etage", salle.getEtage() == null ? "Non renseigne" : String.valueOf(salle.getEtage())),
             createDetailInfoCard("Disposition", formatOptionalText(salle.getTypeDisposition())),
@@ -462,20 +474,23 @@ public class SallesEquipementsController {
     private void selectEquipment(Equipement equipement, Node card, boolean showPreview) {
         selectCard(card);
         selectedElement = equipement;
+        EquipmentAvailability availability = resolveEquipmentAvailability(equipement);
+        boolean usable = isUsable(equipement.getEtat());
 
         detailTypeLabel.setText("Materiel");
         detailStatusLabel.setText(formatLabel(equipement.getEtat()));
         detailStatusLabel.getStyleClass().setAll("status-chip", resolveStatusStyle(equipement.getEtat()));
         detailTitleLabel.setText(formatOptionalText(equipement.getNom()));
-        detailSubtitleLabel.setText(formatLabel(equipement.getTypeEquipement()) + " | Stock global: " + equipement.getQuantiteDisponible());
+        detailSubtitleLabel.setText(formatLabel(equipement.getTypeEquipement()) + " | Stock global: " + availability.totalQuantity());
         detailDescriptionLabel.setText(formatDescription(equipement.getDescription()));
-        detailUseButton.setDisable(false);
+        detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(equipement.getEtat(), "ce materiel"));
 
         detailFactsContainer.getChildren().setAll(
             createDetailInfoCard("Identifiant", String.valueOf(equipement.getIdEquipement())),
             createDetailInfoCard("Type", formatLabel(equipement.getTypeEquipement())),
-            createDetailInfoCard("Quantite", equipement.getQuantiteDisponible() + " unite(s)"),
+            createDetailInfoCard("Quantite disponible", availability.availableQuantity() + " unite(s)"),
+            createDetailInfoCard("Quantite occupee", availability.occupiedQuantity() + " unite(s)"),
             createDetailInfoCard("Etat", formatLabel(equipement.getEtat()))
         );
 
@@ -514,13 +529,17 @@ public class SallesEquipementsController {
     }
 
     private void showRoomPreview(Salle salle) {
+        RoomAvailability availability = resolveRoomAvailability(salle);
+
         sessionPreviewLabel.setText(
             "Mode: presentielle\n"
                 + "Salle pre-remplie: "
                 + formatOptionalText(salle.getNom())
-                + "\nCapacite: "
-                + salle.getCapacite()
-                + " places\nLocalisation: "
+                + "\nPlaces disponibles: "
+                + availability.availablePlaces()
+                + " / "
+                + availability.totalPlaces()
+                + "\nLocalisation: "
                 + formatOptionalText(salle.getLocalisation())
         );
         sessionPreviewContainer.setManaged(true);
@@ -529,6 +548,8 @@ public class SallesEquipementsController {
     }
 
     private void showEquipmentPreview(Equipement equipement) {
+        EquipmentAvailability availability = resolveEquipmentAvailability(equipement);
+
         sessionPreviewLabel.setText(
             "Mode: presentielle\n"
                 + "Materiel demande: "
@@ -536,7 +557,7 @@ public class SallesEquipementsController {
                 + "\nType: "
                 + formatLabel(equipement.getTypeEquipement())
                 + "\nQuantite disponible: "
-                + equipement.getQuantiteDisponible()
+                + availability.availableQuantity()
                 + " unite(s)"
         );
         sessionPreviewContainer.setManaged(true);
@@ -607,12 +628,11 @@ public class SallesEquipementsController {
 
     private void updateStats() {
         long availableRooms = salles.stream()
-            .filter(salle -> STATUS_AVAILABLE.equals(normalize(salle.getEtat())))
+            .filter(salle -> isUsable(salle.getEtat()))
             .count();
 
         int availableEquipmentUnits = equipements.stream()
-            .filter(equipement -> STATUS_AVAILABLE.equals(normalize(equipement.getEtat())))
-            .mapToInt(Equipement::getQuantiteDisponible)
+            .mapToInt(equipement -> resolveEquipmentAvailability(equipement).availableQuantity())
             .sum();
 
         totalRoomsStatLabel.setText(String.valueOf(salles.size()));
@@ -621,21 +641,8 @@ public class SallesEquipementsController {
         availableEquipmentsStatLabel.setText(String.valueOf(availableEquipmentUnits));
     }
 
-    private String buildDescriptionPreview(String description) {
-        String normalizedDescription = trimToNull(description);
-        if (normalizedDescription == null) {
-            return "Aucune description renseignee.";
-        }
-
-        if (normalizedDescription.length() <= 105) {
-            return normalizedDescription;
-        }
-
-        return normalizedDescription.substring(0, 102) + "...";
-    }
-
     private String buildChoiceNote(String status, String elementName) {
-        if (STATUS_AVAILABLE.equals(normalize(status))) {
+        if (isUsable(status)) {
             return "Statut: " + elementName + " est disponible. La verification par horaire sera ajoutee avec le module seance.";
         }
 
@@ -644,13 +651,46 @@ public class SallesEquipementsController {
 
     private String resolveStatusStyle(String status) {
         String normalizedStatus = normalize(status);
-        if (STATUS_AVAILABLE.equals(normalizedStatus)) {
+        if (isUsable(status)) {
             return "available";
         }
         if (normalizedStatus.contains("maintenance")) {
             return "maintenance";
         }
         return "unavailable";
+    }
+
+    private boolean isUsable(String status) {
+        return STATUS_AVAILABLE.equals(normalize(status));
+    }
+
+    private RoomAvailability resolveRoomAvailability(Salle salle) {
+        int configuredCapacity = Math.max(0, salle.getCapacite());
+        List<Place> roomPlaces = places.stream()
+            .filter(place -> place.getIdSalle() == salle.getIdSalle())
+            .toList();
+
+        int totalPlaces = Math.max(configuredCapacity, roomPlaces.size());
+        if (!isUsable(salle.getEtat())) {
+            return new RoomAvailability(totalPlaces, 0, totalPlaces);
+        }
+
+        if (roomPlaces.isEmpty()) {
+            return new RoomAvailability(totalPlaces, totalPlaces, 0);
+        }
+
+        int availablePlaces = (int) roomPlaces.stream()
+            .filter(place -> isUsable(place.getEtat()))
+            .count();
+        int occupiedPlaces = Math.max(0, totalPlaces - availablePlaces);
+        return new RoomAvailability(totalPlaces, availablePlaces, occupiedPlaces);
+    }
+
+    private EquipmentAvailability resolveEquipmentAvailability(Equipement equipement) {
+        int totalQuantity = Math.max(0, equipement.getQuantiteDisponible());
+        int availableQuantity = isUsable(equipement.getEtat()) ? totalQuantity : 0;
+        int occupiedQuantity = Math.max(0, totalQuantity - availableQuantity);
+        return new EquipmentAvailability(totalQuantity, availableQuantity, occupiedQuantity);
     }
 
     private String formatDescription(String description) {
@@ -711,5 +751,11 @@ public class SallesEquipementsController {
         feedbackLabel.getStyleClass().setAll("backoffice-feedback");
         feedbackLabel.setManaged(false);
         feedbackLabel.setVisible(false);
+    }
+
+    private record RoomAvailability(int totalPlaces, int availablePlaces, int occupiedPlaces) {
+    }
+
+    private record EquipmentAvailability(int totalQuantity, int availableQuantity, int occupiedQuantity) {
     }
 }

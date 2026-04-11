@@ -753,6 +753,14 @@ public final class UiTheme {
             -fx-background-color: linear-gradient(to bottom, #7ca2ff 0%, #6388ff 100%);
         }
 
+        .backoffice-primary-button:disabled, .action-button.primary:disabled {
+            -fx-background-color: #dce6f6;
+            -fx-text-fill: #7a8aa4;
+            -fx-opacity: 1;
+            -fx-cursor: default;
+            -fx-effect: none;
+        }
+
         .action-button.secondary, .review-button, .like-button, .comment-button, .backoffice-secondary-button {
             -fx-background-color: rgba(231, 239, 251, 0.90);
             -fx-border-color: #d4e0f5;
@@ -777,6 +785,14 @@ public final class UiTheme {
 
         .action-button.secondary:hover, .review-button:hover, .like-button:hover, .comment-button:hover, .backoffice-secondary-button:hover {
             -fx-background-color: #ecf3ff;
+        }
+
+        .action-button.secondary:disabled {
+            -fx-background-color: #eef3fa;
+            -fx-border-color: #d9e2ef;
+            -fx-text-fill: #8797ad;
+            -fx-opacity: 1;
+            -fx-cursor: default;
         }
 
         .action-button.danger:hover {
