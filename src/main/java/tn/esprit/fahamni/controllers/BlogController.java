@@ -367,14 +367,9 @@ public class BlogController {
         int dbUserId = resolveCurrentUserId();
         String currentUserName = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
 
-        // DEBUG : afficher les valeurs pour diagnostiquer isMyArticle
-        System.out.println("DEBUG CARD [" + blog.getTitre() + "] -> publisherId=" + blog.getPublisherId()
-                + " | currentUserId=" + currentUserId + " | dbUserId=" + dbUserId
-                + " | publishedBy='" + blog.getPublishedBy() + "' | currentUserName='" + currentUserName + "'");
-
         // isMyArticle : par ID OU par nom (comparaison souple)
         boolean isMyArticle = (blog.getPublisherId() > 0
-                                && (blog.getPublisherId() == currentUserId || blog.getPublisherId() == dbUserId))
+                                && blog.getPublisherId() == dbUserId)
                 || (blog.getPublishedBy() != null && currentUserName != null
                     && !currentUserName.equals("Utilisateur")
                     && blog.getPublishedBy().trim().equalsIgnoreCase(currentUserName.trim()));

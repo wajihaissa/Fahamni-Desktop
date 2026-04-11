@@ -8,6 +8,7 @@ import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -45,6 +46,9 @@ public class LoginController {
     private PasswordField confirmPasswordField;
 
     @FXML
+    private ComboBox<String> registerRoleComboBox;
+
+    @FXML
     private Button createAccountButton;
 
     @FXML
@@ -57,6 +61,8 @@ public class LoginController {
     public void initialize() {
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
+        registerRoleComboBox.getItems().setAll("Etudiant", "Tuteur");
+        registerRoleComboBox.setValue("Etudiant");
         switchMode(true);
     }
 
@@ -103,7 +109,7 @@ public class LoginController {
         String password = registerPasswordField.getText();
         String confirmPassword = confirmPasswordField.getText();
 
-        OperationResult result = authService.register(fullName, email, password, confirmPassword);
+        OperationResult result = authService.register(fullName, email, password, confirmPassword, registerRoleComboBox.getValue());
         if (!result.isSuccess()) {
             showMessage(registerMessageLabel, result.getMessage(), false);
             return;
@@ -141,6 +147,7 @@ public class LoginController {
         registerEmailField.clear();
         registerPasswordField.clear();
         confirmPasswordField.clear();
+        registerRoleComboBox.setValue("Etudiant");
     }
 
     private void showMessage(Label label, String message, boolean success) {
