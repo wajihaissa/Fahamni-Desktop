@@ -55,6 +55,7 @@ public class BackofficeQuizController {
     private final QuizService quizService = new QuizService();
     private final ObservableList<Quiz> quizItems = FXCollections.observableArrayList();
     private final List<Question> currentQuestions = new ArrayList<>();
+    private Quiz selectedQuiz = null;
     private static final int MAX_QUESTIONS = 5;
 
     @FXML
@@ -112,41 +113,54 @@ public class BackofficeQuizController {
     }
        @FXML
     public void handleCreateQuiz(ActionEvent event) {
+        // This is now the "Save Quiz" button
         if (titleField.getText().trim().isEmpty() || keywordField.getText().trim().isEmpty()) {
-            feedbackLabel.setText("Veuillez remplir le titre et le mot-clé");
-            feedbackLabel.setVisible(true);
-            feedbackLabel.setManaged(true);
+            showFeedback("Veuillez remplir le titre et le mot-clé", true);
             return;
         }
 
         if (currentQuestions.isEmpty()) {
-            feedbackLabel.setText("Veuillez ajouter au moins une question");
-            feedbackLabel.setVisible(true);
-            feedbackLabel.setManaged(true);
+            showFeedback("Veuillez ajouter au moins une question", true);
             return;
         }
 
         try {
-            Quiz quiz = new Quiz();
-            quiz.setTitre(titleField.getText());
-            quiz.setKeyword(keywordField.getText());
-            
-            for (Question q : currentQuestions) {
-                quiz.addQuestion(q);
+            if (selectedQuiz != null) {
+                // Update existing quiz
+                Quiz updatedQuiz = new Quiz();
+                updatedQuiz.setTitre(titleField.getText());
+                updatedQuiz.setKeyword(keywordField.getText());
+                
+                for (Question q : currentQuestions) {
+                    updatedQuiz.addQuestion(q);
+                }
+                
+                quizService.updateQuiz(selectedQuiz.getId(), updatedQuiz);
+                showFeedback("Quiz mis à jour avec succès !", false);
+            } else {
+                // Create new quiz
+                Quiz quiz = new Quiz();
+                quiz.setTitre(titleField.getText());
+                quiz.setKeyword(keywordField.getText());
+                
+                for (Question q : currentQuestions) {
+                    quiz.addQuestion(q);
+                }
+                
+                Quiz savedQuiz = quizService.createQuiz(quiz);
+                if (savedQuiz != null && savedQuiz.getId() != null) {
+                    showFeedback("Quiz créé avec " + currentQuestions.size() + " question(s) !", false);
+                } else {
+                    showFeedback("Erreur lors de la sauvegarde du quiz", true);
+                    return;
+                }
             }
-            
-            quizService.createQuiz(quiz);
-            
-            feedbackLabel.setText("Quiz ajouté avec " + currentQuestions.size() + " question(s) !");
-            feedbackLabel.setVisible(true);
-            feedbackLabel.setManaged(true);
             
             clearForm();
             refreshQuizData();
         } catch (Exception e) {
-            feedbackLabel.setText("Erreur : " + e.getMessage());
-            feedbackLabel.setVisible(true);
-            feedbackLabel.setManaged(true);
+            showFeedback("Erreur : " + e.getMessage(), true);
+            e.printStackTrace();
         }
     }
 
@@ -221,27 +235,103 @@ public class BackofficeQuizController {
 
     @FXML
     public void handleUpdateQuiz(ActionEvent event) {
-        System.out.println("Update clicked");
+        if (selectedQuiz == null) {
+            showFeedback("Veuillez sélectionner un quiz à modifier", true);
+            return;
+        }
 
-        feedbackLabel.setText("Quiz mis à jour !");
-        feedbackLabel.setVisible(true);
-        feedbackLabel.setManaged(true);
+        if (titleField.getText().trim().isEmpty() || keywordField.getText().trim().isEmpty()) {
+            showFeedback("Veuillez remplir le titre et le mot-clé", true);
+            return;
+        }
+
+        if (currentQuestions.isEmpty()) {
+            showFeedback("Veuillez ajouter au moins une question", true);
+            return;
+        }
+
+        try {
+            Quiz updatedQuiz = new Quiz();
+            updatedQuiz.setTitre(titleField.getText());
+            updatedQuiz.setKeyword(keywordField.getText());
+            for (Question q : currentQuestions) {
+                updatedQuiz.addQuestion(q);
+            }
+
+            Quiz result = quizService.updateQuiz(selectedQuiz.getId(), updatedQuiz);
+            if (result != null) {
+                showFeedback("Quiz mis à jour avec succès !", false);
+                clearForm();
+                selectedQuiz = null;
+                refreshQuizData();
+            } else {
+                showFeedback("Impossible de mettre à jour le quiz", true);
+            }
+        } catch (Exception e) {
+            showFeedback("Erreur lors de la mise à jour : " + e.getMessage(), true);
+        }
     }
 
     @FXML
     public void handleDeleteQuiz(ActionEvent event) {
-        System.out.println("Delete clicked");
+        if (selectedQuiz == null) {
+            showFeedback("Veuillez sélectionner un quiz à supprimer", true);
+            return;
+        }
 
-        feedbackLabel.setText("Quiz supprimé !");
-        feedbackLabel.setVisible(true);
-        feedbackLabel.setManaged(true);
+        try {
+            boolean deleted = quizService.deleteQuiz(selectedQuiz.getId());
+            if (deleted) {
+                showFeedback("Quiz supprimé avec succès !", false);
+                clearForm();
+                selectedQuiz = null;
+                refreshQuizData();
+            } else {
+                showFeedback("Impossible de supprimer le quiz", true);
+            }
+        } catch (Exception e) {
+            showFeedback("Erreur lors de la suppression : " + e.getMessage(), true);
+        }
     }
 
     @FXML
     public void handleRefresh(ActionEvent event) {
-        System.out.println("Refresh clicked");
+        selectedQuiz = null;
+        clearForm();
+        refreshQuizData();
+        showFeedback("Liste rafraîchie !", false);
+    }
 
-        feedbackLabel.setText("Liste rafraîchie !");
+    private void populateForm(Quiz quiz) {
+        if (quiz == null) {
+            selectedQuiz = null;
+            clearForm();
+            return;
+        }
+
+        selectedQuiz = quiz;
+        titleField.setText(quiz.getTitre());
+        keywordField.setText(quiz.getKeyword());
+        
+        // Load questions from the selected quiz
+        currentQuestions.clear();
+        if (quiz.getQuestions() != null) {
+            currentQuestions.addAll(quiz.getQuestions());
+        }
+        updateQuestionsList();
+        
+        // Clear the individual question fields
+        questionField.clear();
+        choice1Field.clear();
+        choice2Field.clear();
+        choice3Field.clear();
+        choice4Field.clear();
+        correctChoiceComboBox.setValue("Choix A");
+    }
+
+    private void showFeedback(String message, boolean isError) {
+        feedbackLabel.setText(message);
+        feedbackLabel.setStyle(isError ? "-fx-text-fill: #ff6b6b;" : "-fx-text-fill: #51cf66;");
         feedbackLabel.setVisible(true);
         feedbackLabel.setManaged(true);
     }
@@ -305,13 +395,6 @@ public class BackofficeQuizController {
         averageScoreLabel.setText(
                 NumberFormat.getPercentInstance(Locale.FRANCE).format(avg / 100.0)
         );
-    }
-
-    private void populateForm(Quiz quiz) {
-        if (quiz == null) return;
-
-        titleField.setText(quiz.getTitre());
-        keywordField.setText(quiz.getKeyword());
     }
 
     private String getLastScoreLabel(Quiz quiz) {

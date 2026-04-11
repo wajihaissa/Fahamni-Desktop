@@ -66,6 +66,13 @@
             <TextField fx:id="titleField" promptText="Titre du quiz" styleClass="backoffice-form-input"/>
             <Label text="Mot-clé" styleClass="backoffice-form-label"/>
             <TextField fx:id="keywordField" promptText="Mot-clé" styleClass="backoffice-form-input"/>
+            <HBox spacing="10.0">
+                <Button text="💾 Enregistrer Quiz" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                <Button text="✏️ Modifier" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                <Button text="🗑️ Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+            </HBox>
+            <Separator/>
             <Label text="Question 1" styleClass="backoffice-form-label"/>
             <TextField fx:id="questionField" promptText="Question principale" styleClass="backoffice-form-input"/>
             <Label text="Choix" styleClass="backoffice-form-label"/>
@@ -76,18 +83,11 @@
             <Label text="Réponse correcte" styleClass="backoffice-form-label"/>
             <ComboBox fx:id="correctChoiceComboBox" styleClass="backoffice-form-input"/>
             <HBox spacing="10.0">
-                <Button text="Ajouter Question" onAction="#handleAddQuestion" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                <Button text="+ Question" onAction="#handleAddQuestion" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
                 <Button text="Retirer" onAction="#handleRemoveLastQuestion" styleClass="backoffice-secondary-button"/>
             </HBox>
             <Label fx:id="questionsAddedLabel" text="0/5 questions" styleClass="backoffice-form-label"/>
-            <ListView fx:id="questionsListView" prefHeight="100.0" styleClass="backoffice-form-input"/>
-            <Separator/>
-            <HBox spacing="10.0">
-                <Button text="Créer Quiz" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
-                <Button text="Mettre à jour" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button"/>
-                <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button"/>
-            </HBox>
-            <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button"/>
+            <ListView fx:id="questionsListView" prefHeight="80.0" styleClass="backoffice-form-input"/>
             <Label fx:id="feedbackLabel" text="" styleClass="backoffice-feedback" visible="false" managed="false" wrapText="true"/>
         </VBox>
     </HBox>
