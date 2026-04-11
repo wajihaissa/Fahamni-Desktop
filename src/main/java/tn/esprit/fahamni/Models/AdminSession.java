@@ -14,14 +14,21 @@ public class AdminSession {
     private int tutorId;
     private int durationMinutes;
     private String description;
+    private int reservationCount;
 
     public AdminSession(int id, String subject, String tutor, String schedule, int capacity, String status,
                         int tutorId, int durationMinutes, String description) {
-        this(id, subject, tutor, schedule, null, capacity, status, tutorId, durationMinutes, description);
+        this(id, subject, tutor, schedule, null, capacity, status, tutorId, durationMinutes, description, 0);
     }
 
     public AdminSession(int id, String subject, String tutor, String schedule, LocalDate scheduleLocalDate,
                         int capacity, String status, int tutorId, int durationMinutes, String description) {
+        this(id, subject, tutor, schedule, scheduleLocalDate, capacity, status, tutorId, durationMinutes, description, 0);
+    }
+
+    public AdminSession(int id, String subject, String tutor, String schedule, LocalDate scheduleLocalDate,
+                        int capacity, String status, int tutorId, int durationMinutes, String description,
+                        int reservationCount) {
         this.id = id;
         this.subject = subject;
         this.tutor = tutor;
@@ -32,6 +39,7 @@ public class AdminSession {
         this.tutorId = tutorId;
         this.durationMinutes = durationMinutes;
         this.description = description;
+        this.reservationCount = reservationCount;
     }
 
     public AdminSession(String subject, String tutor, String schedule, int capacity, String status) {
@@ -116,5 +124,13 @@ public class AdminSession {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public int getReservationCount() {
+        return reservationCount;
+    }
+
+    public void setReservationCount(int reservationCount) {
+        this.reservationCount = reservationCount;
     }
 }

@@ -8,6 +8,7 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
@@ -47,6 +48,9 @@ public class BackofficeSessionsController {
     private TableColumn<AdminSession, Integer> durationColumn;
 
     @FXML
+    private TableColumn<AdminSession, Integer> reservationsColumn;
+
+    @FXML
     private TableColumn<AdminSession, String> statusColumn;
 
     @FXML
@@ -64,6 +68,9 @@ public class BackofficeSessionsController {
     @FXML
     private DatePicker sessionDatePicker;
 
+    @FXML
+    private Button deleteSelectedSessionButton;
+
     private final AdminSessionService sessionService = new AdminSessionService();
     private FilteredList<AdminSession> filteredSessions;
 
@@ -75,6 +82,7 @@ public class BackofficeSessionsController {
         scheduleColumn.setCellValueFactory(new PropertyValueFactory<>("schedule"));
         capacityColumn.setCellValueFactory(new PropertyValueFactory<>("capacity"));
         durationColumn.setCellValueFactory(new PropertyValueFactory<>("durationMinutes"));
+        reservationsColumn.setCellValueFactory(new PropertyValueFactory<>("reservationCount"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
 
         sessionStatusFilterComboBox.getItems().setAll(
@@ -90,22 +98,25 @@ public class BackofficeSessionsController {
         sortedSessions.comparatorProperty().bind(sessionsTable.comparatorProperty());
         sessionsTable.setItems(sortedSessions);
 
-        sessionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> hideFeedback());
+        sessionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> handleSessionSelectionChange(newValue));
         sessionSearchField.textProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
         sessionStatusFilterComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
         sessionDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
         filteredSessions.addListener((ListChangeListener<AdminSession>) change -> updateSessionsCount());
 
         updateSessionsCount();
+        updateDeleteActionState(null);
         showDatabaseStateIfNeeded();
     }
 
     @FXML
     private void handleRefreshSessions() {
         sessionService.reloadSessions();
+        sessionsTable.getSelectionModel().clearSelection();
         applySessionFilters();
         sessionsTable.refresh();
         updateSessionsCount();
+        updateDeleteActionState(null);
         showDatabaseStateIfNeeded();
     }
 
@@ -116,6 +127,12 @@ public class BackofficeSessionsController {
         AdminSession selectedSession = sessionsTable.getSelectionModel().getSelectedItem();
         if (selectedSession == null) {
             showFeedback("Selectionnez une seance a supprimer.", false);
+            return;
+        }
+
+        if (selectedSession.getReservationCount() > 0) {
+            showFeedback(buildDeleteBlockedMessage(selectedSession.getReservationCount()), false);
+            updateDeleteActionState(selectedSession);
             return;
         }
 
@@ -169,7 +186,8 @@ public class BackofficeSessionsController {
             || normalize(session.getStatus()).contains(query)
             || normalize(session.getDescription()).contains(query)
             || String.valueOf(session.getId()).contains(query)
-            || String.valueOf(session.getTutorId()).contains(query);
+            || String.valueOf(session.getTutorId()).contains(query)
+            || String.valueOf(session.getReservationCount()).contains(query);
     }
 
     private boolean matchesStatus(AdminSession session, String selectedStatus) {
@@ -184,6 +202,31 @@ public class BackofficeSessionsController {
 
     private String normalize(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void handleSessionSelectionChange(AdminSession selectedSession) {
+        updateDeleteActionState(selectedSession);
+
+        if (selectedSession == null) {
+            showDatabaseStateIfNeeded();
+            return;
+        }
+
+        if (selectedSession.getReservationCount() > 0) {
+            showFeedback(buildDeleteBlockedMessage(selectedSession.getReservationCount()), false);
+            return;
+        }
+
+        hideFeedback();
+    }
+
+    private void updateDeleteActionState(AdminSession selectedSession) {
+        deleteSelectedSessionButton.setDisable(selectedSession == null || selectedSession.getReservationCount() > 0);
+    }
+
+    private String buildDeleteBlockedMessage(int reservationCount) {
+        String suffix = reservationCount > 1 ? " reservations." : " reservation.";
+        return "Suppression indisponible: cette seance possede " + reservationCount + suffix;
     }
 
     private boolean confirmDeletion(AdminSession session) {
@@ -204,10 +247,12 @@ public class BackofficeSessionsController {
 
     private void showDatabaseStateIfNeeded() {
         if (!sessionService.hasDatabaseConnection()) {
+            updateDeleteActionState(null);
             showFeedback("Base de donnees indisponible. Demarrez MySQL/XAMPP puis cliquez sur Actualiser.", false);
             return;
         }
         if (sessionService.getSessions().isEmpty()) {
+            updateDeleteActionState(null);
             showFeedback("Aucune seance trouvee dans la base de donnees.", false);
             return;
         }

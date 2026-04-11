@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class AdminSessionService {
 
@@ -53,6 +54,7 @@ public class AdminSessionService {
 
     private List<AdminSession> loadSessions() {
         List<AdminSession> adminSessions = new ArrayList<>();
+        Map<Integer, Integer> reservationCounts = seanceService.getReservationCountsBySeanceId();
         for (Seance seance : seanceService.getAll()) {
             adminSessions.add(new AdminSession(
                 seance.getId(),
@@ -64,7 +66,8 @@ public class AdminSessionService {
                 mapStatusToLabel(seance.getStatus()),
                 seance.getTuteurId(),
                 seance.getDurationMin(),
-                seance.getDescription()
+                seance.getDescription(),
+                reservationCounts.getOrDefault(seance.getId(), 0)
             ));
         }
         return adminSessions;

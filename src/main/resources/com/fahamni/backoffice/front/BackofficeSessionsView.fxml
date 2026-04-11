@@ -40,7 +40,7 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="sessionsCountLabel" text="0 seance affichee" styleClass="backoffice-panel-copy"/>
             <Button onAction="#handleRefreshSessions" text="Actualiser" styleClass="backoffice-secondary-button"/>
-            <Button onAction="#handleDeleteSelectedSession" text="Supprimer la seance" styleClass="backoffice-secondary-button"/>
+            <Button fx:id="deleteSelectedSessionButton" onAction="#handleDeleteSelectedSession" text="Supprimer la seance" styleClass="backoffice-secondary-button"/>
         </HBox>
 
         <TableView fx:id="sessionsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
@@ -51,6 +51,7 @@
                 <TableColumn fx:id="scheduleColumn" prefWidth="180.0" text="Date"/>
                 <TableColumn fx:id="durationColumn" prefWidth="90.0" text="Duree"/>
                 <TableColumn fx:id="capacityColumn" prefWidth="90.0" text="Places"/>
+                <TableColumn fx:id="reservationsColumn" prefWidth="110.0" text="Reservations"/>
                 <TableColumn fx:id="statusColumn" prefWidth="130.0" text="Statut"/>
             </columns>
         </TableView>

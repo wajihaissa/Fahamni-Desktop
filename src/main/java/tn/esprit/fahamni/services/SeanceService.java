@@ -13,8 +13,10 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class SeanceService implements IServices<Seance> {
 
@@ -90,6 +92,30 @@ public class SeanceService implements IServices<Seance> {
 
     public List<Seance> getAllSeances() {
         return getAll();
+    }
+
+    public Map<Integer, Integer> getReservationCountsBySeanceId() {
+        Map<Integer, Integer> reservationCounts = new HashMap<>();
+        Connection cnx = getConnection();
+        if (cnx == null) {
+            return reservationCounts;
+        }
+
+        String sql = """
+            SELECT seance_id, COUNT(*) AS reservation_count
+            FROM reservation
+            GROUP BY seance_id
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) {
+                reservationCounts.put(rs.getInt("seance_id"), rs.getInt("reservation_count"));
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur chargement compteur reservations: " + e.getMessage());
+        }
+        return reservationCounts;
     }
 
     @Override
