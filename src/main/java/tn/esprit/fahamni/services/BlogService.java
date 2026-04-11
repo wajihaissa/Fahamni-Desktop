@@ -390,7 +390,7 @@ public class BlogService {
         return "Echec INSERT (blogId=" + blogId + ", userId=" + userId + "): " + errors;
     }
 
-    /** Retourne le nombre de likes d'un article directement depuis la BD */
+    /** Retourne le nombre total de réactions d'un article */
     public long countLikes(int blogId) {
         Connection c = cnx();
         if (c == null || blogId <= 0) return 0;
@@ -401,6 +401,71 @@ public class BlogService {
             if (rs.next()) return rs.getLong(1);
         } catch (Exception e) { System.err.println("countLikes: " + e.getMessage()); }
         return 0;
+    }
+
+    /** Retourne le nombre de réactions d'un type précis (1=👍 2=❤️ 3=😮) */
+    public long countReaction(int blogId, int reactionType) {
+        Connection c = cnx();
+        if (c == null || blogId <= 0) return 0;
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND reaction = ?")) {
+            ps.setInt(1, blogId);
+            ps.setInt(2, reactionType);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getLong(1);
+        } catch (Exception e) { System.err.println("countReaction: " + e.getMessage()); }
+        return 0;
+    }
+
+    /** Retourne la réaction actuelle du user sur cet article (0 = aucune) */
+    public int getUserReaction(int blogId, int userId) {
+        if (blogId <= 0 || userId <= 0) return 0;
+        Connection c = cnx();
+        if (c == null) return 0;
+        try (PreparedStatement ps = c.prepareStatement(
+                "SELECT reaction FROM interaction WHERE blog_id = ? AND innteractor_id = ? " +
+                "AND reaction IS NOT NULL AND reaction <> 0 LIMIT 1")) {
+            ps.setInt(1, blogId);
+            ps.setInt(2, userId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getInt("reaction");
+        } catch (Exception e) { System.err.println("getUserReaction: " + e.getMessage()); }
+        return 0;
+    }
+
+    /** Supprime toute réaction du user sur cet article */
+    public void removeReaction(int blogId, int userId) {
+        removeLike(blogId, userId);
+    }
+
+    /** Enregistre une réaction (1=👍 2=❤️ 3=😮), remplace l'ancienne */
+    public void addReaction(int blogId, int reactionType, String userName) {
+        // Supprimer l'ancienne réaction si elle existe
+        Connection fresh = MyDataBase.getInstance().getFreshConnection();
+        if (fresh == null) return;
+        int userId = getCurrentUserId();
+        try {
+            try (Statement st = fresh.createStatement()) { st.execute("SET FOREIGN_KEY_CHECKS=0"); } catch (Exception ignored) {}
+            // Supprimer ancienne réaction
+            try (PreparedStatement ps = fresh.prepareStatement(
+                    "DELETE FROM interaction WHERE blog_id = ? AND innteractor_id = ? AND reaction IS NOT NULL AND reaction <> 0")) {
+                ps.setInt(1, blogId); ps.setInt(2, userId); ps.executeUpdate();
+            } catch (Exception ignored) {}
+            // Insérer nouvelle réaction
+            try (PreparedStatement ps = fresh.prepareStatement(
+                    "INSERT INTO interaction (reaction, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, ?, 0, 0, 0)")) {
+                ps.setInt(1, reactionType); ps.setInt(2, blogId); ps.setInt(3, userId); ps.executeUpdate();
+            } catch (Exception e) {
+                // Fallback sans innteractor_id
+                try (PreparedStatement ps = fresh.prepareStatement(
+                        "INSERT INTO interaction (reaction, created_at, blog_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, 0, 0, 0)")) {
+                    ps.setInt(1, reactionType); ps.setInt(2, blogId); ps.executeUpdate();
+                } catch (Exception ignored) {}
+            }
+        } finally {
+            try { fresh.close(); } catch (Exception ignored) {}
+        }
+        updateBlogCounts(blogId);
     }
 
     /** Retourne le nombre de commentaires d'un article directement depuis la BD */

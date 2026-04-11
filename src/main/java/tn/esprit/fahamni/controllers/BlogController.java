@@ -391,29 +391,47 @@ public class BlogController {
         actBar.setPadding(new Insets(6, 10, 8, 10));
         actBar.setAlignment(Pos.CENTER_LEFT);
 
-        // Bouton Like — un seul par user
-        Button likeBtn = new Button("\u2764 " + likesCount);
-        if (alreadyLiked) {
-            styleCompactBtn(likeBtn, "#ffcdd2", "#c62828");
-            likeBtn.setTooltip(new Tooltip("Vous avez déjà aimé cet article"));
-        } else {
-            styleCompactBtn(likeBtn, "#fff0f0", "#e74c3c");
-        }
-        final boolean[] liked = {alreadyLiked};
-        likeBtn.setOnAction(e -> {
-            if (liked[0]) {
-                blogService.removeLike(blog.getId(), dbUserId);
-                liked[0] = false;
-                styleCompactBtn(likeBtn, "#fff0f0", "#e74c3c");
-                likeBtn.setTooltip(null);
+        // ── Réactions multiples 👍 ❤️ 😮 ──
+        int userReaction = blogService.getUserReaction(blog.getId(), dbUserId);
+        long r1 = blogService.countReaction(blog.getId(), 1);
+        long r2 = blogService.countReaction(blog.getId(), 2);
+        long r3 = blogService.countReaction(blog.getId(), 3);
+
+        Button btn1 = new Button("👍 " + r1);
+        Button btn2 = new Button("❤️ " + r2);
+        Button btn3 = new Button("😮 " + r3);
+        Button likeBtn = btn1; // alias pour compatibilité animation
+
+        styleReactionBtn(btn1, userReaction == 1);
+        styleReactionBtn(btn2, userReaction == 2);
+        styleReactionBtn(btn3, userReaction == 3);
+
+        final int[] currentReaction = {userReaction};
+
+        java.util.function.BiConsumer<Button, Integer> onReact = (btn, type) -> {
+            if (currentReaction[0] == type) {
+                // Retirer la réaction
+                blogService.removeReaction(blog.getId(), dbUserId);
+                currentReaction[0] = 0;
+                styleReactionBtn(btn1, false);
+                styleReactionBtn(btn2, false);
+                styleReactionBtn(btn3, false);
             } else {
-                blogService.addInteraction(blog.getId(), "like", null, currentUserName);
-                liked[0] = true;
-                styleCompactBtn(likeBtn, "#ffcdd2", "#c62828");
+                // Nouvelle réaction
+                blogService.addReaction(blog.getId(), type, currentUserName);
+                currentReaction[0] = type;
+                styleReactionBtn(btn1, type == 1);
+                styleReactionBtn(btn2, type == 2);
+                styleReactionBtn(btn3, type == 3);
             }
-            long n = blogService.countLikes(blog.getId());
-            animateCounter(likeBtn, "\u2764 " + n);
-        });
+            animateCounter(btn1, "👍 " + blogService.countReaction(blog.getId(), 1));
+            animateCounter(btn2, "❤️ " + blogService.countReaction(blog.getId(), 2));
+            animateCounter(btn3, "😮 " + blogService.countReaction(blog.getId(), 3));
+        };
+
+        btn1.setOnAction(e -> onReact.accept(btn1, 1));
+        btn2.setOnAction(e -> onReact.accept(btn2, 2));
+        btn3.setOnAction(e -> onReact.accept(btn3, 3));
 
         Button commentBtn = new Button("\uD83D\uDCAC " + commentsCount);
         styleCompactBtn(commentBtn, "#f0f4ff", "#3a7bd5");
@@ -477,9 +495,9 @@ public class BlogController {
                     }
                 });
             });
-            actBar.getChildren().addAll(likeBtn, commentBtn, actSpacer, shareBtn, editBtn, deleteArticleBtn, readBtn);
+            actBar.getChildren().addAll(btn1, btn2, btn3, commentBtn, actSpacer, shareBtn, editBtn, deleteArticleBtn, readBtn);
         } else {
-            actBar.getChildren().addAll(likeBtn, commentBtn, actSpacer, shareBtn, readBtn);
+            actBar.getChildren().addAll(btn1, btn2, btn3, commentBtn, actSpacer, shareBtn, readBtn);
         }
         card.getChildren().add(actBar);
 
@@ -657,6 +675,16 @@ public class BlogController {
     private void styleCompactBtn(Button btn, String bg, String fg) {
         btn.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + fg + "; " +
                 "-fx-background-radius: 8; -fx-padding: 4 10; -fx-font-size: 11; -fx-cursor: hand;");
+        btn.setMinWidth(Region.USE_PREF_SIZE);
+    }
+
+    private void styleReactionBtn(Button btn, boolean active) {
+        btn.setStyle(active
+            ? "-fx-background-color: #fef9c3; -fx-text-fill: #854d0e; -fx-background-radius: 8; " +
+              "-fx-padding: 4 10; -fx-font-size: 12; -fx-cursor: hand; " +
+              "-fx-border-color: #f59e0b; -fx-border-radius: 8; -fx-border-width: 1.5;"
+            : "-fx-background-color: #f8fafc; -fx-text-fill: #475569; -fx-background-radius: 8; " +
+              "-fx-padding: 4 10; -fx-font-size: 12; -fx-cursor: hand;");
         btn.setMinWidth(Region.USE_PREF_SIZE);
     }
 
