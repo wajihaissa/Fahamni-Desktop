@@ -115,8 +115,8 @@ public class BackofficeUsersController {
         AdminUser selectedUser = usersTable.getSelectionModel().getSelectedItem();
         OperationResult result = userService.deleteUser(selectedUser);
         if (result.isSuccess()) {
-            usersTable.getSelectionModel().clearSelection();
-            clearForm();
+            usersTable.refresh();
+            statusComboBox.setValue("Suspended");
         }
 
         showFeedback(result.getMessage(), result.isSuccess());

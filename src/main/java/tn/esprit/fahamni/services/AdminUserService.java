@@ -118,17 +118,22 @@ public class AdminUserService {
             return OperationResult.failure("Connexion a la base indisponible. Suppression impossible.");
         }
 
-        String query = "DELETE FROM `user` WHERE `id` = ?";
+        if ("Suspended".equalsIgnoreCase(user.getStatus())) {
+            return OperationResult.failure("Cet utilisateur est deja suspendu.");
+        }
+
+        String query = "UPDATE `user` SET `status` = ? WHERE `id` = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setInt(1, user.getId());
+            statement.setBoolean(1, false);
+            statement.setInt(2, user.getId());
             statement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("Error deleting user: " + e.getMessage());
             return OperationResult.failure("Erreur lors de la suppression : " + e.getMessage());
         }
 
-        users.remove(user);
-        return OperationResult.success("Utilisateur supprime.");
+        user.setStatus("Suspended");
+        return OperationResult.success("Utilisateur suspendu.");
     }
 
     private String inferRole(String roles) {
