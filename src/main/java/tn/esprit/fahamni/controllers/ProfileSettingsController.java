@@ -6,10 +6,14 @@ import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 
 public class ProfileSettingsController {
@@ -113,6 +117,10 @@ public class ProfileSettingsController {
     private void handleDeleteAccount() {
         hideFeedback();
 
+        if (!confirmAccountDeletion()) {
+            return;
+        }
+
         OperationResult result = accountService.deleteCurrentUser();
         if (!result.isSuccess()) {
             showFeedback(result.getMessage(), false);
@@ -148,6 +156,20 @@ public class ProfileSettingsController {
         profileRoleLabel.setText(UserSession.getRoleLabel());
         fullNameField.setText(currentUser.getFullName());
         emailField.setText(currentUser.getEmail());
+    }
+
+    private boolean confirmAccountDeletion() {
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType deleteButton = new ButtonType("Supprimer", ButtonBar.ButtonData.OK_DONE);
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirmer la suppression");
+        alert.setHeaderText("Supprimer votre compte ?");
+        alert.setContentText("Cette action supprimera votre compte utilisateur. Voulez-vous continuer ?");
+        alert.getButtonTypes().setAll(cancelButton, deleteButton);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        return result.isPresent() && result.get() == deleteButton;
     }
 
     private void showFeedback(String message, boolean success) {
