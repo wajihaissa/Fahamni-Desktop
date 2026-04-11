@@ -108,6 +108,20 @@ public class BackofficeUsersController {
         hideFeedback();
     }
 
+    @FXML
+    private void handleDeleteUser() {
+        hideFeedback();
+
+        AdminUser selectedUser = usersTable.getSelectionModel().getSelectedItem();
+        OperationResult result = userService.deleteUser(selectedUser);
+        if (result.isSuccess()) {
+            usersTable.getSelectionModel().clearSelection();
+            clearForm();
+        }
+
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
     private void populateForm(AdminUser user) {
         if (user == null) {
             return;

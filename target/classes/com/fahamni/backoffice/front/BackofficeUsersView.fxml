@@ -62,6 +62,7 @@
 
             <Button maxWidth="Infinity" onAction="#handleCreateUser" text="Ajouter un utilisateur" styleClass="backoffice-primary-button"/>
             <Button maxWidth="Infinity" onAction="#handleUpdateUser" text="Mettre a jour la selection" styleClass="backoffice-secondary-button"/>
+            <Button maxWidth="Infinity" onAction="#handleDeleteUser" text="Supprimer la selection" styleClass="backoffice-secondary-button"/>
             <Button maxWidth="Infinity" onAction="#handleResetForm" text="Reinitialiser le formulaire" styleClass="backoffice-secondary-button"/>
 
             <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>

@@ -109,6 +109,28 @@ public class AdminUserService {
         return OperationResult.success("Utilisateur mis a jour (nom, email et statut).");
     }
 
+    public OperationResult deleteUser(AdminUser user) {
+        if (user == null) {
+            return OperationResult.failure("Selectionnez un utilisateur a supprimer.");
+        }
+
+        if (connection == null) {
+            return OperationResult.failure("Connexion a la base indisponible. Suppression impossible.");
+        }
+
+        String query = "DELETE FROM `user` WHERE `id` = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, user.getId());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error deleting user: " + e.getMessage());
+            return OperationResult.failure("Erreur lors de la suppression : " + e.getMessage());
+        }
+
+        users.remove(user);
+        return OperationResult.success("Utilisateur supprime.");
+    }
+
     private String inferRole(String roles) {
         if (roles != null && roles.toUpperCase().contains("ROLE_ADMIN")) {
             return "Administrator";
