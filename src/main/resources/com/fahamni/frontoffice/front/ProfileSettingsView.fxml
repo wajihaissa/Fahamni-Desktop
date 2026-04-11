@@ -70,11 +70,11 @@
 
             <VBox spacing="14.0" styleClass="profile-danger-card" prefWidth="300.0" minWidth="300.0">
                 <Label text="Zone sensible" styleClass="section-title"/>
-                <Label text="La suppression de votre compte efface l'acces a cet espace. Utilisez-la seulement si vous etes certain."
+                <Label text="La suppression de votre compte efface l'acces a cet espace. Une confirmation vous sera demandee avant toute suppression."
                        styleClass="section-subtitle" wrapText="true"/>
                 <Button maxWidth="Infinity" text="Supprimer mon compte" onAction="#handleDeleteAccount" styleClass="profile-delete-button"/>
                 <VBox VBox.vgrow="ALWAYS"/>
-                <Label text="Astuce : utilisez le menu Compte pour ouvrir rapidement ce panneau ou vous deconnecter."
+                <Label text="Astuce : utilisez le menu Compte pour ouvrir rapidement ce panneau, verifier votre profil ou vous deconnecter."
                        styleClass="section-subtitle" wrapText="true"/>
             </VBox>
         </HBox>
