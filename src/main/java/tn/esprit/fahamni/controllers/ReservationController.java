@@ -638,7 +638,8 @@ public class ReservationController {
         Label sessionLabel = new Label(
             "Seance: " + formatDateTimeOrPlaceholder(request.seanceStartAt())
                 + " | " + request.durationMin() + " min"
-                + " | capacite " + request.maxParticipants()
+                + " | " + request.acceptedReservations() + "/" + request.maxParticipants() + " acceptee(s)"
+                + " | " + formatAvailableSeats(request.availableAcceptedSeats())
                 + " | ID reservation #" + request.id()
         );
         sessionLabel.setWrapText(true);
@@ -660,7 +661,14 @@ public class ReservationController {
 
         actionRow.getChildren().addAll(idChip, actionSpacer);
         if (request.isPending()) {
-            actionRow.getChildren().addAll(acceptButton, refuseButton);
+            if (request.isSessionCapacityReached()) {
+                Button fullButton = new Button("Capacite atteinte");
+                fullButton.getStyleClass().addAll("action-button", "secondary");
+                fullButton.setDisable(true);
+                actionRow.getChildren().addAll(fullButton, refuseButton);
+            } else {
+                actionRow.getChildren().addAll(acceptButton, refuseButton);
+            }
         } else {
             Button statusButton = new Button(mapReservationRequestStatusLabel(request.status()));
             statusButton.getStyleClass().addAll("action-button", "secondary");
@@ -673,6 +681,12 @@ public class ReservationController {
 
     private void acceptTutorReservationRequest(TutorReservationRequest request) {
         hideTutorReservationRequestsFeedback();
+        if (request.isSessionCapacityReached()) {
+            showTutorReservationRequestsFeedback("La capacite de cette seance est deja atteinte.", false);
+            loadTutorReservationRequests();
+            return;
+        }
+
         OperationResult result = reservationService.acceptReservation(
             request.id(),
             TemporaryUserContext.getCurrentTutorId()
@@ -1038,6 +1052,13 @@ public class ReservationController {
             return "0 reservation";
         }
         return reservationCount == 1 ? "1 reservation" : reservationCount + " reservations";
+    }
+
+    private String formatAvailableSeats(int availableSeats) {
+        if (availableSeats <= 0) {
+            return "capacite atteinte";
+        }
+        return availableSeats == 1 ? "1 place disponible" : availableSeats + " places disponibles";
     }
 
     private double calculateOccupancyRate(int reservationCount, int capacity) {

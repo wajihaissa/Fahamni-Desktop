@@ -109,6 +109,13 @@ public class ReservationService {
                 s.start_at,
                 s.duration_min,
                 s.max_participants,
+                (
+                    SELECT COUNT(*)
+                    FROM reservation accepted_reservation
+                    WHERE accepted_reservation.seance_id = s.id
+                      AND accepted_reservation.cancell_at IS NULL
+                      AND accepted_reservation.status IN (1, 2)
+                ) AS accepted_reservations,
                 u.full_name AS participant_name,
                 u.email AS participant_email
             FROM reservation r
@@ -136,7 +143,8 @@ public class ReservationService {
                         rs.getInt("max_participants"),
                         rs.getInt("participant_id"),
                         rs.getString("participant_name"),
-                        rs.getString("participant_email")
+                        rs.getString("participant_email"),
+                        rs.getInt("accepted_reservations")
                     ));
                 }
             }
@@ -487,7 +495,8 @@ public class ReservationService {
         int maxParticipants,
         int participantId,
         String participantName,
-        String participantEmail
+        String participantEmail,
+        int acceptedReservations
     ) {
         public boolean isPending() {
             return status == STATUS_PENDING;
@@ -495,6 +504,14 @@ public class ReservationService {
 
         public boolean isRefused() {
             return status == STATUS_REFUSED;
+        }
+
+        public int availableAcceptedSeats() {
+            return Math.max(0, maxParticipants - acceptedReservations);
+        }
+
+        public boolean isSessionCapacityReached() {
+            return availableAcceptedSeats() <= 0;
         }
     }
 
