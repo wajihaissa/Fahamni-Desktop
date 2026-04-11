@@ -63,7 +63,6 @@ public class BackofficeUsersController {
         statusComboBox.getItems().setAll(userService.getAvailableStatuses());
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
-        roleComboBox.setDisable(true);
 
         usersTable.setItems(userService.getUsers());
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
