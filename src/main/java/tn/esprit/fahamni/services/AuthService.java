@@ -19,12 +19,15 @@ public class AuthService {
     );
 
     private final Connection connection;
+    private String lastAuthenticationError;
 
     public AuthService() {
         connection = MyDataBase.getInstance().getCnx();
     }
 
     public User authenticate(String email, String password) {
+        lastAuthenticationError = null;
+
         if (isBlank(email) || isBlank(password)) {
             return null;
         }
@@ -48,6 +51,7 @@ public class AuthService {
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     if (!resultSet.getBoolean("status")) {
+                        lastAuthenticationError = "Votre compte est suspendu. Contactez l'administration.";
                         return null;
                     }
 
@@ -71,6 +75,10 @@ public class AuthService {
         }
 
         return null;
+    }
+
+    public String getLastAuthenticationError() {
+        return lastAuthenticationError;
     }
 
     public OperationResult register(String fullName, String email, String password, String confirmPassword) {

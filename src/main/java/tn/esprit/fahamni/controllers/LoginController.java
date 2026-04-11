@@ -74,7 +74,8 @@ public class LoginController {
 
         User authenticatedUser = authService.authenticate(email, password);
         if (authenticatedUser == null) {
-            showMessage(loginMessageLabel, "Email ou mot de passe invalide.", false);
+            String authError = authService.getLastAuthenticationError();
+            showMessage(loginMessageLabel, authError != null ? authError : "Email ou mot de passe invalide.", false);
             return;
         }
 
