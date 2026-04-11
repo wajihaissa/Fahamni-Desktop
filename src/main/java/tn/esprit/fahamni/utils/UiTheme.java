@@ -355,6 +355,32 @@ public final class UiTheme {
             -fx-cursor: hand;
         }
 
+        .quiz-question-box {
+            -fx-background-color: rgba(248, 250, 255, 0.95);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 14px;
+            -fx-background-radius: 14px;
+            -fx-padding: 14px;
+        }
+
+        .quiz-question-label {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1d3b75;
+        }
+
+        .quiz-choice-button {
+            -fx-font-size: 13px;
+            -fx-text-fill: #243c59;
+        }
+
+        .quiz-empty-message, .result-empty-message {
+            -fx-font-size: 14px;
+            -fx-text-fill: #5e6f89;
+            -fx-padding: 12px 0 0 0;
+        }
+
         .action-button.danger {
             -fx-background-color: #ffe8ec;
             -fx-border-color: #ffcbd3;
