@@ -18,6 +18,7 @@ import tn.esprit.fahamni.Models.quiz.QuizResult;
 import tn.esprit.fahamni.services.QuizService;
 
 import java.text.NumberFormat;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -272,10 +273,40 @@ public class QuizController {
 
     @FXML
     private void handleShowLeaderboard() {
+        List<QuizResult> topResults = quizService.getAllQuizzes().stream()
+                .flatMap(quiz -> quiz.getQuizResults().stream())
+                .sorted(Comparator.comparingInt((QuizResult result) -> result.getScore() != null ? result.getScore() : 0).reversed())
+                .limit(5)
+                .toList();
+
+        if (topResults.isEmpty()) {
+            showAlert(Alert.AlertType.INFORMATION, "Leaderboard", "Aucun résultat disponible pour le moment.", null);
+            return;
+        }
+
+        StringBuilder content = new StringBuilder();
+        for (int index = 0; index < topResults.size(); index++) {
+            QuizResult result = topResults.get(index);
+            content.append(index + 1)
+                    .append(". ")
+                    .append(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz inconnu")
+                    .append(" - ")
+                    .append(result.getScore())
+                    .append("/")
+                    .append(result.getTotalQuestions())
+                    .append(" (")
+                    .append(formatPercentage(result.getPercentage()))
+                    .append(")");
+            if (result.getUser() != null) {
+                content.append(" - ").append(result.getUser().getFullName());
+            }
+            content.append("\n");
+        }
+
         showAlert(Alert.AlertType.INFORMATION,
                 "Leaderboard",
-                "Leaderboard temporaire",
-                "Le leaderboard sera disponible lorsque la gestion des utilisateurs sera intégrée.");
+                "Top 5 des meilleurs scores :",
+                content.toString());
     }
 
     private void showResultDetails(QuizResult result) {
