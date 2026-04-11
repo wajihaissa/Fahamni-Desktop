@@ -368,11 +368,11 @@ public class SeanceController {
     }
 
     private String formatEquipementReferences(Seance seance) {
-        if (seance == null || !seance.isPresentiel() || seance.getEquipementIds().isEmpty()) {
+        if (seance == null || !seance.isPresentiel() || seance.getEquipementQuantites().isEmpty()) {
             return "Aucun materiel";
         }
-        return seance.getEquipementIds().stream()
-            .map(id -> "Materiel #" + id)
+        return seance.getEquipementQuantites().entrySet().stream()
+            .map(entry -> "Materiel #" + entry.getKey() + " x" + Math.max(1, entry.getValue()))
             .collect(Collectors.joining(", "));
     }
 

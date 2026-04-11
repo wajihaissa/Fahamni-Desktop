@@ -15,9 +15,11 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class SeanceService implements IServices<Seance> {
 
@@ -397,7 +399,8 @@ public class SeanceService implements IServices<Seance> {
     }
 
     private String validateSelectedEquipements(Seance seance) {
-        if (seance.getEquipementIds().isEmpty()) {
+        Map<Integer, Integer> equipementQuantites = seance.getEquipementQuantites();
+        if (equipementQuantites.isEmpty()) {
             return null;
         }
         if (cnx == null) {
@@ -405,9 +408,14 @@ public class SeanceService implements IServices<Seance> {
         }
 
         String sql = "SELECT nom, quantiteDisponible, etat FROM equipement WHERE idEquipement = ?";
-        for (Integer equipementId : seance.getEquipementIds()) {
+        for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
+            Integer equipementId = entry.getKey();
+            int quantiteDemandee = entry.getValue() == null ? 1 : entry.getValue();
             if (equipementId == null || equipementId <= 0) {
                 return "Le materiel choisi est invalide.";
+            }
+            if (quantiteDemandee <= 0) {
+                return "La quantite de materiel doit etre superieure a zero.";
             }
 
             try (PreparedStatement pst = cnx.prepareStatement(sql)) {
@@ -422,6 +430,9 @@ public class SeanceService implements IServices<Seance> {
 
                     if (!isAvailable(status) || quantity <= 0) {
                         return "Le materiel \"" + equipmentName + "\" n'est pas disponible.";
+                    }
+                    if (quantiteDemandee > quantity) {
+                        return "Le materiel \"" + equipmentName + "\" est disponible a hauteur de " + quantity + " unite(s).";
                     }
                 }
             } catch (SQLException e) {
@@ -525,11 +536,28 @@ public class SeanceService implements IServices<Seance> {
         seance.setMode(mode);
         if (!Seance.MODE_ONSITE.equals(mode)) {
             seance.setSalleId(null);
-            seance.setEquipementIds(List.of());
+            seance.setEquipementQuantites(Map.of());
             return;
         }
 
-        seance.setEquipementIds(new ArrayList<>(new LinkedHashSet<>(seance.getEquipementIds())));
+        LinkedHashMap<Integer, Integer> normalizedQuantities = new LinkedHashMap<>();
+        for (Map.Entry<Integer, Integer> entry : seance.getEquipementQuantites().entrySet()) {
+            Integer equipementId = entry.getKey();
+            if (equipementId == null || equipementId <= 0) {
+                continue;
+            }
+            int quantite = entry.getValue() == null || entry.getValue() <= 0 ? 1 : entry.getValue();
+            normalizedQuantities.put(equipementId, quantite);
+        }
+
+        for (Integer equipementId : new LinkedHashSet<>(seance.getEquipementIds())) {
+            if (equipementId == null || equipementId <= 0 || normalizedQuantities.containsKey(equipementId)) {
+                continue;
+            }
+            normalizedQuantities.put(equipementId, 1);
+        }
+
+        seance.setEquipementQuantites(normalizedQuantities);
     }
 
     private void attachEquipementIds(List<Seance> seances) {
@@ -538,28 +566,28 @@ public class SeanceService implements IServices<Seance> {
         }
 
         for (Seance seance : seances) {
-            seance.setEquipementIds(loadEquipementIdsBySeanceId(seance.getId()));
+            seance.setEquipementQuantites(loadEquipementQuantitesBySeanceId(seance.getId()));
         }
     }
 
-    private List<Integer> loadEquipementIdsBySeanceId(int seanceId) {
-        List<Integer> equipementIds = new ArrayList<>();
+    private Map<Integer, Integer> loadEquipementQuantitesBySeanceId(int seanceId) {
+        LinkedHashMap<Integer, Integer> equipementQuantites = new LinkedHashMap<>();
         if (seanceId <= 0 || cnx == null) {
-            return equipementIds;
+            return equipementQuantites;
         }
 
-        String sql = "SELECT idEquipement FROM seance_equipement WHERE seance_id = ? ORDER BY idEquipement";
+        String sql = "SELECT idEquipement, quantite FROM seance_equipement WHERE seance_id = ? ORDER BY idEquipement";
         try (PreparedStatement pst = cnx.prepareStatement(sql)) {
             pst.setInt(1, seanceId);
             try (ResultSet rs = pst.executeQuery()) {
                 while (rs.next()) {
-                    equipementIds.add(rs.getInt("idEquipement"));
+                    equipementQuantites.put(rs.getInt("idEquipement"), Math.max(1, rs.getInt("quantite")));
                 }
             }
         } catch (SQLException e) {
             System.out.println("Chargement materiel seance impossible: " + e.getMessage());
         }
-        return equipementIds;
+        return equipementQuantites;
     }
 
     private void replaceSeanceEquipements(Seance seance) throws SQLException {
@@ -568,19 +596,20 @@ public class SeanceService implements IServices<Seance> {
         }
 
         deleteSeanceEquipements(seance.getId());
-        if (!seance.isPresentiel() || seance.getEquipementIds().isEmpty()) {
+        if (!seance.isPresentiel() || seance.getEquipementQuantites().isEmpty()) {
             return;
         }
 
         String sql = "INSERT INTO seance_equipement (seance_id, idEquipement, quantite) VALUES (?, ?, ?)";
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
-            for (Integer equipementId : seance.getEquipementIds()) {
+            for (Map.Entry<Integer, Integer> entry : seance.getEquipementQuantites().entrySet()) {
+                Integer equipementId = entry.getKey();
                 if (equipementId == null || equipementId <= 0) {
                     continue;
                 }
                 pst.setInt(1, seance.getId());
                 pst.setInt(2, equipementId);
-                pst.setInt(3, 1);
+                pst.setInt(3, Math.max(1, entry.getValue() == null ? 1 : entry.getValue()));
                 pst.addBatch();
             }
             pst.executeBatch();
@@ -666,7 +695,7 @@ public class SeanceService implements IServices<Seance> {
             safe(mapStatusLabel(seance.getStatus())),
             safe(mapModeLabel(seance.getMode())),
             seance.getSalleId() == null ? "" : "salle " + seance.getSalleId(),
-            seance.getEquipementIds().toString()
+            seance.getEquipementQuantites().toString()
         );
         return normalize(searchableText).contains(normalizedKeyword);
     }

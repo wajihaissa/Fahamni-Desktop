@@ -1091,6 +1091,150 @@ public final class UiTheme {
             -fx-padding: 14px;
         }
 
+        .reservation-infrastructure-toggle-row {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7fbff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-padding: 14px;
+        }
+
+        .reservation-infrastructure-card {
+            -fx-padding: 16px;
+        }
+
+        .reservation-infrastructure-separator {
+            -fx-padding: 4px 0;
+        }
+
+        .reservation-infrastructure-separator .line {
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 0 1px 0 0;
+            -fx-opacity: 0.95;
+        }
+
+        .reservation-preview-title {
+            -fx-font-size: 18px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #183f82;
+        }
+
+        .reservation-mode-chip-onsite {
+            -fx-background-color: #e7f3ea;
+            -fx-border-color: #cce6d3;
+            -fx-text-fill: #1f7a45;
+        }
+
+        .session-mode-toggle {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #264770;
+            -fx-padding: 8px 10px;
+            -fx-background-color: #f8fbff;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+        }
+
+        .session-mode-toggle .box {
+            -fx-background-color: rgba(255, 255, 255, 0.96);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 7px;
+            -fx-background-radius: 7px;
+            -fx-padding: 3px;
+        }
+
+        .session-mode-toggle:selected {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #abc5f8;
+        }
+
+        .session-mode-toggle:selected .box {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #6e97ff;
+        }
+
+        .session-mode-toggle:selected .mark {
+            -fx-background-color: #315bb4;
+        }
+
+        .reservation-equipment-check {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #29476d;
+            -fx-padding: 10px 12px;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+        }
+
+        .reservation-equipment-check .box {
+            -fx-background-color: rgba(255, 255, 255, 0.96);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 6px;
+            -fx-background-radius: 6px;
+            -fx-padding: 3px;
+        }
+
+        .reservation-equipment-check:selected {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #abc5f8;
+        }
+
+        .reservation-equipment-check:selected .box {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #6e97ff;
+        }
+
+        .reservation-equipment-check:selected .mark {
+            -fx-background-color: #315bb4;
+        }
+
+        .reservation-equipment-choice-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-padding: 12px;
+        }
+
+        .reservation-equipment-choice-card.selected {
+            -fx-background-color: #eef4ff;
+            -fx-border-color: #abc5f8;
+        }
+
+        .reservation-equipment-quantity-label {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #5c759d;
+        }
+
+        .reservation-equipment-quantity-spinner {
+            -fx-pref-height: 38px;
+            -fx-background-color: rgba(255, 255, 255, 0.96);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 10px;
+            -fx-background-radius: 10px;
+        }
+
+        .reservation-equipment-quantity-spinner .text-field {
+            -fx-background-color: transparent;
+            -fx-text-fill: #243c59;
+            -fx-font-weight: bold;
+        }
+
+        .reservation-equipment-preview-card {
+            -fx-padding: 12px;
+        }
+
         .workspace-eyebrow, .workspace-label {
             -fx-font-size: 11px;
             -fx-font-weight: bold;

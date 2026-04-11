@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Separator?>
 
 <ScrollPane fitToWidth="true" styleClass="reservation-scroll"
             xmlns="http://javafx.com/javafx/17"
@@ -128,23 +129,54 @@
                     </VBox>
                 </HBox>
 
-                <VBox spacing="10.0">
-                    <HBox spacing="12.0">
-                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Mode de seance *" styleClass="form-label"/>
-                            <ComboBox fx:id="sessionModeComboBox" onAction="#handleSessionModeChange" promptText="Choisir le mode" maxWidth="Infinity" styleClass="filter-combo"/>
+                <VBox spacing="12.0">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="reservation-infrastructure-toggle-row">
+                        <VBox spacing="3.0" HBox.hgrow="ALWAYS">
+                            <Label text="Format de la seance" styleClass="form-label"/>
+                            <Label fx:id="sessionModeDescriptionLabel" text="En ligne. Aucun espace physique n'est requis pour cette seance." wrapText="true" styleClass="reservation-section-copy"/>
                         </VBox>
-                        <VBox fx:id="onsiteSessionOptionsBox" spacing="6.0" HBox.hgrow="ALWAYS" managed="false" visible="false">
-                            <Label text="Salle *" styleClass="form-label"/>
-                            <ComboBox fx:id="sessionRoomComboBox" promptText="Choisir une salle disponible" maxWidth="Infinity" styleClass="filter-combo"/>
-                        </VBox>
+                        <Label fx:id="sessionModeStateChipLabel" text="En ligne" styleClass="workspace-chip workspace-chip-muted"/>
+                        <CheckBox fx:id="sessionOnsiteCheckBox" text="Presentiel" onAction="#handleSessionModeChange" styleClass="session-mode-toggle"/>
                     </HBox>
 
-                    <VBox fx:id="onsiteEquipmentOptionsBox" spacing="6.0" managed="false" visible="false">
-                        <Label text="Materiel necessaire" styleClass="form-label"/>
-                        <FlowPane fx:id="sessionEquipmentChoicesContainer" hgap="10.0" vgap="8.0" prefWrapLength="780.0"/>
-                        <Label fx:id="infrastructureHintLabel" text="Choisis uniquement le materiel existant et disponible." wrapText="true" styleClass="reservation-section-copy"/>
-                    </VBox>
+                    <HBox fx:id="onsiteInfrastructureRow" spacing="14.0" managed="false" visible="false">
+                        <VBox spacing="12.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label text="Salle" styleClass="infrastructure-detail-section-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="sessionRoomStatusChipLabel" text="En attente" styleClass="status-chip unavailable"/>
+                            </HBox>
+
+                            <ComboBox fx:id="sessionRoomComboBox" onAction="#handleRoomSelectionChange" promptText="Choisir une salle disponible" maxWidth="Infinity" styleClass="filter-combo"/>
+
+                            <VBox spacing="4.0">
+                                <Label fx:id="sessionRoomPreviewTitleLabel" text="Choisissez une salle" wrapText="true" styleClass="reservation-preview-title"/>
+                                <Label fx:id="sessionRoomPreviewSubtitleLabel" text="La salle choisie apparaitra ici avec ses details principaux." wrapText="true" styleClass="section-subtitle"/>
+                            </VBox>
+
+                            <FlowPane fx:id="sessionRoomFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="360.0"/>
+
+                            <VBox styleClass="infrastructure-detail-preview">
+                                <Label text="Apercu detaille" styleClass="infrastructure-detail-section-title"/>
+                                <Label fx:id="sessionRoomPreviewDescriptionLabel" text="Aucune salle selectionnee." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
+                            </VBox>
+                        </VBox>
+
+                        <Separator orientation="VERTICAL" HBox.hgrow="NEVER" styleClass="reservation-infrastructure-separator"/>
+
+                        <VBox spacing="12.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label text="Materiel" styleClass="infrastructure-detail-section-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="sessionEquipmentSelectionSummaryLabel" text="0 selection" styleClass="infrastructure-small-chip"/>
+                            </HBox>
+
+                            <Label text="Selectionnez uniquement les equipements deja disponibles pour cette seance." wrapText="true" styleClass="reservation-section-copy"/>
+                            <FlowPane fx:id="sessionEquipmentChoicesContainer" hgap="10.0" vgap="8.0" prefWrapLength="440.0"/>
+                            <VBox fx:id="sessionEquipmentPreviewContainer" spacing="8.0"/>
+                            <Label fx:id="infrastructureHintLabel" text="Choisis uniquement le materiel existant et disponible." wrapText="true" styleClass="reservation-section-copy"/>
+                        </VBox>
+                    </HBox>
                 </VBox>
 
                 <VBox spacing="6.0">

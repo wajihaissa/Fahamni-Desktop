@@ -3,7 +3,9 @@ package tn.esprit.fahamni.Models;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Seance {
 
@@ -25,6 +27,7 @@ public class Seance {
     private String mode = MODE_ONLINE;
     private Integer salleId;
     private List<Integer> equipementIds = new ArrayList<>();
+    private Map<Integer, Integer> equipementQuantites = new LinkedHashMap<>();
 
     // Optional display helpers kept for current mock views.
     private String displayTitle;
@@ -172,6 +175,50 @@ public class Seance {
 
     public void setEquipementIds(List<Integer> equipementIds) {
         this.equipementIds = equipementIds == null ? new ArrayList<>() : new ArrayList<>(equipementIds);
+        LinkedHashMap<Integer, Integer> normalizedQuantities = new LinkedHashMap<>();
+        for (Integer equipementId : this.equipementIds) {
+            if (equipementId == null || equipementId <= 0) {
+                continue;
+            }
+            normalizedQuantities.put(equipementId, getEquipementQuantite(equipementId));
+        }
+        this.equipementIds = new ArrayList<>(normalizedQuantities.keySet());
+        this.equipementQuantites = normalizedQuantities;
+    }
+
+    public Map<Integer, Integer> getEquipementQuantites() {
+        LinkedHashMap<Integer, Integer> copy = new LinkedHashMap<>();
+        for (Integer equipementId : equipementIds) {
+            if (equipementId == null || equipementId <= 0) {
+                continue;
+            }
+            copy.put(equipementId, getEquipementQuantite(equipementId));
+        }
+        return copy;
+    }
+
+    public void setEquipementQuantites(Map<Integer, Integer> equipementQuantites) {
+        LinkedHashMap<Integer, Integer> normalized = new LinkedHashMap<>();
+        if (equipementQuantites != null) {
+            for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
+                Integer equipementId = entry.getKey();
+                Integer quantite = entry.getValue();
+                if (equipementId == null || equipementId <= 0) {
+                    continue;
+                }
+                normalized.put(equipementId, quantite == null || quantite <= 0 ? 1 : quantite);
+            }
+        }
+        this.equipementQuantites = normalized;
+        this.equipementIds = new ArrayList<>(normalized.keySet());
+    }
+
+    public int getEquipementQuantite(int equipementId) {
+        if (equipementId <= 0) {
+            return 1;
+        }
+        Integer quantite = equipementQuantites.get(equipementId);
+        return quantite == null || quantite <= 0 ? 1 : quantite;
     }
 
     public String getTitle() {
