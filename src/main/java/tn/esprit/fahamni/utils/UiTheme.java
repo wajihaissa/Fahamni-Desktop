@@ -517,29 +517,104 @@ public final class UiTheme {
         }
 
         .backoffice-table {
-            -fx-border-color: #dbe5f6;
+            -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.96) 100%);
+            -fx-border-color: #d6e2f5;
             -fx-border-width: 1px;
-            -fx-border-radius: 14px;
-            -fx-background-radius: 14px;
+            -fx-border-radius: 16px;
+            -fx-background-radius: 16px;
+            -fx-padding: 6px;
+            -fx-effect: dropshadow(gaussian, rgba(30, 68, 130, 0.08), 16, 0.14, 0, 4);
+        }
+
+        .backoffice-quiz-table-panel {
+            -fx-padding: 18px 18px 14px 18px;
+        }
+
+        .backoffice-quiz-form-panel {
+            -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 255, 0.95) 100%);
+            -fx-border-color: #d6e2f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 22px;
+            -fx-background-radius: 22px;
+            -fx-padding: 4px;
+            -fx-effect: dropshadow(gaussian, rgba(30, 68, 130, 0.09), 18, 0.16, 0, 5);
+        }
+
+        .backoffice-quiz-form-panel,
+        .backoffice-quiz-form-panel > .viewport,
+        .backoffice-quiz-form-panel > .corner {
+            -fx-border-color: transparent;
+        }
+
+        .backoffice-quiz-form-panel > .viewport {
+            -fx-background-color: transparent;
+            -fx-background-radius: 18px;
+        }
+
+        .backoffice-quiz-form-panel > .corner {
+            -fx-background-color: transparent;
+        }
+
+        .backoffice-quiz-form-panel .scroll-bar:vertical,
+        .backoffice-quiz-form-panel .scroll-bar:horizontal {
+            -fx-background-color: transparent;
+        }
+
+        .backoffice-quiz-form-panel .scroll-bar:vertical .thumb,
+        .backoffice-quiz-form-panel .scroll-bar:horizontal .thumb {
+            -fx-background-color: #d7e4f8;
+            -fx-background-radius: 999px;
+        }
+
+        .backoffice-quiz-form-panel .scroll-bar:vertical .track,
+        .backoffice-quiz-form-panel .scroll-bar:horizontal .track {
+            -fx-background-color: transparent;
+        }
+
+        .backoffice-quiz-form-panel .separator .line {
+            -fx-border-color: #e7eefb;
+        }
+
+        .backoffice-quiz-form-content {
+            -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(250, 252, 255, 0.96) 100%);
+            -fx-background-radius: 18px;
+            -fx-border-color: #e5edfb;
+            -fx-border-width: 1px;
+            -fx-border-radius: 18px;
+            -fx-padding: 18px 18px 20px 18px;
         }
 
         .backoffice-table .column-header-background, .backoffice-table .filler {
-            -fx-background-color: linear-gradient(to bottom, #f7faff 0%, #eef4ff 100%);
+            -fx-background-color: linear-gradient(to bottom, #f8fbff 0%, #edf3ff 100%);
+            -fx-background-radius: 12px 12px 0 0;
+            -fx-padding: 0 6px 0 6px;
+        }
+
+        .backoffice-table .column-header {
+            -fx-background-color: transparent;
+            -fx-border-color: transparent transparent #e4ecfa transparent;
+            -fx-border-width: 0 0 1 0;
+            -fx-padding: 4px 6px;
         }
 
         .backoffice-table .column-header .label {
             -fx-text-fill: #3f587a;
             -fx-font-size: 12px;
             -fx-font-weight: bold;
+            -fx-padding: 8px 10px;
         }
 
         .backoffice-table .table-row-cell {
             -fx-background-color: rgba(255, 255, 255, 0.95);
             -fx-text-fill: #294365;
-            -fx-padding: 8px;
+            -fx-padding: 6px 4px;
             -fx-font-size: 13px;
-            -fx-border-color: #f0f4ff;
+            -fx-border-color: #edf3ff;
             -fx-border-width: 0 0 1 0;
+        }
+
+        .backoffice-table .table-row-cell:filled:hover {
+            -fx-background-color: #f6f9ff;
         }
 
         .backoffice-table .table-row-cell:selected {
@@ -548,16 +623,22 @@ public final class UiTheme {
         }
 
         .backoffice-table .table-cell {
-    -fx-padding: 4 8 4 8;
-}
+            -fx-padding: 8px 10px;
+            -fx-border-color: transparent;
+        }
 
         .backoffice-table .table-cell .text,
         .backoffice-table .table-row-cell .text {
             -fx-fill: #294365;
         }
+
+        .backoffice-table .virtual-flow .clipped-container {
+            -fx-padding: 0 4px 4px 4px;
+        }
+
         .backoffice-table .column-header .label {
-    -fx-alignment: CENTER;
-}
+            -fx-alignment: CENTER;
+        }
 
         .backoffice-feedback.success {
             -fx-background-color: #e2f5e8;

@@ -45,25 +45,25 @@
         </VBox>
     </HBox>
 
-    <HBox spacing="20.0">
-        <VBox spacing="12.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel">
+    <HBox spacing="20.0" alignment="TOP_LEFT">
+        <VBox spacing="14.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel backoffice-quiz-table-panel">
             <Label text="Liste des quiz" styleClass="backoffice-section-title"/>
             <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
-    <columns>
-        <TableColumn fx:id="idColumn" text="ID"/>
-        <TableColumn fx:id="titleColumn" text="Titre"/>
+                <columns>
+                    <TableColumn fx:id="idColumn" text="ID"/>
+                    <TableColumn fx:id="titleColumn" text="Titre"/>
         <TableColumn fx:id="keywordColumn" text="Mot-clé"/>
-        <TableColumn fx:id="questionsColumn" text="Questions"/>
+                    <TableColumn fx:id="questionsColumn" text="Questions"/>
         <TableColumn fx:id="resultsColumn" text="Résultats"/>
         <TableColumn fx:id="createdAtColumn" text="Créé le"/>
-        <TableColumn fx:id="lastScoreColumn" text="Dernier score"/>
-    </columns>
-</TableView>
+                    <TableColumn fx:id="lastScoreColumn" text="Dernier score"/>
+                </columns>
+            </TableView>
         </VBox>
 
-        <ScrollPane fitToWidth="true" fitToHeight="false" prefWidth="360.0" minWidth="320.0" styleClass="backoffice-panel backoffice-form-panel">
+        <ScrollPane fitToWidth="true" fitToHeight="false" prefWidth="360.0" minWidth="320.0" styleClass="backoffice-panel backoffice-form-panel backoffice-quiz-form-panel">
             <content>
-                <VBox spacing="12.0" fillWidth="true" prefWidth="360.0">
+                <VBox spacing="12.0" fillWidth="true" prefWidth="360.0" styleClass="backoffice-quiz-form-content">
                     <Label text="Ajouter un quiz simple" styleClass="backoffice-section-title"/>
                     <Label text="Titre" styleClass="backoffice-form-label"/>
                     <TextField fx:id="titleField" promptText="Titre du quiz" styleClass="backoffice-form-input"/>

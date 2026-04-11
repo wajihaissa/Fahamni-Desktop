@@ -198,7 +198,10 @@ public class QuizController {
         Label bestScoreLabel = new Label(bestScoreText);
         bestScoreLabel.getStyleClass().add("quiz-info");
 
-        cardBody.getChildren().addAll(titleLabel, keywordBadge, infoLabel, descriptionLabel, bestScoreLabel);
+        Label attemptsLabel = new Label(buildAttemptCountLabel(quiz));
+        attemptsLabel.getStyleClass().add("quiz-info");
+
+        cardBody.getChildren().addAll(titleLabel, keywordBadge, infoLabel, descriptionLabel, bestScoreLabel, attemptsLabel);
         HBox.setHgrow(cardBody, Priority.ALWAYS);
 
         VBox actionBox = new VBox(10);
@@ -401,6 +404,11 @@ public class QuizController {
                 .max(Double::compareTo)
                 .map(score -> "Best score: " + formatPercentage(score))
                 .orElse("Best score: No attempts yet");
+    }
+
+    private String buildAttemptCountLabel(Quiz quiz) {
+        int attemptCount = quiz.getQuizResults().size();
+        return attemptCount == 1 ? "1 recorded attempt" : attemptCount + " recorded attempts";
     }
 
     private String formatPercentage(double value) {
