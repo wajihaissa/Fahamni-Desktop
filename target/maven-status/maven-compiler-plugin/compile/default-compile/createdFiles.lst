@@ -15,6 +15,7 @@ tn\esprit\fahamni\controllers\MessengerController.class
 tn\esprit\fahamni\Models\AdminReservation.class
 tn\esprit\fahamni\controllers\QuizController.class
 tn\esprit\fahamni\Models\AdminUser.class
+tn\esprit\fahamni\services\UserAccountService.class
 tn\esprit\fahamni\services\SeanceService.class
 tn\esprit\fahamni\controllers\BackofficeSessionsController.class
 tn\esprit\fahamni\controllers\BackofficeUsersController.class
@@ -24,6 +25,7 @@ tn\esprit\fahamni\interfaces\IServices.class
 tn\esprit\fahamni\services\MessengerService.class
 tn\esprit\fahamni\controllers\PlannerController.class
 com\fahimni\interfaces\UserInt.class
+tn\esprit\fahamni\controllers\ProfileSettingsController.class
 tn\esprit\fahamni\controllers\MainController.class
 tn\esprit\fahamni\Models\StudyPlanEntry.class
 tn\esprit\fahamni\services\AdminSessionService.class
@@ -34,6 +36,7 @@ tn\esprit\fahamni\services\ReservationService.class
 tn\esprit\fahamni\Models\AdminSession.class
 tn\esprit\fahamni\utils\OperationResult.class
 tn\esprit\fahamni\Models\Seance.class
+com\fahimni\test\main.class
 com\fahimni\utils\bd.class
 tn\esprit\fahamni\utils\UiTheme.class
 tn\esprit\fahamni\services\AdminDashboardService.class
@@ -52,5 +55,6 @@ com\fahimni\models\User.class
 tn\esprit\fahamni\services\AdminUserService.class
 tn\esprit\fahamni\controllers\MessengerController$1.class
 tn\esprit\fahamni\controllers\LoginController.class
+tn\esprit\fahamni\utils\UserSession.class
 tn\esprit\fahamni\services\QuizService.class
 tn\esprit\fahamni\controllers\BackofficeDashboardController.class
