@@ -515,6 +515,10 @@ public class BlogController {
         // Chargement initial
         loadNextComments.run();
 
+        final int MAX_COMMENT = 300;
+
+        VBox inputWrapper = new VBox(4);
+
         HBox inputRow = new HBox(6);
         inputRow.setAlignment(Pos.CENTER);
         TextField commentField = new TextField();
@@ -524,8 +528,32 @@ public class BlogController {
         HBox.setHgrow(commentField, Priority.ALWAYS);
 
         Button sendBtn = new Button("Envoyer");
-        sendBtn.setStyle("-fx-background-color: " + accent + "; -fx-text-fill: white; " +
-                "-fx-background-radius: 16; -fx-padding: 6 14; -fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand;");
+        sendBtn.setDisable(true); // désactivé par défaut (champ vide)
+        sendBtn.setStyle("-fx-background-color: #b0bec5; -fx-text-fill: white; " +
+                "-fx-background-radius: 16; -fx-padding: 6 14; -fx-font-size: 11; -fx-font-weight: bold;");
+
+        // Compteur caractères sous le champ
+        Label commentCounter = new Label("0/" + MAX_COMMENT);
+        commentCounter.setStyle("-fx-font-size: 10; -fx-text-fill: #94a3b8;");
+
+        // Activer/désactiver bouton + compteur en temps réel
+        commentField.textProperty().addListener((obs, o, n) -> {
+            if (n != null && n.length() > MAX_COMMENT) {
+                commentField.setText(o);
+                return;
+            }
+            int len = n == null ? 0 : n.trim().length();
+            boolean empty = len == 0;
+            sendBtn.setDisable(empty);
+            sendBtn.setStyle(empty
+                ? "-fx-background-color: #b0bec5; -fx-text-fill: white; -fx-background-radius: 16; -fx-padding: 6 14; -fx-font-size: 11; -fx-font-weight: bold;"
+                : "-fx-background-color: " + accent + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-padding: 6 14; -fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand;");
+            int rawLen = n == null ? 0 : n.length();
+            commentCounter.setText(rawLen + "/" + MAX_COMMENT);
+            String color = rawLen > 270 ? "#f59e0b" : "#94a3b8";
+            commentCounter.setStyle("-fx-font-size: 10; -fx-text-fill: " + color + ";");
+        });
+
         sendBtn.setOnAction(e -> {
             String comment = commentField.getText().trim();
             if (!comment.isEmpty()) {
@@ -534,18 +562,20 @@ public class BlogController {
                     new Alert(Alert.AlertType.ERROR, err).showAndWait();
                     return;
                 }
-                // Ajouter le nouveau commentaire juste avant le bouton "Voir plus" (ou à la fin)
                 int insertIdx = commentsBox.getChildren().indexOf(voirPlusBtn);
                 HBox newRow = buildCommentRow(currentUserName, comment, true, commentsBox, commentBtn);
                 if (insertIdx >= 0) commentsBox.getChildren().add(insertIdx, newRow);
                 else commentsBox.getChildren().add(newRow);
                 commentField.clear();
+                commentCounter.setText("0/" + MAX_COMMENT);
                 long n = blogService.countComments(blog.getId());
                 animateCounter(commentBtn, "\uD83D\uDCAC " + n);
             }
         });
+
         inputRow.getChildren().addAll(commentField, sendBtn);
-        commentsSection.getChildren().addAll(sepCom, commentsBox, inputRow);
+        inputWrapper.getChildren().addAll(inputRow, commentCounter);
+        commentsSection.getChildren().addAll(sepCom, commentsBox, inputWrapper);
         card.getChildren().add(commentsSection);
 
         commentBtn.setOnAction(e -> {
