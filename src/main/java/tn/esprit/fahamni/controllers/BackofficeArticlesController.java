@@ -13,6 +13,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -174,6 +175,9 @@ public class BackofficeArticlesController {
     private void handleBulkDelete() {
         List<Integer> ids = getCheckedIds();
         if (ids.isEmpty()) return;
+        if (!confirm("Supprimer la sélection ?",
+                "Vous allez supprimer " + ids.size() + " article(s).\nCette action est irréversible. Confirmer ?"))
+            return;
         ids.forEach(service::deleteArticle);
         loadAll();
         showFeedback("🗑  " + ids.size() + " article(s) supprime(s).", false);
@@ -325,7 +329,9 @@ public class BackofficeArticlesController {
                 });
                 btnDelete.setOnAction(e -> {
                     Blog b = getTableView().getItems().get(getIndex());
-                    if (b.getId() > 0) {
+                    if (b.getId() > 0 && confirm(
+                            "Supprimer l'article ?",
+                            "Êtes-vous sûr de vouloir supprimer :\n\"" + b.getTitre() + "\" ?")) {
                         service.deleteArticle(b.getId());
                         loadAll();
                         showFeedback("🗑  Article \"" + b.getTitre() + "\" supprime.", false);
@@ -476,11 +482,12 @@ public class BackofficeArticlesController {
             "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; " +
             "-fx-background-radius: 8; -fx-padding: 8 20; -fx-cursor: hand;");
         btnDelete.setOnAction(e -> {
-            if (blog.getId() > 0) {
+            if (blog.getId() > 0 && confirm(
+                    "Refuser l'article ?",
+                    "Êtes-vous sûr de vouloir refuser :\n\"" + blog.getTitre() + "\" ?")) {
                 service.deleteArticle(blog.getId());
                 loadAll();
                 showFeedback("🗑  Article \"" + blog.getTitre() + "\" refuse.", false);
-            }
             stage.close();
         });
 
@@ -564,6 +571,19 @@ public class BackofficeArticlesController {
             case "rejected":  return "#991b1b";
             default:          return "#475569";
         }
+    }
+
+    // ─── confirmation dialog ──────────────────────────────────────────────────
+
+    private boolean confirm(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        ButtonType oui = new ButtonType("Oui, supprimer", ButtonBar.ButtonData.OK_DONE);
+        ButtonType non = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(oui, non);
+        return alert.showAndWait().orElse(non) == oui;
     }
 
     // ─── feedback ─────────────────────────────────────────────────────────────
