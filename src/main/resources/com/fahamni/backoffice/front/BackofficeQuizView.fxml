@@ -4,6 +4,8 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -45,17 +47,17 @@
     <HBox spacing="20.0">
         <VBox spacing="12.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel">
             <Label text="Liste des quiz" styleClass="backoffice-section-title"/>
-            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" prefHeight="320.0" minHeight="240.0" styleClass="backoffice-table">
-                <columns>
-                    <TableColumn fx:id="idColumn" text="ID" prefWidth="60.0"/>
-                    <TableColumn fx:id="titleColumn" text="Titre" prefWidth="180.0"/>
-                    <TableColumn fx:id="keywordColumn" text="Mot-clé" prefWidth="140.0"/>
-                    <TableColumn fx:id="questionsColumn" text="Questions" prefWidth="80.0"/>
-                    <TableColumn fx:id="resultsColumn" text="Résultats" prefWidth="80.0"/>
-                    <TableColumn fx:id="createdAtColumn" text="Créé le" prefWidth="120.0"/>
-                    <TableColumn fx:id="lastScoreColumn" text="Dernier score" prefWidth="100.0"/>
-                </columns>
-            </TableView>
+            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+    <columns>
+        <TableColumn fx:id="idColumn" text="ID"/>
+        <TableColumn fx:id="titleColumn" text="Titre"/>
+        <TableColumn fx:id="keywordColumn" text="Mot-clé"/>
+        <TableColumn fx:id="questionsColumn" text="Questions"/>
+        <TableColumn fx:id="resultsColumn" text="Résultats"/>
+        <TableColumn fx:id="createdAtColumn" text="Créé le"/>
+        <TableColumn fx:id="lastScoreColumn" text="Dernier score"/>
+    </columns>
+</TableView>
         </VBox>
 
         <VBox spacing="12.0" styleClass="backoffice-panel backoffice-form-panel" prefWidth="360.0" minWidth="320.0">
@@ -74,9 +76,16 @@
             <Label text="Réponse correcte" styleClass="backoffice-form-label"/>
             <ComboBox fx:id="correctChoiceComboBox" styleClass="backoffice-form-input"/>
             <HBox spacing="10.0">
-                <Button text="Ajouter" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" />
-                <Button text="Mettre à jour" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" />
-                <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" />
+                <Button text="Ajouter Question" onAction="#handleAddQuestion" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                <Button text="Retirer" onAction="#handleRemoveLastQuestion" styleClass="backoffice-secondary-button"/>
+            </HBox>
+            <Label fx:id="questionsAddedLabel" text="0/5 questions" styleClass="backoffice-form-label"/>
+            <ListView fx:id="questionsListView" prefHeight="100.0" styleClass="backoffice-form-input"/>
+            <Separator/>
+            <HBox spacing="10.0">
+                <Button text="Créer Quiz" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                <Button text="Mettre à jour" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button"/>
+                <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button"/>
             </HBox>
             <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button"/>
             <Label fx:id="feedbackLabel" text="" styleClass="backoffice-feedback" visible="false" managed="false" wrapText="true"/>

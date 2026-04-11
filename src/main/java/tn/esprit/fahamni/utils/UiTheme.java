@@ -513,15 +513,16 @@ public final class UiTheme {
         }
 
         .backoffice-table .table-cell {
-            -fx-padding: 8px;
-            -fx-background-color: transparent;
-            -fx-text-fill: #294365;
-        }
+    -fx-padding: 4 8 4 8;
+}
 
         .backoffice-table .table-cell .text,
         .backoffice-table .table-row-cell .text {
             -fx-fill: #294365;
         }
+        .backoffice-table .column-header .label {
+    -fx-alignment: CENTER;
+}
 
         .backoffice-feedback.success {
             -fx-background-color: #e2f5e8;
