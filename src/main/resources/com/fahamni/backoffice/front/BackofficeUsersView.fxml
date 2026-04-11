@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -48,6 +49,16 @@
             <VBox spacing="6.0">
                 <Label text="Adresse email" styleClass="backoffice-form-label"/>
                 <TextField fx:id="emailField" promptText="Email" styleClass="backoffice-form-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Mot de passe" styleClass="backoffice-form-label"/>
+                <PasswordField fx:id="passwordField" promptText="Mot de passe temporaire" styleClass="backoffice-form-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label text="Confirmer le mot de passe" styleClass="backoffice-form-label"/>
+                <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="backoffice-form-input"/>
             </VBox>
 
             <VBox spacing="6.0">

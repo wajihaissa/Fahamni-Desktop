@@ -6,6 +6,7 @@ import tn.esprit.fahamni.utils.OperationResult;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
@@ -33,6 +34,12 @@ public class BackofficeUsersController {
 
     @FXML
     private TextField emailField;
+
+    @FXML
+    private PasswordField passwordField;
+
+    @FXML
+    private PasswordField confirmPasswordField;
 
     @FXML
     private ComboBox<String> roleComboBox;
@@ -136,6 +143,8 @@ public class BackofficeUsersController {
     private void clearForm() {
         fullNameField.clear();
         emailField.clear();
+        passwordField.clear();
+        confirmPasswordField.clear();
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
     }
