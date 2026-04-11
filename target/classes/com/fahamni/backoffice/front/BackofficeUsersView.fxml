@@ -31,6 +31,7 @@
             <HBox spacing="10.0">
                 <TextField fx:id="searchField" promptText="Rechercher par nom ou email" styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
                 <ComboBox fx:id="statusFilterComboBox" prefWidth="140.0" styleClass="backoffice-form-input"/>
+                <ComboBox fx:id="roleFilterComboBox" prefWidth="150.0" styleClass="backoffice-form-input"/>
             </HBox>
             <TableView fx:id="usersTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
                 <columns>

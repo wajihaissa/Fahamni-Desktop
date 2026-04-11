@@ -37,6 +37,9 @@ public class BackofficeUsersController {
     private ComboBox<String> statusFilterComboBox;
 
     @FXML
+    private ComboBox<String> roleFilterComboBox;
+
+    @FXML
     private TextField fullNameField;
 
     @FXML
@@ -70,15 +73,18 @@ public class BackofficeUsersController {
         roleComboBox.getItems().setAll(userService.getAvailableRoles());
         statusComboBox.getItems().setAll(userService.getAvailableStatuses());
         statusFilterComboBox.getItems().setAll("Tous", "Active", "Suspended");
+        roleFilterComboBox.getItems().setAll("Tous", "Student", "Tutor", "Administrator");
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
         statusFilterComboBox.setValue("Tous");
+        roleFilterComboBox.setValue("Tous");
 
         filteredUsers = new FilteredList<>(userService.getUsers(), user -> true);
         usersTable.setItems(filteredUsers);
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
         searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilters());
         statusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+        roleFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
 
         hideFeedback();
 
@@ -158,6 +164,7 @@ public class BackofficeUsersController {
     private void applyFilters() {
         String search = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
         String selectedStatus = statusFilterComboBox.getValue();
+        String selectedRole = roleFilterComboBox.getValue();
 
         filteredUsers.setPredicate(user -> {
             boolean matchesSearch = search.isEmpty()
@@ -168,17 +175,12 @@ public class BackofficeUsersController {
                 || "Tous".equalsIgnoreCase(selectedStatus)
                 || user.getStatus().equalsIgnoreCase(selectedStatus);
 
-            return matchesSearch && matchesStatus;
-        });
-    }
+            boolean matchesRole = selectedRole == null
+                || "Tous".equalsIgnoreCase(selectedRole)
+                || user.getRole().equalsIgnoreCase(selectedRole);
 
-    private void applySearchFilter(String rawSearch) {
-        if (rawSearch != null) {
-            searchField.setText(rawSearch);
-        } else {
-            applyFilters();
-            return;
-            }
+            return matchesSearch && matchesStatus && matchesRole;
+        });
     }
 
     private void populateForm(AdminUser user) {
