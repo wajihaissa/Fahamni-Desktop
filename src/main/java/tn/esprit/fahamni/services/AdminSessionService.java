@@ -8,18 +8,15 @@ import javafx.collections.ObservableList;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AdminSessionService {
 
+    private static final String STATUS_DRAFT_LABEL = "Brouillon";
+    private static final String STATUS_PUBLISHED_LABEL = "Publiee";
+    private static final String STATUS_ARCHIVED_LABEL = "Archivee";
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final List<DateTimeFormatter> INPUT_FORMATTERS = List.of(
-        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"),
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
-        DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")
-    );
 
     private final ObservableList<AdminSession> sessions = FXCollections.observableArrayList();
     private final SeanceService seanceService = new SeanceService();
@@ -33,57 +30,16 @@ public class AdminSessionService {
         return sessions;
     }
 
-    public List<String> getAvailableStatuses() {
-        return List.of("Draft", "Published", "Archived");
-    }
+    public OperationResult deleteSession(AdminSession session) {
+        if (session == null || session.getId() <= 0) {
+            return OperationResult.failure("Selectionnez une seance a supprimer.");
+        }
 
-    public OperationResult createSession(String subject, String tutor, String schedule, int capacity,
-                                         int durationMinutes, String description, String status) {
-        try {
-            SessionFormData formData = validateAndParse(subject, tutor, schedule, capacity, durationMinutes, description, status);
-            Seance seance = new Seance();
-            seance.setMatiere(formData.subject());
-            seance.setStartAt(formData.startAt());
-            seance.setDurationMin(formData.durationMinutes());
-            seance.setMaxParticipants(formData.capacity());
-            seance.setStatus(formData.statusCode());
-            seance.setDescription(formData.description());
-            seance.setCreatedAt(LocalDateTime.now());
-            seance.setTuteurId(formData.tutorId());
-
-            seanceService.add(seance);
+        OperationResult result = seanceService.deleteSeance(session.getId());
+        if (result.isSuccess()) {
             reloadSessions();
-            return OperationResult.success("Seance ajoutee avec succes.");
-        } catch (RuntimeException e) {
-            return OperationResult.failure(e.getMessage());
         }
-    }
-
-    public OperationResult updateSession(AdminSession session, String subject, String tutor, String schedule, int capacity,
-                                         int durationMinutes, String description, String status) {
-        if (session == null) {
-            return OperationResult.failure("Selectionnez une seance a mettre a jour.");
-        }
-
-        try {
-            SessionFormData formData = validateAndParse(subject, tutor, schedule, capacity, durationMinutes, description, status);
-            Seance seance = new Seance();
-            seance.setId(session.getId());
-            seance.setMatiere(formData.subject());
-            seance.setStartAt(formData.startAt());
-            seance.setDurationMin(formData.durationMinutes());
-            seance.setMaxParticipants(formData.capacity());
-            seance.setStatus(formData.statusCode());
-            seance.setDescription(formData.description());
-            seance.setUpdatedAt(LocalDateTime.now());
-            seance.setTuteurId(formData.tutorId());
-
-            seanceService.update(seance);
-            reloadSessions();
-            return OperationResult.success("Seance mise a jour.");
-        } catch (RuntimeException e) {
-            return OperationResult.failure(e.getMessage());
-        }
+        return result;
     }
 
     public void reloadSessions() {
@@ -108,117 +64,15 @@ public class AdminSessionService {
         return adminSessions;
     }
 
-    private SessionFormData validateAndParse(String subject, String tutor, String schedule, int capacity,
-                                             int durationMinutes, String description, String status) {
-        String normalizedSubject = normalizeText(subject);
-        String normalizedDescription = normalizeText(description);
-
-        if (isBlank(normalizedSubject)) {
-            throw new IllegalArgumentException("Renseignez la matiere de la seance.");
-        }
-        if (isBlank(tutor)) {
-            throw new IllegalArgumentException("Renseignez le tuteur ou son ID.");
-        }
-        if (isBlank(schedule)) {
-            throw new IllegalArgumentException("Renseignez le planning de la seance.");
-        }
-        if (capacity < SeanceService.MIN_CAPACITY || capacity > SeanceService.MAX_CAPACITY) {
-            throw new IllegalArgumentException(
-                "La capacite doit etre comprise entre " + SeanceService.MIN_CAPACITY + " et " + SeanceService.MAX_CAPACITY + "."
-            );
-        }
-        if (durationMinutes < SeanceService.MIN_DURATION_MINUTES || durationMinutes > SeanceService.MAX_DURATION_MINUTES) {
-            throw new IllegalArgumentException(
-                "La duree doit etre comprise entre " + SeanceService.MIN_DURATION_MINUTES + " et " + SeanceService.MAX_DURATION_MINUTES + " minutes."
-            );
-        }
-
-        int tutorId = tutorDirectoryService.resolveTutorId(tutor);
-        if (tutorId <= 0) {
-            throw new IllegalArgumentException(
-                "Utilisez un ID tuteur valide ou un nom connu pour le moment: "
-                    + tutorDirectoryService.getSupportedTutorsHint() + "."
-            );
-        }
-
-        LocalDateTime startAt = parseSchedule(schedule);
-        if (startAt == null) {
-            throw new IllegalArgumentException("Utilisez le format de date dd/MM/yyyy HH:mm.");
-        }
-        if (!startAt.isAfter(LocalDateTime.now())) {
-            throw new IllegalArgumentException("La date de la seance doit etre dans le futur.");
-        }
-        if (isBlank(normalizedDescription) || normalizedDescription.length() < SeanceService.MIN_DESCRIPTION_LENGTH) {
-            throw new IllegalArgumentException(
-                "Ajoutez une description d'au moins " + SeanceService.MIN_DESCRIPTION_LENGTH + " caracteres."
-            );
-        }
-
-        return new SessionFormData(
-            normalizedSubject,
-            tutorId,
-            startAt,
-            capacity,
-            durationMinutes,
-            normalizedDescription,
-            mapStatusToCode(status)
-        );
-    }
-
-    private LocalDateTime parseSchedule(String schedule) {
-        String candidate = schedule.trim();
-        for (DateTimeFormatter formatter : INPUT_FORMATTERS) {
-            try {
-                return LocalDateTime.parse(candidate, formatter);
-            } catch (DateTimeParseException ignored) {
-                // Try the next accepted format.
-            }
-        }
-        return null;
-    }
-
     private String formatSchedule(LocalDateTime startAt) {
         return startAt != null ? startAt.format(DISPLAY_FORMATTER) : "";
     }
 
-    private int mapStatusToCode(String status) {
-        if ("Published".equalsIgnoreCase(status)) {
-            return 1;
-        }
-        if ("Archived".equalsIgnoreCase(status)) {
-            return 2;
-        }
-        return 0;
-    }
-
     private String mapStatusToLabel(int status) {
         return switch (status) {
-            case 1 -> "Published";
-            case 2 -> "Archived";
-            default -> "Draft";
+            case 1 -> STATUS_PUBLISHED_LABEL;
+            case 2 -> STATUS_ARCHIVED_LABEL;
+            default -> STATUS_DRAFT_LABEL;
         };
-    }
-
-    private String normalizeText(String value) {
-        if (value == null) {
-            return null;
-        }
-        String normalizedValue = value.trim().replaceAll("\\s+", " ");
-        return normalizedValue.isEmpty() ? null : normalizedValue;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-
-    private record SessionFormData(
-        String subject,
-        int tutorId,
-        LocalDateTime startAt,
-        int capacity,
-        int durationMinutes,
-        String description,
-        int statusCode
-    ) {
     }
 }
