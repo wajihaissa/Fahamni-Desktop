@@ -3,17 +3,27 @@ package tn.esprit.fahamni.controllers;
 import tn.esprit.fahamni.Models.AdminSession;
 import tn.esprit.fahamni.services.AdminSessionService;
 import tn.esprit.fahamni.utils.OperationResult;
+import javafx.collections.ListChangeListener;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 
+import java.time.LocalDate;
+import java.util.Locale;
 import java.util.Optional;
 
 public class BackofficeSessionsController {
+
+    private static final String ALL_STATUSES = "Tous les statuts";
 
     @FXML
     private TableView<AdminSession> sessionsTable;
@@ -45,7 +55,17 @@ public class BackofficeSessionsController {
     @FXML
     private Label sessionsCountLabel;
 
+    @FXML
+    private TextField sessionSearchField;
+
+    @FXML
+    private ComboBox<String> sessionStatusFilterComboBox;
+
+    @FXML
+    private DatePicker sessionDatePicker;
+
     private final AdminSessionService sessionService = new AdminSessionService();
+    private FilteredList<AdminSession> filteredSessions;
 
     @FXML
     private void initialize() {
@@ -57,8 +77,24 @@ public class BackofficeSessionsController {
         durationColumn.setCellValueFactory(new PropertyValueFactory<>("durationMinutes"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        sessionsTable.setItems(sessionService.getSessions());
+        sessionStatusFilterComboBox.getItems().setAll(
+            ALL_STATUSES,
+            "Brouillon",
+            "Publiee",
+            "Archivee"
+        );
+        sessionStatusFilterComboBox.setValue(ALL_STATUSES);
+
+        filteredSessions = new FilteredList<>(sessionService.getSessions(), session -> true);
+        SortedList<AdminSession> sortedSessions = new SortedList<>(filteredSessions);
+        sortedSessions.comparatorProperty().bind(sessionsTable.comparatorProperty());
+        sessionsTable.setItems(sortedSessions);
+
         sessionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> hideFeedback());
+        sessionSearchField.textProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
+        sessionStatusFilterComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
+        sessionDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
+        filteredSessions.addListener((ListChangeListener<AdminSession>) change -> updateSessionsCount());
 
         updateSessionsCount();
         hideFeedback();
@@ -67,6 +103,7 @@ public class BackofficeSessionsController {
     @FXML
     private void handleRefreshSessions() {
         sessionService.reloadSessions();
+        applySessionFilters();
         sessionsTable.refresh();
         updateSessionsCount();
         hideFeedback();
@@ -89,11 +126,64 @@ public class BackofficeSessionsController {
         OperationResult result = sessionService.deleteSession(selectedSession);
         if (result.isSuccess()) {
             sessionsTable.getSelectionModel().clearSelection();
+            applySessionFilters();
             sessionsTable.refresh();
             updateSessionsCount();
         }
 
         showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
+    private void handleResetSessionFilters() {
+        sessionSearchField.clear();
+        sessionStatusFilterComboBox.setValue(ALL_STATUSES);
+        sessionDatePicker.setValue(null);
+        applySessionFilters();
+        hideFeedback();
+    }
+
+    private void applySessionFilters() {
+        if (filteredSessions == null) {
+            return;
+        }
+
+        String query = normalize(sessionSearchField.getText());
+        String selectedStatus = sessionStatusFilterComboBox.getValue();
+        LocalDate selectedDate = sessionDatePicker.getValue();
+
+        filteredSessions.setPredicate(session -> matchesSearch(session, query)
+            && matchesStatus(session, selectedStatus)
+            && matchesDate(session, selectedDate));
+        updateSessionsCount();
+    }
+
+    private boolean matchesSearch(AdminSession session, String query) {
+        if (query.isBlank()) {
+            return true;
+        }
+
+        return normalize(session.getSubject()).contains(query)
+            || normalize(session.getTutor()).contains(query)
+            || normalize(session.getSchedule()).contains(query)
+            || normalize(session.getStatus()).contains(query)
+            || normalize(session.getDescription()).contains(query)
+            || String.valueOf(session.getId()).contains(query)
+            || String.valueOf(session.getTutorId()).contains(query);
+    }
+
+    private boolean matchesStatus(AdminSession session, String selectedStatus) {
+        return selectedStatus == null
+            || ALL_STATUSES.equals(selectedStatus)
+            || selectedStatus.equals(session.getStatus());
+    }
+
+    private boolean matchesDate(AdminSession session, LocalDate selectedDate) {
+        return selectedDate == null || selectedDate.equals(session.getScheduleLocalDate());
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private boolean confirmDeletion(AdminSession session) {
@@ -107,7 +197,7 @@ public class BackofficeSessionsController {
     }
 
     private void updateSessionsCount() {
-        int count = sessionService.getSessions().size();
+        int count = filteredSessions == null ? sessionService.getSessions().size() : filteredSessions.size();
         String suffix = count > 1 ? "seances affichees" : "seance affichee";
         sessionsCountLabel.setText(count + " " + suffix);
     }

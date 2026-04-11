@@ -6,6 +6,7 @@ import tn.esprit.fahamni.utils.OperationResult;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ public class AdminSessionService {
                 seance.getMatiere(),
                 tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()),
                 formatSchedule(seance.getStartAt()),
+                toLocalDate(seance.getStartAt()),
                 seance.getMaxParticipants(),
                 mapStatusToLabel(seance.getStatus()),
                 seance.getTuteurId(),
@@ -66,6 +68,10 @@ public class AdminSessionService {
 
     private String formatSchedule(LocalDateTime startAt) {
         return startAt != null ? startAt.format(DISPLAY_FORMATTER) : "";
+    }
+
+    private LocalDate toLocalDate(LocalDateTime startAt) {
+        return startAt != null ? startAt.toLocalDate() : null;
     }
 
     private String mapStatusToLabel(int status) {

@@ -1,11 +1,14 @@
 package tn.esprit.fahamni.Models;
 
+import java.time.LocalDate;
+
 public class AdminSession {
 
     private int id;
     private String subject;
     private String tutor;
     private String schedule;
+    private LocalDate scheduleLocalDate;
     private int capacity;
     private String status;
     private int tutorId;
@@ -14,10 +17,16 @@ public class AdminSession {
 
     public AdminSession(int id, String subject, String tutor, String schedule, int capacity, String status,
                         int tutorId, int durationMinutes, String description) {
+        this(id, subject, tutor, schedule, null, capacity, status, tutorId, durationMinutes, description);
+    }
+
+    public AdminSession(int id, String subject, String tutor, String schedule, LocalDate scheduleLocalDate,
+                        int capacity, String status, int tutorId, int durationMinutes, String description) {
         this.id = id;
         this.subject = subject;
         this.tutor = tutor;
         this.schedule = schedule;
+        this.scheduleLocalDate = scheduleLocalDate;
         this.capacity = capacity;
         this.status = status;
         this.tutorId = tutorId;
@@ -59,6 +68,14 @@ public class AdminSession {
 
     public void setSchedule(String schedule) {
         this.schedule = schedule;
+    }
+
+    public LocalDate getScheduleLocalDate() {
+        return scheduleLocalDate;
+    }
+
+    public void setScheduleLocalDate(LocalDate scheduleLocalDate) {
+        this.scheduleLocalDate = scheduleLocalDate;
     }
 
     public int getCapacity() {
