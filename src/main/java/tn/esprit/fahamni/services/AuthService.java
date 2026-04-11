@@ -40,13 +40,17 @@ public class AuthService {
             return null;
         }
 
-        String query = "SELECT id, full_name, email, password, roles FROM `user` WHERE LOWER(email) = LOWER(?) AND password = ? LIMIT 1";
+        String query = "SELECT id, full_name, email, password, roles, status FROM `user` WHERE LOWER(email) = LOWER(?) AND password = ? LIMIT 1";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, normalizedEmail);
             statement.setString(2, password);
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
+                    if (!resultSet.getBoolean("status")) {
+                        return null;
+                    }
+
                     return new User(
                         resultSet.getInt("id"),
                         resultSet.getString("full_name"),
