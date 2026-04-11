@@ -12,6 +12,14 @@ import java.sql.SQLException;
 
 public class UserAccountService {
 
+    public record AccountOverview(
+        String accountStatus,
+        String roleLabel,
+        String validationStatus,
+        String createdAt
+    ) {
+    }
+
     private final Connection connection;
 
     public UserAccountService() {
@@ -103,6 +111,40 @@ public class UserAccountService {
 
         UserSession.clear();
         return OperationResult.success("Compte supprime avec succes.");
+    }
+
+    public AccountOverview getCurrentAccountOverview() {
+        User currentUser = UserSession.getCurrentUser();
+        if (currentUser == null) {
+            return new AccountOverview("Inconnu", "Aucun role", "Non disponible", "Non disponible");
+        }
+
+        String accountStatus = "Active";
+        String validationStatus = "Approved";
+        String createdAt = "Non disponible";
+
+        if (connection != null && currentUser.getId() > 0) {
+            String query = "SELECT `status`, `created_at` FROM `user` WHERE `id` = ? LIMIT 1";
+            try (PreparedStatement statement = connection.prepareStatement(query)) {
+                statement.setInt(1, currentUser.getId());
+
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    if (resultSet.next()) {
+                        boolean active = resultSet.getBoolean("status");
+                        accountStatus = active ? "Active" : "Suspended";
+                        validationStatus = active ? "Approved" : "Restricted";
+                        String createdValue = resultSet.getString("created_at");
+                        if (!isBlank(createdValue)) {
+                            createdAt = createdValue;
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                System.out.println("Error loading current account overview: " + e.getMessage());
+            }
+        }
+
+        return new AccountOverview(accountStatus, UserSession.getRoleLabel(), validationStatus, createdAt);
     }
 
     private boolean emailAlreadyUsedByAnotherUser(String email, int currentUserId) {

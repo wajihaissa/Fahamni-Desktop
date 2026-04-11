@@ -279,6 +279,159 @@ public final class UiTheme {
             -fx-background-radius: 999px;
         }
 
+        .profile-settings-shell {
+            -fx-background-color: rgba(255, 255, 255, 0.95);
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px;
+            -fx-background-radius: 24px;
+            -fx-border-radius: 24px;
+            -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.10), 22, 0.18, 0, 8);
+        }
+
+        .profile-settings-sidebar {
+            -fx-background-color: linear-gradient(to bottom, #fbfcff 0%, #f4f7fd 100%);
+            -fx-border-color: #e2e9f7;
+            -fx-border-width: 0 1 0 0;
+            -fx-background-radius: 24px 0 0 24px;
+            -fx-border-radius: 24px 0 0 24px;
+        }
+
+        .profile-settings-sidebar-header {
+            -fx-padding: 28px 28px 22px 28px;
+            -fx-border-color: #e8eef9;
+            -fx-border-width: 0 0 1 0;
+        }
+
+        .profile-sidebar-title {
+            -fx-font-size: 20px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .profile-sidebar-copy, .profile-sidebar-user-email, .profile-inline-note {
+            -fx-font-size: 12px;
+            -fx-text-fill: #7085a4;
+        }
+
+        .profile-sidebar-user-card {
+            -fx-padding: 6px 0 0 0;
+        }
+
+        .profile-sidebar-user-name {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #243c59;
+        }
+
+        .profile-nav-list {
+            -fx-padding: 22px 18px 18px 18px;
+        }
+
+        .profile-nav-button {
+            -fx-background-color: transparent;
+            -fx-text-fill: #294365;
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-padding: 14px 18px;
+            -fx-background-radius: 14px;
+            -fx-border-color: transparent;
+            -fx-border-width: 0 0 0 4px;
+            -fx-alignment: CENTER_LEFT;
+            -fx-cursor: hand;
+        }
+
+        .profile-nav-button:hover {
+            -fx-background-color: #eef3ff;
+            -fx-text-fill: #1f4f9f;
+        }
+
+        .profile-nav-button.active {
+            -fx-background-color: linear-gradient(to right, #617cff 0%, #4e67f0 100%);
+            -fx-text-fill: white;
+            -fx-border-color: #4b67f2;
+            -fx-effect: dropshadow(gaussian, rgba(47, 66, 151, 0.18), 16, 0.18, 0, 4);
+        }
+
+        .profile-sidebar-footer {
+            -fx-padding: 18px 24px 26px 24px;
+            -fx-border-color: #e8eef9;
+            -fx-border-width: 1px 0 0 0;
+        }
+
+        .profile-settings-content {
+            -fx-padding: 30px 34px 34px 34px;
+        }
+
+        .profile-content-title {
+            -fx-font-size: 22px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1c3155;
+        }
+
+        .profile-section-panel {
+            -fx-background-color: transparent;
+            -fx-padding: 8px 0 0 0;
+        }
+
+        .profile-upload-row {
+            -fx-background-color: rgba(248, 251, 255, 0.92);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-border-radius: 14px;
+            -fx-background-radius: 14px;
+            -fx-padding: 12px 14px;
+        }
+
+        .profile-inline-button, .profile-soft-button, .profile-outline-danger-button, .profile-danger-inline-button {
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+            -fx-padding: 10px 16px;
+        }
+
+        .profile-inline-button, .profile-soft-button {
+            -fx-background-color: rgba(236, 242, 255, 0.95);
+            -fx-border-color: #d5e1f5;
+            -fx-border-width: 1px;
+            -fx-text-fill: #294a78;
+        }
+
+        .profile-inline-button:hover, .profile-soft-button:hover {
+            -fx-background-color: #eaf1ff;
+        }
+
+        .profile-accent-button {
+            -fx-background-color: linear-gradient(to right, #4d6fff 0%, #7b1fd3 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-cursor: hand;
+            -fx-background-radius: 12px;
+            -fx-padding: 11px 18px;
+            -fx-effect: dropshadow(gaussian, rgba(58, 57, 160, 0.20), 14, 0.18, 0, 4);
+        }
+
+        .profile-accent-button:hover {
+            -fx-background-color: linear-gradient(to right, #5b7cff 0%, #8b2be0 100%);
+        }
+
+        .profile-danger-inline-button, .profile-outline-danger-button {
+            -fx-background-color: #fff1f2;
+            -fx-border-color: #ffc9cf;
+            -fx-border-width: 1px;
+            -fx-text-fill: #c94252;
+        }
+
+        .profile-danger-inline-button:hover, .profile-outline-danger-button:hover {
+            -fx-background-color: #ffe5e8;
+        }
+
+        .profile-readonly-field {
+            -fx-background-color: #f8fbff;
+            -fx-control-inner-background: #f8fbff;
+            -fx-text-fill: #465d7c;
+        }
+
         .content-placeholder, .backoffice-empty-state {
             -fx-font-size: 16px;
             -fx-text-fill: #5f7595;
