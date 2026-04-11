@@ -22,6 +22,23 @@
             <Label fx:id="welcomeSubtitleLabel" text="Continue your learning journey" styleClass="welcome-subtitle"/>
         </VBox>
 
+        <HBox spacing="20.0">
+            <VBox spacing="10.0" styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label text="Mon espace" styleClass="section-title"/>
+                <Label fx:id="accountNameLabel" text="Etudiant Fahamni" styleClass="session-subject"/>
+                <Label fx:id="accountEmailLabel" text="etudiant@fahamni.tn" styleClass="welcome-subtitle"/>
+                <Label fx:id="accountRoleLabel" text="Espace Etudiant" styleClass="profile-role-badge"/>
+            </VBox>
+
+            <VBox spacing="10.0" styleClass="stat-card" HBox.hgrow="ALWAYS">
+                <Label fx:id="focusTitleLabel" text="Priorite du jour" styleClass="section-title"/>
+                <Label fx:id="focusCopyLabel"
+                       text="Concentrez-vous sur une seance a venir, puis verifiez votre planner pour garder un rythme regulier."
+                       styleClass="section-subtitle" wrapText="true"/>
+                <Label text="Petit pas, grande progression." styleClass="session-time"/>
+            </VBox>
+        </HBox>
+
         <HBox spacing="20.0" styleClass="stats-row">
             <VBox styleClass="stat-card">
                 <Label text="12" styleClass="stat-value"/>
