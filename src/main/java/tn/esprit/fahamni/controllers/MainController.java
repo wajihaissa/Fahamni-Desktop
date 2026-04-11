@@ -12,7 +12,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.input.MouseEvent;
 import javafx.util.Duration;
 
 import java.io.IOException;
@@ -53,6 +55,9 @@ public class MainController {
     private VBox accountMenuPane;
 
     @FXML
+    private StackPane accountMenuWrapper;
+
+    @FXML
     private Label profileAvatarLabel;
 
     @FXML
@@ -65,6 +70,15 @@ public class MainController {
     private void initialize() {
         refreshCurrentUserSummary();
         hideAccountMenuInstant();
+        rootPane.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            if (!accountMenuPane.isVisible()) {
+                return;
+            }
+
+            if (event.getTarget() instanceof Node node && !isInsideAccountMenu(node)) {
+                hideAccountMenuAnimated();
+            }
+        });
         showDashboard();
     }
 
@@ -226,6 +240,17 @@ public class MainController {
         accountMenuPane.setManaged(false);
         accountMenuPane.setOpacity(1.0);
         accountMenuPane.setTranslateY(48.0);
+    }
+
+    private boolean isInsideAccountMenu(Node node) {
+        Node current = node;
+        while (current != null) {
+            if (current == accountMenuWrapper) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 
     private void setActiveButton(Button activeButton) {

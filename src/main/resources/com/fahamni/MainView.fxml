@@ -56,7 +56,7 @@
             <HBox spacing="10.0" alignment="CENTER_RIGHT" styleClass="topbar-actions">
                 <Button text="Alertes" styleClass="topbar-pill-button"/>
 
-                <StackPane pickOnBounds="false" styleClass="account-menu-wrapper">
+                <StackPane fx:id="accountMenuWrapper" pickOnBounds="false" styleClass="account-menu-wrapper">
                     <children>
                         <Button text="Compte" styleClass="topbar-pill-button" onAction="#toggleAccountMenu"/>
                         <VBox fx:id="accountMenuPane" managed="false" visible="false" spacing="6.0"
