@@ -488,7 +488,8 @@ public class BackofficeArticlesController {
                 service.deleteArticle(blog.getId());
                 loadAll();
                 showFeedback("🗑  Article \"" + blog.getTitre() + "\" refuse.", false);
-            stage.close();
+                stage.close();
+            }
         });
 
         Button btnClose = new Button("Fermer");
