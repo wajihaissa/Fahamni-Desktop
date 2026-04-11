@@ -1057,9 +1057,9 @@ public class BlogController {
         imageRow.getChildren().addAll(imagePathLabel, browseBtn);
         imageGroup.getChildren().addAll(imageLabel, imageRow);
 
-        // Contenu
-        VBox contentGroup = new VBox(6);
-        Label contentLabel = new Label("Contenu de l'article *");
+        // Contenu + compteur caractères
+        VBox contentGroup = new VBox(4);
+        Label contentLabel = new Label("Contenu de l'article *  (min. 20 caractères)");
         contentLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
         TextArea contentArea = new TextArea();
         contentArea.setPromptText("Rédigez votre article ici...");
@@ -1067,11 +1067,34 @@ public class BlogController {
         contentArea.setWrapText(true);
         contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
                 "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
-        contentGroup.getChildren().addAll(contentLabel, contentArea);
+        Label contentCounter = new Label("0 caractère(s)");
+        contentCounter.setStyle("-fx-font-size: 11; -fx-text-fill: #94a3b8;");
+        contentArea.textProperty().addListener((obs, o, n) -> {
+            int len = n == null ? 0 : n.trim().length();
+            contentCounter.setText(len + " caractère(s)");
+            contentCounter.setStyle("-fx-font-size: 11; -fx-text-fill: " + (len < 20 ? "#e74c3c" : "#10b981") + ";");
+        });
+        contentGroup.getChildren().addAll(contentLabel, contentArea, contentCounter);
+
+        // Compteur titre
+        Label titreCounter = new Label("0/100");
+        titreCounter.setStyle("-fx-font-size: 11; -fx-text-fill: #94a3b8;");
+        titreField.textProperty().addListener((obs, o, n) -> {
+            int len = n == null ? 0 : n.length();
+            // Bloquer à 100 caractères
+            if (len > 100) { titreField.setText(o); return; }
+            titreCounter.setText(len + "/100");
+            titreCounter.setStyle("-fx-font-size: 11; -fx-text-fill: " + (len < 5 ? "#e74c3c" : "#10b981") + ";");
+        });
+        titreGroup.getChildren().add(titreCounter);
 
         // Message d'erreur
         Label errorLabel = new Label("");
-        errorLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 12;");
+        errorLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 12; -fx-font-weight: bold;");
+        errorLabel.setWrapText(true);
+
+        // Anti-spam : timestamp dernière soumission
+        final long[] lastSubmitTime = {0};
 
         // Boutons
         HBox buttons = new HBox(12);
@@ -1087,14 +1110,49 @@ public class BlogController {
                 "-fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; " +
                 "-fx-padding: 10 24; -fx-font-size: 13; -fx-cursor: hand;");
         saveBtn.setOnAction(e -> {
-            String titre = titreField.getText().trim();
+            String titre   = titreField.getText().trim();
             String content = contentArea.getText().trim();
-            String cat = catBox.getValue();
+            String cat     = catBox.getValue();
 
-            if (titre.isEmpty() || content.isEmpty() || cat == null) {
-                errorLabel.setText("⚠️  Veuillez remplir tous les champs obligatoires (*)");
+            // ── Contrôle 1 : Titre obligatoire (5–100 caractères) ──
+            if (titre.length() < 5) {
+                errorLabel.setText("⚠️  Le titre doit contenir au moins 5 caractères.");
+                titreField.setStyle(titreField.getStyle().replace("#d0d9e8", "#e74c3c") +
+                    "; -fx-border-color: #e74c3c;");
                 return;
             }
+
+            // ── Contrôle 2 : Contenu obligatoire (min. 20 caractères) ──
+            if (content.length() < 20) {
+                errorLabel.setText("⚠️  Le contenu doit contenir au moins 20 caractères.");
+                contentArea.setStyle(contentArea.getStyle() + "; -fx-border-color: #e74c3c;");
+                return;
+            }
+
+            // ── Contrôle 3 : Catégorie obligatoire ──
+            if (cat == null || cat.isBlank()) {
+                errorLabel.setText("⚠️  Veuillez sélectionner une catégorie.");
+                catBox.setStyle(catBox.getStyle() + "; -fx-border-color: #e74c3c;");
+                return;
+            }
+
+            // ── Contrôle 4 : Anti-spam (30 secondes entre 2 soumissions) ──
+            long now = System.currentTimeMillis();
+            long elapsed = now - lastSubmitTime[0];
+            if (lastSubmitTime[0] > 0 && elapsed < 30_000) {
+                long restant = (30_000 - elapsed) / 1000;
+                errorLabel.setText("⏳  Patientez encore " + restant + " seconde(s) avant de soumettre à nouveau.");
+                return;
+            }
+
+            // Réinitialiser les styles
+            errorLabel.setText("");
+            titreField.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
+                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+            contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
+                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+
+            lastSubmitTime[0] = now;
 
             String currentUser = tn.esprit.fahamni.utils.SessionManager.getCurrentUserName();
             Blog newBlog = new Blog(0, titre, content, cat,
@@ -1104,11 +1162,9 @@ public class BlogController {
                 errorLabel.setText("⚠️ Erreur lors de la création de l'article.");
                 return;
             }
-            // Recharger depuis BD (les articles published seulement)
             List<Blog> updated = blogService.getAllBlogsFromDB();
             loadBlogs(updated);
             dialog.close();
-            // Afficher popup "en attente"
             showPendingPopup();
         });
 
