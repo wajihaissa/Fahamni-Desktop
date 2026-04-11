@@ -4,6 +4,7 @@ import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
+import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.utils.OperationResult;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -81,6 +82,7 @@ public class LoginController {
             if (authenticatedUser.getRole() == UserRole.ADMIN) {
                 Main.showBackoffice();
             } else {
+                TemporaryUserContext.signIn(authenticatedUser);
                 Main.showMain();
             }
         } catch (Exception e) {
@@ -152,4 +154,3 @@ public class LoginController {
         label.setVisible(false);
     }
 }
-

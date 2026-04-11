@@ -9,7 +9,9 @@ public class AuthService {
 
     private final List<User> mockUsers = List.of(
         new User("Administrateur Fahamni", "admin@fahamni.tn", "admin123", UserRole.ADMIN),
-        new User("Utilisateur Fahamni", "user@fahamni.tn", "user123", UserRole.USER)
+        new User("Utilisateur Fahamni", "user@fahamni.tn", "user123", UserRole.USER),
+        new User(TemporaryUserContext.getCurrentStudentName(), "etudiant@fahamni.tn", "etudiant123", UserRole.ETUDIANT),
+        new User(TemporaryUserContext.getCurrentTutorName(), "tuteur@fahamni.tn", "tuteur123", UserRole.TUTEUR)
     );
 
     public User authenticate(String email, String password) {
@@ -50,4 +52,3 @@ public class AuthService {
         return value == null || value.trim().isEmpty();
     }
 }
-

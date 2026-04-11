@@ -25,11 +25,9 @@
 
             <VBox spacing="5.0" styleClass="sidebar-menu">
                 <Button fx:id="dashboardButton" maxWidth="Infinity" text="Dashboard" styleClass="sidebar-button" onAction="#showDashboard"/>
-                <Button fx:id="seancesButton" maxWidth="Infinity" text="Seances" styleClass="sidebar-button" onAction="#showSeances"/>
+                <Button fx:id="reservationsButton" maxWidth="Infinity" text="Trouver un tuteur" styleClass="sidebar-button" onAction="#showReservations"/>
+                <Button fx:id="seancesButton" maxWidth="Infinity" text="Calendrier" styleClass="sidebar-button" onAction="#showSeances"/>
                 <Button fx:id="sallesEquipementsButton" maxWidth="Infinity" text="Salles &amp; Materiel" styleClass="sidebar-button" onAction="#showSallesEquipements"/>
-                <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" styleClass="sidebar-button" onAction="#showReservations"/>
-                <Button fx:id="plannerButton" maxWidth="Infinity" text="Planner" styleClass="sidebar-button" onAction="#showPlanner"/>
-                <Button fx:id="messengerButton" maxWidth="Infinity" text="Messagerie" styleClass="sidebar-button" onAction="#showMessenger"/>
                 <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" styleClass="sidebar-button" onAction="#showQuiz"/>
                 <Button fx:id="blogButton" maxWidth="Infinity" text="Blog" styleClass="sidebar-button" onAction="#showBlog"/>
             </VBox>
@@ -57,10 +55,10 @@
                 <Button text="Alertes" styleClass="topbar-pill-button"/>
                 <Button text="Compte" styleClass="topbar-pill-button"/>
                 <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="topbar-profile-card">
-                    <Label text="FS" styleClass="profile-avatar"/>
+                    <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar"/>
                     <VBox spacing="2.0">
-                        <Label text="Etudiant Fahamni" styleClass="profile-name"/>
-                        <Label text="Espace Etudiant" styleClass="profile-role"/>
+                        <Label fx:id="profileNameLabel" text="Etudiant Fahamni" styleClass="profile-name"/>
+                        <Label fx:id="profileRoleLabel" text="Espace Etudiant" styleClass="profile-role"/>
                     </VBox>
                 </HBox>
             </HBox>

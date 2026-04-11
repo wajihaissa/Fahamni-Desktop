@@ -1,5 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
+import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 import javafx.fxml.FXML;
@@ -17,22 +18,25 @@ public class MainController {
     private Label pageTitle;
 
     @FXML
+    private Label profileAvatarLabel;
+
+    @FXML
+    private Label profileNameLabel;
+
+    @FXML
+    private Label profileRoleLabel;
+
+    @FXML
     private Button dashboardButton;
+
+    @FXML
+    private Button reservationsButton;
 
     @FXML
     private Button seancesButton;
 
     @FXML
     private Button sallesEquipementsButton;
-
-    @FXML
-    private Button reservationsButton;
-
-    @FXML
-    private Button plannerButton;
-
-    @FXML
-    private Button messengerButton;
 
     @FXML
     private Button quizButton;
@@ -43,7 +47,7 @@ public class MainController {
     @FXML
     private void initialize() {
         System.out.println("MainController initialized");
-        // Load dashboard by default
+        configureProfileCard();
         showDashboard();
     }
 
@@ -55,8 +59,14 @@ public class MainController {
     }
 
     @FXML
+    private void showReservations() {
+        loadView("ReservationView.fxml", "Trouver un tuteur");
+        setActiveButton(reservationsButton);
+    }
+
+    @FXML
     private void showSeances() {
-        loadView("SeanceListView.fxml", "SÃ©ances");
+        loadView("SeanceListView.fxml", "Calendrier");
         setActiveButton(seancesButton);
     }
 
@@ -64,24 +74,6 @@ public class MainController {
     private void showSallesEquipements() {
         loadView("SallesEquipementsView.fxml", "Salles & Materiel");
         setActiveButton(sallesEquipementsButton);
-    }
-
-    @FXML
-    private void showReservations() {
-        loadView("ReservationView.fxml", "RÃ©servations");
-        setActiveButton(reservationsButton);
-    }
-
-    @FXML
-    private void showPlanner() {
-        loadView("PlannerView.fxml", "Planner de RÃ©vision");
-        setActiveButton(plannerButton);
-    }
-
-    @FXML
-    private void showMessenger() {
-        loadView("MessengerView.fxml", "Messagerie");
-        setActiveButton(messengerButton);
     }
 
     @FXML
@@ -99,10 +91,17 @@ public class MainController {
     @FXML
     private void handleLogout() {
         try {
+            TemporaryUserContext.resetToStudent();
             Main.showLogin();
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void configureProfileCard() {
+        profileAvatarLabel.setText(TemporaryUserContext.getCurrentUserInitials());
+        profileNameLabel.setText(TemporaryUserContext.getCurrentUserName());
+        profileRoleLabel.setText(TemporaryUserContext.getCurrentRoleLabel());
     }
 
     private void loadView(String fxmlFile, String title) {
@@ -117,7 +116,6 @@ public class MainController {
             pageTitle.setText(title);
         } catch (Exception e) {
             e.printStackTrace();
-            // For now, show a placeholder
             Label placeholder = new Label("View not implemented yet: " + fxmlFile);
             placeholder.getStyleClass().add("content-placeholder");
             contentPane.getChildren().clear();
@@ -126,21 +124,15 @@ public class MainController {
     }
 
     private void setActiveButton(Button activeButton) {
-        // Reset all buttons
         dashboardButton.getStyleClass().remove("active");
+        reservationsButton.getStyleClass().remove("active");
         seancesButton.getStyleClass().remove("active");
         sallesEquipementsButton.getStyleClass().remove("active");
-        reservationsButton.getStyleClass().remove("active");
-        plannerButton.getStyleClass().remove("active");
-        messengerButton.getStyleClass().remove("active");
         quizButton.getStyleClass().remove("active");
         blogButton.getStyleClass().remove("active");
 
-        // Set active
         if (!activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");
         }
     }
 }
-
-
