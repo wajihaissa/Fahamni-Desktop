@@ -127,12 +127,14 @@ public class AdminUserService {
         }
 
         String normalizedStatus = normalizeStatus(status);
-        String query = "UPDATE `user` SET `email` = ?, `full_name` = ?, `status` = ? WHERE `id` = ?";
+        String normalizedRole = isBlank(role) ? user.getRole() : role.trim();
+        String query = "UPDATE `user` SET `email` = ?, `full_name` = ?, `roles` = ?, `status` = ? WHERE `id` = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, email.trim());
             statement.setString(2, fullName.trim());
-            statement.setBoolean(3, toDatabaseStatus(normalizedStatus));
-            statement.setInt(4, user.getId());
+            statement.setString(3, mapRoleToDatabaseValue(normalizedRole));
+            statement.setBoolean(4, toDatabaseStatus(normalizedStatus));
+            statement.setInt(5, user.getId());
             statement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("Error updating user: " + e.getMessage());
@@ -141,8 +143,9 @@ public class AdminUserService {
 
         user.setFullName(fullName.trim());
         user.setEmail(email.trim());
+        user.setRole(normalizedRole);
         user.setStatus(normalizedStatus);
-        return OperationResult.success("Utilisateur mis a jour (nom, email et statut).");
+        return OperationResult.success("Utilisateur mis a jour (nom, email, role et statut).");
     }
 
     public OperationResult deleteUser(AdminUser user) {
