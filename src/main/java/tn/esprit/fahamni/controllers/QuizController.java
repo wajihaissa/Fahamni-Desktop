@@ -183,6 +183,9 @@ public class QuizController {
         Label titleLabel = new Label(quiz.getTitre());
         titleLabel.getStyleClass().add("quiz-title");
 
+        Label keywordBadge = new Label(quiz.getKeyword().isBlank() ? "General" : quiz.getKeyword());
+        keywordBadge.getStyleClass().add("quiz-keyword-badge");
+
         String resultStatus = quiz.getQuizResults().isEmpty() ? "Not attempted yet" : "Results available";
         Label infoLabel = new Label(quiz.getQuestions().size() + " questions | " + resultStatus);
         infoLabel.getStyleClass().add("quiz-info");
@@ -190,7 +193,7 @@ public class QuizController {
         Label descriptionLabel = new Label("A quick knowledge check about '" + quiz.getKeyword() + "'.");
         descriptionLabel.setWrapText(true);
         descriptionLabel.getStyleClass().add("quiz-description");
-        cardBody.getChildren().addAll(titleLabel, infoLabel, descriptionLabel);
+        cardBody.getChildren().addAll(titleLabel, keywordBadge, infoLabel, descriptionLabel);
         HBox.setHgrow(cardBody, Priority.ALWAYS);
 
         VBox actionBox = new VBox(10);

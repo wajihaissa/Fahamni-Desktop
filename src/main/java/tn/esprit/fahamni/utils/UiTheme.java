@@ -305,6 +305,15 @@ public final class UiTheme {
             -fx-text-fill: #f0a84d;
         }
 
+        .quiz-keyword-badge {
+            -fx-background-color: #edf4ff;
+            -fx-text-fill: #2d61b9;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 4px 10px;
+            -fx-background-radius: 999px;
+        }
+
         .search-field, .message-input, .form-field, .backoffice-form-input, .filter-combo, .combo-box-base, .date-picker, .text-area,
         .login-input {
             -fx-background-color: rgba(255, 255, 255, 0.96);
