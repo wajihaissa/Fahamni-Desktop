@@ -279,6 +279,195 @@ public final class UiTheme {
             -fx-background-radius: 999px;
         }
 
+        .backoffice-users-page {
+            -fx-spacing: 18px;
+        }
+
+        .backoffice-users-hero {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-padding: 18px 20px;
+        }
+
+        .backoffice-users-hero-title {
+            -fx-font-size: 24px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .backoffice-users-count-badge {
+            -fx-background-color: #eef4ff;
+            -fx-text-fill: #3158a8;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 8px 12px;
+            -fx-background-radius: 999px;
+        }
+
+        .backoffice-users-add-button {
+            -fx-background-color: linear-gradient(to bottom, #3292ff 0%, #2968ff 100%);
+            -fx-text-fill: white;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-padding: 10px 16px;
+            -fx-cursor: hand;
+        }
+
+        .backoffice-users-add-button:hover {
+            -fx-background-color: linear-gradient(to bottom, #46a0ff 0%, #3b74ff 100%);
+        }
+
+        .backoffice-users-pending-panel, .backoffice-users-directory-panel {
+            -fx-background-color: linear-gradient(to bottom, #203553 0%, #1a2c49 100%);
+            -fx-border-color: rgba(255, 255, 255, 0.10);
+            -fx-border-width: 1px;
+            -fx-background-radius: 20px;
+            -fx-border-radius: 20px;
+            -fx-padding: 18px;
+        }
+
+        .backoffice-users-section-title-light {
+            -fx-font-size: 20px;
+            -fx-font-weight: bold;
+            -fx-text-fill: white;
+        }
+
+        .backoffice-users-section-copy-light {
+            -fx-font-size: 12px;
+            -fx-text-fill: rgba(221, 232, 248, 0.82);
+        }
+
+        .backoffice-pending-list {
+            -fx-background-color: transparent;
+            -fx-border-color: transparent;
+        }
+
+        .backoffice-pending-list .list-cell {
+            -fx-background-color: transparent;
+            -fx-padding: 0 0 8px 0;
+        }
+
+        .backoffice-pending-card {
+            -fx-background-color: rgba(255, 255, 255, 0.98);
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-padding: 14px 16px;
+        }
+
+        .backoffice-pending-primary {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #213a62;
+        }
+
+        .backoffice-pending-secondary, .backoffice-risk-copy {
+            -fx-font-size: 11px;
+            -fx-text-fill: #7385a1;
+        }
+
+        .backoffice-pending-link-button {
+            -fx-background-color: #f2f7ff;
+            -fx-border-color: #bfd4ff;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-text-fill: #2968ff;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 6px 10px;
+            -fx-cursor: hand;
+        }
+
+        .backoffice-users-filter-chip {
+            -fx-background-color: rgba(255, 255, 255, 0.10);
+            -fx-text-fill: rgba(229, 237, 251, 0.86);
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 7px 12px;
+            -fx-background-radius: 999px;
+        }
+
+        .backoffice-users-filter-chip.active {
+            -fx-background-color: linear-gradient(to bottom, #3292ff 0%, #2968ff 100%);
+            -fx-text-fill: white;
+        }
+
+        .backoffice-users-table {
+            -fx-background-color: rgba(255, 255, 255, 0.98);
+            -fx-border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .backoffice-users-table .column-header-background, .backoffice-users-table .filler {
+            -fx-background-color: rgba(248, 251, 255, 0.96);
+        }
+
+        .backoffice-role-chip, .backoffice-status-chip, .backoffice-risk-chip {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 5px 10px;
+            -fx-background-radius: 999px;
+        }
+
+        .backoffice-role-chip {
+            -fx-background-color: #edf1ff;
+            -fx-text-fill: #4b5fe0;
+        }
+
+        .backoffice-status-chip {
+            -fx-background-color: #e4f7ea;
+            -fx-text-fill: #177546;
+        }
+
+        .backoffice-status-chip.suspended {
+            -fx-background-color: #fff0f2;
+            -fx-text-fill: #c43b49;
+        }
+
+        .backoffice-risk-chip {
+            -fx-background-color: #ebfff1;
+            -fx-border-color: #7de8a2;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-text-fill: #1b7d4f;
+        }
+
+        .backoffice-risk-chip.medium {
+            -fx-background-color: #fff6e5;
+            -fx-border-color: #ffd26f;
+            -fx-text-fill: #a46a08;
+        }
+
+        .backoffice-table-action-button {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #caddff;
+            -fx-border-width: 1px;
+            -fx-border-radius: 10px;
+            -fx-background-radius: 10px;
+            -fx-text-fill: #2b5fb7;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 7px 10px;
+            -fx-cursor: hand;
+        }
+
+        .backoffice-table-action-button:hover {
+            -fx-background-color: #e4eeff;
+        }
+
+        .backoffice-table-action-button.danger {
+            -fx-background-color: #fff0f2;
+            -fx-border-color: #ffc8d0;
+            -fx-text-fill: #c43b49;
+        }
+
+        .backoffice-users-editor-panel {
+            -fx-padding: 20px;
+        }
+
         .profile-settings-shell {
             -fx-background-color: rgba(255, 255, 255, 0.95);
             -fx-border-color: #dbe5f6;

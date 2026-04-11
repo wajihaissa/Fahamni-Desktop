@@ -1,19 +1,32 @@
 package tn.esprit.fahamni.controllers;
 
-import tn.esprit.fahamni.Models.AdminUser;
-import tn.esprit.fahamni.services.AdminUserService;
-import tn.esprit.fahamni.utils.OperationResult;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
+import tn.esprit.fahamni.Models.AdminUser;
+import tn.esprit.fahamni.services.AdminUserService;
+import tn.esprit.fahamni.utils.OperationResult;
 
 public class BackofficeUsersController {
+
+    @FXML
+    private ListView<AdminUser> pendingRegistrationsList;
 
     @FXML
     private TableView<AdminUser> usersTable;
@@ -29,6 +42,15 @@ public class BackofficeUsersController {
 
     @FXML
     private TableColumn<AdminUser, String> statusColumn;
+
+    @FXML
+    private TableColumn<AdminUser, String> fraudRiskColumn;
+
+    @FXML
+    private TableColumn<AdminUser, String> createdAtColumn;
+
+    @FXML
+    private TableColumn<AdminUser, Void> actionsColumn;
 
     @FXML
     private TextField searchField;
@@ -58,39 +80,44 @@ public class BackofficeUsersController {
     private ComboBox<String> statusComboBox;
 
     @FXML
+    private Label totalUsersLabel;
+
+    @FXML
+    private Label directorySummaryLabel;
+
+    @FXML
     private Label feedbackLabel;
 
     private final AdminUserService userService = new AdminUserService();
     private FilteredList<AdminUser> filteredUsers;
+    private final ObservableList<AdminUser> pendingUsers = FXCollections.observableArrayList();
 
     @FXML
     private void initialize() {
-        fullNameColumn.setCellValueFactory(new PropertyValueFactory<>("fullName"));
-        emailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
-        roleColumn.setCellValueFactory(new PropertyValueFactory<>("role"));
-        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
-
-        roleComboBox.getItems().setAll(userService.getAvailableRoles());
-        statusComboBox.getItems().setAll(userService.getAvailableStatuses());
-        statusFilterComboBox.getItems().setAll("Tous", "Active", "Suspended");
-        roleFilterComboBox.getItems().setAll("Tous", "Student", "Tutor", "Administrator");
-        roleComboBox.setValue("Student");
-        statusComboBox.setValue("Active");
-        statusFilterComboBox.setValue("Tous");
-        roleFilterComboBox.setValue("Tous");
+        configureTable();
+        configureFilters();
+        configurePendingRegistrations();
+        configureEditorDefaults();
 
         filteredUsers = new FilteredList<>(userService.getUsers(), user -> true);
         usersTable.setItems(filteredUsers);
         usersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
-        searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilters());
-        statusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
-        roleFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
 
+        refreshPendingRegistrations();
+        updateDirectorySummary();
         hideFeedback();
 
         if (userService.getLastLoadError() != null) {
             showFeedback(userService.getLastLoadError(), false);
         }
+    }
+
+    @FXML
+    private void handleAddNewUser() {
+        usersTable.getSelectionModel().clearSelection();
+        clearForm();
+        hideFeedback();
+        fullNameField.requestFocus();
     }
 
     @FXML
@@ -105,10 +132,8 @@ public class BackofficeUsersController {
             roleComboBox.getValue(),
             statusComboBox.getValue()
         );
-        if (result.isSuccess()) {
-            clearForm();
-        }
-        showFeedback(result.getMessage(), result.isSuccess());
+
+        afterDataChange(result, true);
     }
 
     @FXML
@@ -122,9 +147,27 @@ public class BackofficeUsersController {
             roleComboBox.getValue(),
             statusComboBox.getValue()
         );
-        if (result.isSuccess()) {
-            usersTable.refresh();
-        }
+
+        afterDataChange(result, false);
+    }
+
+    @FXML
+    private void handleDeleteUser() {
+        hideFeedback();
+        OperationResult result = userService.deleteUser(usersTable.getSelectionModel().getSelectedItem());
+        afterDataChange(result, false);
+    }
+
+    @FXML
+    private void handleRefreshUsers() {
+        hideFeedback();
+        OperationResult result = userService.refreshUsers();
+        applyFilters();
+        usersTable.getSelectionModel().clearSelection();
+        clearForm();
+        refreshPendingRegistrations();
+        updateDirectorySummary();
+        usersTable.refresh();
         showFeedback(result.getMessage(), result.isSuccess());
     }
 
@@ -135,30 +178,229 @@ public class BackofficeUsersController {
         hideFeedback();
     }
 
-    @FXML
-    private void handleDeleteUser() {
-        hideFeedback();
+    private void configureTable() {
+        fullNameColumn.setCellValueFactory(new PropertyValueFactory<>("fullName"));
+        emailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
+        roleColumn.setCellValueFactory(new PropertyValueFactory<>("role"));
+        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+        fraudRiskColumn.setCellValueFactory(new PropertyValueFactory<>("fraudReason"));
+        createdAtColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
 
-        AdminUser selectedUser = usersTable.getSelectionModel().getSelectedItem();
-        OperationResult result = userService.deleteUser(selectedUser);
-        if (result.isSuccess()) {
-            usersTable.refresh();
-            statusComboBox.setValue("Suspended");
-        }
+        roleColumn.setCellFactory(column -> createBadgeCell("backoffice-role-chip"));
+        statusColumn.setCellFactory(column -> createStatusBadgeCell());
+        fraudRiskColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
 
-        showFeedback(result.getMessage(), result.isSuccess());
+                AdminUser user = getTableView().getItems().get(getIndex());
+                Label riskBadge = createRiskBadge(user);
+                Label riskReason = new Label(item);
+                riskReason.setWrapText(true);
+                riskReason.getStyleClass().add("backoffice-risk-copy");
+                VBox box = new VBox(6.0, riskBadge, riskReason);
+                setGraphic(box);
+            }
+        });
+
+        actionsColumn.setCellFactory(column -> new TableCell<>() {
+            private final Button editButton = new Button("Edit");
+            private final Button activateButton = new Button("Activate");
+            private final Button suspendButton = new Button("Suspend");
+            private final HBox actionsBox = new HBox(8.0, editButton, activateButton, suspendButton);
+
+            {
+                actionsBox.setAlignment(Pos.CENTER_LEFT);
+                editButton.getStyleClass().add("backoffice-table-action-button");
+                activateButton.getStyleClass().add("backoffice-table-action-button");
+                suspendButton.getStyleClass().addAll("backoffice-table-action-button", "danger");
+
+                editButton.setOnAction(event -> {
+                    AdminUser user = getCurrentUser();
+                    if (user != null) {
+                        usersTable.getSelectionModel().select(user);
+                        populateForm(user);
+                        showFeedback("Utilisateur charge dans l'editeur.", true);
+                    }
+                });
+
+                activateButton.setOnAction(event -> {
+                    AdminUser user = getCurrentUser();
+                    if (user != null) {
+                        OperationResult result = userService.activateUser(user);
+                        afterInlineAction(result);
+                    }
+                });
+
+                suspendButton.setOnAction(event -> {
+                    AdminUser user = getCurrentUser();
+                    if (user != null) {
+                        OperationResult result = userService.deleteUser(user);
+                        afterInlineAction(result);
+                    }
+                });
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setGraphic(null);
+                    return;
+                }
+
+                AdminUser user = getCurrentUser();
+                if (user == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                activateButton.setDisable("Active".equalsIgnoreCase(user.getStatus()));
+                suspendButton.setDisable("Suspended".equalsIgnoreCase(user.getStatus()));
+                setGraphic(actionsBox);
+            }
+
+            private AdminUser getCurrentUser() {
+                if (getIndex() < 0 || getIndex() >= getTableView().getItems().size()) {
+                    return null;
+                }
+                return getTableView().getItems().get(getIndex());
+            }
+        });
     }
 
-    @FXML
-    private void handleRefreshUsers() {
-        hideFeedback();
+    private void configureFilters() {
+        statusFilterComboBox.getItems().setAll("All Statuses", "Active", "Suspended");
+        roleFilterComboBox.getItems().setAll("All Roles", "Student", "Tutor", "Administrator");
+        statusFilterComboBox.setValue("All Statuses");
+        roleFilterComboBox.setValue("All Roles");
 
-        OperationResult result = userService.refreshUsers();
-        usersTable.getSelectionModel().clearSelection();
-        clearForm();
-        applyFilters();
-        usersTable.refresh();
-        showFeedback(result.getMessage(), result.isSuccess());
+        searchField.textProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+        statusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+        roleFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyFilters());
+    }
+
+    private void configurePendingRegistrations() {
+        pendingRegistrationsList.setItems(pendingUsers);
+        pendingRegistrationsList.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(AdminUser user, boolean empty) {
+                super.updateItem(user, empty);
+                if (empty || user == null) {
+                    setGraphic(null);
+                    setText(null);
+                    return;
+                }
+
+                VBox identityBox = new VBox(
+                    6.0,
+                    createCellLabel(user.getFullName(), "backoffice-pending-primary"),
+                    createCellLabel(user.getEmail(), "backoffice-pending-secondary")
+                );
+
+                VBox requestBox = new VBox(
+                    6.0,
+                    createCellLabel(user.getCreatedAt(), "backoffice-pending-primary"),
+                    createCellLabel(user.getRole(), "backoffice-pending-secondary")
+                );
+
+                Label riskBadge = createRiskBadge(user);
+                Label reasonLabel = createCellLabel(user.getFraudReason(), "backoffice-pending-secondary");
+                reasonLabel.setWrapText(true);
+                Button reasonButton = new Button("View full reasons");
+                reasonButton.getStyleClass().add("backoffice-pending-link-button");
+                reasonButton.setOnAction(event -> showFeedback(user.getFraudReason(), true));
+                VBox riskBox = new VBox(6.0, riskBadge, reasonLabel, reasonButton);
+
+                Button acceptButton = new Button("Accept");
+                acceptButton.getStyleClass().add("backoffice-primary-button");
+                acceptButton.setOnAction(event -> afterInlineAction(userService.activateUser(user)));
+
+                Button declineButton = new Button("Decline");
+                declineButton.getStyleClass().add("backoffice-secondary-button");
+                declineButton.setOnAction(event -> afterInlineAction(userService.deleteUser(user)));
+                HBox actionBox = new HBox(8.0, acceptButton, declineButton);
+
+                HBox row = new HBox(18.0, wrapBox(identityBox), wrapBox(requestBox), wrapBox(riskBox), actionBox);
+                row.setAlignment(Pos.CENTER_LEFT);
+                HBox.setHgrow(identityBox, Priority.ALWAYS);
+                HBox.setHgrow(requestBox, Priority.ALWAYS);
+                HBox.setHgrow(riskBox, Priority.ALWAYS);
+
+                VBox container = new VBox(row);
+                container.getStyleClass().add("backoffice-pending-card");
+                setGraphic(container);
+            }
+        });
+    }
+
+    private void configureEditorDefaults() {
+        roleComboBox.getItems().setAll(userService.getAvailableRoles());
+        statusComboBox.getItems().setAll(userService.getAvailableStatuses());
+        roleComboBox.setValue("Student");
+        statusComboBox.setValue("Active");
+    }
+
+    private TableCell<AdminUser, String> createBadgeCell(String styleClass) {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                Label badge = new Label(item);
+                badge.getStyleClass().add(styleClass);
+                setGraphic(badge);
+            }
+        };
+    }
+
+    private TableCell<AdminUser, String> createStatusBadgeCell() {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                Label badge = new Label(item);
+                badge.getStyleClass().add("backoffice-status-chip");
+                if ("Suspended".equalsIgnoreCase(item)) {
+                    badge.getStyleClass().add("suspended");
+                }
+                setGraphic(badge);
+            }
+        };
+    }
+
+    private Label createRiskBadge(AdminUser user) {
+        Label badge = new Label(user.getFraudRisk());
+        badge.getStyleClass().add("backoffice-risk-chip");
+        if ("MEDIUM".equalsIgnoreCase(user.getFraudRisk())) {
+            badge.getStyleClass().add("medium");
+        }
+        return badge;
+    }
+
+    private Label createCellLabel(String text, String styleClass) {
+        Label label = new Label(text);
+        label.getStyleClass().add(styleClass);
+        return label;
+    }
+
+    private VBox wrapBox(VBox box) {
+        box.setPrefWidth(240.0);
+        HBox.setHgrow(box, Priority.ALWAYS);
+        return box;
     }
 
     private void applyFilters() {
@@ -172,15 +414,17 @@ public class BackofficeUsersController {
                 || user.getEmail().toLowerCase().contains(search);
 
             boolean matchesStatus = selectedStatus == null
-                || "Tous".equalsIgnoreCase(selectedStatus)
+                || "All Statuses".equalsIgnoreCase(selectedStatus)
                 || user.getStatus().equalsIgnoreCase(selectedStatus);
 
             boolean matchesRole = selectedRole == null
-                || "Tous".equalsIgnoreCase(selectedRole)
+                || "All Roles".equalsIgnoreCase(selectedRole)
                 || user.getRole().equalsIgnoreCase(selectedRole);
 
             return matchesSearch && matchesStatus && matchesRole;
         });
+
+        updateDirectorySummary();
     }
 
     private void populateForm(AdminUser user) {
@@ -192,6 +436,8 @@ public class BackofficeUsersController {
         emailField.setText(user.getEmail());
         roleComboBox.setValue(user.getRole());
         statusComboBox.setValue(user.getStatus());
+        passwordField.clear();
+        confirmPasswordField.clear();
     }
 
     private void clearForm() {
@@ -201,6 +447,41 @@ public class BackofficeUsersController {
         confirmPasswordField.clear();
         roleComboBox.setValue("Student");
         statusComboBox.setValue("Active");
+    }
+
+    private void refreshPendingRegistrations() {
+        pendingUsers.setAll(userService.getPendingUsersPreview());
+        totalUsersLabel.setText(userService.getUsers().size() + " users");
+    }
+
+    private void updateDirectorySummary() {
+        if (filteredUsers == null) {
+            directorySummaryLabel.setText("All users");
+            return;
+        }
+        directorySummaryLabel.setText(filteredUsers.size() + " visible users");
+    }
+
+    private void afterDataChange(OperationResult result, boolean clearEditorOnSuccess) {
+        if (result.isSuccess()) {
+            applyFilters();
+            refreshPendingRegistrations();
+            usersTable.refresh();
+            if (clearEditorOnSuccess) {
+                clearForm();
+            }
+        }
+
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void afterInlineAction(OperationResult result) {
+        if (result.isSuccess()) {
+            applyFilters();
+            refreshPendingRegistrations();
+            usersTable.refresh();
+        }
+        showFeedback(result.getMessage(), result.isSuccess());
     }
 
     private void showFeedback(String message, boolean success) {
@@ -217,4 +498,3 @@ public class BackofficeUsersController {
         feedbackLabel.setVisible(false);
     }
 }
-

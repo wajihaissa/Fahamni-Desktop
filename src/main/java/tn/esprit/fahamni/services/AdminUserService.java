@@ -10,6 +10,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class AdminUserService {
@@ -48,16 +52,22 @@ public class AdminUserService {
             return OperationResult.failure(lastLoadError);
         }
 
-        String query = "SELECT id, full_name, email, roles, status FROM `user` ORDER BY id DESC";
+        String query = "SELECT id, full_name, email, roles, status, created_at FROM `user` ORDER BY id DESC";
         try (PreparedStatement statement = connection.prepareStatement(query);
              ResultSet resultSet = statement.executeQuery()) {
             while (resultSet.next()) {
+                String fullName = resultSet.getString("full_name");
+                String email = resultSet.getString("email");
+                String risk = inferFraudRisk(fullName, email);
                 users.add(new AdminUser(
                     resultSet.getInt("id"),
-                    resultSet.getString("full_name"),
-                    resultSet.getString("email"),
+                    fullName,
+                    email,
                     inferRole(resultSet.getString("roles")),
-                    mapStatus(resultSet.getBoolean("status"))
+                    mapStatus(resultSet.getBoolean("status")),
+                    formatCreatedAt(resultSet.getString("created_at")),
+                    risk,
+                    inferFraudReason(fullName, email, risk)
                 ));
             }
 
@@ -175,6 +185,48 @@ public class AdminUserService {
         return OperationResult.success("Utilisateur suspendu.");
     }
 
+    public OperationResult activateUser(AdminUser user) {
+        if (user == null) {
+            return OperationResult.failure("Selectionnez un utilisateur a activer.");
+        }
+
+        if (connection == null) {
+            return OperationResult.failure("Connexion a la base indisponible. Activation impossible.");
+        }
+
+        if ("Active".equalsIgnoreCase(user.getStatus())) {
+            return OperationResult.failure("Cet utilisateur est deja actif.");
+        }
+
+        String query = "UPDATE `user` SET `status` = ? WHERE `id` = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setBoolean(1, true);
+            statement.setInt(2, user.getId());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error activating user: " + e.getMessage());
+            return OperationResult.failure("Erreur lors de l'activation : " + e.getMessage());
+        }
+
+        user.setStatus("Active");
+        return OperationResult.success("Utilisateur active.");
+    }
+
+    public List<AdminUser> getPendingUsersPreview() {
+        List<AdminUser> pendingUsers = new ArrayList<>();
+        for (AdminUser user : users) {
+            if ("Administrator".equalsIgnoreCase(user.getRole())) {
+                continue;
+            }
+
+            pendingUsers.add(user);
+            if (pendingUsers.size() == 4) {
+                break;
+            }
+        }
+        return pendingUsers;
+    }
+
     private String inferRole(String roles) {
         if (roles != null && roles.toUpperCase().contains("ROLE_TUTOR")) {
             return "Tutor";
@@ -227,6 +279,71 @@ public class AdminUserService {
         }
 
         return "[\"ROLE_USER\"]";
+    }
+
+    private String formatCreatedAt(String createdAtValue) {
+        if (isBlank(createdAtValue)) {
+            return "Unknown";
+        }
+
+        try {
+            LocalDateTime createdAt = LocalDateTime.parse(createdAtValue.replace(" ", "T"));
+            return createdAt.format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"));
+        } catch (DateTimeParseException exception) {
+            return createdAtValue;
+        }
+    }
+
+    private String inferFraudRisk(String fullName, String email) {
+        int riskScore = 10;
+        String normalizedName = fullName == null ? "" : fullName.trim();
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
+
+        if (!normalizedName.contains(" ")) {
+            riskScore += 15;
+        }
+
+        if (normalizedName.length() < 8) {
+            riskScore += 20;
+        }
+
+        if (normalizedEmail.matches(".*\\d{4,}.*")) {
+            riskScore += 15;
+        }
+
+        if (normalizedEmail.endsWith("@gmail.com") || normalizedEmail.endsWith("@yahoo.com")) {
+            riskScore += 5;
+        }
+
+        if (riskScore >= 45) {
+            return "MEDIUM";
+        }
+
+        return "LOW";
+    }
+
+    private String inferFraudReason(String fullName, String email, String risk) {
+        List<String> reasons = new ArrayList<>();
+        String normalizedName = fullName == null ? "" : fullName.trim();
+        String normalizedEmail = email == null ? "" : email.trim();
+
+        if (!normalizedName.contains(" ")) {
+            reasons.add("Full name is a single token.");
+        }
+
+        if (normalizedName.length() < 8) {
+            reasons.add("Full name is very short.");
+        }
+
+        if (normalizedEmail.matches(".*\\d{4,}.*")) {
+            reasons.add("Email contains a long numeric suffix.");
+        }
+
+        if (reasons.isEmpty()) {
+            reasons.add("No blocking signals detected.");
+        }
+
+        return risk + " review: " + String.join(" ", reasons);
     }
 
     private boolean isBlank(String value) {
