@@ -34,6 +34,7 @@ public class QuizController {
     @FXML private Label subjectsMasteredValue;
 
     private final QuizService quizService = new QuizService();
+    // Static test user used while the user session system is being integrated.
     private static final User TEST_USER = new User(1L, "Quiz Tester", "quiz.tester@fahamni.tn", "", UserRole.USER);
 
     @FXML
