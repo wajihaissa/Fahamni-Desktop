@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +65,7 @@ public class AdminReservationService {
              ResultSet rs = pst.executeQuery()) {
             while (rs.next()) {
                 Timestamp cancelledAt = rs.getTimestamp("cancell_at");
+                Timestamp reservedAt = rs.getTimestamp("reserved_at");
                 int storedStatus = rs.getInt("status");
                 int normalizedStatus = normalizeStoredStatus(storedStatus);
                 boolean cancelled = cancelledAt != null;
@@ -72,7 +74,8 @@ public class AdminReservationService {
                     rs.getInt("id"),
                     resolveStudentLabel(rs),
                     resolveSessionLabel(rs),
-                    formatDateTime(rs.getTimestamp("reserved_at")),
+                    formatDateTime(reservedAt),
+                    toLocalDate(reservedAt),
                     mapStatusCodeToLabel(normalizedStatus, cancelled),
                     normalizedStatus,
                     cancelled
@@ -121,5 +124,9 @@ public class AdminReservationService {
 
     private String formatDateTime(Timestamp timestamp) {
         return timestamp != null ? timestamp.toLocalDateTime().format(DISPLAY_FORMATTER) : "";
+    }
+
+    private LocalDate toLocalDate(Timestamp timestamp) {
+        return timestamp != null ? timestamp.toLocalDateTime().toLocalDate() : null;
     }
 }

@@ -1,11 +1,14 @@
 package tn.esprit.fahamni.Models;
 
+import java.time.LocalDate;
+
 public class AdminReservation {
 
     private int id;
     private String studentName;
     private String sessionTitle;
     private String requestDate;
+    private LocalDate requestLocalDate;
     private String status;
     private int statusCode;
     private boolean cancelled;
@@ -19,10 +22,16 @@ public class AdminReservation {
 
     public AdminReservation(int id, String studentName, String sessionTitle, String requestDate,
                             String status, int statusCode, boolean cancelled) {
+        this(id, studentName, sessionTitle, requestDate, null, status, statusCode, cancelled);
+    }
+
+    public AdminReservation(int id, String studentName, String sessionTitle, String requestDate,
+                            LocalDate requestLocalDate, String status, int statusCode, boolean cancelled) {
         this.id = id;
         this.studentName = studentName;
         this.sessionTitle = sessionTitle;
         this.requestDate = requestDate;
+        this.requestLocalDate = requestLocalDate;
         this.status = status;
         this.statusCode = statusCode;
         this.cancelled = cancelled;
@@ -58,6 +67,14 @@ public class AdminReservation {
 
     public void setRequestDate(String requestDate) {
         this.requestDate = requestDate;
+    }
+
+    public LocalDate getRequestLocalDate() {
+        return requestLocalDate;
+    }
+
+    public void setRequestLocalDate(LocalDate requestLocalDate) {
+        this.requestLocalDate = requestLocalDate;
     }
 
     public String getStatus() {
