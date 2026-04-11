@@ -739,7 +739,7 @@ public final class UiTheme {
             -fx-padding: 2px;
         }
 
-        .calendar-sidebar-panel, .calendar-toolbar, .calendar-board-shell {
+        .calendar-sidebar-panel, .calendar-toolbar, .calendar-filter-panel, .calendar-board-shell {
             -fx-background-color: rgba(255, 255, 255, 0.94);
             -fx-border-color: #d9e5f8;
             -fx-border-width: 1px;
@@ -757,6 +757,10 @@ public final class UiTheme {
         }
 
         .calendar-toolbar {
+            -fx-padding: 14px 16px;
+        }
+
+        .calendar-filter-panel {
             -fx-padding: 14px 16px;
         }
 
@@ -791,6 +795,13 @@ public final class UiTheme {
             -fx-border-radius: 16px;
             -fx-padding: 12px;
             -fx-spacing: 6px;
+            -fx-cursor: hand;
+        }
+
+        .calendar-upcoming-card:hover, .calendar-upcoming-card.selected {
+            -fx-border-color: #90afff;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #eef5ff 100%);
+            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.16), 14, 0.18, 0, 4);
         }
 
         .calendar-upcoming-chip {
@@ -820,6 +831,63 @@ public final class UiTheme {
             -fx-font-size: 14px;
             -fx-font-weight: bold;
             -fx-text-fill: #1a3864;
+        }
+
+        .calendar-selected-panel {
+            -fx-background-color: rgba(247, 250, 255, 0.86);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-padding: 12px;
+        }
+
+        .calendar-selected-empty-card, .calendar-selected-card {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7faff 100%);
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 12px;
+            -fx-spacing: 8px;
+        }
+
+        .calendar-selected-empty-title, .calendar-selected-title {
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #173b74;
+        }
+
+        .calendar-selected-header {
+            -fx-alignment: center-left;
+        }
+
+        .calendar-selected-row {
+            -fx-alignment: top-left;
+        }
+
+        .calendar-selected-label {
+            -fx-min-width: 76px;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #6682aa;
+        }
+
+        .calendar-selected-value {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1a3864;
+        }
+
+        .calendar-selected-description {
+            -fx-background-color: #f8fbff;
+            -fx-border-color: #dce7f8;
+            -fx-border-width: 1px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-padding: 9px;
+            -fx-font-size: 12px;
+            -fx-text-fill: #5f789c;
         }
 
         .calendar-month-toolbar {
@@ -956,6 +1024,19 @@ public final class UiTheme {
             -fx-font-size: 10px;
             -fx-font-weight: bold;
             -fx-text-fill: #234671;
+            -fx-cursor: hand;
+        }
+
+        .calendar-session-pill:hover {
+            -fx-background-color: #e4efff;
+            -fx-border-color: #9bb9f8;
+        }
+
+        .calendar-session-pill.selected {
+            -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #4f6df0 100%);
+            -fx-border-color: transparent;
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(73, 104, 242, 0.18), 10, 0.18, 0, 3);
         }
 
         .calendar-session-more {
