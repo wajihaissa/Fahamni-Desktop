@@ -63,10 +63,12 @@ public class QuizController {
             quizCard.getStyleClass().add("quiz-card");
             quizCard.setAlignment(Pos.CENTER_LEFT);
             quizCard.setPadding(new Insets(14));
+            quizCard.setPrefWidth(320);
+            quizCard.setMaxWidth(320);
 
             VBox cardBody = new VBox(6);
             cardBody.setAlignment(Pos.CENTER_LEFT);
-            cardBody.setPrefWidth(420);
+            cardBody.setPrefWidth(220);
             Label titleLabel = new Label(quiz.getTitre());
             titleLabel.getStyleClass().add("quiz-title");
             Label infoLabel = new Label(quiz.getQuestions().size() + " questions • " + (quiz.getQuizResults().size() > 0 ? "Résultats disponibles" : "Pas encore joué"));
