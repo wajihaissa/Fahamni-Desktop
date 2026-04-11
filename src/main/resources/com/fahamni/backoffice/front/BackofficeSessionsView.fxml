@@ -40,6 +40,7 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label fx:id="sessionsCountLabel" text="0 seance affichee" styleClass="backoffice-panel-copy"/>
             <Button onAction="#handleRefreshSessions" text="Actualiser" styleClass="backoffice-secondary-button"/>
+            <Button fx:id="viewSessionDetailsButton" onAction="#handleViewSessionDetails" text="Voir details" styleClass="backoffice-secondary-button"/>
             <Button fx:id="deleteSelectedSessionButton" onAction="#handleDeleteSelectedSession" text="Supprimer la seance" styleClass="backoffice-secondary-button"/>
         </HBox>
 

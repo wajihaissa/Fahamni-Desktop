@@ -9,14 +9,24 @@ import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.MouseButton;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 import java.time.LocalDate;
 import java.util.Locale;
@@ -69,6 +79,9 @@ public class BackofficeSessionsController {
     private DatePicker sessionDatePicker;
 
     @FXML
+    private Button viewSessionDetailsButton;
+
+    @FXML
     private Button deleteSelectedSessionButton;
 
     private final AdminSessionService sessionService = new AdminSessionService();
@@ -97,6 +110,7 @@ public class BackofficeSessionsController {
         SortedList<AdminSession> sortedSessions = new SortedList<>(filteredSessions);
         sortedSessions.comparatorProperty().bind(sessionsTable.comparatorProperty());
         sessionsTable.setItems(sortedSessions);
+        sessionsTable.setRowFactory(tableView -> buildSessionRow());
 
         sessionsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> handleSessionSelectionChange(newValue));
         sessionSearchField.textProperty().addListener((observable, oldValue, newValue) -> applySessionFilters());
@@ -105,7 +119,7 @@ public class BackofficeSessionsController {
         filteredSessions.addListener((ListChangeListener<AdminSession>) change -> updateSessionsCount());
 
         updateSessionsCount();
-        updateDeleteActionState(null);
+        updateActionButtons(null);
         showDatabaseStateIfNeeded();
     }
 
@@ -116,8 +130,19 @@ public class BackofficeSessionsController {
         applySessionFilters();
         sessionsTable.refresh();
         updateSessionsCount();
-        updateDeleteActionState(null);
+        updateActionButtons(null);
         showDatabaseStateIfNeeded();
+    }
+
+    @FXML
+    private void handleViewSessionDetails() {
+        AdminSession selectedSession = sessionsTable.getSelectionModel().getSelectedItem();
+        if (selectedSession == null) {
+            showFeedback("Selectionnez une seance pour afficher ses details.", false);
+            return;
+        }
+
+        showSessionDetails(selectedSession);
     }
 
     @FXML
@@ -132,7 +157,7 @@ public class BackofficeSessionsController {
 
         if (selectedSession.getReservationCount() > 0) {
             showFeedback(buildDeleteBlockedMessage(selectedSession.getReservationCount()), false);
-            updateDeleteActionState(selectedSession);
+            updateActionButtons(selectedSession);
             return;
         }
 
@@ -205,7 +230,7 @@ public class BackofficeSessionsController {
     }
 
     private void handleSessionSelectionChange(AdminSession selectedSession) {
-        updateDeleteActionState(selectedSession);
+        updateActionButtons(selectedSession);
 
         if (selectedSession == null) {
             showDatabaseStateIfNeeded();
@@ -220,7 +245,8 @@ public class BackofficeSessionsController {
         hideFeedback();
     }
 
-    private void updateDeleteActionState(AdminSession selectedSession) {
+    private void updateActionButtons(AdminSession selectedSession) {
+        viewSessionDetailsButton.setDisable(selectedSession == null);
         deleteSelectedSessionButton.setDisable(selectedSession == null || selectedSession.getReservationCount() > 0);
     }
 
@@ -239,6 +265,111 @@ public class BackofficeSessionsController {
         return result.isPresent() && result.get() == ButtonType.OK;
     }
 
+    private void showSessionDetails(AdminSession session) {
+        Dialog<ButtonType> detailsDialog = new Dialog<>();
+        DialogPane dialogPane = detailsDialog.getDialogPane();
+        ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        detailsDialog.setTitle("Detail de la seance");
+        dialogPane.getButtonTypes().setAll(closeButton);
+        dialogPane.setPrefWidth(720.0);
+        dialogPane.setContent(buildSessionDetailsContent(session));
+
+        detailsDialog.showAndWait();
+    }
+
+    private VBox buildSessionDetailsContent(AdminSession session) {
+        VBox root = new VBox(16.0);
+        root.setPrefWidth(660.0);
+        root.setStyle("-fx-padding: 20; -fx-background-color: white;");
+
+        HBox header = new HBox(12.0);
+        VBox titleBlock = new VBox(6.0);
+        Label titleLabel = new Label(safeText(session.getSubject()));
+        titleLabel.setStyle("-fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #17356d;");
+        Label subtitleLabel = new Label("Seance #" + session.getId() + "  |  Tuteur: " + safeText(session.getTutor()));
+        subtitleLabel.setStyle("-fx-text-fill: #5d7196; -fx-font-size: 13px;");
+        titleBlock.getChildren().addAll(titleLabel, subtitleLabel);
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        Label statusChip = buildBadge(session.getStatus(), "#e8f0ff", "#2d5cc9");
+        header.getChildren().addAll(titleBlock, headerSpacer, statusChip);
+
+        FlowPane metrics = new FlowPane(12.0, 12.0);
+        metrics.setPrefWrapLength(620.0);
+        metrics.getChildren().addAll(
+            buildDetailMetric("Date", safeText(session.getSchedule()), "Horaire planifie"),
+            buildDetailMetric("Duree", session.getDurationMinutes() + " min", "Temps total"),
+            buildDetailMetric("Capacite", session.getCapacity() + " places", "Capacite max"),
+            buildDetailMetric("Reservations", formatReservationCount(session.getReservationCount()), "Demandes liees"),
+            buildDetailMetric("Suppression", session.getReservationCount() > 0 ? "Bloquee" : "Disponible", "Etat de suppression"),
+            buildDetailMetric("Tuteur", safeText(session.getTutor()), "ID " + session.getTutorId())
+        );
+
+        VBox descriptionCard = new VBox(8.0);
+        descriptionCard.setStyle("-fx-background-color: #f8fbff; -fx-border-color: #d8e4ff; -fx-border-radius: 14; -fx-background-radius: 14; -fx-padding: 16;");
+        Label descriptionTitle = new Label("Description");
+        descriptionTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #17356d;");
+        Label descriptionText = new Label(safeText(session.getDescription()));
+        descriptionText.setWrapText(true);
+        descriptionText.setStyle("-fx-text-fill: #334d78; -fx-font-size: 13px;");
+        descriptionCard.getChildren().addAll(descriptionTitle, descriptionText);
+
+        VBox policyCard = new VBox(8.0);
+        policyCard.setStyle("-fx-background-color: #f8fbff; -fx-border-color: #d8e4ff; -fx-border-radius: 14; -fx-background-radius: 14; -fx-padding: 16;");
+        Label policyTitle = new Label("Etat administratif");
+        policyTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #17356d;");
+        Label policyText = new Label(buildAdministrativeMessage(session));
+        policyText.setWrapText(true);
+        policyText.setStyle("-fx-text-fill: #334d78; -fx-font-size: 13px;");
+        policyCard.getChildren().addAll(policyTitle, policyText);
+
+        root.getChildren().addAll(header, metrics, descriptionCard, policyCard);
+        return root;
+    }
+
+    private VBox buildDetailMetric(String label, String value, String hint) {
+        VBox metricCard = new VBox(4.0);
+        metricCard.setPrefWidth(190.0);
+        metricCard.setStyle("-fx-background-color: #f8fbff; -fx-border-color: #d8e4ff; -fx-border-radius: 14; -fx-background-radius: 14; -fx-padding: 14;");
+
+        Label labelNode = new Label(label);
+        labelNode.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #6a80a8;");
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #17356d;");
+        Label hintNode = new Label(hint);
+        hintNode.setWrapText(true);
+        hintNode.setStyle("-fx-font-size: 11px; -fx-text-fill: #7a8db2;");
+
+        metricCard.getChildren().addAll(labelNode, valueNode, hintNode);
+        return metricCard;
+    }
+
+    private Label buildBadge(String text, String backgroundColor, String textColor) {
+        Label badge = new Label(text);
+        badge.setStyle(
+            "-fx-background-color: " + backgroundColor + "; "
+                + "-fx-text-fill: " + textColor + "; "
+                + "-fx-background-radius: 999; "
+                + "-fx-padding: 7 14 7 14; "
+                + "-fx-font-weight: bold;"
+        );
+        return badge;
+    }
+
+    private TableRow<AdminSession> buildSessionRow() {
+        TableRow<AdminSession> row = new TableRow<>();
+        row.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && !row.isEmpty()) {
+                showSessionDetails(row.getItem());
+            }
+        });
+        return row;
+    }
+
     private void updateSessionsCount() {
         int count = filteredSessions == null ? sessionService.getSessions().size() : filteredSessions.size();
         String suffix = count > 1 ? "seances affichees" : "seance affichee";
@@ -247,16 +378,36 @@ public class BackofficeSessionsController {
 
     private void showDatabaseStateIfNeeded() {
         if (!sessionService.hasDatabaseConnection()) {
-            updateDeleteActionState(null);
+            updateActionButtons(null);
             showFeedback("Base de donnees indisponible. Demarrez MySQL/XAMPP puis cliquez sur Actualiser.", false);
             return;
         }
         if (sessionService.getSessions().isEmpty()) {
-            updateDeleteActionState(null);
+            updateActionButtons(null);
             showFeedback("Aucune seance trouvee dans la base de donnees.", false);
             return;
         }
         hideFeedback();
+    }
+
+    private String buildAdministrativeMessage(AdminSession session) {
+        if (session.getReservationCount() > 0) {
+            return "Cette seance possede deja " + formatReservationCount(session.getReservationCount())
+                + ". La suppression reste bloquee tant que des reservations y sont rattachees.";
+        }
+        return "Aucune reservation liee. La suppression reste autorisee si l'admin confirme l'action.";
+    }
+
+    private String formatReservationCount(int reservationCount) {
+        if (reservationCount <= 0) {
+            return "0 reservation";
+        }
+        return reservationCount == 1 ? "1 reservation" : reservationCount + " reservations";
+    }
+
+    private String safeText(String value) {
+        String normalizedValue = normalize(value);
+        return normalizedValue.isBlank() ? "Non renseigne" : value.trim();
     }
 
     private void showFeedback(String message, boolean success) {
