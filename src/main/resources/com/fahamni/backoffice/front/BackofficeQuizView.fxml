@@ -5,6 +5,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -45,9 +46,9 @@
     </HBox>
 
     <HBox spacing="20.0">
-        <VBox spacing="12.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel">
+        <VBox spacing="12.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel" prefWidth="420.0" minWidth="400.0" maxWidth="440.0">
             <Label text="Liste des quiz" styleClass="backoffice-section-title"/>
-            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" prefWidth="400.0" maxWidth="440.0" styleClass="backoffice-table">
     <columns>
         <TableColumn fx:id="idColumn" text="ID"/>
         <TableColumn fx:id="titleColumn" text="Titre"/>
@@ -60,35 +61,42 @@
 </TableView>
         </VBox>
 
-        <VBox spacing="12.0" styleClass="backoffice-panel backoffice-form-panel" prefWidth="360.0" minWidth="320.0">
-            <Label text="Ajouter un quiz simple" styleClass="backoffice-section-title"/>
-            <Label text="Titre" styleClass="backoffice-form-label"/>
-            <TextField fx:id="titleField" promptText="Titre du quiz" styleClass="backoffice-form-input"/>
-            <Label text="Mot-clé" styleClass="backoffice-form-label"/>
-            <TextField fx:id="keywordField" promptText="Mot-clé" styleClass="backoffice-form-input"/>
-            <HBox spacing="10.0">
-                <Button text="💾 Enregistrer Quiz" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
-                <Button text="✏️ Modifier" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
-                <Button text="🗑️ Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
-                <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
-            </HBox>
-            <Separator/>
-            <Label text="Question 1" styleClass="backoffice-form-label"/>
-            <TextField fx:id="questionField" promptText="Question principale" styleClass="backoffice-form-input"/>
-            <Label text="Choix" styleClass="backoffice-form-label"/>
-            <TextField fx:id="choice1Field" promptText="Choix A" styleClass="backoffice-form-input"/>
-            <TextField fx:id="choice2Field" promptText="Choix B" styleClass="backoffice-form-input"/>
-            <TextField fx:id="choice3Field" promptText="Choix C" styleClass="backoffice-form-input"/>
-            <TextField fx:id="choice4Field" promptText="Choix D" styleClass="backoffice-form-input"/>
-            <Label text="Réponse correcte" styleClass="backoffice-form-label"/>
-            <ComboBox fx:id="correctChoiceComboBox" styleClass="backoffice-form-input"/>
-            <HBox spacing="10.0">
-                <Button text="+ Question" onAction="#handleAddQuestion" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
-                <Button text="Retirer" onAction="#handleRemoveLastQuestion" styleClass="backoffice-secondary-button"/>
-            </HBox>
-            <Label fx:id="questionsAddedLabel" text="0/5 questions" styleClass="backoffice-form-label"/>
-            <ListView fx:id="questionsListView" prefHeight="80.0" styleClass="backoffice-form-input"/>
-            <Label fx:id="feedbackLabel" text="" styleClass="backoffice-feedback" visible="false" managed="false" wrapText="true"/>
-        </VBox>
+        <ScrollPane fitToWidth="true" fitToHeight="false" prefWidth="620.0" minWidth="580.0" maxWidth="660.0" styleClass="backoffice-panel backoffice-form-panel">
+            <content>
+                <VBox spacing="12.0" fillWidth="true" prefWidth="620.0">
+                    <Label text="Ajouter un quiz simple" styleClass="backoffice-section-title"/>
+                    <Label text="Titre" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="titleField" promptText="Titre du quiz" styleClass="backoffice-form-input"/>
+                    <Label text="Mot-clé" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="keywordField" promptText="Mot-clé" styleClass="backoffice-form-input"/>
+                    <Label text="Actions Quiz" styleClass="backoffice-form-label"/>
+                    <HBox spacing="10.0" alignment="CENTER">
+                        <Button text="Enregistrer" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                        <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
+                    <HBox spacing="10.0" alignment="CENTER">
+                        <Button text="Modifier" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                        <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
+                    <Separator/>
+                    <Label text="Question 1" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="questionField" promptText="Question principale" styleClass="backoffice-form-input"/>
+                    <Label text="Choix" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="choice1Field" promptText="Choix A" styleClass="backoffice-form-input"/>
+                    <TextField fx:id="choice2Field" promptText="Choix B" styleClass="backoffice-form-input"/>
+                    <TextField fx:id="choice3Field" promptText="Choix C" styleClass="backoffice-form-input"/>
+                    <TextField fx:id="choice4Field" promptText="Choix D" styleClass="backoffice-form-input"/>
+                    <Label text="Réponse correcte" styleClass="backoffice-form-label"/>
+                    <ComboBox fx:id="correctChoiceComboBox" styleClass="backoffice-form-input"/>
+                    <HBox spacing="10.0">
+                        <Button text="+ Question" onAction="#handleAddQuestion" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Retirer" onAction="#handleRemoveLastQuestion" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+                    <Label fx:id="questionsAddedLabel" text="0/5 questions" styleClass="backoffice-form-label"/>
+                    <ListView fx:id="questionsListView" prefHeight="100.0" minHeight="80.0" maxHeight="120.0" styleClass="backoffice-form-input"/>
+                    <Label fx:id="feedbackLabel" text="" styleClass="backoffice-feedback" visible="false" managed="false" wrapText="true"/>
+                </VBox>
+            </content>
+        </ScrollPane>
     </HBox>
 </VBox>
