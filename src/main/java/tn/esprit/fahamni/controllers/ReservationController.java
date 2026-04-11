@@ -528,12 +528,23 @@ public class ReservationController {
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
 
-        Button acceptButton = new Button(request.isPending() ? "Accepter" : mapReservationRequestStatusLabel(request.status()));
-        acceptButton.getStyleClass().addAll("action-button", request.isPending() ? "primary" : "secondary");
-        acceptButton.setDisable(!request.isPending());
+        Button acceptButton = new Button("Accepter");
+        acceptButton.getStyleClass().addAll("action-button", "primary");
         acceptButton.setOnAction(event -> acceptTutorReservationRequest(request));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer, acceptButton);
+        Button refuseButton = new Button("Refuser");
+        refuseButton.getStyleClass().addAll("action-button", "danger");
+        refuseButton.setOnAction(event -> confirmRefuseTutorReservationRequest(request));
+
+        actionRow.getChildren().addAll(idChip, actionSpacer);
+        if (request.isPending()) {
+            actionRow.getChildren().addAll(acceptButton, refuseButton);
+        } else {
+            Button statusButton = new Button(mapReservationRequestStatusLabel(request.status()));
+            statusButton.getStyleClass().addAll("action-button", "secondary");
+            statusButton.setDisable(true);
+            actionRow.getChildren().add(statusButton);
+        }
         card.getChildren().addAll(headerRow, studentLabel, sessionLabel, actionRow);
         return card;
     }
@@ -541,6 +552,36 @@ public class ReservationController {
     private void acceptTutorReservationRequest(TutorReservationRequest request) {
         hideTutorReservationRequestsFeedback();
         OperationResult result = reservationService.acceptReservation(
+            request.id(),
+            TemporaryUserContext.getCurrentTutorId()
+        );
+        loadSessionDashboard();
+        loadTutorReservationRequests();
+        showTutorReservationRequestsFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void confirmRefuseTutorReservationRequest(TutorReservationRequest request) {
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType refuseButton = new ButtonType("Refuser", ButtonBar.ButtonData.OK_DONE);
+
+        Alert confirmationAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmationAlert.setTitle("Refus de reservation");
+        confirmationAlert.setHeaderText("Confirmer le refus");
+        confirmationAlert.setContentText(
+            "La demande de " + safeText(request.participantName())
+                + " pour la seance \"" + safeText(request.seanceTitle()) + "\" sera marquee comme refusee."
+        );
+        confirmationAlert.getButtonTypes().setAll(cancelButton, refuseButton);
+
+        Optional<ButtonType> choice = confirmationAlert.showAndWait();
+        if (choice.isPresent() && choice.get() == refuseButton) {
+            refuseTutorReservationRequest(request);
+        }
+    }
+
+    private void refuseTutorReservationRequest(TutorReservationRequest request) {
+        hideTutorReservationRequestsFeedback();
+        OperationResult result = reservationService.refuseReservation(
             request.id(),
             TemporaryUserContext.getCurrentTutorId()
         );
@@ -601,7 +642,7 @@ public class ReservationController {
             buildDetailMetric("Fin", formatDateTimeOrPlaceholder(endAt), "Fin calculee"),
             buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance"),
             buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
-            buildDetailMetric("Reservations", String.valueOf(reservationStats.total()), "Total lie a la seance"),
+            buildDetailMetric("Reservations", String.valueOf(reservationStats.total()), "Actives"),
             buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId())
         );
 
@@ -625,7 +666,7 @@ public class ReservationController {
         statusRow.getChildren().addAll(
             buildReservationStatusChip("En attente", reservationStats.pending()),
             buildReservationStatusChip("Acceptees", reservationStats.accepted()),
-            buildReservationStatusChip("Payees", reservationStats.paid())
+            buildReservationStatusChip("Refusees", reservationStats.refused())
         );
         occupancyCard.getChildren().addAll(occupancyHeader, occupancyProgress, statusRow);
 
@@ -920,7 +961,7 @@ public class ReservationController {
     private String mapReservationRequestStatusLabel(int status) {
         return switch (status) {
             case ReservationService.STATUS_ACCEPTED -> "Acceptee";
-            case ReservationService.STATUS_PAID -> "Payee";
+            case ReservationService.STATUS_REFUSED -> "Refusee";
             default -> "En attente";
         };
     }
@@ -928,7 +969,7 @@ public class ReservationController {
     private String mapReservationRequestStatusStyle(int status) {
         return switch (status) {
             case ReservationService.STATUS_ACCEPTED -> "confirmed";
-            case ReservationService.STATUS_PAID -> "completed";
+            case ReservationService.STATUS_REFUSED -> "refused";
             default -> "pending";
         };
     }
