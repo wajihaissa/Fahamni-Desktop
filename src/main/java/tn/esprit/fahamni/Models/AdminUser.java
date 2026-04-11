@@ -2,16 +2,26 @@ package tn.esprit.fahamni.Models;
 
 public class AdminUser {
 
+    private int id;
     private String fullName;
     private String email;
     private String role;
     private String status;
 
-    public AdminUser(String fullName, String email, String role, String status) {
+    public AdminUser(int id, String fullName, String email, String role, String status) {
+        this.id = id;
         this.fullName = fullName;
         this.email = email;
         this.role = role;
         this.status = status;
+    }
+
+    public AdminUser(String fullName, String email, String role, String status) {
+        this(0, fullName, email, role, status);
+    }
+
+    public int getId() {
+        return id;
     }
 
     public String getFullName() {
