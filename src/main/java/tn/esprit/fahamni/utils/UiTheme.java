@@ -330,6 +330,10 @@ public final class UiTheme {
             -fx-padding: 18px;
         }
 
+        .backoffice-users-directory-panel {
+            -fx-padding: 20px;
+        }
+
         .backoffice-users-section-title-light {
             -fx-font-size: 20px;
             -fx-font-weight: bold;
@@ -399,10 +403,29 @@ public final class UiTheme {
         .backoffice-users-table {
             -fx-background-color: rgba(255, 255, 255, 0.98);
             -fx-border-color: rgba(255, 255, 255, 0.08);
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
         }
 
         .backoffice-users-table .column-header-background, .backoffice-users-table .filler {
             -fx-background-color: rgba(248, 251, 255, 0.96);
+        }
+
+        .backoffice-users-table .column-header .label {
+            -fx-text-fill: #3f587a;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+        }
+
+        .backoffice-users-table .table-row-cell {
+            -fx-cell-size: 74px;
+            -fx-background-color: rgba(255, 255, 255, 0.98);
+            -fx-border-color: rgba(221, 231, 248, 0.85);
+            -fx-border-width: 0 0 1 0;
+        }
+
+        .backoffice-users-table .table-row-cell:selected {
+            -fx-background-color: #edf4ff;
         }
 
         .backoffice-role-chip, .backoffice-status-chip, .backoffice-risk-chip {
@@ -450,7 +473,7 @@ public final class UiTheme {
             -fx-text-fill: #2b5fb7;
             -fx-font-size: 11px;
             -fx-font-weight: bold;
-            -fx-padding: 7px 10px;
+            -fx-padding: 7px 9px;
             -fx-cursor: hand;
         }
 
@@ -466,6 +489,11 @@ public final class UiTheme {
 
         .backoffice-users-editor-panel {
             -fx-padding: 20px;
+        }
+
+        .backoffice-users-editor-panel .backoffice-section-title,
+        .backoffice-users-editor-panel .backoffice-panel-copy {
+            -fx-text-fill: #2d4c79;
         }
 
         .profile-settings-shell {

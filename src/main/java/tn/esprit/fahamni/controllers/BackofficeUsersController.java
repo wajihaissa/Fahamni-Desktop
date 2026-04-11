@@ -8,13 +8,13 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -26,7 +26,7 @@ import tn.esprit.fahamni.utils.OperationResult;
 public class BackofficeUsersController {
 
     @FXML
-    private ListView<AdminUser> pendingRegistrationsList;
+    private VBox pendingRegistrationsContainer;
 
     @FXML
     private TableView<AdminUser> usersTable;
@@ -179,6 +179,8 @@ public class BackofficeUsersController {
     }
 
     private void configureTable() {
+        usersTable.setFixedCellSize(74.0);
+        usersTable.setPlaceholder(new Label("No users found for the current filters."));
         fullNameColumn.setCellValueFactory(new PropertyValueFactory<>("fullName"));
         emailColumn.setCellValueFactory(new PropertyValueFactory<>("email"));
         roleColumn.setCellValueFactory(new PropertyValueFactory<>("role"));
@@ -199,9 +201,12 @@ public class BackofficeUsersController {
 
                 AdminUser user = getTableView().getItems().get(getIndex());
                 Label riskBadge = createRiskBadge(user);
-                Label riskReason = new Label(item);
-                riskReason.setWrapText(true);
+                Label riskReason = new Label(compactFraudReason(item));
+                riskReason.setWrapText(false);
+                riskReason.setTextOverrun(OverrunStyle.ELLIPSIS);
+                riskReason.setMaxWidth(180.0);
                 riskReason.getStyleClass().add("backoffice-risk-copy");
+                Tooltip.install(riskReason, new Tooltip(item));
                 VBox box = new VBox(6.0, riskBadge, riskReason);
                 setGraphic(box);
             }
@@ -209,8 +214,8 @@ public class BackofficeUsersController {
 
         actionsColumn.setCellFactory(column -> new TableCell<>() {
             private final Button editButton = new Button("Edit");
-            private final Button activateButton = new Button("Activate");
-            private final Button suspendButton = new Button("Suspend");
+            private final Button activateButton = new Button("On");
+            private final Button suspendButton = new Button("Off");
             private final HBox actionsBox = new HBox(8.0, editButton, activateButton, suspendButton);
 
             {
@@ -285,57 +290,7 @@ public class BackofficeUsersController {
     }
 
     private void configurePendingRegistrations() {
-        pendingRegistrationsList.setItems(pendingUsers);
-        pendingRegistrationsList.setCellFactory(list -> new ListCell<>() {
-            @Override
-            protected void updateItem(AdminUser user, boolean empty) {
-                super.updateItem(user, empty);
-                if (empty || user == null) {
-                    setGraphic(null);
-                    setText(null);
-                    return;
-                }
-
-                VBox identityBox = new VBox(
-                    6.0,
-                    createCellLabel(user.getFullName(), "backoffice-pending-primary"),
-                    createCellLabel(user.getEmail(), "backoffice-pending-secondary")
-                );
-
-                VBox requestBox = new VBox(
-                    6.0,
-                    createCellLabel(user.getCreatedAt(), "backoffice-pending-primary"),
-                    createCellLabel(user.getRole(), "backoffice-pending-secondary")
-                );
-
-                Label riskBadge = createRiskBadge(user);
-                Label reasonLabel = createCellLabel(user.getFraudReason(), "backoffice-pending-secondary");
-                reasonLabel.setWrapText(true);
-                Button reasonButton = new Button("View full reasons");
-                reasonButton.getStyleClass().add("backoffice-pending-link-button");
-                reasonButton.setOnAction(event -> showFeedback(user.getFraudReason(), true));
-                VBox riskBox = new VBox(6.0, riskBadge, reasonLabel, reasonButton);
-
-                Button acceptButton = new Button("Accept");
-                acceptButton.getStyleClass().add("backoffice-primary-button");
-                acceptButton.setOnAction(event -> afterInlineAction(userService.activateUser(user)));
-
-                Button declineButton = new Button("Decline");
-                declineButton.getStyleClass().add("backoffice-secondary-button");
-                declineButton.setOnAction(event -> afterInlineAction(userService.deleteUser(user)));
-                HBox actionBox = new HBox(8.0, acceptButton, declineButton);
-
-                HBox row = new HBox(18.0, wrapBox(identityBox), wrapBox(requestBox), wrapBox(riskBox), actionBox);
-                row.setAlignment(Pos.CENTER_LEFT);
-                HBox.setHgrow(identityBox, Priority.ALWAYS);
-                HBox.setHgrow(requestBox, Priority.ALWAYS);
-                HBox.setHgrow(riskBox, Priority.ALWAYS);
-
-                VBox container = new VBox(row);
-                container.getStyleClass().add("backoffice-pending-card");
-                setGraphic(container);
-            }
-        });
+        refreshPendingRegistrations();
     }
 
     private void configureEditorDefaults() {
@@ -389,6 +344,19 @@ public class BackofficeUsersController {
             badge.getStyleClass().add("medium");
         }
         return badge;
+    }
+
+    private String compactFraudReason(String reason) {
+        if (reason == null) {
+            return "";
+        }
+
+        String normalized = reason.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= 52) {
+            return normalized;
+        }
+
+        return normalized.substring(0, 49) + "...";
     }
 
     private Label createCellLabel(String text, String styleClass) {
@@ -451,7 +419,58 @@ public class BackofficeUsersController {
 
     private void refreshPendingRegistrations() {
         pendingUsers.setAll(userService.getPendingUsersPreview());
+        pendingRegistrationsContainer.getChildren().clear();
+
+        if (pendingUsers.isEmpty()) {
+            Label emptyLabel = new Label("No recent registrations to review right now.");
+            emptyLabel.getStyleClass().add("backoffice-users-section-copy-light");
+            pendingRegistrationsContainer.getChildren().add(emptyLabel);
+        } else {
+            for (AdminUser user : pendingUsers) {
+                pendingRegistrationsContainer.getChildren().add(createPendingCard(user));
+            }
+        }
+
         totalUsersLabel.setText(userService.getUsers().size() + " users");
+    }
+
+    private VBox createPendingCard(AdminUser user) {
+        VBox identityBox = new VBox(
+            6.0,
+            createCellLabel(user.getFullName(), "backoffice-pending-primary"),
+            createCellLabel(user.getEmail(), "backoffice-pending-secondary")
+        );
+
+        VBox requestBox = new VBox(
+            6.0,
+            createCellLabel(user.getCreatedAt(), "backoffice-pending-primary"),
+            createCellLabel(user.getRole(), "backoffice-pending-secondary")
+        );
+
+        Label riskBadge = createRiskBadge(user);
+        Label reasonLabel = createCellLabel(user.getFraudReason(), "backoffice-pending-secondary");
+        reasonLabel.setWrapText(true);
+        Button reasonButton = new Button("View full reasons");
+        reasonButton.getStyleClass().add("backoffice-pending-link-button");
+        reasonButton.setOnAction(event -> showFeedback(user.getFraudReason(), true));
+        VBox riskBox = new VBox(6.0, riskBadge, reasonLabel, reasonButton);
+
+        Button acceptButton = new Button("Accept");
+        acceptButton.getStyleClass().add("backoffice-primary-button");
+        acceptButton.setOnAction(event -> afterInlineAction(userService.activateUser(user)));
+
+        Button declineButton = new Button("Decline");
+        declineButton.getStyleClass().add("backoffice-secondary-button");
+        declineButton.setOnAction(event -> afterInlineAction(userService.deleteUser(user)));
+        HBox actionBox = new HBox(8.0, acceptButton, declineButton);
+        actionBox.setAlignment(Pos.CENTER_LEFT);
+
+        HBox row = new HBox(18.0, wrapBox(identityBox), wrapBox(requestBox), wrapBox(riskBox), actionBox);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        VBox card = new VBox(row);
+        card.getStyleClass().add("backoffice-pending-card");
+        return card;
     }
 
     private void updateDirectorySummary() {
