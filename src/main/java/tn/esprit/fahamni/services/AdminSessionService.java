@@ -31,6 +31,10 @@ public class AdminSessionService {
         return sessions;
     }
 
+    public boolean hasDatabaseConnection() {
+        return seanceService.hasDatabaseConnection();
+    }
+
     public OperationResult deleteSession(AdminSession session) {
         if (session == null || session.getId() <= 0) {
             return OperationResult.failure("Selectionnez une seance a supprimer.");

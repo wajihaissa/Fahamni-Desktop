@@ -34,12 +34,16 @@ public class SeanceService implements IServices<Seance> {
         "Biology"
     );
 
-    private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
+
+    public boolean hasDatabaseConnection() {
+        return getConnection() != null;
+    }
 
     public List<String> getSubjects() {
         List<String> subjects = new ArrayList<>();
         subjects.add(getDefaultSubject());
+        Connection cnx = getConnection();
 
         if (cnx == null) {
             subjects.addAll(FALLBACK_SUBJECTS);
@@ -91,6 +95,7 @@ public class SeanceService implements IServices<Seance> {
     @Override
     public List<Seance> getAll() {
         List<Seance> seances = new ArrayList<>();
+        Connection cnx = getConnection();
         if (cnx == null) {
             return seances;
         }
@@ -236,6 +241,14 @@ public class SeanceService implements IServices<Seance> {
             throw new IllegalArgumentException("Selectionnez une seance valide.");
         }
 
+        int linkedReservations = countReservationsForSeance(seance.getId());
+        if (linkedReservations > 0) {
+            String suffix = linkedReservations > 1 ? " reservations." : " reservation.";
+            throw new IllegalStateException(
+                "Suppression impossible: cette seance possede " + linkedReservations + suffix
+            );
+        }
+
         String sql = "DELETE FROM seance WHERE id = ?";
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             pst.setInt(1, seance.getId());
@@ -248,6 +261,18 @@ public class SeanceService implements IServices<Seance> {
                 throw new IllegalStateException("Suppression impossible: cette seance est deja liee a une reservation.", e);
             }
             throw new IllegalStateException("Suppression impossible: " + e.getMessage(), e);
+        }
+    }
+
+    private int countReservationsForSeance(int seanceId) {
+        String sql = "SELECT COUNT(*) FROM reservation WHERE seance_id = ?";
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Verification des reservations impossible: " + e.getMessage(), e);
         }
     }
 
@@ -364,7 +389,12 @@ public class SeanceService implements IServices<Seance> {
         return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
+    private Connection getConnection() {
+        return MyDataBase.getInstance().getCnx();
+    }
+
     private Connection requireConnection() {
+        Connection cnx = getConnection();
         if (cnx == null) {
             throw new IllegalStateException("Connexion a la base indisponible.");
         }

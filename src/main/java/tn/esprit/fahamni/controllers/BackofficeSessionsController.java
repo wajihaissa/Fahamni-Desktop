@@ -97,7 +97,7 @@ public class BackofficeSessionsController {
         filteredSessions.addListener((ListChangeListener<AdminSession>) change -> updateSessionsCount());
 
         updateSessionsCount();
-        hideFeedback();
+        showDatabaseStateIfNeeded();
     }
 
     @FXML
@@ -106,7 +106,7 @@ public class BackofficeSessionsController {
         applySessionFilters();
         sessionsTable.refresh();
         updateSessionsCount();
-        hideFeedback();
+        showDatabaseStateIfNeeded();
     }
 
     @FXML
@@ -200,6 +200,18 @@ public class BackofficeSessionsController {
         int count = filteredSessions == null ? sessionService.getSessions().size() : filteredSessions.size();
         String suffix = count > 1 ? "seances affichees" : "seance affichee";
         sessionsCountLabel.setText(count + " " + suffix);
+    }
+
+    private void showDatabaseStateIfNeeded() {
+        if (!sessionService.hasDatabaseConnection()) {
+            showFeedback("Base de donnees indisponible. Demarrez MySQL/XAMPP puis cliquez sur Actualiser.", false);
+            return;
+        }
+        if (sessionService.getSessions().isEmpty()) {
+            showFeedback("Aucune seance trouvee dans la base de donnees.", false);
+            return;
+        }
+        hideFeedback();
     }
 
     private void showFeedback(String message, boolean success) {
