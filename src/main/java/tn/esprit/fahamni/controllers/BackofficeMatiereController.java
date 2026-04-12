@@ -2,18 +2,23 @@ package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.MatiereService;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.SceneManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.AnchorPane;
 
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -170,8 +175,32 @@ public class BackofficeMatiereController implements Initializable {
 
     @FXML
     private void openCategories(ActionEvent event) {
-        System.out.println("Opening categories view...");
-        // TODO: Implement actual view swap based on existing navigation logic
+        try {
+            Node categoryView = SceneManager.loadView(
+                Main.class,
+                SceneManager.backofficeView("BackofficeCategoryView.fxml")
+            );
+
+            Node source = (Node) event.getSource();
+            AnchorPane contentPane = (AnchorPane) source.getScene().lookup("#contentPane");
+            if (contentPane == null) {
+                return;
+            }
+
+            contentPane.getChildren().clear();
+            AnchorPane.setTopAnchor(categoryView, 0.0);
+            AnchorPane.setBottomAnchor(categoryView, 0.0);
+            AnchorPane.setLeftAnchor(categoryView, 0.0);
+            AnchorPane.setRightAnchor(categoryView, 0.0);
+            contentPane.getChildren().add(categoryView);
+
+            Label pageTitle = (Label) source.getScene().lookup("#pageTitle");
+            if (pageTitle != null) {
+                pageTitle.setText("Gestion des categories");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void refreshTable() {
