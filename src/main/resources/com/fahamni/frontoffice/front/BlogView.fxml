@@ -100,7 +100,7 @@
                            -fx-cursor: hand; -fx-border-color: #7f8c8d; -fx-border-radius: 20;"/>
             <!-- Spacer pour pousser le bouton à droite -->
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="+ Créer un article"
+            <Button fx:id="createArticleBtn" text="+ Créer un article"
                     focusTraversable="false"
                     onAction="#openCreateForm"
                     style="-fx-background-color: linear-gradient(to right, #11998e, #38ef7d);

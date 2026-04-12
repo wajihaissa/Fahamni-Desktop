@@ -44,6 +44,7 @@ public class BlogController {
     @FXML private VBox blogsContainer;
     @FXML private HBox paginationBar;
     @FXML private Label notifBellBadge;
+    @FXML private Button createArticleBtn;
     @FXML private Button btnTous;
     @FXML private Button btnMath;
     @FXML private Button btnScience;
@@ -87,6 +88,17 @@ public class BlogController {
         // Badge cloche + bannières
         refreshBellBadge();
         showTuteurNotifications();
+
+        // Bouton "Créer un article" : visible uniquement pour tuteurs et admins
+        tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
+        boolean canCreate = u != null && (
+            u.getRole() == tn.esprit.fahamni.Models.UserRole.TUTOR ||
+            u.getRole() == tn.esprit.fahamni.Models.UserRole.ADMIN
+        );
+        if (createArticleBtn != null) {
+            createArticleBtn.setVisible(canCreate);
+            createArticleBtn.setManaged(canCreate);
+        }
     }
 
     /** Affiche un toast temporaire (3 s) pour chaque notification non lue du tuteur */
