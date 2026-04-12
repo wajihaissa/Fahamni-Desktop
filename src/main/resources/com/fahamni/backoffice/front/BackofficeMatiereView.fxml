@@ -20,75 +20,89 @@
         <Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/>
     </padding>
 
-    <HBox alignment="CENTER_LEFT" spacing="10.0">
-        <Label text="Gestion des mati&#232;res" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
-        <Region HBox.hgrow="ALWAYS"/>
-        <Button fx:id="gererCategoriesButton"
-                text="G&#233;rer les Cat&#233;gories de cette mati&#232;re"
-                onAction="#openCategories"
-                style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-    </HBox>
+    <!-- LIST VIEW -->
+    <VBox fx:id="listView" VBox.vgrow="ALWAYS" spacing="10.0">
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <Label text="Gestion des mati&#232;res" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Ajouter une Mati&#232;re"
+                    onAction="#handleCreateNew"
+                    style="-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+            <Button fx:id="gererCategoriesButton"
+                    text="Cat&#233;gories"
+                    onAction="#openCategories"
+                    style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+        </HBox>
 
-    <TableView fx:id="matiereTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="idColumn" prefWidth="70.0" text="ID"/>
-            <TableColumn fx:id="titreColumn" prefWidth="170.0" text="Titre"/>
-            <TableColumn fx:id="descriptionColumn" prefWidth="250.0" text="Description"/>
-            <TableColumn fx:id="structureColumn" prefWidth="250.0" text="Structure"/>
-            <TableColumn fx:id="createdAtColumn" prefWidth="180.0" text="Created At"/>
-        </columns>
-    </TableView>
+        <TableView fx:id="matiereTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="idColumn" prefWidth="70.0" text="ID"/>
+                <TableColumn fx:id="titreColumn" prefWidth="170.0" text="Titre"/>
+                <TableColumn fx:id="descriptionColumn" prefWidth="250.0" text="Description"/>
+                <TableColumn fx:id="structureColumn" prefWidth="250.0" text="Structure"/>
+                <TableColumn fx:id="createdAtColumn" prefWidth="180.0" text="Created At"/>
+            </columns>
+        </TableView>
+    </VBox>
 
-    <VBox spacing="10.0">
-        <HBox spacing="20.0">
-            <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                <Label text="Titre de la mati&#232;re" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="titreField" promptText="Titre"/>
+    <!-- EDITOR VIEW -->
+    <VBox fx:id="editorView" VBox.vgrow="ALWAYS" spacing="20.0" visible="false" managed="false">
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <Button text="&#x2190; Retour" onAction="#showList" style="-fx-background-color: #6b7280; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+            <Label text="&#201;diter Mati&#232;re" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+        </HBox>
 
-                <Label text="Description" style="-fx-font-weight: bold;"/>
-                <TextArea fx:id="descriptionArea" promptText="Description" prefRowCount="3" wrapText="true"/>
-
-                <Label text="Chemin de l'image de couverture" style="-fx-font-weight: bold;"/>
-                <HBox spacing="10.0">
-                    <Button fx:id="chooseImageButton"
-                            text="Choisir une image"
-                            onAction="#chooseImage"
-                            style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-                    <Label fx:id="imagePathLabel" text="Aucune image s&#233;lectionn&#233;e"/>
-                </HBox>
-            </VBox>
-
-            <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+        <VBox spacing="10.0">
+            <HBox spacing="20.0">
                 <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                    <HBox alignment="CENTER_LEFT" spacing="10.0">
-                        <Label text="Contenu du Cours (Chapitres)" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="+ Ajouter un Chapitre" onAction="#addChapterUI" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;"/>
-                    </HBox>
-                    <ScrollPane fitToWidth="true" prefHeight="300.0" style="-fx-background-color: transparent; -fx-border-color: #e5e7eb; -fx-border-radius: 5;">
-                        <VBox fx:id="courseBuilderContainer" spacing="15.0" style="-fx-padding: 10; -fx-background-color: #f9fafb;"/>
-                    </ScrollPane>
-                </VBox>
-            </VBox>
-        </HBox>
+                    <Label text="Titre de la mati&#232;re" style="-fx-font-weight: bold;"/>
+                    <TextField fx:id="titreField" promptText="Titre"/>
 
-        <HBox alignment="CENTER" spacing="10.0">
-            <Button fx:id="ajouterButton"
-                    text="Ajouter"
-                    onAction="#addMatiere"
-                    style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-            <Button fx:id="modifierButton"
-                    text="Modifier"
-                    onAction="#updateMatiere"
-                    style="-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-            <Button fx:id="supprimerButton"
-                    text="Supprimer"
-                    onAction="#deleteMatiere"
-                    style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-            <Button fx:id="viderButton"
-                    text="Vider"
-                    onAction="#clearForm"
-                    style="-fx-background-color: #6b7280; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-        </HBox>
+                    <Label text="Description" style="-fx-font-weight: bold;"/>
+                    <TextArea fx:id="descriptionArea" promptText="Description" prefRowCount="3" wrapText="true"/>
+
+                    <Label text="Chemin de l'image de couverture" style="-fx-font-weight: bold;"/>
+                    <HBox spacing="10.0">
+                        <Button fx:id="chooseImageButton"
+                                text="Choisir une image"
+                                onAction="#chooseImage"
+                                style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                        <Label fx:id="imagePathLabel" text="Aucune image s&#233;lectionn&#233;e"/>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="Contenu du Cours (Chapitres)" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="+ Ajouter un Chapitre" onAction="#addChapterUI" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                        </HBox>
+                        <ScrollPane fitToWidth="true" prefHeight="300.0" style="-fx-background-color: transparent; -fx-border-color: #e5e7eb; -fx-border-radius: 5;">
+                            <VBox fx:id="courseBuilderContainer" spacing="15.0" style="-fx-padding: 10; -fx-background-color: #f9fafb;"/>
+                        </ScrollPane>
+                    </VBox>
+                </VBox>
+            </HBox>
+
+            <HBox alignment="CENTER" spacing="10.0">
+                <Button fx:id="ajouterButton"
+                        text="Ajouter"
+                        onAction="#addMatiere"
+                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                <Button fx:id="modifierButton"
+                        text="Modifier"
+                        onAction="#updateMatiere"
+                        style="-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                <Button fx:id="supprimerButton"
+                        text="Supprimer"
+                        onAction="#deleteMatiere"
+                        style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                <Button fx:id="viderButton"
+                        text="Vider"
+                        onAction="#clearForm"
+                        style="-fx-background-color: #6b7280; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+            </HBox>
+        </VBox>
     </VBox>
 </VBox>

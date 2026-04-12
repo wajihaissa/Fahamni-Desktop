@@ -38,6 +38,12 @@ public class BackofficeMatiereController implements Initializable {
     private TableView<Matiere> matiereTable;
 
     @FXML
+    private VBox listView;
+
+    @FXML
+    private VBox editorView;
+
+    @FXML
     private TableColumn<Matiere, Integer> idColumn;
 
     @FXML
@@ -106,7 +112,10 @@ public class BackofficeMatiereController implements Initializable {
                     setGraphic(null);
                 } else {
                     btn.setOnAction(e -> {
+                        Matiere matiere = getTableView().getItems().get(getIndex());
                         matiereTable.getSelectionModel().select(getIndex());
+                        populateForm(matiere);
+                        showEditor();
                     });
                     setGraphic(btn);
                 }
@@ -142,7 +151,7 @@ public class BackofficeMatiereController implements Initializable {
 
         matiereService.add(matiere);
         refreshTable();
-        clearInputs();
+        showList();
     }
 
     @FXML
@@ -159,7 +168,7 @@ public class BackofficeMatiereController implements Initializable {
 
         matiereService.update(selectedMatiere);
         refreshTable();
-        clearInputs();
+        showList();
     }
 
     @FXML
@@ -171,7 +180,7 @@ public class BackofficeMatiereController implements Initializable {
 
         matiereService.delete(selectedMatiere);
         refreshTable();
-        clearInputs();
+        showList();
     }
 
     @FXML
@@ -250,6 +259,29 @@ public class BackofficeMatiereController implements Initializable {
         courseBuilderContainer.getChildren().clear();
         selectedImagePath = null;
         imagePathLabel.setText("Aucune image s\u00e9lectionn\u00e9e");
+    }
+
+    private void showEditor() {
+        listView.setVisible(false);
+        listView.setManaged(false);
+        editorView.setVisible(true);
+        editorView.setManaged(true);
+    }
+
+    @FXML
+    private void showList() {
+        editorView.setVisible(false);
+        editorView.setManaged(false);
+        listView.setVisible(true);
+        listView.setManaged(true);
+        clearInputs();
+        refreshTable();
+    }
+
+    @FXML
+    private void handleCreateNew() {
+        clearInputs();
+        showEditor();
     }
 
     @FXML
