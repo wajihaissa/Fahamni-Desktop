@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
@@ -58,8 +59,16 @@
             </VBox>
 
             <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                <Label text="Structure (JSON)" style="-fx-font-weight: bold;"/>
-                <TextArea fx:id="structureArea" promptText="Structure (JSON)" prefRowCount="4" wrapText="true"/>
+                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label text="Contenu du Cours (Chapitres)" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="+ Ajouter un Chapitre" onAction="#addChapterUI" style="-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                    </HBox>
+                    <ScrollPane fitToWidth="true" prefHeight="300.0" style="-fx-background-color: transparent; -fx-border-color: #e5e7eb; -fx-border-radius: 5;">
+                        <VBox fx:id="courseBuilderContainer" spacing="15.0" style="-fx-padding: 10; -fx-background-color: #f9fafb;"/>
+                    </ScrollPane>
+                </VBox>
             </VBox>
         </HBox>
 
