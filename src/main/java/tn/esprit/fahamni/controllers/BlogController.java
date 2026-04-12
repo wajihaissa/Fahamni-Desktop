@@ -89,12 +89,9 @@ public class BlogController {
         refreshBellBadge();
         showTuteurNotifications();
 
-        // Bouton "Créer un article" : visible uniquement pour tuteurs et admins
+        // Bouton "Creer un article" : visible uniquement pour les tuteurs
         tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
-        boolean canCreate = u != null && (
-            u.getRole() == tn.esprit.fahamni.Models.UserRole.TUTOR ||
-            u.getRole() == tn.esprit.fahamni.Models.UserRole.ADMIN
-        );
+        boolean canCreate = u != null && u.getRole() == tn.esprit.fahamni.Models.UserRole.TUTOR;
         if (createArticleBtn != null) {
             createArticleBtn.setVisible(canCreate);
             createArticleBtn.setManaged(canCreate);
@@ -386,7 +383,6 @@ public class BlogController {
                     && !currentUserName.equals("Utilisateur")
                     && blog.getPublishedBy().trim().equalsIgnoreCase(currentUserName.trim()));
 
-        System.out.println("DEBUG -> isMyArticle=" + isMyArticle);
         boolean alreadyLiked = blogService.hasUserLiked(blog.getId(), dbUserId);
 
         Separator sepAct = new Separator(); sepAct.setStyle("-fx-opacity: 0.15;");
@@ -1439,7 +1435,7 @@ public class BlogController {
                 }
             }
         } catch (Exception ignored) {}
-        return 1; // fallback ultime
+        return 0;
     }
 
     private void refreshBellBadge() {

@@ -71,7 +71,7 @@ public class AdminArticlesService {
             Connection c = cnx();
             if (c == null) return;
             String titre = "", auteur = "";
-            String[] nameCols = {"fullName", "full_name", "name", "username"};
+            String[] nameCols = {"full_name", "fullName", "name", "username"};
             for (String col : nameCols) {
                 try (PreparedStatement ps = c.prepareStatement(
                         "SELECT b.titre, u." + col + " AS pub FROM blog b " +
@@ -131,7 +131,7 @@ public class AdminArticlesService {
             }
 
             // Étape 3 : publisher_id NULL → chercher par nom via user table (JOIN sur publisher_name)
-            String[] nameCols = {"fullName", "full_name", "name", "username"};
+            String[] nameCols = {"full_name", "fullName", "name", "username"};
             for (String col : nameCols) {
                 try (PreparedStatement ps = c.prepareStatement(
                         "SELECT u.id FROM blog b JOIN user u ON u." + col + " = " +
@@ -175,7 +175,7 @@ public class AdminArticlesService {
 
     /** Cherche l'id d'un utilisateur par son nom complet */
     private int findUserIdByName(Connection c, String name) {
-        String[] nameCols = {"fullName", "full_name", "name", "username"};
+        String[] nameCols = {"full_name", "fullName", "name", "username"};
         for (String col : nameCols) {
             try (PreparedStatement ps = c.prepareStatement(
                     "SELECT id FROM user WHERE " + col + " = ? LIMIT 1")) {
@@ -204,7 +204,7 @@ public class AdminArticlesService {
         Connection c = cnx();
         if (c == null) return new ArrayList<>();
         List<Blog> result = new ArrayList<>();
-        String[] userCols = {"fullName", "full_name", "name", "username"};
+        String[] userCols = {"full_name", "fullName", "name", "username"};
         for (String col : userCols) {
             result.clear();
             String sql = status == null

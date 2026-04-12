@@ -33,7 +33,7 @@ public class AuthService {
             return null;
         }
 
-        String[] nameCols = {"fullName", "full_name", "name", "username"};
+        String[] nameCols = {"full_name", "fullName", "name", "username"};
         String[] roleCols = {"roles", "role"};
         for (String nameCol : nameCols) {
             for (String roleCol : roleCols) {
@@ -71,8 +71,8 @@ public class AuthService {
         return lastAuthenticationError;
     }
 
-    public OperationResult register(String fullName, String email, String password, String confirmPassword, String role) {
-        if (isBlank(fullName) || isBlank(email) || isBlank(password) || isBlank(confirmPassword) || isBlank(role)) {
+    public OperationResult register(String fullName, String email, String password, String confirmPassword) {
+        if (isBlank(fullName) || isBlank(email) || isBlank(password) || isBlank(confirmPassword)) {
             return OperationResult.failure("Veuillez remplir tous les champs.");
         }
         if (!email.contains("@")) {
@@ -98,7 +98,7 @@ public class AuthService {
             statement.setString(1, email.trim());
             statement.setString(2, password);
             statement.setString(3, fullName.trim());
-            statement.setString(4, mapRegistrationRole(role));
+            statement.setString(4, mapRegistrationRole());
             statement.setBoolean(5, true);
             statement.executeUpdate();
         } catch (SQLException e) {
@@ -159,10 +159,7 @@ public class AuthService {
         return UserRole.USER;
     }
 
-    private String mapRegistrationRole(String role) {
-        if ("Tuteur".equalsIgnoreCase(role)) {
-            return "[\"ROLE_TUTOR\"]";
-        }
+    private String mapRegistrationRole() {
         return "[\"ROLE_USER\"]";
     }
 }

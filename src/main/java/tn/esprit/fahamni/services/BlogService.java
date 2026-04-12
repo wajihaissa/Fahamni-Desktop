@@ -2,6 +2,8 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Blog;
 import tn.esprit.fahamni.Models.Interaction;
+import tn.esprit.fahamni.Models.User;
+import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.SessionManager;
 
@@ -68,7 +70,6 @@ public class BlogService {
                 "           WHERE reaction IS NOT NULL AND reaction <> 0 GROUP BY blog_id) t " +
                 "ON blog.id = t.blog_id " +
                 "SET blog.likes_count = COALESCE(t.cnt, 0)");
-            System.out.println("syncAllBlogCounts: likes_count synchronisé.");
         } catch (Exception e) {
             System.err.println("syncAllBlogCounts (likes): " + e.getMessage());
         }
@@ -80,7 +81,6 @@ public class BlogService {
                 "           WHERE comment IS NOT NULL AND comment <> '' GROUP BY blog_id) t " +
                 "ON blog.id = t.blog_id " +
                 "SET blog.comments_count = COALESCE(t.cnt, 0)");
-            System.out.println("syncAllBlogCounts: comments_count synchronisé.");
         } catch (Exception e) {
             System.err.println("syncAllBlogCounts (comments): " + e.getMessage());
         }
@@ -93,7 +93,7 @@ public class BlogService {
             return new ArrayList<>();
         }
         List<Blog> blogs = new ArrayList<>();
-        String[] userNameCols = {"fullName", "full_name", "name", "username"};
+        String[] userNameCols = {"full_name", "fullName", "name", "username"};
         for (String col : userNameCols) {
             blogs.clear();
             String sql = "SELECT b.id, b.titre, b.content, b.images, b.category, b.status, b.publisher_id, " +
@@ -103,7 +103,6 @@ public class BlogService {
                          "ORDER BY b.created_at DESC";
             try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
                 while (rs.next()) blogs.add(mapBlog(rs));
-                System.out.println("getAllBlogs: " + blogs.size() + " articles (col: " + col + ")");
                 return blogs;
             } catch (Exception e) {
                 System.err.println("getAllBlogs avec '" + col + "': " + e.getMessage());
@@ -115,7 +114,6 @@ public class BlogService {
                 "SELECT b.id, b.titre, b.content, b.images, b.category, b.created_at, b.published_at, " +
                 "CAST(IFNULL(b.publisher_id,0) AS CHAR) AS publisher_name FROM blog b ORDER BY b.created_at DESC")) {
             while (rs.next()) blogs.add(mapBlog(rs));
-            System.out.println("getAllBlogs fallback: " + blogs.size() + " articles");
         } catch (Exception e) {
             System.err.println("Erreur getAllBlogs fallback: " + e.getMessage());
             e.printStackTrace();
@@ -132,76 +130,42 @@ public class BlogService {
         String publisherName = SessionManager.getCurrentUserName();
         String cat = toCategoryDB(blog.getImage());
 
-        // Connexion fraîche avec FK désactivées (comme pour les interactions)
-        Connection fresh = MyDataBase.getInstance().getFreshConnection();
-        if (fresh == null) return -1;
+        Connection c = cnx();
+        if (c == null) return -1;
+        if (!canCurrentUserCreateBlog() || publisherId <= 0 || !userExists(publisherId)) {
+            System.err.println("addBlog: seul un tuteur connecte peut creer un article.");
+            return -1;
+        }
 
         int blogId = -1;
-        try {
-            try (Statement st = fresh.createStatement()) {
-                st.execute("SET FOREIGN_KEY_CHECKS=0");
-            } catch (Exception ignored) {}
+        // Tentative 1 : avec publisher_id, likes_count, comments_count
+        try (PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id, likes_count, comments_count) " +
+                "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?, 0, 0)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, blog.getTitre());
+            ps.setString(2, blog.getContent());
+            ps.setString(3, cat);
+            ps.setInt(4, publisherId);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) { if (keys.next()) blogId = keys.getInt(1); }
+        } catch (Exception e1) {
+            System.err.println("addBlog [1]: " + e1.getMessage());
 
-            // Tentative 1 : avec publisher_id, likes_count, comments_count
-            try (PreparedStatement ps = fresh.prepareStatement(
-                    "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id, likes_count, comments_count) " +
-                    "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?, 0, 0)",
+            // Tentative 2 : avec publisher_id, sans likes/comments
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id) " +
+                    "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?)",
                     Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, blog.getTitre());
                 ps.setString(2, blog.getContent());
                 ps.setString(3, cat);
-                if (publisherId > 0) ps.setInt(4, publisherId); else ps.setNull(4, Types.INTEGER);
+                ps.setInt(4, publisherId);
                 ps.executeUpdate();
                 try (ResultSet keys = ps.getGeneratedKeys()) { if (keys.next()) blogId = keys.getInt(1); }
-                System.out.println("addBlog [1] ok — id=" + blogId + " publisher=" + publisherId);
-            } catch (Exception e1) {
-                System.err.println("addBlog [1]: " + e1.getMessage());
-
-                // Tentative 2 : avec publisher_id, sans likes/comments
-                try (PreparedStatement ps = fresh.prepareStatement(
-                        "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id) " +
-                        "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?)",
-                        Statement.RETURN_GENERATED_KEYS)) {
-                    ps.setString(1, blog.getTitre());
-                    ps.setString(2, blog.getContent());
-                    ps.setString(3, cat);
-                    if (publisherId > 0) ps.setInt(4, publisherId); else ps.setNull(4, Types.INTEGER);
-                    ps.executeUpdate();
-                    try (ResultSet keys = ps.getGeneratedKeys()) { if (keys.next()) blogId = keys.getInt(1); }
-                    System.out.println("addBlog [2] ok — id=" + blogId + " publisher=" + publisherId);
-                } catch (Exception e2) {
-                    System.err.println("addBlog [2]: " + e2.getMessage());
-
-                    // Tentative 3 : minimal, puis UPDATE publisher_id séparément
-                    try (PreparedStatement ps = fresh.prepareStatement(
-                            "INSERT INTO blog (titre, content, images, status, category, created_at, published_at) " +
-                            "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW())",
-                            Statement.RETURN_GENERATED_KEYS)) {
-                        ps.setString(1, blog.getTitre());
-                        ps.setString(2, blog.getContent());
-                        ps.setString(3, cat);
-                        ps.executeUpdate();
-                        try (ResultSet keys = ps.getGeneratedKeys()) { if (keys.next()) blogId = keys.getInt(1); }
-                        System.out.println("addBlog [3] ok — id=" + blogId);
-                    } catch (Exception e3) {
-                        System.err.println("addBlog [3]: " + e3.getMessage());
-                    }
-                }
+            } catch (Exception e2) {
+                System.err.println("addBlog [2]: " + e2.getMessage());
             }
-
-            // Si on a un blogId mais pas encore publisher_id (tentative 3), UPDATE séparé
-            if (blogId > 0 && publisherId > 0) {
-                try (PreparedStatement upd = fresh.prepareStatement(
-                        "UPDATE blog SET publisher_id = ? WHERE id = ?")) {
-                    upd.setInt(1, publisherId);
-                    upd.setInt(2, blogId);
-                    upd.executeUpdate();
-                    System.out.println("publisher_id rattache: blogId=" + blogId + " userId=" + publisherId);
-                } catch (Exception ignored) {}
-            }
-
-        } finally {
-            try { fresh.close(); } catch (Exception ignored) {}
         }
 
         if (blogId > 0) {
@@ -250,7 +214,7 @@ public class BlogService {
         if (c == null) return getSampleBlogs();
         List<Blog> result = new ArrayList<>();
         String kw = "%" + keyword + "%";
-        String[] cols = {"fullName", "full_name", "name", "username"};
+        String[] cols = {"full_name", "fullName", "name", "username"};
         for (String col : cols) {
             result.clear();
             String sql = "SELECT b.id, b.titre, b.content, b.images, b.category, b.created_at, b.published_at, " +
@@ -291,7 +255,7 @@ public class BlogService {
         if (c == null || blogId <= 0) return new ArrayList<>();
         List<Interaction> result = new ArrayList<>();
         // Colonnes réelles: innteractor_id (double n), reaction, comment
-        String[] userCols = {"fullName", "full_name", "name", "username"};
+        String[] userCols = {"full_name", "fullName", "name", "username"};
         for (String col : userCols) {
             result.clear();
             String sql = "SELECT i.*, COALESCE(u." + col + ", CAST(i.innteractor_id AS CHAR)) AS creator_name " +
@@ -318,73 +282,30 @@ public class BlogService {
         if (blogId <= 0) return "blogId invalide: " + blogId;
 
         int userId = getCurrentUserId();
+        if (userId <= 0 || !userExists(userId)) {
+            return "Utilisateur connecte introuvable. Veuillez vous reconnecter.";
+        }
         boolean isLike = "like".equalsIgnoreCase(type);
-        System.out.println("addInteraction: blogId=" + blogId + " type=" + type + " userId=" + userId);
-
         StringBuilder errors = new StringBuilder();
 
-        // Utiliser une connexion FRAÎCHE pour éviter tout problème d'état
-        Connection fresh = MyDataBase.getInstance().getFreshConnection();
-        if (fresh == null) {
+        Connection c = cnx();
+        if (c == null) {
             return "Impossible d'ouvrir une connexion à MySQL. Vérifiez que XAMPP/MySQL est démarré.";
         }
 
-        try {
-            // Désactiver FK checks sur cette connexion fraîche
-            try (Statement st = fresh.createStatement()) {
-                st.execute("SET FOREIGN_KEY_CHECKS=0");
-            } catch (Exception ignored) {}
-
-            // Tentative 1 : avec innteractor_id réel
-            String sql1 = isLike
-                ? "INSERT INTO interaction (reaction, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (1, NOW(), ?, ?, 0, 0, 0)"
-                : "INSERT INTO interaction (comment, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, ?, 0, 0, 0)";
-            try (PreparedStatement ps = fresh.prepareStatement(sql1)) {
-                if (isLike) { ps.setInt(1, blogId); ps.setInt(2, userId); }
-                else { ps.setString(1, commentaire); ps.setInt(2, blogId); ps.setInt(3, userId); }
-                ps.executeUpdate();
-                System.out.println("OK interaction enregistrée (userId=" + userId + ")");
-                updateBlogCounts(blogId);
-                return null; // succès
-            } catch (Exception e1) {
-                errors.append("[1] ").append(e1.getMessage()).append(" | ");
-                System.err.println("Tentative 1 échouée: " + e1.getMessage());
-            }
-
-            // Tentative 2 : innteractor_id=1 forcé
-            String sql2 = isLike
-                ? "INSERT INTO interaction (reaction, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (1, NOW(), ?, 1, 0, 0, 0)"
-                : "INSERT INTO interaction (comment, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, 1, 0, 0, 0)";
-            try (PreparedStatement ps = fresh.prepareStatement(sql2)) {
-                if (isLike) { ps.setInt(1, blogId); }
-                else { ps.setString(1, commentaire); ps.setInt(2, blogId); }
-                ps.executeUpdate();
-                System.out.println("OK interaction enregistrée (innteractor_id=1)");
-                updateBlogCounts(blogId);
-                return null; // succès
-            } catch (Exception e2) {
-                errors.append("[2] ").append(e2.getMessage()).append(" | ");
-                System.err.println("Tentative 2 échouée: " + e2.getMessage());
-            }
-
-            // Tentative 3 : sans innteractor_id
-            String sql3 = isLike
-                ? "INSERT INTO interaction (reaction, created_at, blog_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (1, NOW(), ?, 0, 0, 0)"
-                : "INSERT INTO interaction (comment, created_at, blog_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, 0, 0, 0)";
-            try (PreparedStatement ps = fresh.prepareStatement(sql3)) {
-                if (isLike) { ps.setInt(1, blogId); }
-                else { ps.setString(1, commentaire); ps.setInt(2, blogId); }
-                ps.executeUpdate();
-                System.out.println("OK interaction enregistrée (sans innteractor_id)");
-                updateBlogCounts(blogId);
-                return null; // succès
-            } catch (Exception e3) {
-                errors.append("[3] ").append(e3.getMessage());
-                System.err.println("Tentative 3 échouée: " + e3.getMessage());
-            }
-
-        } finally {
-            try { fresh.close(); } catch (Exception ignored) {}
+        // Tentative 1 : avec innteractor_id réel
+        String sql1 = isLike
+            ? "INSERT INTO interaction (reaction, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (1, NOW(), ?, ?, 0, 0, 0)"
+            : "INSERT INTO interaction (comment, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, ?, 0, 0, 0)";
+        try (PreparedStatement ps = c.prepareStatement(sql1)) {
+            if (isLike) { ps.setInt(1, blogId); ps.setInt(2, userId); }
+            else { ps.setString(1, commentaire); ps.setInt(2, blogId); ps.setInt(3, userId); }
+            ps.executeUpdate();
+            updateBlogCounts(blogId);
+            return null; // succès
+        } catch (Exception e1) {
+            errors.append("[1] ").append(e1.getMessage());
+            System.err.println("addInteraction: " + e1.getMessage());
         }
 
         return "Echec INSERT (blogId=" + blogId + ", userId=" + userId + "): " + errors;
@@ -403,28 +324,27 @@ public class BlogService {
         return 0;
     }
 
-    /** Retourne le nombre de réactions d'un type précis (1=👍 2=❤️ 3=😮) */
+    /** Retourne le nombre de réactions d'un type précis (1=like, 2=love, 3=surprise) */
     public long countReaction(int blogId, int reactionType) {
         if (blogId <= 0) return 0;
-        Connection fresh = MyDataBase.getInstance().getFreshConnection();
-        if (fresh == null) return 0;
-        try (PreparedStatement ps = fresh.prepareStatement(
+        Connection c = cnx();
+        if (c == null) return 0;
+        try (PreparedStatement ps = c.prepareStatement(
                 "SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND reaction = ?")) {
             ps.setInt(1, blogId);
             ps.setInt(2, reactionType);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getLong(1);
         } catch (Exception e) { System.err.println("countReaction: " + e.getMessage()); }
-        finally { try { fresh.close(); } catch (Exception ignored) {} }
         return 0;
     }
 
     /** Retourne la réaction actuelle du user sur cet article (0 = aucune) */
     public int getUserReaction(int blogId, int userId) {
         if (blogId <= 0 || userId <= 0) return 0;
-        Connection fresh = MyDataBase.getInstance().getFreshConnection();
-        if (fresh == null) return 0;
-        try (PreparedStatement ps = fresh.prepareStatement(
+        Connection c = cnx();
+        if (c == null) return 0;
+        try (PreparedStatement ps = c.prepareStatement(
                 "SELECT reaction FROM interaction WHERE blog_id = ? AND innteractor_id = ? " +
                 "AND reaction IS NOT NULL AND reaction <> 0 LIMIT 1")) {
             ps.setInt(1, blogId);
@@ -432,7 +352,6 @@ public class BlogService {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt("reaction");
         } catch (Exception e) { System.err.println("getUserReaction: " + e.getMessage()); }
-        finally { try { fresh.close(); } catch (Exception ignored) {} }
         return 0;
     }
 
@@ -441,34 +360,31 @@ public class BlogService {
         removeLike(blogId, userId);
     }
 
-    /** Enregistre une réaction (1=👍 2=❤️ 3=😮), remplace l'ancienne */
+    /** Enregistre une réaction (1=like, 2=love, 3=surprise), remplace l'ancienne */
     public void addReaction(int blogId, int reactionType, String userName) {
-        // Supprimer l'ancienne réaction si elle existe
-        Connection fresh = MyDataBase.getInstance().getFreshConnection();
-        if (fresh == null) return;
+        if (blogId <= 0) return;
         int userId = getCurrentUserId();
-        try {
-            try (Statement st = fresh.createStatement()) { st.execute("SET FOREIGN_KEY_CHECKS=0"); } catch (Exception ignored) {}
-            // Supprimer ancienne réaction
-            try (PreparedStatement ps = fresh.prepareStatement(
-                    "DELETE FROM interaction WHERE blog_id = ? AND innteractor_id = ? AND reaction IS NOT NULL AND reaction <> 0")) {
-                ps.setInt(1, blogId); ps.setInt(2, userId); ps.executeUpdate();
-            } catch (Exception ignored) {}
-            // Insérer nouvelle réaction
-            try (PreparedStatement ps = fresh.prepareStatement(
-                    "INSERT INTO interaction (reaction, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, ?, 0, 0, 0)")) {
-                ps.setInt(1, reactionType); ps.setInt(2, blogId); ps.setInt(3, userId); ps.executeUpdate();
-            } catch (Exception e) {
-                // Fallback sans innteractor_id
-                try (PreparedStatement ps = fresh.prepareStatement(
-                        "INSERT INTO interaction (reaction, created_at, blog_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, 0, 0, 0)")) {
-                    ps.setInt(1, reactionType); ps.setInt(2, blogId); ps.executeUpdate();
-                } catch (Exception ignored) {}
-            }
-        } finally {
-            try { fresh.close(); } catch (Exception ignored) {}
+        if (userId <= 0 || !userExists(userId)) return;
+
+        Connection c = cnx();
+        if (c == null) return;
+
+        try (PreparedStatement delete = c.prepareStatement(
+                "DELETE FROM interaction WHERE blog_id = ? AND innteractor_id = ? AND reaction IS NOT NULL AND reaction <> 0");
+             PreparedStatement insert = c.prepareStatement(
+                "INSERT INTO interaction (reaction, created_at, blog_id, innteractor_id, is_notif_read, is_flagged, is_deleted_by_admin) VALUES (?, NOW(), ?, ?, 0, 0, 0)")) {
+            delete.setInt(1, blogId);
+            delete.setInt(2, userId);
+            delete.executeUpdate();
+
+            insert.setInt(1, reactionType);
+            insert.setInt(2, blogId);
+            insert.setInt(3, userId);
+            insert.executeUpdate();
+            updateBlogCounts(blogId);
+        } catch (Exception e) {
+            System.err.println("addReaction: " + e.getMessage());
         }
-        updateBlogCounts(blogId);
     }
 
     /** Retourne le nombre de commentaires d'un article directement depuis la BD */
@@ -571,7 +487,7 @@ public class BlogService {
     /** Vérifie si le user a déjà liké cet article */
     public boolean hasUserLiked(int blogId, int userId) {
         if (blogId <= 0) return false;
-        if (userId <= 0) userId = 1; // fallback user mock
+        if (userId <= 0) return false;
         Connection c = cnx();
         if (c == null) return false;
         try (PreparedStatement ps = c.prepareStatement(
@@ -586,19 +502,21 @@ public class BlogService {
 
     /** Supprime le like du user sur un article (toggle) */
     public void removeLike(int blogId, int userId) {
-        Connection fresh = MyDataBase.getInstance().getFreshConnection();
-        if (fresh == null) return;
+        if (blogId <= 0) return;
+        if (userId <= 0) userId = getCurrentUserId();
+        if (userId <= 0 || !userExists(userId)) return;
+
+        Connection c = cnx();
+        if (c == null) return;
         try {
-            try (Statement st = fresh.createStatement()) { st.execute("SET FOREIGN_KEY_CHECKS=0"); } catch (Exception ignored) {}
-            try (PreparedStatement ps = fresh.prepareStatement(
+            try (PreparedStatement ps = c.prepareStatement(
                     "DELETE FROM interaction WHERE blog_id = ? AND innteractor_id = ? AND reaction IS NOT NULL AND reaction <> 0")) {
                 ps.setInt(1, blogId);
                 ps.setInt(2, userId);
                 ps.executeUpdate();
-                System.out.println("Like retiré (blogId=" + blogId + ", userId=" + userId + ")");
             } catch (Exception e) { System.err.println("removeLike: " + e.getMessage()); }
-        } finally {
-            try { fresh.close(); } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("removeLike: " + e.getMessage());
         }
         updateBlogCounts(blogId);
     }
@@ -611,12 +529,32 @@ public class BlogService {
         }
         // Fallback : chercher par email
         Connection c = cnx();
-        if (c == null || SessionManager.getCurrentUser() == null) return 1;
+        if (c == null || SessionManager.getCurrentUser() == null) return 0;
         try (PreparedStatement ps = c.prepareStatement("SELECT id FROM user WHERE email = ?")) {
             ps.setString(1, SessionManager.getCurrentUser().getEmail());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt("id");
         } catch (Exception e) { System.err.println("getCurrentUserId: " + e.getMessage()); }
-        return 1;
+        return 0;
+    }
+
+    private boolean canCurrentUserCreateBlog() {
+        User user = SessionManager.getCurrentUser();
+        return user != null && user.getRole() == UserRole.TUTOR;
+    }
+
+    private boolean userExists(int userId) {
+        if (userId <= 0) return false;
+        Connection c = cnx();
+        if (c == null) return false;
+        try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM user WHERE id = ? LIMIT 1")) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            System.err.println("userExists: " + e.getMessage());
+            return false;
+        }
     }
 }
