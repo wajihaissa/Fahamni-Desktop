@@ -10,6 +10,7 @@
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
@@ -67,7 +68,7 @@
                                     <Label text="Vue catalogue" styleClass="infrastructure-small-chip"/>
                                 </HBox>
 
-                                <FlowPane fx:id="roomCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="720.0"/>
+                                <GridPane fx:id="roomCardsContainer" hgap="14.0" vgap="14.0"/>
                             </VBox>
                         </Tab>
 
@@ -85,7 +86,7 @@
                                     <Label text="Catalogue global" styleClass="infrastructure-small-chip"/>
                                 </HBox>
 
-                                <FlowPane fx:id="equipmentCardsContainer" hgap="14.0" vgap="14.0" prefWrapLength="720.0"/>
+                                <GridPane fx:id="equipmentCardsContainer" hgap="14.0" vgap="14.0"/>
                             </VBox>
                         </Tab>
                     </tabs>
@@ -110,7 +111,7 @@
                     <Label fx:id="detailSubtitleLabel" text="Les informations detaillees apparaitront ici." wrapText="true" styleClass="section-subtitle"/>
                 </VBox>
 
-                <FlowPane fx:id="detailFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="300.0"/>
+                <FlowPane fx:id="detailFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="304.0"/>
 
                 <VBox spacing="8.0" styleClass="infrastructure-detail-section">
                     <Label text="Description" styleClass="infrastructure-detail-section-title"/>

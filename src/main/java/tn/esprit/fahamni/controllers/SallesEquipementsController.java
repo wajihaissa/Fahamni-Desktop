@@ -11,7 +11,9 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -34,6 +36,8 @@ public class SallesEquipementsController {
     private static final String FILTER_ALL_TYPES = "Tous les types";
     private static final String FILTER_ALL_STATUSES = "Tous les etats";
     private static final String STATUS_AVAILABLE = "disponible";
+    private static final int CATALOG_COLUMNS = 3;
+    private static final double CATALOG_CARD_GAP = 14.0;
 
     @FXML
     private TextField roomSearchField;
@@ -51,7 +55,7 @@ public class SallesEquipementsController {
     private Label roomCountLabel;
 
     @FXML
-    private FlowPane roomCardsContainer;
+    private GridPane roomCardsContainer;
 
     @FXML
     private TextField equipmentSearchField;
@@ -66,7 +70,7 @@ public class SallesEquipementsController {
     private Label equipmentCountLabel;
 
     @FXML
-    private FlowPane equipmentCardsContainer;
+    private GridPane equipmentCardsContainer;
 
     @FXML
     private Label totalRoomsStatLabel;
@@ -126,6 +130,7 @@ public class SallesEquipementsController {
 
     @FXML
     private void initialize() {
+        configureResponsiveCatalogLayout();
         configureFilters();
         hideFeedback();
         resetDetailPanel();
@@ -180,6 +185,25 @@ public class SallesEquipementsController {
         equipmentSearchField.textProperty().addListener((obs, oldValue, newValue) -> applyEquipmentFilters());
         equipmentTypeFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyEquipmentFilters());
         equipmentStatusFilterComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applyEquipmentFilters());
+    }
+
+    private void configureResponsiveCatalogLayout() {
+        configureCatalogGrid(roomCardsContainer);
+        configureCatalogGrid(equipmentCardsContainer);
+    }
+
+    private void configureCatalogGrid(GridPane grid) {
+        grid.setHgap(CATALOG_CARD_GAP);
+        grid.setVgap(CATALOG_CARD_GAP);
+        grid.getColumnConstraints().clear();
+
+        for (int column = 0; column < CATALOG_COLUMNS; column++) {
+            ColumnConstraints constraints = new ColumnConstraints();
+            constraints.setPercentWidth(100.0 / CATALOG_COLUMNS);
+            constraints.setHgrow(Priority.ALWAYS);
+            constraints.setFillWidth(true);
+            grid.getColumnConstraints().add(constraints);
+        }
     }
 
     private void loadCatalog(boolean showSuccess) {
@@ -241,12 +265,13 @@ public class SallesEquipementsController {
         roomCardsContainer.getChildren().clear();
 
         if (filteredSalles.isEmpty()) {
-            roomCardsContainer.getChildren().add(createEmptyState("Aucune salle ne correspond aux filtres."));
+            addEmptyCatalogState(roomCardsContainer, "Aucune salle ne correspond aux filtres.");
             return;
         }
 
+        int index = 0;
         for (Salle salle : filteredSalles) {
-            roomCardsContainer.getChildren().add(createRoomCard(salle));
+            addCatalogCard(roomCardsContainer, createRoomCard(salle), index++);
         }
     }
 
@@ -254,12 +279,13 @@ public class SallesEquipementsController {
         equipmentCardsContainer.getChildren().clear();
 
         if (filteredEquipements.isEmpty()) {
-            equipmentCardsContainer.getChildren().add(createEmptyState("Aucun equipement ne correspond aux filtres."));
+            addEmptyCatalogState(equipmentCardsContainer, "Aucun equipement ne correspond aux filtres.");
             return;
         }
 
+        int index = 0;
         for (Equipement equipement : filteredEquipements) {
-            equipmentCardsContainer.getChildren().add(createEquipmentCard(equipement));
+            addCatalogCard(equipmentCardsContainer, createEquipmentCard(equipement), index++);
         }
     }
 
@@ -342,10 +368,26 @@ public class SallesEquipementsController {
 
     private VBox createCard() {
         VBox card = new VBox(12);
-        card.setPrefWidth(300);
-        card.setMinWidth(280);
+        card.setMinWidth(0);
+        card.setMaxWidth(Double.MAX_VALUE);
         card.getStyleClass().add("infrastructure-card");
         return card;
+    }
+
+    private void addCatalogCard(GridPane grid, Node card, int index) {
+        int column = index % CATALOG_COLUMNS;
+        int row = index / CATALOG_COLUMNS;
+
+        GridPane.setFillWidth(card, true);
+        GridPane.setHgrow(card, Priority.ALWAYS);
+        grid.add(card, column, row);
+    }
+
+    private void addEmptyCatalogState(GridPane grid, String message) {
+        Node emptyState = createEmptyState(message);
+        GridPane.setFillWidth(emptyState, true);
+        GridPane.setHgrow(emptyState, Priority.ALWAYS);
+        grid.add(emptyState, 0, 0, CATALOG_COLUMNS, 1);
     }
 
     private HBox createCardHeader(String badgeText, String title, String status) {
@@ -419,7 +461,7 @@ public class SallesEquipementsController {
 
     private Node createEmptyState(String message) {
         VBox emptyState = new VBox(8);
-        emptyState.setPrefWidth(620);
+        emptyState.setMaxWidth(Double.MAX_VALUE);
         emptyState.getStyleClass().add("infrastructure-empty-card");
 
         Label title = new Label(message);
@@ -504,7 +546,8 @@ public class SallesEquipementsController {
 
     private Node createDetailInfoCard(String label, String value) {
         VBox card = new VBox(5);
-        card.setPrefWidth(145);
+        card.setPrefWidth(132);
+        card.setMinWidth(132);
         card.getStyleClass().add("infrastructure-detail-fact-card");
 
         Label labelNode = new Label(label);
