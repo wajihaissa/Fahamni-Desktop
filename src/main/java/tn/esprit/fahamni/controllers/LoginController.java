@@ -5,6 +5,7 @@ import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -73,9 +74,12 @@ public class LoginController {
 
         User authenticatedUser = authService.authenticate(email, password);
         if (authenticatedUser == null) {
-            showMessage(loginMessageLabel, "Email ou mot de passe invalide.", false);
+            String authError = authService.getLastAuthenticationError();
+            showMessage(loginMessageLabel, authError != null ? authError : "Email ou mot de passe invalide.", false);
             return;
         }
+
+        UserSession.setCurrentUser(authenticatedUser);
 
         try {
             if (authenticatedUser.getRole() == UserRole.ADMIN) {
@@ -152,4 +156,3 @@ public class LoginController {
         label.setVisible(false);
     }
 }
-

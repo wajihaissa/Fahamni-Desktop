@@ -3,10 +3,12 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane prefHeight="820.0" prefWidth="1280.0" styleClass="backoffice-root"
@@ -27,17 +29,43 @@
                 <Label text="Administration" styleClass="backoffice-sidebar-subtitle"/>
             </VBox>
 
-            <VBox spacing="6.0" styleClass="backoffice-sidebar-menu">
-                <Button fx:id="dashboardButton" maxWidth="Infinity" text="Dashboard Admin" onAction="#showDashboard" styleClass="backoffice-nav-button"/>
-                <Button fx:id="usersButton" maxWidth="Infinity" text="Utilisateurs" onAction="#showUsers" styleClass="backoffice-nav-button"/>
-                <Button fx:id="sessionsButton" maxWidth="Infinity" text="Seances" onAction="#showSessions" styleClass="backoffice-nav-button"/>
-                <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" onAction="#showReservations" styleClass="backoffice-nav-button"/>
-                <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" onAction="#showQuiz" styleClass="backoffice-nav-button"/>
-                <Button fx:id="contentButton" maxWidth="Infinity" text="Contenu" onAction="#showContent" styleClass="backoffice-nav-button"/>
-
-            </VBox>
-
-            <Region VBox.vgrow="ALWAYS"/>
+            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" pannable="true" styleClass="backoffice-sidebar-scroll" VBox.vgrow="ALWAYS">
+                <content>
+                    <VBox spacing="6.0" styleClass="backoffice-sidebar-menu">
+                        <Button fx:id="dashboardButton" maxWidth="Infinity" text="Dashboard Admin" onAction="#showDashboard" styleClass="backoffice-nav-button"/>
+                        <Button fx:id="usersButton" maxWidth="Infinity" text="Utilisateurs" onAction="#showUsers" styleClass="backoffice-nav-button"/>
+                        <Button fx:id="sessionsButton" maxWidth="Infinity" text="Seances" onAction="#showSessions" styleClass="backoffice-nav-button"/>
+                        <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" onAction="#showReservations" styleClass="backoffice-nav-button"/>
+                        <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" onAction="#showQuiz" styleClass="backoffice-nav-button"/>
+                        <Button fx:id="contentButton" maxWidth="Infinity" text="Contenu" onAction="#showContent" styleClass="backoffice-nav-button"/>
+                        <StackPane>
+                            <Button fx:id="articlesButton" maxWidth="Infinity" text="Articles" onAction="#showArticles" styleClass="backoffice-nav-button"/>
+                            <Label fx:id="articlesBadge" text=""
+                                   style="-fx-background-color: #e74c3c; -fx-text-fill: white;
+                                          -fx-font-size: 10; -fx-font-weight: bold;
+                                          -fx-background-radius: 10; -fx-padding: 2 6;
+                                          -fx-min-width: 18; -fx-alignment: center;"
+                                   StackPane.alignment="CENTER_RIGHT"
+                                   managed="false" visible="false">
+                                <StackPane.margin><Insets right="10"/></StackPane.margin>
+                            </Label>
+                        </StackPane>
+                        <Button fx:id="infrastructureToggleButton" contentDisplay="RIGHT" graphicTextGap="10.0" maxWidth="Infinity" mnemonicParsing="false"
+                                onAction="#toggleInfrastructureMenu" text="Infrastructure" styleClass="backoffice-nav-button">
+                            <graphic>
+                                <Label fx:id="infrastructureChevron" text=">" styleClass="backoffice-dropdown-chevron"/>
+                            </graphic>
+                        </Button>
+                        <VBox fx:id="infrastructureSubmenu" managed="false" visible="false" spacing="4.0" styleClass="backoffice-subnav">
+                            <Button fx:id="sallesButton" maxWidth="Infinity" text="Salles" onAction="#showSalles" styleClass="backoffice-subnav-button"/>
+                            <Button fx:id="reclamationsButton" maxWidth="Infinity" text="Reclamations" onAction="#showReclamations" styleClass="backoffice-subnav-button"/>
+                            <Button fx:id="maintenanceButton" maxWidth="Infinity" text="Maintenance" onAction="#showMaintenance" styleClass="backoffice-subnav-button"/>
+                            <Button fx:id="equipementsButton" maxWidth="Infinity" text="Equipements" onAction="#showEquipements" styleClass="backoffice-subnav-button"/>
+                            <Button fx:id="infrastructureStatsButton" maxWidth="Infinity" text="Statistiques" onAction="#showInfrastructureStats" styleClass="backoffice-subnav-button"/>
+                        </VBox>
+                    </VBox>
+                </content>
+            </ScrollPane>
 
             <VBox spacing="10.0" styleClass="backoffice-sidebar-footer">
                 <padding>
@@ -56,7 +84,7 @@
             </padding>
             <VBox spacing="4.0">
                 <Label fx:id="pageTitle" text="Dashboard Admin" styleClass="backoffice-page-title"/>
-                <Label text="Espace de pilotage des contenus, utilisateurs et operations." styleClass="backoffice-page-subtitle"/>
+                <Label fx:id="pageSubtitle" text="Vue d'ensemble des operations, contenus et activites du backoffice." styleClass="backoffice-page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
             <Label text="Administrateur" styleClass="backoffice-badge"/>
@@ -67,4 +95,3 @@
         <AnchorPane fx:id="contentPane" styleClass="backoffice-content-pane" BorderPane.alignment="CENTER"/>
     </center>
 </BorderPane>
-

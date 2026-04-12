@@ -157,6 +157,7 @@
                                                                 <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="login-input"/>
                                                             </children>
                                                         </VBox>
+
                                                     </children>
                                                 </VBox>
 

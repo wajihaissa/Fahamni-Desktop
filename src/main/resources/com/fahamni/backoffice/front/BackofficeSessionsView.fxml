@@ -3,13 +3,13 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Spinner?>
-<?import javafx.scene.control.SpinnerValueFactory$IntegerSpinnerValueFactory?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox spacing="20.0" styleClass="backoffice-page"
@@ -21,62 +21,43 @@
     </padding>
 
     <VBox spacing="6.0" styleClass="backoffice-header-block">
-        <Label text="Gestion des seances" styleClass="backoffice-panel-title"/>
-        <Label text="Planifiez, publiez et ajustez les seances visibles par les utilisateurs." styleClass="backoffice-panel-copy"/>
+        <Label text="Consultation des seances" styleClass="backoffice-panel-title"/>
     </VBox>
 
-    <HBox spacing="18.0">
-        <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
-            <Label text="Catalogue des seances" styleClass="backoffice-section-title"/>
-            <TableView fx:id="sessionsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
-                <columns>
-                    <TableColumn fx:id="subjectColumn" prefWidth="200.0" text="Sujet"/>
-                    <TableColumn fx:id="tutorColumn" prefWidth="180.0" text="Tuteur"/>
-                    <TableColumn fx:id="scheduleColumn" prefWidth="180.0" text="Planning"/>
-                    <TableColumn fx:id="capacityColumn" prefWidth="90.0" text="Places"/>
-                    <TableColumn fx:id="statusColumn" prefWidth="110.0" text="Statut"/>
-                </columns>
-            </TableView>
+    <VBox spacing="12.0" styleClass="backoffice-panel" VBox.vgrow="ALWAYS">
+        <VBox spacing="10.0">
+            <Label text="Recherche et filtres" styleClass="backoffice-section-title"/>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <TextField fx:id="sessionSearchField" promptText="Rechercher par matiere, tuteur, statut ou ID" prefWidth="360.0" styleClass="backoffice-form-input"/>
+                <ComboBox fx:id="sessionStatusFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
+                <DatePicker fx:id="sessionDatePicker" promptText="Date de seance" prefWidth="170.0" styleClass="backoffice-form-input"/>
+                <Button onAction="#handleResetSessionFilters" text="Reinitialiser" styleClass="backoffice-secondary-button"/>
+            </HBox>
         </VBox>
 
-        <VBox spacing="12.0" styleClass="backoffice-panel backoffice-form-panel" prefWidth="330.0" minWidth="330.0">
-            <Label text="Fiche seance" styleClass="backoffice-section-title"/>
+        <HBox alignment="CENTER_LEFT" spacing="12.0">
+            <Label text="Seances enregistrees" styleClass="backoffice-section-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="sessionsCountLabel" text="0 seance affichee" styleClass="backoffice-panel-copy"/>
+            <Button onAction="#handleRefreshSessions" text="Actualiser" styleClass="backoffice-secondary-button"/>
+            <Button fx:id="viewSessionDetailsButton" onAction="#handleViewSessionDetails" text="Voir details" styleClass="backoffice-secondary-button"/>
+            <Button fx:id="deleteSelectedSessionButton" onAction="#handleDeleteSelectedSession" text="Supprimer la seance" styleClass="backoffice-secondary-button"/>
+        </HBox>
 
-            <VBox spacing="6.0">
-                <Label text="Sujet" styleClass="backoffice-form-label"/>
-                <TextField fx:id="subjectField" promptText="Ex: Mathematics - Algebra" styleClass="backoffice-form-input"/>
-            </VBox>
+        <TableView fx:id="sessionsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+            <columns>
+                <TableColumn fx:id="sessionIdColumn" prefWidth="60.0" text="ID"/>
+                <TableColumn fx:id="subjectColumn" prefWidth="220.0" text="Matiere"/>
+                <TableColumn fx:id="tutorColumn" prefWidth="190.0" text="Tuteur"/>
+                <TableColumn fx:id="scheduleColumn" prefWidth="180.0" text="Date"/>
+                <TableColumn fx:id="durationColumn" prefWidth="90.0" text="Duree"/>
+                <TableColumn fx:id="capacityColumn" prefWidth="90.0" text="Places"/>
+                <TableColumn fx:id="reservationsColumn" prefWidth="110.0" text="Reservations"/>
+                <TableColumn fx:id="statusColumn" prefWidth="130.0" text="Statut"/>
+            </columns>
+        </TableView>
 
-            <VBox spacing="6.0">
-                <Label text="Tuteur" styleClass="backoffice-form-label"/>
-                <TextField fx:id="tutorField" promptText="Nom du tuteur" styleClass="backoffice-form-input"/>
-            </VBox>
-
-            <VBox spacing="6.0">
-                <Label text="Planning" styleClass="backoffice-form-label"/>
-                <TextField fx:id="scheduleField" promptText="Ex: 04 Apr 2026 - 14:00" styleClass="backoffice-form-input"/>
-            </VBox>
-
-            <VBox spacing="6.0">
-                <Label text="Capacite" styleClass="backoffice-form-label"/>
-                <Spinner fx:id="capacitySpinner" editable="true" styleClass="backoffice-form-input">
-                    <valueFactory>
-                        <IntegerSpinnerValueFactory min="1" max="50" initialValue="10"/>
-                    </valueFactory>
-                </Spinner>
-            </VBox>
-
-            <VBox spacing="6.0">
-                <Label text="Statut" styleClass="backoffice-form-label"/>
-                <ComboBox fx:id="statusComboBox" styleClass="backoffice-form-input"/>
-            </VBox>
-
-            <Button maxWidth="Infinity" onAction="#handleCreateSession" text="Ajouter une seance" styleClass="backoffice-primary-button"/>
-            <Button maxWidth="Infinity" onAction="#handleUpdateSession" text="Mettre a jour la selection" styleClass="backoffice-secondary-button"/>
-            <Button maxWidth="Infinity" onAction="#handleResetForm" text="Reinitialiser le formulaire" styleClass="backoffice-secondary-button"/>
-
-            <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
-        </VBox>
-    </HBox>
+        <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+    </VBox>
 </VBox>
 
