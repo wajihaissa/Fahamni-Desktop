@@ -48,15 +48,18 @@
                 <TextArea fx:id="descriptionArea" promptText="Description" prefRowCount="3" wrapText="true"/>
 
                 <Label text="Chemin de l'image de couverture" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="coverImageField" promptText="Cover Image Path"/>
+                <HBox spacing="10.0">
+                    <Button fx:id="chooseImageButton"
+                            text="Choisir une image"
+                            onAction="#chooseImage"
+                            style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                    <Label fx:id="imagePathLabel" text="Aucune image s&#233;lectionn&#233;e"/>
+                </HBox>
             </VBox>
 
             <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                 <Label text="Structure (JSON)" style="-fx-font-weight: bold;"/>
                 <TextArea fx:id="structureArea" promptText="Structure (JSON)" prefRowCount="4" wrapText="true"/>
-
-                <Label text="Created At" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="createdAtField" promptText="yyyy-MM-dd HH:mm:ss"/>
             </VBox>
         </HBox>
 

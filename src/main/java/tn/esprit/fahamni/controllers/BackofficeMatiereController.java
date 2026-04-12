@@ -19,11 +19,14 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
+import java.io.File;
 
 public class BackofficeMatiereController implements Initializable {
 
@@ -55,10 +58,7 @@ public class BackofficeMatiereController implements Initializable {
     private TextArea structureArea;
 
     @FXML
-    private TextField createdAtField;
-
-    @FXML
-    private TextField coverImageField;
+    private Label imagePathLabel;
 
     @FXML
     private Button ajouterButton;
@@ -75,9 +75,13 @@ public class BackofficeMatiereController implements Initializable {
     @FXML
     private Button gererCategoriesButton;
 
+    @FXML
+    private Button chooseImageButton;
+
     private final MatiereService matiereService = new MatiereService();
     private final ObservableList<Matiere> matieres = FXCollections.observableArrayList();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private String selectedImagePath;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -129,9 +133,8 @@ public class BackofficeMatiereController implements Initializable {
         matiere.setTitre(titreField.getText());
         matiere.setDescription(descriptionArea.getText());
         matiere.setStructure(structureArea.getText());
-        matiere.setCoverImage(coverImageField.getText());
+        matiere.setCoverImage(selectedImagePath);
         matiere.setCreatedAt(LocalDateTime.now());
-        createdAtField.setText(matiere.getCreatedAt().format(dateFormatter));
 
         matiereService.add(matiere);
         refreshTable();
@@ -148,8 +151,7 @@ public class BackofficeMatiereController implements Initializable {
         selectedMatiere.setTitre(titreField.getText());
         selectedMatiere.setDescription(descriptionArea.getText());
         selectedMatiere.setStructure(structureArea.getText());
-        selectedMatiere.setCreatedAt(parseCreatedAt(createdAtField.getText(), selectedMatiere.getCreatedAt()));
-        selectedMatiere.setCoverImage(coverImageField.getText());
+        selectedMatiere.setCoverImage(selectedImagePath);
 
         matiereService.update(selectedMatiere);
         refreshTable();
@@ -203,6 +205,23 @@ public class BackofficeMatiereController implements Initializable {
         }
     }
 
+    @FXML
+    private void chooseImage(ActionEvent event) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choisir une image");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg", "*.webp")
+        );
+
+        Node source = (Node) event.getSource();
+        Stage stage = (Stage) source.getScene().getWindow();
+        File selectedFile = fileChooser.showOpenDialog(stage);
+        if (selectedFile != null) {
+            selectedImagePath = selectedFile.getAbsolutePath();
+            imagePathLabel.setText(selectedImagePath);
+        }
+    }
+
     private void refreshTable() {
         matieres.setAll(matiereService.findAll());
         matiereTable.refresh();
@@ -216,8 +235,8 @@ public class BackofficeMatiereController implements Initializable {
         titreField.setText(matiere.getTitre());
         descriptionArea.setText(matiere.getDescription());
         structureArea.setText(matiere.getStructure());
-        createdAtField.setText(matiere.getCreatedAt() != null ? matiere.getCreatedAt().format(dateFormatter) : "");
-        coverImageField.setText(matiere.getCoverImage());
+        selectedImagePath = matiere.getCoverImage();
+        imagePathLabel.setText(selectedImagePath == null || selectedImagePath.isBlank() ? "Aucune image s\u00e9lectionn\u00e9e" : selectedImagePath);
     }
 
     private void clearInputs() {
@@ -225,19 +244,7 @@ public class BackofficeMatiereController implements Initializable {
         titreField.clear();
         descriptionArea.clear();
         structureArea.clear();
-        createdAtField.clear();
-        coverImageField.clear();
-    }
-
-    private LocalDateTime parseCreatedAt(String value, LocalDateTime fallback) {
-        if (value == null || value.trim().isEmpty()) {
-            return fallback;
-        }
-
-        try {
-            return LocalDateTime.parse(value.trim(), dateFormatter);
-        } catch (Exception e) {
-            return fallback;
-        }
+        selectedImagePath = null;
+        imagePathLabel.setText("Aucune image s\u00e9lectionn\u00e9e");
     }
 }
