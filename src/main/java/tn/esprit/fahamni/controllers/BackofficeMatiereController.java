@@ -6,8 +6,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -16,12 +14,10 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -31,13 +27,11 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.MatiereService;
+import tn.esprit.fahamni.services.CategoryService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 
 public class BackofficeMatiereController implements Initializable {
-
-    @FXML
-    private TableView<Matiere> matiereTable;
 
     @FXML
     private VBox listView;
@@ -46,19 +40,7 @@ public class BackofficeMatiereController implements Initializable {
     private VBox editorView;
 
     @FXML
-    private TableColumn<Matiere, Integer> idColumn;
-
-    @FXML
-    private TableColumn<Matiere, String> titreColumn;
-
-    @FXML
-    private TableColumn<Matiere, String> descriptionColumn;
-
-    @FXML
-    private TableColumn<Matiere, String> structureColumn;
-
-    @FXML
-    private TableColumn<Matiere, LocalDateTime> createdAtColumn;
+    private FlowPane cardsContainer;
 
     @FXML
     private TextField titreField;
@@ -100,55 +82,28 @@ public class BackofficeMatiereController implements Initializable {
     private TextField newCategoryField;
 
     private final MatiereService matiereService = new MatiereService();
-    private final ObservableList<Matiere> matieres = FXCollections.observableArrayList();
+    private final CategoryService categoryService = new CategoryService();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private String selectedImagePath;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
-        titreColumn.setCellValueFactory(new PropertyValueFactory<>("titre"));
-        descriptionColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
-        structureColumn.setCellValueFactory(new PropertyValueFactory<>("structure"));
-        structureColumn.setCellFactory(column -> new TableCell<>() {
-            private final Button btn = new Button("Gérer");
-            {
-                btn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
-                btn.setPrefWidth(80);
-            }
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    btn.setOnAction(e -> {
-                        Matiere matiere = getTableView().getItems().get(getIndex());
-                        matiereTable.getSelectionModel().select(getIndex());
-                        populateForm(matiere);
-                        showEditor();
-                    });
-                    setGraphic(btn);
-                }
-            }
-        });
-        createdAtColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
-        createdAtColumn.setCellFactory(column -> new TableCell<>() {
-            @Override
-            protected void updateItem(LocalDateTime item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText("");
-                } else {
-                    setText(item.format(dateFormatter));
-                }
-            }
-        });
+        loadCategoriesIntoDropdown();
+        refreshCards();
+    }
 
-        matiereTable.setItems(matieres);
-        refreshTable();
-
-        matiereTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+    private void loadCategoriesIntoDropdown() {
+        existingCategoriesCombo.getItems().clear();
+        java.util.List<?> categories = categoryService.afficherList();
+        for (Object cat : categories) {
+            try {
+                // Try to get name via reflection or direct method
+                String categoryName = cat.getClass().getMethod("getName").invoke(cat).toString();
+                existingCategoriesCombo.getItems().add(categoryName);
+            } catch (Exception e) {
+                System.err.println("Error loading category: " + e.getMessage());
+            }
+        }
     }
 
     @FXML
@@ -161,36 +116,54 @@ public class BackofficeMatiereController implements Initializable {
         matiere.setCreatedAt(LocalDateTime.now());
 
         matiereService.add(matiere);
-        refreshTable();
+        
+        // Save associated categories/tags
+        saveCategoriesToMatiere(matiere);
+        
+        refreshCards();
         showList();
     }
 
     @FXML
     private void updateMatiere(ActionEvent event) {
-        Matiere selectedMatiere = matiereTable.getSelectionModel().getSelectedItem();
-        if (selectedMatiere == null) {
-            return;
+        // Since we're now in the editor view and load matiere via populateForm,
+        // we'll update the currently edited matiere by tracking it
+        // For now, we'll iterate through findAll() to find the matiere with matching title
+        String titleToUpdate = titreField.getText();
+        java.util.List<Matiere> allMatieres = matiereService.findAll();
+        
+        for (Matiere m : allMatieres) {
+            if (m.getTitre().equals(titleToUpdate)) {
+                m.setTitre(titreField.getText());
+                m.setDescription(descriptionArea.getText());
+                m.setStructure(buildJsonFromUI());
+                m.setCoverImage(selectedImagePath);
+                matiereService.update(m);
+                
+                // Update associated categories/tags
+                saveCategoriesToMatiere(m);
+                
+                break;
+            }
         }
-
-        selectedMatiere.setTitre(titreField.getText());
-        selectedMatiere.setDescription(descriptionArea.getText());
-        selectedMatiere.setStructure(buildJsonFromUI());
-        selectedMatiere.setCoverImage(selectedImagePath);
-
-        matiereService.update(selectedMatiere);
-        refreshTable();
+        
+        refreshCards();
         showList();
     }
 
     @FXML
     private void deleteMatiere(ActionEvent event) {
-        Matiere selectedMatiere = matiereTable.getSelectionModel().getSelectedItem();
-        if (selectedMatiere == null) {
-            return;
+        String titleToDelete = titreField.getText();
+        java.util.List<Matiere> allMatieres = matiereService.findAll();
+        
+        for (Matiere m : allMatieres) {
+            if (m.getTitre().equals(titleToDelete)) {
+                matiereService.delete(m);
+                break;
+            }
         }
-
-        matiereService.delete(selectedMatiere);
-        refreshTable();
+        
+        refreshCards();
         showList();
     }
 
@@ -246,9 +219,74 @@ public class BackofficeMatiereController implements Initializable {
         }
     }
 
-    private void refreshTable() {
-        matieres.setAll(matiereService.findAll());
-        matiereTable.refresh();
+    private void refreshCards() {
+        cardsContainer.getChildren().clear();
+        java.util.List<Matiere> matiereList = matiereService.findAll();
+        for (Matiere matiere : matiereList) {
+            cardsContainer.getChildren().add(createMatiereCard(matiere));
+        }
+    }
+
+    private VBox createMatiereCard(Matiere matiere) {
+        VBox card = new VBox(10);
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 4); -fx-pref-width: 280; -fx-pref-height: 320;");
+        card.setPadding(new javafx.geometry.Insets(15));
+
+        // Cover Image
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(250);
+        imageView.setFitHeight(140);
+        imageView.setPreserveRatio(true);
+        
+        if (matiere.getCoverImage() != null && !matiere.getCoverImage().isEmpty()) {
+            try {
+                Image image = new Image("file:" + matiere.getCoverImage());
+                imageView.setImage(image);
+            } catch (Exception e) {
+                // Use a placeholder color region
+                javafx.scene.layout.Region placeholder = new javafx.scene.layout.Region();
+                placeholder.setStyle("-fx-background-color: #e5e7eb;");
+                placeholder.setPrefWidth(250);
+                placeholder.setPrefHeight(140);
+                card.getChildren().add(placeholder);
+            }
+        } else {
+            javafx.scene.layout.Region placeholder = new javafx.scene.layout.Region();
+            placeholder.setStyle("-fx-background-color: #e5e7eb;");
+            placeholder.setPrefWidth(250);
+            placeholder.setPrefHeight(140);
+            card.getChildren().add(placeholder);
+        }
+        
+        if (imageView.getImage() != null) {
+            card.getChildren().add(imageView);
+        }
+
+        // Title
+        Label titleLabel = new Label(matiere.getTitre());
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16;");
+
+        // Description
+        Label descLabel = new Label(matiere.getDescription());
+        descLabel.setWrapText(true);
+        descLabel.setMaxHeight(60);
+
+        // Action Button
+        HBox actionBox = new HBox(10);
+        actionBox.setAlignment(Pos.CENTER_RIGHT);
+        
+        Button btnGerer = new Button("Gérer");
+        btnGerer.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 8 16;");
+        btnGerer.setOnAction(e -> {
+            populateForm(matiere);
+            showEditor();
+        });
+        
+        actionBox.getChildren().add(btnGerer);
+
+        card.getChildren().addAll(titleLabel, descLabel, actionBox);
+        VBox.setVgrow(actionBox, Priority.ALWAYS);
+        return card;
     }
 
     private void populateForm(Matiere matiere) {
@@ -264,13 +302,26 @@ public class BackofficeMatiereController implements Initializable {
         courseBuilderContainer.getChildren().clear();
         categoryTagsContainer.getChildren().clear();
         
+        // Load tags/categories associated with this matiere from the database
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.List<Object> matiereCategories = (java.util.List<Object>) matiere.getClass().getMethod("getCategories").invoke(matiere);
+            if (matiereCategories != null) {
+                for (Object cat : matiereCategories) {
+                    String categoryName = cat.getClass().getMethod("getName").invoke(cat).toString();
+                    addCategoryTag(categoryName);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load categories for matiere: " + e.getMessage());
+        }
+        
         if (matiere.getStructure() != null && !matiere.getStructure().isEmpty()) {
             loadJsonToUI(matiere.getStructure());
         }
     }
 
     private void clearInputs() {
-        matiereTable.getSelectionModel().clearSelection();
         titreField.clear();
         descriptionArea.clear();
         courseBuilderContainer.getChildren().clear();
@@ -292,7 +343,7 @@ public class BackofficeMatiereController implements Initializable {
         listView.setVisible(true);
         listView.setManaged(true);
         clearInputs();
-        refreshTable();
+        refreshCards();
     }
 
     @FXML
@@ -367,10 +418,34 @@ public class BackofficeMatiereController implements Initializable {
 
     @FXML
     private void createNewCategory(ActionEvent event) {
-        String newCategory = newCategoryField.getText().trim();
-        if (!newCategory.isEmpty()) {
-            addCategoryTag(newCategory);
-            newCategoryField.clear();
+        String newCategoryName = newCategoryField.getText().trim();
+        if (!newCategoryName.isEmpty()) {
+            try {
+                // Create and save the new category to database
+                Object newCategoryObj = Class.forName("tn.esprit.fahamni.Models.Category").getDeclaredConstructor().newInstance();
+                newCategoryObj.getClass().getMethod("setName", String.class).invoke(newCategoryObj, newCategoryName);
+                
+                // Cast to Category and save
+                tn.esprit.fahamni.Models.Category newCategory = (tn.esprit.fahamni.Models.Category) newCategoryObj;
+                categoryService.ajouter(newCategory);
+                
+                // Add tag to UI
+                addCategoryTag(newCategoryName);
+                newCategoryField.clear();
+                
+                // Refresh dropdown to include the new category
+                loadCategoriesIntoDropdown();
+            } catch (ClassCastException ce) {
+                System.err.println("Error: Created object is not a Category instance");
+                // Fallback: just add the tag visually
+                addCategoryTag(newCategoryName);
+                newCategoryField.clear();
+            } catch (Exception e) {
+                System.err.println("Error creating and saving category: " + e.getMessage());
+                // Fallback: just add the tag visually
+                addCategoryTag(newCategoryName);
+                newCategoryField.clear();
+            }
         }
     }
 
@@ -385,6 +460,52 @@ public class BackofficeMatiereController implements Initializable {
         
         tag.getChildren().addAll(label, removeBtn);
         categoryTagsContainer.getChildren().add(tag);
+    }
+
+    private void saveCategoriesToMatiere(Object matiere) {
+        try {
+            // Get all tags from the UI container
+            java.util.List<String> tagLabels = new java.util.ArrayList<>();
+            for (javafx.scene.Node node : categoryTagsContainer.getChildren()) {
+                if (node instanceof HBox tagBox) {
+                    for (javafx.scene.Node child : tagBox.getChildren()) {
+                        if (child instanceof Label label && !label.getText().equals("×")) {
+                            tagLabels.add(label.getText());
+                        }
+                    }
+                }
+            }
+            
+            // Create or get Category objects for each tag
+            java.util.List<Object> categories = new java.util.ArrayList<>();
+            java.util.List<?> allCategories = categoryService.afficherList();
+            
+            for (String tagLabel : tagLabels) {
+                // Try to find existing category by name
+                Object existingCategory = null;
+                for (Object cat : allCategories) {
+                    try {
+                        String catName = (String) cat.getClass().getMethod("getName").invoke(cat);
+                        if (catName.equals(tagLabel)) {
+                            existingCategory = cat;
+                            break;
+                        }
+                    } catch (Exception ignore) {
+                        // continue searching
+                    }
+                }
+                
+                if (existingCategory != null) {
+                    categories.add(existingCategory);
+                }
+            }
+            
+            // Set categories on matiere using reflection
+            matiere.getClass().getMethod("setCategories", java.util.List.class).invoke(matiere, categories);
+        } catch (Exception e) {
+            System.err.println("Error saving categories to matiere: " + e.getMessage());
+            // Non-critical error - continue with matiere save
+        }
     }
 
     private String buildJsonFromUI() {
@@ -457,13 +578,22 @@ public class BackofficeMatiereController implements Initializable {
 
     private void loadJsonToUI(String json) {
         try {
+            // Handle null or empty JSON
+            if (json == null || json.trim().isEmpty()) {
+                courseBuilderContainer.getChildren().clear();
+                return;
+            }
+            
             // Simple manual parsing for JSON structure
             courseBuilderContainer.getChildren().clear();
             
             // Extract chapters
             int chaptersStart = json.indexOf("[");
             int chaptersEnd = json.lastIndexOf("]");
-            if (chaptersStart < 0 || chaptersEnd < 0) return;
+            if (chaptersStart < 0 || chaptersEnd < 0) {
+                System.err.println("Warning: No valid JSON array found. Starting with empty builder.");
+                return;
+            }
             
             String chaptersContent = json.substring(chaptersStart + 1, chaptersEnd);
             String[] chapters = splitSafely(chaptersContent, "},{");
@@ -525,8 +655,16 @@ public class BackofficeMatiereController implements Initializable {
                     }
                 }
             }
+        } catch (StringIndexOutOfBoundsException e) {
+            // Likely legacy or malformed JSON format
+            System.err.println("Warning: JSON format incompatible with current parser. Detected legacy or malformed data. Starting with empty builder.");
+            System.err.println("Details: " + e.getMessage());
+            courseBuilderContainer.getChildren().clear();
         } catch (Exception e) {
-            System.err.println("Error parsing JSON structure: " + e.getMessage());
+            // Catch all other parsing errors gracefully
+            System.err.println("Warning: Error parsing JSON structure (may be legacy format): " + e.getMessage());
+            System.err.println("Starting with empty builder. You can rebuild the course structure manually.");
+            courseBuilderContainer.getChildren().clear();
         }
     }
 

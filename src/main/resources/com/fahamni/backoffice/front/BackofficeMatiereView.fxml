@@ -5,8 +5,6 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.FlowPane?>
@@ -36,15 +34,11 @@
                     style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
         </HBox>
 
-        <TableView fx:id="matiereTable" VBox.vgrow="ALWAYS">
-            <columns>
-                <TableColumn fx:id="idColumn" prefWidth="70.0" text="ID"/>
-                <TableColumn fx:id="titreColumn" prefWidth="170.0" text="Titre"/>
-                <TableColumn fx:id="descriptionColumn" prefWidth="250.0" text="Description"/>
-                <TableColumn fx:id="structureColumn" prefWidth="250.0" text="Structure"/>
-                <TableColumn fx:id="createdAtColumn" prefWidth="180.0" text="Created At"/>
-            </columns>
-        </TableView>
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-control-inner-background: transparent;" VBox.vgrow="ALWAYS">
+            <content>
+                <FlowPane fx:id="cardsContainer" hgap="20.0" vgap="20.0" style="-fx-padding: 10;" />
+            </content>
+        </ScrollPane>
     </VBox>
 
     <!-- EDITOR VIEW -->
