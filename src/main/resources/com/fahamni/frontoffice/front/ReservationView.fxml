@@ -190,13 +190,12 @@
                 </VBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label fx:id="publishFeedbackLabel" managed="false" visible="false" wrapText="true" maxWidth="560.0" styleClass="frontoffice-feedback"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Button text="Reinitialiser" onAction="#handleClearSessionForm" styleClass="backoffice-secondary-button"/>
                     <Button text="Enregistrer brouillon" onAction="#handleSaveDraftSession" styleClass="backoffice-secondary-button"/>
                     <Button text="Publier la seance" onAction="#handlePublishSession" styleClass="backoffice-primary-button"/>
                 </HBox>
-
-                <Label fx:id="publishFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
             </VBox>
         </VBox>
 
