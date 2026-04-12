@@ -4,10 +4,11 @@ import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
-import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -45,6 +46,9 @@ public class LoginController {
     private PasswordField confirmPasswordField;
 
     @FXML
+    private ComboBox<String> registerRoleComboBox;
+
+    @FXML
     private Button createAccountButton;
 
     @FXML
@@ -57,6 +61,8 @@ public class LoginController {
     public void initialize() {
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
+        registerRoleComboBox.getItems().setAll("Etudiant", "Tuteur");
+        registerRoleComboBox.setValue("Etudiant");
         switchMode(true);
     }
 
@@ -74,15 +80,17 @@ public class LoginController {
 
         User authenticatedUser = authService.authenticate(email, password);
         if (authenticatedUser == null) {
-            showMessage(loginMessageLabel, "Email ou mot de passe invalide.", false);
+            String authError = authService.getLastAuthenticationError();
+            showMessage(loginMessageLabel, authError != null ? authError : "Email ou mot de passe invalide.", false);
             return;
         }
+
+        UserSession.setCurrentUser(authenticatedUser);
 
         try {
             if (authenticatedUser.getRole() == UserRole.ADMIN) {
                 Main.showBackoffice();
             } else {
-                TemporaryUserContext.signIn(authenticatedUser);
                 Main.showMain();
             }
         } catch (Exception e) {
@@ -100,7 +108,7 @@ public class LoginController {
         String password = registerPasswordField.getText();
         String confirmPassword = confirmPasswordField.getText();
 
-        OperationResult result = authService.register(fullName, email, password, confirmPassword);
+        OperationResult result = authService.register(fullName, email, password, confirmPassword, registerRoleComboBox.getValue());
         if (!result.isSuccess()) {
             showMessage(registerMessageLabel, result.getMessage(), false);
             return;
@@ -138,6 +146,7 @@ public class LoginController {
         registerEmailField.clear();
         registerPasswordField.clear();
         confirmPasswordField.clear();
+        registerRoleComboBox.setValue("Etudiant");
     }
 
     private void showMessage(Label label, String message, boolean success) {

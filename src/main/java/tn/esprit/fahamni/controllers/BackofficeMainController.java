@@ -1,5 +1,9 @@
 package tn.esprit.fahamni.controllers;
 
+import tn.esprit.fahamni.services.AdminArticlesService;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -8,58 +12,29 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
-import tn.esprit.fahamni.test.Main;
-import tn.esprit.fahamni.utils.SceneManager;
 
 public class BackofficeMainController {
 
-    @FXML
-    private AnchorPane contentPane;
+    private final AdminArticlesService articlesService = new AdminArticlesService();
 
-    @FXML
-    private Label pageTitle;
-
-    @FXML
-    private Label pageSubtitle;
-
-    @FXML
-    private Button dashboardButton;
-
-    @FXML
-    private Button usersButton;
-
-    @FXML
-    private Button sessionsButton;
-
-    @FXML
-    private Button reservationsButton;
-
-    @FXML
-    private Button contentButton;
-
-    @FXML
-    private Button infrastructureToggleButton;
-
-    @FXML
-    private VBox infrastructureSubmenu;
-
-    @FXML
-    private Label infrastructureChevron;
-
-    @FXML
-    private Button sallesButton;
-
-    @FXML
-    private Button reclamationsButton;
-
-    @FXML
-    private Button maintenanceButton;
-
-    @FXML
-    private Button equipementsButton;
-
-    @FXML
-    private Button infrastructureStatsButton;
+    @FXML private AnchorPane contentPane;
+    @FXML private Label pageTitle;
+    @FXML private Label pageSubtitle;
+    @FXML private Button dashboardButton;
+    @FXML private Button usersButton;
+    @FXML private Button sessionsButton;
+    @FXML private Button reservationsButton;
+    @FXML private Button contentButton;
+    @FXML private Button articlesButton;
+    @FXML private Label articlesBadge;
+    @FXML private Button infrastructureToggleButton;
+    @FXML private VBox infrastructureSubmenu;
+    @FXML private Label infrastructureChevron;
+    @FXML private Button sallesButton;
+    @FXML private Button reclamationsButton;
+    @FXML private Button maintenanceButton;
+    @FXML private Button equipementsButton;
+    @FXML private Button infrastructureStatsButton;
 
     private boolean infrastructureExpanded;
 
@@ -67,6 +42,22 @@ public class BackofficeMainController {
     private void initialize() {
         setInfrastructureExpanded(false);
         showDashboard();
+        refreshArticlesBadge();
+    }
+
+    public void refreshArticlesBadge() {
+        if (articlesBadge == null) {
+            return;
+        }
+        int pending = articlesService.countByStatus("pending");
+        if (pending > 0) {
+            articlesBadge.setText(String.valueOf(pending));
+            articlesBadge.setVisible(true);
+            articlesBadge.setManaged(true);
+        } else {
+            articlesBadge.setVisible(false);
+            articlesBadge.setManaged(false);
+        }
     }
 
     @FXML
@@ -117,6 +108,17 @@ public class BackofficeMainController {
             "Pilotez les articles, ressources et publications mises en avant."
         );
         setActiveButton(contentButton);
+    }
+
+    @FXML
+    private void showArticles() {
+        loadView(
+            "BackofficeArticlesView.fxml",
+            "Gestion des articles",
+            "Validez les articles proposes et suivez leur activite."
+        );
+        setActiveButton(articlesButton);
+        refreshArticlesBadge();
     }
 
     @FXML
@@ -182,6 +184,7 @@ public class BackofficeMainController {
 
     @FXML
     private void handleLogout() {
+        UserSession.clear();
         try {
             Main.showLogin();
         } catch (Exception e) {
@@ -241,19 +244,20 @@ public class BackofficeMainController {
     }
 
     private void setActiveButton(Button activeButton) {
-        dashboardButton.getStyleClass().remove("active");
-        usersButton.getStyleClass().remove("active");
-        sessionsButton.getStyleClass().remove("active");
-        reservationsButton.getStyleClass().remove("active");
-        contentButton.getStyleClass().remove("active");
-        infrastructureToggleButton.getStyleClass().remove("active");
-        sallesButton.getStyleClass().remove("active");
-        reclamationsButton.getStyleClass().remove("active");
-        maintenanceButton.getStyleClass().remove("active");
-        equipementsButton.getStyleClass().remove("active");
-        infrastructureStatsButton.getStyleClass().remove("active");
+        removeActiveClass(dashboardButton);
+        removeActiveClass(usersButton);
+        removeActiveClass(sessionsButton);
+        removeActiveClass(reservationsButton);
+        removeActiveClass(contentButton);
+        removeActiveClass(articlesButton);
+        removeActiveClass(infrastructureToggleButton);
+        removeActiveClass(sallesButton);
+        removeActiveClass(reclamationsButton);
+        removeActiveClass(maintenanceButton);
+        removeActiveClass(equipementsButton);
+        removeActiveClass(infrastructureStatsButton);
 
-        if (!activeButton.getStyleClass().contains("active")) {
+        if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");
         }
 
@@ -262,17 +266,26 @@ public class BackofficeMainController {
             || activeButton == maintenanceButton
             || activeButton == equipementsButton
             || activeButton == infrastructureStatsButton) {
-            if (!infrastructureToggleButton.getStyleClass().contains("active")) {
+            if (infrastructureToggleButton != null && !infrastructureToggleButton.getStyleClass().contains("active")) {
                 infrastructureToggleButton.getStyleClass().add("active");
             }
         }
     }
 
+    private void removeActiveClass(Button button) {
+        if (button != null) {
+            button.getStyleClass().remove("active");
+        }
+    }
+
     private void setInfrastructureExpanded(boolean expanded) {
         infrastructureExpanded = expanded;
-        infrastructureSubmenu.setManaged(expanded);
-        infrastructureSubmenu.setVisible(expanded);
-        infrastructureChevron.setText(expanded ? "v" : ">");
+        if (infrastructureSubmenu != null) {
+            infrastructureSubmenu.setManaged(expanded);
+            infrastructureSubmenu.setVisible(expanded);
+        }
+        if (infrastructureChevron != null) {
+            infrastructureChevron.setText(expanded ? "v" : ">");
+        }
     }
 }
-

@@ -1,20 +1,48 @@
 # Maven build output
 /target/
+target/
 
 # Local IDE files
 /.idea/
+.idea/
+.vscode/
 *.iml
+*.iws
+*.ipr
 
 # Local Maven repository cache
 /.m2/
+
+# Build output
+build/
+/dist/
+/nbdist/
+/nbbuild/
+/nbproject/private/
+/.nb-gradle/
 
 # OS files
 *.log
 *.tmp
 *.swp
+.DS_Store
 
 # Java compiled files
 *.class
 
 # Maven wrapper artifacts if present but not committed
 /.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Java IDE metadata
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+!**/src/main/**/build/
+!**/src/test/**/build/

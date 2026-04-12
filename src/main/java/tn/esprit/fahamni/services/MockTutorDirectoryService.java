@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import tn.esprit.fahamni.utils.UserSession;
+
 public class MockTutorDirectoryService {
 
     private final Map<Integer, String> tutorsById = new LinkedHashMap<>();
@@ -13,7 +15,9 @@ public class MockTutorDirectoryService {
     public MockTutorDirectoryService() {
         tutorsById.put(3, "Ahmed Ben Ali");
         tutorsById.put(8, "Sarah Mansour");
-        tutorsById.put(TemporaryUserContext.getCurrentTutorId(), TemporaryUserContext.getCurrentTutorName());
+        if (UserSession.isCurrentTutor()) {
+            tutorsById.put(UserSession.getCurrentUserId(), UserSession.getDisplayName());
+        }
     }
 
     public int resolveTutorId(String value) {

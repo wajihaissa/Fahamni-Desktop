@@ -12,8 +12,8 @@ import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
 import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.SeanceService;
-import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
@@ -1275,22 +1275,26 @@ public class ReservationController {
     }
 
     private boolean canManageSession(Seance seance) {
-        return TemporaryUserContext.isCurrentTutor()
+        return UserSession.isCurrentTutor()
             && seance != null
-            && seance.getTuteurId() == TemporaryUserContext.getCurrentTutorId();
+            && seance.getTuteurId() == getCurrentTutorId();
     }
 
     private boolean canReserveAsParticipant(Seance seance) {
-        if (TemporaryUserContext.isCurrentStudent()) {
+        if (UserSession.isCurrentStudent()) {
             return true;
         }
-        return TemporaryUserContext.isCurrentTutor()
+        return UserSession.isCurrentTutor()
             && seance != null
             && !canManageSession(seance);
     }
 
     private int getCurrentReservationParticipantId() {
-        return TemporaryUserContext.getCurrentActorId();
+        return UserSession.getCurrentUserId();
+    }
+
+    private int getCurrentTutorId() {
+        return UserSession.isCurrentTutor() ? UserSession.getCurrentUserId() : 0;
     }
 
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
@@ -1298,7 +1302,7 @@ public class ReservationController {
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
         if (!canReserveAsParticipant(seance)) {
-            reserveButton.setText(TemporaryUserContext.isCurrentTutor() ? "Votre seance" : "Compte requis");
+            reserveButton.setText(UserSession.isCurrentTutor() ? "Votre seance" : "Compte requis");
             reserveButton.setDisable(true);
             return reserveButton;
         }
@@ -1442,7 +1446,7 @@ public class ReservationController {
         tutorReservationRequestsContainer.getChildren().clear();
 
         List<TutorReservationRequest> requests = reservationService.getTutorReservationRequests(
-            TemporaryUserContext.getCurrentTutorId()
+            getCurrentTutorId()
         );
         long pendingCount = requests.stream().filter(TutorReservationRequest::isPending).count();
         tutorReservationRequestsSummaryLabel.setText(formatTutorRequestsSummary(requests.size(), pendingCount));
@@ -1533,7 +1537,7 @@ public class ReservationController {
 
         OperationResult result = reservationService.acceptReservation(
             request.id(),
-            TemporaryUserContext.getCurrentTutorId()
+            getCurrentTutorId()
         );
         loadSessionDashboard();
         loadTutorReservationRequests();
@@ -1563,7 +1567,7 @@ public class ReservationController {
         hideTutorReservationRequestsFeedback();
         OperationResult result = reservationService.refuseReservation(
             request.id(),
-            TemporaryUserContext.getCurrentTutorId()
+            getCurrentTutorId()
         );
         loadSessionDashboard();
         loadTutorReservationRequests();
@@ -2200,7 +2204,7 @@ public class ReservationController {
     }
 
     private void showAddSessionSection() {
-        if (!TemporaryUserContext.isCurrentTutor()) {
+        if (!UserSession.isCurrentTutor()) {
             showSessionListFeedback("Connectez-vous avec le compte tuteur pour ajouter une seance.", false);
             return;
         }
@@ -2217,7 +2221,7 @@ public class ReservationController {
     }
 
     private void showStudentReservationsSection() {
-        if (!TemporaryUserContext.isCurrentStudent() && !TemporaryUserContext.isCurrentTutor()) {
+        if (!UserSession.canUseReservationWorkspace()) {
             showSessionListFeedback("Connectez-vous avec un compte etudiant ou tuteur pour consulter vos reservations.", false);
             return;
         }
@@ -2236,7 +2240,7 @@ public class ReservationController {
     }
 
     private void showReservationRequestsSection() {
-        if (!TemporaryUserContext.isCurrentTutor()) {
+        if (!UserSession.isCurrentTutor()) {
             showAvailableSessionsSection();
             showReservationActionFeedback("Connectez-vous avec le compte tuteur pour consulter les demandes.", false);
             return;
@@ -2256,7 +2260,7 @@ public class ReservationController {
     }
 
     private void configureWorkspaceSections() {
-        if (TemporaryUserContext.isCurrentTutor()) {
+        if (UserSession.isCurrentTutor()) {
             sectionMenuComboBox.getItems().setAll(
                 SECTION_AVAILABLE_SESSIONS,
                 SECTION_MY_RESERVATIONS,
@@ -2270,7 +2274,7 @@ public class ReservationController {
     }
 
     private void selectDefaultTutor() {
-        String temporaryTutorName = tutorDirectoryService.getTutorDisplayName(TemporaryUserContext.getCurrentTutorId());
+        String temporaryTutorName = tutorDirectoryService.getTutorDisplayName(getCurrentTutorId());
         if (tutorComboBox.getItems().contains(temporaryTutorName)) {
             tutorComboBox.setValue(temporaryTutorName);
             return;

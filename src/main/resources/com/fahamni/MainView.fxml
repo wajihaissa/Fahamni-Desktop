@@ -7,9 +7,10 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="800.0" prefWidth="1200.0" styleClass="main-root"
+<BorderPane fx:id="rootPane" prefHeight="800.0" prefWidth="1200.0" styleClass="main-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.MainController">
@@ -31,7 +32,18 @@
                 <Button fx:id="plannerButton" maxWidth="Infinity" text="Planner" styleClass="sidebar-button" onAction="#showPlanner"/>
                 <Button fx:id="messengerButton" maxWidth="Infinity" text="Messagerie" styleClass="sidebar-button" onAction="#showMessenger"/>
                 <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" styleClass="sidebar-button" onAction="#showQuiz"/>
-                <Button fx:id="blogButton" maxWidth="Infinity" text="Blog" styleClass="sidebar-button" onAction="#showBlog"/>
+                <StackPane>
+                    <Button fx:id="blogButton" maxWidth="Infinity" text="Blog" styleClass="sidebar-button" onAction="#showBlog"/>
+                    <Label fx:id="blogNotifBadge" text=""
+                           style="-fx-background-color: #e74c3c; -fx-text-fill: white;
+                                  -fx-font-size: 10; -fx-font-weight: bold;
+                                  -fx-background-radius: 10; -fx-padding: 2 6;
+                                  -fx-min-width: 18; -fx-alignment: center;"
+                           StackPane.alignment="CENTER_RIGHT"
+                           managed="false" visible="false">
+                        <StackPane.margin><Insets right="10"/></StackPane.margin>
+                    </Label>
+                </StackPane>
             </VBox>
 
             <VBox alignment="BOTTOM_CENTER" spacing="10.0" VBox.vgrow="ALWAYS" styleClass="sidebar-footer">
@@ -55,7 +67,21 @@
 
             <HBox spacing="10.0" alignment="CENTER_RIGHT" styleClass="topbar-actions">
                 <Button text="Alertes" styleClass="topbar-pill-button"/>
-                <Button text="Compte" styleClass="topbar-pill-button"/>
+
+                <StackPane fx:id="accountMenuWrapper" pickOnBounds="false" styleClass="account-menu-wrapper">
+                    <children>
+                        <Button text="Compte" styleClass="topbar-pill-button" onAction="#toggleAccountMenu"/>
+                        <VBox fx:id="accountMenuPane" managed="false" visible="false" spacing="6.0"
+                              styleClass="account-menu-panel" StackPane.alignment="TOP_RIGHT">
+                            <children>
+                                <Button maxWidth="Infinity" onAction="#showProfile" styleClass="account-menu-item" text="Mon profil"/>
+                                <Button maxWidth="Infinity" onAction="#showSettings" styleClass="account-menu-item" text="Parametres"/>
+                                <Button maxWidth="Infinity" onAction="#handleLogout" styleClass="account-menu-item-danger" text="Deconnexion"/>
+                            </children>
+                        </VBox>
+                    </children>
+                </StackPane>
+
                 <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="topbar-profile-card">
                     <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar"/>
                     <VBox spacing="2.0">
@@ -71,4 +97,3 @@
         <AnchorPane fx:id="contentPane" styleClass="content-pane" BorderPane.alignment="CENTER"/>
     </center>
 </BorderPane>
-

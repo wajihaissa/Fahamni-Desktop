@@ -3,129 +3,120 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
 
-<ScrollPane fitToWidth="true" styleClass="blog-scroll"
+<ScrollPane fitToWidth="true"
+            hbarPolicy="NEVER"
+            focusTraversable="false"
+            styleClass="blog-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.BlogController">
-    <VBox spacing="20.0" styleClass="blog-content">
-        <padding>
-            <Insets top="20" right="20" bottom="20" left="20"/>
-        </padding>
 
-        <VBox spacing="15.0" styleClass="blog-header">
-            <Label text="Learning Resources" styleClass="section-title"/>
-            <Label text="Articles, tips, and educational content" styleClass="section-subtitle"/>
-        </VBox>
+    <VBox spacing="20" styleClass="blog-content">
+        <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
 
-        <HBox spacing="15.0" styleClass="blog-controls">
-            <ComboBox fx:id="categoryFilter" promptText="All Categories" styleClass="filter-combo"/>
-            <TextField fx:id="searchField" promptText="Search articles..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
-            <Button text="ðŸ”" styleClass="search-button"/>
+        <!-- Header -->
+        <HBox alignment="CENTER_LEFT" spacing="12"
+              style="-fx-background-color: linear-gradient(to right, #3a7bd5, #00d2ff);
+                     -fx-padding: 14 20; -fx-background-radius: 12;">
+            <Label text="Blog Fahamni"
+                   style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: white;"/>
+            <Label text="—  Articles et ressources educatives de notre communaute"
+                   style="-fx-font-size: 12; -fx-text-fill: rgba(255,255,255,0.85);"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <!-- Cloche notification tuteur -->
+            <StackPane onMouseClicked="#handleNotifBellClick" style="-fx-cursor: hand;">
+                <Label text="🔔"
+                       style="-fx-font-size: 18; -fx-padding: 5;
+                              -fx-background-color: rgba(255,255,255,0.2);
+                              -fx-background-radius: 50;"/>
+                <Label fx:id="notifBellBadge" text=""
+                       style="-fx-background-color: #e74c3c; -fx-text-fill: white;
+                              -fx-font-size: 9; -fx-font-weight: bold;
+                              -fx-background-radius: 10; -fx-padding: 1 5;
+                              -fx-min-width: 16; -fx-alignment: center;"
+                       StackPane.alignment="TOP_RIGHT"
+                       managed="false" visible="false"/>
+            </StackPane>
         </HBox>
 
-        <VBox spacing="15.0" styleClass="featured-article">
-            <Label text="Featured Article" styleClass="subsection-title"/>
-            <VBox styleClass="article-card featured" spacing="15.0">
-                <VBox spacing="10.0">
-                    <Label text="Mastering Quadratic Equations: A Complete Guide" styleClass="article-title"/>
-                    <HBox spacing="15.0">
-                        <Label text="By Ahmed Ben Ali" styleClass="article-author"/>
-                        <Label text="ðŸ“… Dec 15, 2024" styleClass="article-date"/>
-                        <Label text="ðŸ‘ï¸ 245 views" styleClass="article-views"/>
-                    </HBox>
-                    <Label text="Learn everything you need to know about quadratic equations, from basic concepts to advanced problem-solving techniques. This comprehensive guide includes step-by-step examples and practice problems." styleClass="article-excerpt"/>
-                </VBox>
-                <HBox spacing="10.0" styleClass="article-actions">
-                    <Button text="Read More" styleClass="read-more-button"/>
-                    <Button text="ðŸ‘ 23" styleClass="like-button"/>
-                    <Button text="ðŸ’¬ 5" styleClass="comment-button"/>
-                </HBox>
-            </VBox>
-        </VBox>
+        <!-- Barre de recherche + Tri -->
+        <HBox spacing="12" alignment="CENTER_LEFT"
+              style="-fx-background-color: white; -fx-padding: 12 16; -fx-background-radius: 12;
+                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);">
+            <Label text="🔍" style="-fx-font-size: 16; -fx-text-fill: #94a3b8;"/>
+            <TextField fx:id="searchField"
+                       promptText="Rechercher un article..."
+                       styleClass="search-field"
+                       focusTraversable="true"
+                       HBox.hgrow="ALWAYS"
+                       style="-fx-background-color: transparent; -fx-border-width: 0;
+                              -fx-font-size: 13; -fx-text-fill: #1e293b;"/>
+            <Separator orientation="VERTICAL" style="-fx-opacity: 0.3;"/>
+            <Label text="Trier par :" style="-fx-font-size: 12; -fx-text-fill: #64748b;"/>
+            <ComboBox fx:id="sortComboBox" focusTraversable="false"
+                      style="-fx-background-color: #f1f5f9; -fx-background-radius: 8;
+                             -fx-border-width: 0; -fx-font-size: 12; -fx-cursor: hand;
+                             -fx-padding: 4 8;"/>
+        </HBox>
 
-        <VBox spacing="15.0" styleClass="recent-articles">
-            <Label text="Recent Articles" styleClass="subsection-title"/>
-            <VBox spacing="10.0">
-                <VBox styleClass="article-card" spacing="10.0">
-                    <VBox spacing="5.0">
-                        <Label text="Physics Fundamentals: Understanding Force and Motion" styleClass="article-title"/>
-                        <HBox spacing="15.0">
-                            <Label text="By Sarah Mansour" styleClass="article-author"/>
-                            <Label text="ðŸ“… Dec 12, 2024" styleClass="article-date"/>
-                            <Label text="ðŸ‘ï¸ 189 views" styleClass="article-views"/>
-                        </HBox>
-                        <Label text="An introduction to Newton's laws of motion and their applications in everyday physics." styleClass="article-excerpt"/>
-                    </VBox>
-                    <HBox spacing="10.0" styleClass="article-actions">
-                        <Button text="Read More" styleClass="read-more-button"/>
-                        <Button text="ðŸ‘ 18" styleClass="like-button"/>
-                        <Button text="ðŸ’¬ 3" styleClass="comment-button"/>
-                    </HBox>
-                </VBox>
+        <!-- Filtres + bouton Créer sur la même ligne -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Button fx:id="btnTous" text="Tous"
+                    focusTraversable="false"
+                    onAction="#filterTous"
+                    style="-fx-background-color: #3a7bd5; -fx-text-fill: white;
+                           -fx-background-radius: 20; -fx-padding: 8 20;
+                           -fx-font-size: 13; -fx-font-weight: bold; -fx-cursor: hand;"/>
+            <Button fx:id="btnMath" text="Mathematiques"
+                    focusTraversable="false"
+                    onAction="#filterMath"
+                    style="-fx-background-color: white; -fx-text-fill: #3a7bd5;
+                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
+                           -fx-cursor: hand; -fx-border-color: #3a7bd5; -fx-border-radius: 20;"/>
+            <Button fx:id="btnScience" text="Sciences"
+                    focusTraversable="false"
+                    onAction="#filterScience"
+                    style="-fx-background-color: white; -fx-text-fill: #11998e;
+                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
+                           -fx-cursor: hand; -fx-border-color: #11998e; -fx-border-radius: 20;"/>
+            <Button fx:id="btnInfo" text="Informatique"
+                    focusTraversable="false"
+                    onAction="#filterInfo"
+                    style="-fx-background-color: white; -fx-text-fill: #8e44ad;
+                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
+                           -fx-cursor: hand; -fx-border-color: #8e44ad; -fx-border-radius: 20;"/>
+            <Button fx:id="btnLangue" text="Langues"
+                    focusTraversable="false"
+                    onAction="#filterLangue"
+                    style="-fx-background-color: white; -fx-text-fill: #f7971e;
+                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
+                           -fx-cursor: hand; -fx-border-color: #f7971e; -fx-border-radius: 20;"/>
+            <Button fx:id="btnAutre" text="Autres"
+                    focusTraversable="false"
+                    onAction="#filterAutre"
+                    style="-fx-background-color: white; -fx-text-fill: #7f8c8d;
+                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
+                           -fx-cursor: hand; -fx-border-color: #7f8c8d; -fx-border-radius: 20;"/>
+            <!-- Spacer pour pousser le bouton à droite -->
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="createArticleBtn" text="+ Créer un article"
+                    focusTraversable="false"
+                    onAction="#openCreateForm"
+                    style="-fx-background-color: linear-gradient(to right, #11998e, #38ef7d);
+                           -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13;
+                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-cursor: hand;
+                           -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 6, 0, 0, 2);"/>
+        </HBox>
 
-                <VBox styleClass="article-card" spacing="10.0">
-                    <VBox spacing="5.0">
-                        <Label text="Chemistry Lab Safety: Essential Guidelines" styleClass="article-title"/>
-                        <HBox spacing="15.0">
-                            <Label text="By Mohamed Trabelsi" styleClass="article-author"/>
-                            <Label text="ðŸ“… Dec 10, 2024" styleClass="article-date"/>
-                            <Label text="ðŸ‘ï¸ 156 views" styleClass="article-views"/>
-                        </HBox>
-                        <Label text="Important safety protocols and best practices for chemistry laboratory work." styleClass="article-excerpt"/>
-                    </VBox>
-                    <HBox spacing="10.0" styleClass="article-actions">
-                        <Button text="Read More" styleClass="read-more-button"/>
-                        <Button text="ðŸ‘ 12" styleClass="like-button"/>
-                        <Button text="ðŸ’¬ 7" styleClass="comment-button"/>
-                    </HBox>
-                </VBox>
+        <!-- Conteneur dynamique des blogs -->
+        <VBox fx:id="blogsContainer" spacing="16"/>
 
-                <VBox styleClass="article-card" spacing="10.0">
-                    <VBox spacing="5.0">
-                        <Label text="English Literature: Analyzing Poetry" styleClass="article-title"/>
-                        <HBox spacing="15.0">
-                            <Label text="By Leila Khemiri" styleClass="article-author"/>
-                            <Label text="ðŸ“… Dec 8, 2024" styleClass="article-date"/>
-                            <Label text="ðŸ‘ï¸ 134 views" styleClass="article-views"/>
-                        </HBox>
-                        <Label text="Techniques for analyzing and interpreting poetic works." styleClass="article-excerpt"/>
-                    </VBox>
-                    <HBox spacing="10.0" styleClass="article-actions">
-                        <Button text="Read More" styleClass="read-more-button"/>
-                        <Button text="ðŸ‘ 15" styleClass="like-button"/>
-                        <Button text="ðŸ’¬ 4" styleClass="comment-button"/>
-                    </HBox>
-                </VBox>
-            </VBox>
-        </VBox>
+        <!-- Barre de pagination -->
+        <HBox fx:id="paginationBar" spacing="8" alignment="CENTER_LEFT"
+              style="-fx-background-color: white; -fx-padding: 12 16; -fx-background-radius: 12;
+                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);">
+        </HBox>
 
-        <VBox spacing="15.0" styleClass="categories-section">
-            <Label text="Browse by Category" styleClass="subsection-title"/>
-            <HBox spacing="15.0">
-                <VBox styleClass="category-card" spacing="10.0">
-                    <Label text="ðŸ“" styleClass="category-icon"/>
-                    <Label text="Mathematics" styleClass="category-name"/>
-                    <Label text="45 articles" styleClass="category-count"/>
-                </VBox>
-                <VBox styleClass="category-card" spacing="10.0">
-                    <Label text="âš›ï¸" styleClass="category-icon"/>
-                    <Label text="Physics" styleClass="category-name"/>
-                    <Label text="32 articles" styleClass="category-count"/>
-                </VBox>
-                <VBox styleClass="category-card" spacing="10.0">
-                    <Label text="ðŸ§ª" styleClass="category-icon"/>
-                    <Label text="Chemistry" styleClass="category-name"/>
-                    <Label text="28 articles" styleClass="category-count"/>
-                </VBox>
-                <VBox styleClass="category-card" spacing="10.0">
-                    <Label text="ðŸ“š" styleClass="category-icon"/>
-                    <Label text="Literature" styleClass="category-name"/>
-                    <Label text="19 articles" styleClass="category-count"/>
-                </VBox>
-            </HBox>
-        </VBox>
     </VBox>
 </ScrollPane>
-
