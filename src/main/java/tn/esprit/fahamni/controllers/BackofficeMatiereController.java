@@ -26,8 +26,8 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import tn.esprit.fahamni.entities.Matiere;
-import tn.esprit.fahamni.services.MatiereService;
 import tn.esprit.fahamni.services.CategoryService;
+import tn.esprit.fahamni.services.MatiereService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 
@@ -55,18 +55,6 @@ public class BackofficeMatiereController implements Initializable {
     private Label imagePathLabel;
 
     @FXML
-    private Button ajouterButton;
-
-    @FXML
-    private Button modifierButton;
-
-    @FXML
-    private Button supprimerButton;
-
-    @FXML
-    private Button viderButton;
-
-    @FXML
     private Button gererCategoriesButton;
 
     @FXML
@@ -85,6 +73,7 @@ public class BackofficeMatiereController implements Initializable {
     private final CategoryService categoryService = new CategoryService();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private String selectedImagePath;
+    private Matiere selectedMatiere; // Tracks the matiere being edited (null = new matiere)
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -107,48 +96,39 @@ public class BackofficeMatiereController implements Initializable {
     }
 
     @FXML
-    private void addMatiere(ActionEvent event) {
-        Matiere matiere = new Matiere();
-        matiere.setTitre(titreField.getText());
-        matiere.setDescription(descriptionArea.getText());
-        matiere.setStructure(buildJsonFromUI());
-        matiere.setCoverImage(selectedImagePath);
-        matiere.setCreatedAt(LocalDateTime.now());
+    private void handleSaveMatiere(ActionEvent event) {
+        boolean isNew = (selectedMatiere == null);
 
-        matiereService.add(matiere);
-        
-        // Save associated categories/tags
-        saveCategoriesToMatiere(matiere);
-        
-        refreshCards();
-        showList();
-    }
-
-    @FXML
-    private void updateMatiere(ActionEvent event) {
-        // Since we're now in the editor view and load matiere via populateForm,
-        // we'll update the currently edited matiere by tracking it
-        // For now, we'll iterate through findAll() to find the matiere with matching title
-        String titleToUpdate = titreField.getText();
-        java.util.List<Matiere> allMatieres = matiereService.findAll();
-        
-        for (Matiere m : allMatieres) {
-            if (m.getTitre().equals(titleToUpdate)) {
-                m.setTitre(titreField.getText());
-                m.setDescription(descriptionArea.getText());
-                m.setStructure(buildJsonFromUI());
-                m.setCoverImage(selectedImagePath);
-                matiereService.update(m);
-                
-                // Update associated categories/tags
-                saveCategoriesToMatiere(m);
-                
-                break;
-            }
+        if (isNew) {
+            selectedMatiere = new Matiere();
+            selectedMatiere.setCreatedAt(LocalDateTime.now());
         }
-        
-        refreshCards();
-        showList();
+
+        // 1. Flush standard text fields to the object
+        selectedMatiere.setTitre(titreField.getText());
+        selectedMatiere.setDescription(descriptionArea.getText());
+
+        // 2. Flush the Course Builder UI to the JSON string
+        selectedMatiere.setStructure(buildJsonFromUI());
+
+        // 3. Set the cover image path
+        selectedMatiere.setCoverImage(selectedImagePath);
+
+        // 4. Save the entity to the Database
+        if (isNew) {
+            matiereService.add(selectedMatiere);
+            // Note: If your ORM requires the Matiere to have an ID before saving many-to-many tags,
+            // ensure the add() method updates the object's ID.
+        } else {
+            matiereService.update(selectedMatiere);
+        }
+
+        // 5. Flush the Tags to the database (linking them to this Matiere)
+        saveCategoriesToMatiere(selectedMatiere);
+
+        // 6. Update the App UI and return to the list
+        refreshCards(); // Updates the grid with the new data
+        showList();     // Swaps the view back to the cards
     }
 
     @FXML
@@ -165,11 +145,6 @@ public class BackofficeMatiereController implements Initializable {
         
         refreshCards();
         showList();
-    }
-
-    @FXML
-    private void clearForm(ActionEvent event) {
-        clearInputs();
     }
 
     @FXML
@@ -294,6 +269,9 @@ public class BackofficeMatiereController implements Initializable {
             return;
         }
 
+        // Track the matiere being edited
+        selectedMatiere = matiere;
+
         titreField.setText(matiere.getTitre());
         descriptionArea.setText(matiere.getDescription());
         selectedImagePath = matiere.getCoverImage();
@@ -348,6 +326,7 @@ public class BackofficeMatiereController implements Initializable {
 
     @FXML
     private void handleCreateNew() {
+        selectedMatiere = null; // Signal that we're creating a new matiere
         clearInputs();
         showEditor();
     }
