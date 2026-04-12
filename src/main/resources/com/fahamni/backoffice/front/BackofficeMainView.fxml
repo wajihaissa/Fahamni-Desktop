@@ -34,7 +34,7 @@
                 <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" onAction="#showReservations" styleClass="backoffice-nav-button"/>
                 <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" onAction="#showQuiz" styleClass="backoffice-nav-button"/>
                 <Button fx:id="contentButton" maxWidth="Infinity" text="Contenu" onAction="#showContent" styleClass="backoffice-nav-button"/>
-                <Button fx:id="categoryButton" maxWidth="Infinity" text="Catégories" onAction="#showCategory" styleClass="backoffice-nav-button"/>
+                <Button fx:id="matiereButton" maxWidth="Infinity" text="Mati&#232;res" onAction="#showMatiere" styleClass="backoffice-nav-button"/>
 
             </VBox>
 
@@ -68,4 +68,5 @@
         <AnchorPane fx:id="contentPane" styleClass="backoffice-content-pane" BorderPane.alignment="CENTER"/>
     </center>
 </BorderPane>
+
 

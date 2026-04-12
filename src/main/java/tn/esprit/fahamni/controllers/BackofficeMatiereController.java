@@ -67,6 +67,9 @@ public class BackofficeMatiereController implements Initializable {
     @FXML
     private Button viderButton;
 
+    @FXML
+    private Button gererCategoriesButton;
+
     private final MatiereService matiereService = new MatiereService();
     private final ObservableList<Matiere> matieres = FXCollections.observableArrayList();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -77,6 +80,25 @@ public class BackofficeMatiereController implements Initializable {
         titreColumn.setCellValueFactory(new PropertyValueFactory<>("titre"));
         descriptionColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
         structureColumn.setCellValueFactory(new PropertyValueFactory<>("structure"));
+        structureColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty) {
+                    setText("");
+                    return;
+                }
+
+                String value = item == null ? "" : item.trim();
+                if (value.isEmpty() || "{}".equals(value) || "[]".equals(value)) {
+                    setText("Vide");
+                } else if (value.length() > 30) {
+                    setText(value.substring(0, 30) + "...");
+                } else {
+                    setText(value);
+                }
+            }
+        });
         createdAtColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
         createdAtColumn.setCellFactory(column -> new TableCell<>() {
             @Override
@@ -144,6 +166,12 @@ public class BackofficeMatiereController implements Initializable {
     @FXML
     private void clearForm(ActionEvent event) {
         clearInputs();
+    }
+
+    @FXML
+    private void openCategories(ActionEvent event) {
+        System.out.println("Opening categories view...");
+        // TODO: Implement actual view swap based on existing navigation logic
     }
 
     private void refreshTable() {

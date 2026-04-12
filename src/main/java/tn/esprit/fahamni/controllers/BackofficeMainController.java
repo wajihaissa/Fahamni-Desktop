@@ -35,7 +35,7 @@ public class BackofficeMainController {
     private Button contentButton;
 
     @FXML
-    private Button categoryButton;
+    private Button matiereButton;
 
     @FXML
     private void initialize() {
@@ -79,9 +79,9 @@ public class BackofficeMainController {
     }
 
     @FXML
-    private void showCategory() {
-        loadView("BackofficeCategoryView.fxml", "Gestion des catégories");
-        setActiveButton(categoryButton);
+    private void showMatiere() {
+        loadView("BackofficeMatiereView.fxml", "Gestion des mati\u00e8res");
+        setActiveButton(matiereButton);
     }
 
     @FXML
@@ -118,11 +118,12 @@ public class BackofficeMainController {
         reservationsButton.getStyleClass().remove("active");
         quizButton.getStyleClass().remove("active");
         contentButton.getStyleClass().remove("active");
-        categoryButton.getStyleClass().remove("active");
+        matiereButton.getStyleClass().remove("active");
 
         if (!activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");
         }
     }
 }
+
 
