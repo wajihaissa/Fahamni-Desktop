@@ -21,12 +21,11 @@ public class CategoryService implements IServices<Category> {
     }
 
     public void ajouter(Category category) {
-        String req = "INSERT INTO category (nom, description, image) VALUES (?, ?, ?)";
+        String req = "INSERT INTO category (name, slug) VALUES (?, ?)";
 
         try (PreparedStatement pst = cnx.prepareStatement(req, Statement.RETURN_GENERATED_KEYS)) {
-            pst.setString(1, category.getNom());
-            pst.setString(2, category.getDescription());
-            pst.setString(3, category.getImage());
+            pst.setString(1, category.getName());
+            pst.setString(2, category.getSlug());
             pst.executeUpdate();
 
             try (ResultSet rs = pst.getGeneratedKeys()) {
@@ -40,13 +39,12 @@ public class CategoryService implements IServices<Category> {
     }
 
     public void modifier(Category category) {
-        String req = "UPDATE category SET nom = ?, description = ?, image = ? WHERE id = ?";
+        String req = "UPDATE category SET name = ?, slug = ? WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {
-            pst.setString(1, category.getNom());
-            pst.setString(2, category.getDescription());
-            pst.setString(3, category.getImage());
-            pst.setInt(4, category.getId());
+            pst.setString(1, category.getName());
+            pst.setString(2, category.getSlug());
+            pst.setInt(3, category.getId());
             pst.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
@@ -74,9 +72,8 @@ public class CategoryService implements IServices<Category> {
             while (rs.next()) {
                 Category category = new Category(
                     rs.getInt("id"),
-                    rs.getString("nom"),
-                    rs.getString("description"),
-                    rs.getString("image")
+                    rs.getString("name"),
+                    rs.getString("slug")
                 );
                 categories.add(category);
             }
@@ -97,9 +94,8 @@ public class CategoryService implements IServices<Category> {
                 if (rs.next()) {
                     return new Category(
                         rs.getInt("id"),
-                        rs.getString("nom"),
-                        rs.getString("description"),
-                        rs.getString("image")
+                        rs.getString("name"),
+                        rs.getString("slug")
                     );
                 }
             }

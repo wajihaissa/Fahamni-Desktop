@@ -3,24 +3,21 @@ package tn.esprit.fahamni.Models;
 public class Category {
 
     private int id;
-    private String nom;
-    private String description;
-    private String image;
+    private String name;
+    private String slug;
 
     public Category() {
     }
 
-    public Category(String nom, String description, String image) {
-        this.nom = nom;
-        this.description = description;
-        this.image = image;
+    public Category(String name, String slug) {
+        this.name = name;
+        this.slug = slug;
     }
 
-    public Category(int id, String nom, String description, String image) {
+    public Category(int id, String name, String slug) {
         this.id = id;
-        this.nom = nom;
-        this.description = description;
-        this.image = image;
+        this.name = name;
+        this.slug = slug;
     }
 
     public int getId() {
@@ -31,27 +28,19 @@ public class Category {
         this.id = id;
     }
 
-    public String getNom() {
-        return nom;
+    public String getName() {
+        return name;
     }
 
-    public void setNom(String nom) {
-        this.nom = nom;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public String getDescription() {
-        return description;
+    public String getSlug() {
+        return slug;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getImage() {
-        return image;
-    }
-
-    public void setImage(String image) {
-        this.image = image;
+    public void setSlug(String slug) {
+        this.slug = slug;
     }
 }
