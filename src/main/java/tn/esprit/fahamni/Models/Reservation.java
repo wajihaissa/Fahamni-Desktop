@@ -1,26 +1,142 @@
 package tn.esprit.fahamni.Models;
 
+import java.time.LocalDateTime;
+
 public class Reservation {
 
+    private int id;
+    private int status;
+    private LocalDateTime reservedAt;
+    // The current SQL column is named `cancell_at`.
+    private LocalDateTime cancelledAt;
+    private String notes;
+    private int seanceId;
+    private int participantId;
+    private LocalDateTime confirmationEmailSentAt;
+    private LocalDateTime acceptanceEmailSentAt;
+    private LocalDateTime reminderEmailSentAt;
+
+    // Optional display helpers kept for the current mock UI flow.
     private String sessionTitle;
     private String tutorName;
     private String schedule;
     private String location;
     private double price;
-    private String status;
+    private String statusLabel;
     private boolean upcoming;
     private Integer rating;
 
+    public Reservation() {
+    }
+
+    public Reservation(int id, int status, LocalDateTime reservedAt, LocalDateTime cancelledAt,
+                       String notes, int seanceId, int participantId,
+                       LocalDateTime confirmationEmailSentAt,
+                       LocalDateTime acceptanceEmailSentAt,
+                       LocalDateTime reminderEmailSentAt) {
+        this.id = id;
+        this.status = status;
+        this.reservedAt = reservedAt;
+        this.cancelledAt = cancelledAt;
+        this.notes = notes;
+        this.seanceId = seanceId;
+        this.participantId = participantId;
+        this.confirmationEmailSentAt = confirmationEmailSentAt;
+        this.acceptanceEmailSentAt = acceptanceEmailSentAt;
+        this.reminderEmailSentAt = reminderEmailSentAt;
+    }
+
     public Reservation(String sessionTitle, String tutorName, String schedule, String location,
-                       double price, String status, boolean upcoming, Integer rating) {
+                       double price, String statusLabel, boolean upcoming, Integer rating) {
         this.sessionTitle = sessionTitle;
         this.tutorName = tutorName;
         this.schedule = schedule;
         this.location = location;
         this.price = price;
-        this.status = status;
+        this.statusLabel = statusLabel;
         this.upcoming = upcoming;
         this.rating = rating;
+        this.reservedAt = LocalDateTime.now();
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getReservedAt() {
+        return reservedAt;
+    }
+
+    public void setReservedAt(LocalDateTime reservedAt) {
+        this.reservedAt = reservedAt;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+    }
+
+    public int getSeanceId() {
+        return seanceId;
+    }
+
+    public void setSeanceId(int seanceId) {
+        this.seanceId = seanceId;
+    }
+
+    public int getParticipantId() {
+        return participantId;
+    }
+
+    public void setParticipantId(int participantId) {
+        this.participantId = participantId;
+    }
+
+    public LocalDateTime getConfirmationEmailSentAt() {
+        return confirmationEmailSentAt;
+    }
+
+    public void setConfirmationEmailSentAt(LocalDateTime confirmationEmailSentAt) {
+        this.confirmationEmailSentAt = confirmationEmailSentAt;
+    }
+
+    public LocalDateTime getAcceptanceEmailSentAt() {
+        return acceptanceEmailSentAt;
+    }
+
+    public void setAcceptanceEmailSentAt(LocalDateTime acceptanceEmailSentAt) {
+        this.acceptanceEmailSentAt = acceptanceEmailSentAt;
+    }
+
+    public LocalDateTime getReminderEmailSentAt() {
+        return reminderEmailSentAt;
+    }
+
+    public void setReminderEmailSentAt(LocalDateTime reminderEmailSentAt) {
+        this.reminderEmailSentAt = reminderEmailSentAt;
     }
 
     public String getSessionTitle() {
@@ -63,12 +179,12 @@ public class Reservation {
         this.price = price;
     }
 
-    public String getStatus() {
-        return status;
+    public String getStatusLabel() {
+        return statusLabel;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setStatusLabel(String statusLabel) {
+        this.statusLabel = statusLabel;
     }
 
     public boolean isUpcoming() {
@@ -87,4 +203,3 @@ public class Reservation {
         this.rating = rating;
     }
 }
-

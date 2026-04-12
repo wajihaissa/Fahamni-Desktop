@@ -1,0 +1,20 @@
+# Maven build output
+/target/
+
+# Local IDE files
+/.idea/
+*.iml
+
+# Local Maven repository cache
+/.m2/
+
+# OS files
+*.log
+*.tmp
+*.swp
+
+# Java compiled files
+*.class
+
+# Maven wrapper artifacts if present but not committed
+/.mvn/

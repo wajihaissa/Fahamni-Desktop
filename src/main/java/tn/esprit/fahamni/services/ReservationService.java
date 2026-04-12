@@ -17,6 +17,11 @@ import java.util.stream.Collectors;
 
 public class ReservationService {
 
+    public static final int STATUS_PENDING = 0;
+    public static final int STATUS_ACCEPTED = 1;
+    public static final int STATUS_REFUSED = 3;
+    private static final int LEGACY_ACCEPTED_STATUS = 2;
+
     private final Connection cnx = MyDataBase.getInstance().getCnx();
 
     private final List<Reservation> reservations = new ArrayList<>(List.of(
@@ -86,6 +91,331 @@ public class ReservationService {
         }
     }
 
+    public List<TutorReservationRequest> getTutorReservationRequests(int tutorId) {
+        List<TutorReservationRequest> requests = new ArrayList<>();
+        if (tutorId <= 0 || cnx == null) {
+            return requests;
+        }
+
+        String sql = """
+            SELECT
+                r.id AS reservation_id,
+                r.status AS reservation_status,
+                r.reserved_at,
+                r.notes,
+                r.seance_id,
+                r.participant_id,
+                s.matiere,
+                s.start_at,
+                s.duration_min,
+                s.max_participants,
+                (
+                    SELECT COUNT(*)
+                    FROM reservation accepted_reservation
+                    WHERE accepted_reservation.seance_id = s.id
+                      AND accepted_reservation.cancell_at IS NULL
+                      AND accepted_reservation.status IN (1, 2)
+                ) AS accepted_reservations,
+                u.full_name AS participant_name,
+                u.email AS participant_email
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            INNER JOIN user u ON u.id = r.participant_id
+            WHERE s.tuteur_id = ? AND r.cancell_at IS NULL
+            ORDER BY
+                CASE WHEN r.status = 0 THEN 0 ELSE 1 END,
+                r.reserved_at DESC
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, tutorId);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    requests.add(new TutorReservationRequest(
+                        rs.getInt("reservation_id"),
+                        normalizeStoredStatus(rs.getInt("reservation_status")),
+                        readDateTime(rs, "reserved_at"),
+                        rs.getString("notes"),
+                        rs.getInt("seance_id"),
+                        rs.getString("matiere"),
+                        readDateTime(rs, "start_at"),
+                        rs.getInt("duration_min"),
+                        rs.getInt("max_participants"),
+                        rs.getInt("participant_id"),
+                        rs.getString("participant_name"),
+                        rs.getString("participant_email"),
+                        rs.getInt("accepted_reservations")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur chargement demandes reservation: " + e.getMessage());
+        }
+        return requests;
+    }
+
+    public List<StudentReservationItem> getStudentReservations(int participantId) {
+        List<StudentReservationItem> reservations = new ArrayList<>();
+        if (participantId <= 0 || cnx == null) {
+            return reservations;
+        }
+
+        String sql = """
+            SELECT
+                r.id AS reservation_id,
+                r.status AS reservation_status,
+                r.reserved_at,
+                r.notes,
+                r.seance_id,
+                s.matiere,
+                s.start_at,
+                s.duration_min,
+                s.max_participants,
+                s.status AS seance_status,
+                s.tuteur_id
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            WHERE r.participant_id = ? AND r.cancell_at IS NULL
+            ORDER BY
+                CASE
+                    WHEN r.status = 0 THEN 0
+                    WHEN r.status IN (1, 2) THEN 1
+                    WHEN r.status = 3 THEN 2
+                    ELSE 3
+                END,
+                r.reserved_at DESC
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, participantId);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    reservations.add(new StudentReservationItem(
+                        rs.getInt("reservation_id"),
+                        normalizeStoredStatus(rs.getInt("reservation_status")),
+                        readDateTime(rs, "reserved_at"),
+                        rs.getString("notes"),
+                        rs.getInt("seance_id"),
+                        rs.getString("matiere"),
+                        readDateTime(rs, "start_at"),
+                        rs.getInt("duration_min"),
+                        rs.getInt("max_participants"),
+                        rs.getInt("seance_status"),
+                        rs.getInt("tuteur_id")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur chargement reservations etudiant: " + e.getMessage());
+        }
+        return reservations;
+    }
+
+    public OperationResult acceptReservation(int reservationId, int tutorId) {
+        if (cnx == null) {
+            return OperationResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0) {
+            return OperationResult.failure("Selectionnez une reservation valide.");
+        }
+        if (tutorId <= 0) {
+            return OperationResult.failure("Tuteur invalide pour cette action.");
+        }
+
+        String selectSql = """
+            SELECT r.status, r.cancell_at, r.seance_id, s.max_participants
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            WHERE r.id = ? AND s.tuteur_id = ?
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(selectSql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, tutorId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return OperationResult.failure("Reservation introuvable pour les seances de ce tuteur.");
+                }
+
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return OperationResult.failure("Cette reservation est annulee.");
+                }
+
+                int currentStatus = normalizeStoredStatus(rs.getInt("status"));
+                if (currentStatus == STATUS_ACCEPTED) {
+                    return OperationResult.success("Cette reservation est deja acceptee.");
+                }
+                if (currentStatus == STATUS_REFUSED) {
+                    return OperationResult.failure("Cette reservation a deja ete refusee.");
+                }
+                if (currentStatus != STATUS_PENDING) {
+                    return OperationResult.failure("Cette reservation ne peut pas etre acceptee dans son etat actuel.");
+                }
+
+                int seanceId = rs.getInt("seance_id");
+                int maxParticipants = rs.getInt("max_participants");
+                if (countAcceptedReservationsBySeanceId(seanceId) >= maxParticipants) {
+                    return OperationResult.failure("La capacite de cette seance est deja atteinte.");
+                }
+            }
+        } catch (SQLException e) {
+            return OperationResult.failure("Verification impossible: " + e.getMessage());
+        }
+
+        String updateSql = """
+            UPDATE reservation
+            SET status = ?, acceptance_email_sent_at = ?
+            WHERE id = ? AND status = ? AND cancell_at IS NULL
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
+            pst.setInt(1, STATUS_ACCEPTED);
+            pst.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            pst.setInt(3, reservationId);
+            pst.setInt(4, STATUS_PENDING);
+
+            int updatedRows = pst.executeUpdate();
+            if (updatedRows == 0) {
+                return OperationResult.failure("Aucune reservation mise a jour.");
+            }
+            return OperationResult.success("Reservation acceptee avec succes.");
+        } catch (SQLException e) {
+            return OperationResult.failure("Acceptation impossible: " + e.getMessage());
+        }
+    }
+
+    public OperationResult refuseReservation(int reservationId, int tutorId) {
+        if (cnx == null) {
+            return OperationResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0) {
+            return OperationResult.failure("Selectionnez une reservation valide.");
+        }
+        if (tutorId <= 0) {
+            return OperationResult.failure("Tuteur invalide pour cette action.");
+        }
+
+        String selectSql = """
+            SELECT r.status, r.cancell_at
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            WHERE r.id = ? AND s.tuteur_id = ?
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(selectSql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, tutorId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return OperationResult.failure("Reservation introuvable pour les seances de ce tuteur.");
+                }
+
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return OperationResult.failure("Cette reservation est annulee.");
+                }
+
+                int currentStatus = normalizeStoredStatus(rs.getInt("status"));
+                if (currentStatus == STATUS_REFUSED) {
+                    return OperationResult.success("Cette reservation est deja refusee.");
+                }
+                if (currentStatus == STATUS_ACCEPTED) {
+                    return OperationResult.failure("Cette reservation est deja acceptee. Elle ne peut plus etre refusee.");
+                }
+                if (currentStatus != STATUS_PENDING) {
+                    return OperationResult.failure("Cette reservation ne peut pas etre refusee dans son etat actuel.");
+                }
+            }
+        } catch (SQLException e) {
+            return OperationResult.failure("Verification impossible: " + e.getMessage());
+        }
+
+        String updateSql = """
+            UPDATE reservation
+            SET status = ?
+            WHERE id = ? AND status = ? AND cancell_at IS NULL
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
+            pst.setInt(1, STATUS_REFUSED);
+            pst.setInt(2, reservationId);
+            pst.setInt(3, STATUS_PENDING);
+
+            int updatedRows = pst.executeUpdate();
+            if (updatedRows == 0) {
+                return OperationResult.failure("Aucune reservation mise a jour.");
+            }
+            return OperationResult.success("Reservation refusee avec succes.");
+        } catch (SQLException e) {
+            return OperationResult.failure("Refus impossible: " + e.getMessage());
+        }
+    }
+
+    public OperationResult cancelStudentReservation(int reservationId, int participantId) {
+        if (cnx == null) {
+            return OperationResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0) {
+            return OperationResult.failure("Selectionnez une reservation valide.");
+        }
+        if (participantId <= 0) {
+            return OperationResult.failure("Etudiant invalide pour cette action.");
+        }
+
+        String selectSql = """
+            SELECT status, cancell_at
+            FROM reservation
+            WHERE id = ? AND participant_id = ?
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(selectSql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, participantId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return OperationResult.failure("Reservation introuvable pour cet etudiant.");
+                }
+
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return OperationResult.success("Cette reservation est deja annulee.");
+                }
+
+                int currentStatus = normalizeStoredStatus(rs.getInt("status"));
+                if (currentStatus == STATUS_ACCEPTED) {
+                    return OperationResult.failure("Cette reservation est deja acceptee. Elle ne peut plus etre annulee ici.");
+                }
+                if (currentStatus == STATUS_REFUSED) {
+                    return OperationResult.failure("Cette reservation est deja refusee.");
+                }
+                if (currentStatus != STATUS_PENDING) {
+                    return OperationResult.failure("Cette reservation ne peut pas etre annulee dans son etat actuel.");
+                }
+            }
+        } catch (SQLException e) {
+            return OperationResult.failure("Verification impossible: " + e.getMessage());
+        }
+
+        String updateSql = """
+            UPDATE reservation
+            SET cancell_at = ?
+            WHERE id = ? AND participant_id = ? AND status = ? AND cancell_at IS NULL
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
+            pst.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+            pst.setInt(2, reservationId);
+            pst.setInt(3, participantId);
+            pst.setInt(4, STATUS_PENDING);
+
+            int updatedRows = pst.executeUpdate();
+            if (updatedRows == 0) {
+                return OperationResult.failure("Aucune reservation annulee.");
+            }
+            return OperationResult.success("Reservation annulee avec succes.");
+        } catch (SQLException e) {
+            return OperationResult.failure("Annulation impossible: " + e.getMessage());
+        }
+    }
+
     public boolean hasActiveReservation(int seanceId, int participantId) {
         if (seanceId <= 0 || participantId <= 0 || cnx == null) {
             return false;
@@ -94,11 +424,15 @@ public class ReservationService {
         String sql = """
             SELECT COUNT(*) AS total
             FROM reservation
-            WHERE seance_id = ? AND participant_id = ? AND cancell_at IS NULL
+            WHERE seance_id = ?
+              AND participant_id = ?
+              AND cancell_at IS NULL
+              AND status <> ?
             """;
         try (PreparedStatement pst = cnx.prepareStatement(sql)) {
             pst.setInt(1, seanceId);
             pst.setInt(2, participantId);
+            pst.setInt(3, STATUS_REFUSED);
             try (ResultSet rs = pst.executeQuery()) {
                 return rs.next() && rs.getInt("total") > 0;
             }
@@ -123,10 +457,10 @@ public class ReservationService {
 
         String sql = """
             SELECT
-                COUNT(*) AS total,
+                SUM(CASE WHEN status IN (0, 1, 2) THEN 1 ELSE 0 END) AS total,
                 SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) AS pending,
-                SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS accepted,
-                SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS paid
+                SUM(CASE WHEN status IN (1, 2) THEN 1 ELSE 0 END) AS accepted,
+                SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) AS refused
             FROM reservation
             WHERE seance_id = ? AND cancell_at IS NULL
             """;
@@ -140,7 +474,7 @@ public class ReservationService {
                     rs.getInt("total"),
                     rs.getInt("pending"),
                     rs.getInt("accepted"),
-                    rs.getInt("paid")
+                    rs.getInt("refused")
                 );
             }
         } catch (SQLException e) {
@@ -149,9 +483,85 @@ public class ReservationService {
         }
     }
 
-    public record ReservationStats(int total, int pending, int accepted, int paid) {
+    public record TutorReservationRequest(
+        int id,
+        int status,
+        LocalDateTime reservedAt,
+        String notes,
+        int seanceId,
+        String seanceTitle,
+        LocalDateTime seanceStartAt,
+        int durationMin,
+        int maxParticipants,
+        int participantId,
+        String participantName,
+        String participantEmail,
+        int acceptedReservations
+    ) {
+        public boolean isPending() {
+            return status == STATUS_PENDING;
+        }
+
+        public boolean isRefused() {
+            return status == STATUS_REFUSED;
+        }
+
+        public int availableAcceptedSeats() {
+            return Math.max(0, maxParticipants - acceptedReservations);
+        }
+
+        public boolean isSessionCapacityReached() {
+            return availableAcceptedSeats() <= 0;
+        }
+    }
+
+    public record StudentReservationItem(
+        int id,
+        int status,
+        LocalDateTime reservedAt,
+        String notes,
+        int seanceId,
+        String seanceTitle,
+        LocalDateTime seanceStartAt,
+        int durationMin,
+        int maxParticipants,
+        int seanceStatus,
+        int tutorId
+    ) {
+        public boolean isPending() {
+            return status == STATUS_PENDING;
+        }
+
+        public boolean isAccepted() {
+            return status == STATUS_ACCEPTED;
+        }
+
+        public boolean isRefused() {
+            return status == STATUS_REFUSED;
+        }
+    }
+
+    public record ReservationStats(int total, int pending, int accepted, int refused) {
         public static ReservationStats empty() {
             return new ReservationStats(0, 0, 0, 0);
+        }
+    }
+
+    private int countAcceptedReservationsBySeanceId(int seanceId) throws SQLException {
+        String sql = """
+            SELECT COUNT(*) AS total
+            FROM reservation
+            WHERE seance_id = ?
+              AND cancell_at IS NULL
+              AND status IN (?, ?)
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            pst.setInt(2, STATUS_ACCEPTED);
+            pst.setInt(3, LEGACY_ACCEPTED_STATUS);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next() ? rs.getInt("total") : 0;
+            }
         }
     }
 
@@ -186,5 +596,14 @@ public class ReservationService {
             pst.setTimestamp(9, null);
             pst.executeUpdate();
         }
+    }
+
+    private LocalDateTime readDateTime(ResultSet rs, String columnName) throws SQLException {
+        Timestamp timestamp = rs.getTimestamp(columnName);
+        return timestamp != null ? timestamp.toLocalDateTime() : null;
+    }
+
+    private static int normalizeStoredStatus(int status) {
+        return status == LEGACY_ACCEPTED_STATUS ? STATUS_ACCEPTED : status;
     }
 }

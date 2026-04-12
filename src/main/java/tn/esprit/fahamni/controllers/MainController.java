@@ -40,6 +40,12 @@ public class MainController {
     private Button sallesEquipementsButton;
 
     @FXML
+    private Button plannerButton;
+
+    @FXML
+    private Button messengerButton;
+
+    @FXML
     private Button quizButton;
 
     @FXML
@@ -76,6 +82,18 @@ public class MainController {
     private void showSallesEquipements() {
         loadView("SallesEquipementsView.fxml", "Salles & Materiel");
         setActiveButton(sallesEquipementsButton);
+    }
+
+    @FXML
+    private void showPlanner() {
+        loadView("PlannerView.fxml", "Planner de revision");
+        setActiveButton(plannerButton);
+    }
+
+    @FXML
+    private void showMessenger() {
+        loadView("MessengerView.fxml", "Messagerie");
+        setActiveButton(messengerButton);
     }
 
     @FXML
@@ -131,6 +149,8 @@ public class MainController {
         reservationsButton.getStyleClass().remove("active");
         seancesButton.getStyleClass().remove("active");
         sallesEquipementsButton.getStyleClass().remove("active");
+        plannerButton.getStyleClass().remove("active");
+        messengerButton.getStyleClass().remove("active");
         quizButton.getStyleClass().remove("active");
         blogButton.getStyleClass().remove("active");
 

@@ -25,7 +25,7 @@
         <HBox spacing="20.0" styleClass="stats-row">
             <VBox styleClass="stat-card">
                 <Label text="12" styleClass="stat-value"/>
-                <Label text="Sessions Completed" styleClass="stat-label"/>
+                <Label text="Elements du calendrier" styleClass="stat-label"/>
             </VBox>
             <VBox styleClass="stat-card">
                 <Label text="5" styleClass="stat-value"/>
@@ -37,12 +37,12 @@
             </VBox>
             <VBox styleClass="stat-card">
                 <Label text="3" styleClass="stat-value"/>
-                <Label text="Upcoming Sessions" styleClass="stat-label"/>
+                <Label text="Calendrier a venir" styleClass="stat-label"/>
             </VBox>
         </HBox>
 
         <VBox spacing="15.0" styleClass="upcoming-sessions">
-            <Label text="Upcoming Sessions" styleClass="section-title"/>
+            <Label text="Calendrier a venir" styleClass="section-title"/>
             <VBox spacing="10.0">
                 <HBox styleClass="session-card" spacing="15.0">
                     <VBox spacing="5.0" HBox.hgrow="ALWAYS">
@@ -52,7 +52,7 @@
                     </VBox>
                     <VBox spacing="5.0" alignment="CENTER">
                         <Label text="50 DT" styleClass="session-price"/>
-                        <Button text="Join Session" styleClass="session-button"/>
+                        <Button text="Voir le calendrier" styleClass="session-button"/>
                     </VBox>
                 </HBox>
                 <HBox styleClass="session-card" spacing="15.0">
@@ -63,7 +63,7 @@
                     </VBox>
                     <VBox spacing="5.0" alignment="CENTER">
                         <Label text="45 DT" styleClass="session-price"/>
-                        <Button text="Join Session" styleClass="session-button"/>
+                        <Button text="Voir le calendrier" styleClass="session-button"/>
                     </VBox>
                 </HBox>
             </VBox>

@@ -15,6 +15,7 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -41,6 +42,10 @@ public class SeanceService implements IServices<Seance> {
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
+
+    public boolean hasDatabaseConnection() {
+        return cnx != null;
+    }
 
     public List<String> getSubjects() {
         List<String> subjects = new ArrayList<>();
@@ -91,6 +96,30 @@ public class SeanceService implements IServices<Seance> {
 
     public List<Seance> getAllSeances() {
         return getAll();
+    }
+
+    public Map<Integer, Integer> getReservationCountsBySeanceId() {
+        Map<Integer, Integer> reservationCounts = new HashMap<>();
+        if (cnx == null) {
+            return reservationCounts;
+        }
+
+        String sql = """
+            SELECT seance_id, COUNT(*) AS reservation_count
+            FROM reservation
+            WHERE cancell_at IS NULL
+            GROUP BY seance_id
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql);
+             ResultSet rs = pst.executeQuery()) {
+            while (rs.next()) {
+                reservationCounts.put(rs.getInt("seance_id"), rs.getInt("reservation_count"));
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur chargement compteur reservations: " + e.getMessage());
+        }
+        return reservationCounts;
     }
 
     @Override
@@ -268,6 +297,14 @@ public class SeanceService implements IServices<Seance> {
             throw new IllegalArgumentException("Selectionnez une seance valide.");
         }
 
+        int linkedReservations = countReservationsForSeance(seance.getId());
+        if (linkedReservations > 0) {
+            String suffix = linkedReservations > 1 ? " reservations." : " reservation.";
+            throw new IllegalStateException(
+                "Suppression impossible: cette seance possede " + linkedReservations + suffix
+            );
+        }
+
         String sql = "DELETE FROM seance WHERE id = ?";
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             deleteSeanceEquipements(seance.getId());
@@ -281,6 +318,22 @@ public class SeanceService implements IServices<Seance> {
                 throw new IllegalStateException("Suppression impossible: cette seance est deja liee a une reservation.", e);
             }
             throw new IllegalStateException("Suppression impossible: " + e.getMessage(), e);
+        }
+    }
+
+    private int countReservationsForSeance(int seanceId) {
+        if (seanceId <= 0) {
+            return 0;
+        }
+
+        String sql = "SELECT COUNT(*) FROM reservation WHERE seance_id = ? AND cancell_at IS NULL";
+        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Verification des reservations impossible: " + e.getMessage(), e);
         }
     }
 

@@ -868,6 +868,11 @@ public final class UiTheme {
             -fx-text-fill: #a26a08;
         }
 
+        .refused {
+            -fx-background-color: #ffe8ec;
+            -fx-text-fill: #c43b49;
+        }
+
         .completed, .excellent {
             -fx-background-color: #e2f5e8;
             -fx-text-fill: #1f7a45;

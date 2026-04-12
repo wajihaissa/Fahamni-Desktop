@@ -2,19 +2,30 @@ package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.Models.AdminReservation;
 import tn.esprit.fahamni.services.AdminReservationService;
-import tn.esprit.fahamni.utils.OperationResult;
+import javafx.collections.ListChangeListener;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.FXML;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 
+import java.time.LocalDate;
+import java.util.Locale;
+
 public class BackofficeReservationsController {
+
+    private static final String ALL_STATUSES = "Tous les statuts";
 
     @FXML
     private TableView<AdminReservation> reservationsTable;
+
+    @FXML
+    private TableColumn<AdminReservation, Integer> reservationIdColumn;
 
     @FXML
     private TableColumn<AdminReservation, String> studentColumn;
@@ -29,102 +40,109 @@ public class BackofficeReservationsController {
     private TableColumn<AdminReservation, String> statusColumn;
 
     @FXML
-    private TextField studentField;
+    private TextField searchField;
 
     @FXML
-    private TextField sessionField;
+    private ComboBox<String> statusFilterComboBox;
 
     @FXML
-    private TextField requestDateField;
+    private DatePicker reservationDatePicker;
 
     @FXML
-    private ComboBox<String> statusComboBox;
-
-    @FXML
-    private Label feedbackLabel;
+    private Label resultsCountLabel;
 
     private final AdminReservationService reservationService = new AdminReservationService();
+    private FilteredList<AdminReservation> filteredReservations;
 
     @FXML
     private void initialize() {
+        reservationIdColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         studentColumn.setCellValueFactory(new PropertyValueFactory<>("studentName"));
         sessionColumn.setCellValueFactory(new PropertyValueFactory<>("sessionTitle"));
         requestDateColumn.setCellValueFactory(new PropertyValueFactory<>("requestDate"));
         statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
 
-        statusComboBox.getItems().setAll(reservationService.getAvailableStatuses());
-        statusComboBox.setValue("Pending");
+        statusFilterComboBox.getItems().setAll(
+            ALL_STATUSES,
+            "En attente",
+            "Acceptee",
+            "Refusee",
+            "Annulee"
+        );
+        statusFilterComboBox.setValue(ALL_STATUSES);
 
-        reservationsTable.setItems(reservationService.getReservations());
-        reservationsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+        filteredReservations = new FilteredList<>(reservationService.getReservations(), reservation -> true);
+        SortedList<AdminReservation> sortedReservations = new SortedList<>(filteredReservations);
+        sortedReservations.comparatorProperty().bind(reservationsTable.comparatorProperty());
+        reservationsTable.setItems(sortedReservations);
 
-        hideFeedback();
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> applyReservationFilters());
+        statusFilterComboBox.valueProperty().addListener((observable, oldValue, newValue) -> applyReservationFilters());
+        reservationDatePicker.valueProperty().addListener((observable, oldValue, newValue) -> applyReservationFilters());
+        filteredReservations.addListener((ListChangeListener<AdminReservation>) change -> updateResultsCount());
+        updateResultsCount();
     }
 
     @FXML
-    private void handleConfirmReservation() {
-        applyReservationResult(
-            reservationService.confirmReservation(reservationsTable.getSelectionModel().getSelectedItem())
-        );
+    private void handleRefreshReservations() {
+        reservationService.reloadReservations();
+        applyReservationFilters();
+        reservationsTable.refresh();
     }
 
     @FXML
-    private void handleCancelReservation() {
-        applyReservationResult(
-            reservationService.cancelReservation(reservationsTable.getSelectionModel().getSelectedItem())
-        );
+    private void handleResetReservationFilters() {
+        searchField.clear();
+        statusFilterComboBox.setValue(ALL_STATUSES);
+        reservationDatePicker.setValue(null);
+        applyReservationFilters();
     }
 
-    @FXML
-    private void handleSaveReservation() {
-        hideFeedback();
-
-        applyReservationResult(
-            reservationService.saveReservation(
-                reservationsTable.getSelectionModel().getSelectedItem(),
-                studentField.getText(),
-                sessionField.getText(),
-                requestDateField.getText(),
-                statusComboBox.getValue()
-            )
-        );
-    }
-
-    private void populateForm(AdminReservation reservation) {
-        if (reservation == null) {
+    private void applyReservationFilters() {
+        if (filteredReservations == null) {
             return;
         }
 
-        studentField.setText(reservation.getStudentName());
-        sessionField.setText(reservation.getSessionTitle());
-        requestDateField.setText(reservation.getRequestDate());
-        statusComboBox.setValue(reservation.getStatus());
+        String query = normalize(searchField.getText());
+        String selectedStatus = statusFilterComboBox.getValue();
+        LocalDate selectedDate = reservationDatePicker.getValue();
+
+        filteredReservations.setPredicate(reservation -> matchesSearch(reservation, query)
+            && matchesStatus(reservation, selectedStatus)
+            && matchesDate(reservation, selectedDate));
+        updateResultsCount();
     }
 
-    private void applyReservationResult(OperationResult result) {
-        if (result.isSuccess()) {
-            AdminReservation selectedReservation = reservationsTable.getSelectionModel().getSelectedItem();
-            if (selectedReservation != null) {
-                statusComboBox.setValue(selectedReservation.getStatus());
-            }
-            reservationsTable.refresh();
+    private boolean matchesSearch(AdminReservation reservation, String query) {
+        if (query.isBlank()) {
+            return true;
         }
 
-        showFeedback(result.getMessage(), result.isSuccess());
+        return normalize(reservation.getStudentName()).contains(query)
+            || normalize(reservation.getSessionTitle()).contains(query)
+            || normalize(reservation.getRequestDate()).contains(query)
+            || normalize(reservation.getStatus()).contains(query)
+            || String.valueOf(reservation.getId()).contains(query);
     }
 
-    private void showFeedback(String message, boolean success) {
-        feedbackLabel.setText(message);
-        feedbackLabel.getStyleClass().setAll("backoffice-feedback", success ? "success" : "error");
-        feedbackLabel.setManaged(true);
-        feedbackLabel.setVisible(true);
+    private boolean matchesStatus(AdminReservation reservation, String selectedStatus) {
+        return selectedStatus == null
+            || ALL_STATUSES.equals(selectedStatus)
+            || selectedStatus.equals(reservation.getStatus());
     }
 
-    private void hideFeedback() {
-        feedbackLabel.setText("");
-        feedbackLabel.getStyleClass().setAll("backoffice-feedback");
-        feedbackLabel.setManaged(false);
-        feedbackLabel.setVisible(false);
+    private boolean matchesDate(AdminReservation reservation, LocalDate selectedDate) {
+        return selectedDate == null || selectedDate.equals(reservation.getRequestLocalDate());
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private void updateResultsCount() {
+        int count = filteredReservations == null ? 0 : filteredReservations.size();
+        String suffix = count > 1 ? "reservations trouvees" : "reservation trouvee";
+        resultsCountLabel.setText(count + " " + suffix);
     }
 }
 
