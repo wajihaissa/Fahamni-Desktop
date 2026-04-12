@@ -11,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -95,56 +96,85 @@ public class BackofficeMatiereController implements Initializable {
         }
     }
 
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
     @FXML
     private void handleSaveMatiere(ActionEvent event) {
-        boolean isNew = (selectedMatiere == null);
+        try {
+            boolean isNew = (selectedMatiere == null);
 
-        if (isNew) {
-            selectedMatiere = new Matiere();
-            selectedMatiere.setCreatedAt(LocalDateTime.now());
+            if (isNew) {
+                selectedMatiere = new Matiere();
+                selectedMatiere.setCreatedAt(LocalDateTime.now());
+            }
+
+            // 1. Flush standard text fields to the object
+            selectedMatiere.setTitre(titreField.getText());
+            selectedMatiere.setDescription(descriptionArea.getText());
+
+            // 2. Flush the Course Builder UI to the JSON string
+            selectedMatiere.setStructure(buildJsonFromUI());
+
+            // 3. Set the cover image path
+            selectedMatiere.setCoverImage(selectedImagePath);
+
+            // 4. Save the entity to the Database (may throw RuntimeException)
+            if (isNew) {
+                matiereService.add(selectedMatiere);
+            } else {
+                matiereService.update(selectedMatiere);
+            }
+
+            // 5. Flush the Tags to the database (linking them to this Matiere)
+            saveCategoriesToMatiere(selectedMatiere);
+
+            // 6. Success: Show confirmation and return to list
+            showAlert(Alert.AlertType.INFORMATION, "Succès", "La matière a été enregistrée avec succès !");
+            refreshCards(); // Updates the grid with the new data
+            showList();     // Swaps the view back to the cards
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Erreur d'enregistrement", 
+                "Impossible de sauvegarder la matière : " + e.getMessage());
+            // Note: Stay on the editor view so user doesn't lose their work
         }
-
-        // 1. Flush standard text fields to the object
-        selectedMatiere.setTitre(titreField.getText());
-        selectedMatiere.setDescription(descriptionArea.getText());
-
-        // 2. Flush the Course Builder UI to the JSON string
-        selectedMatiere.setStructure(buildJsonFromUI());
-
-        // 3. Set the cover image path
-        selectedMatiere.setCoverImage(selectedImagePath);
-
-        // 4. Save the entity to the Database
-        if (isNew) {
-            matiereService.add(selectedMatiere);
-            // Note: If your ORM requires the Matiere to have an ID before saving many-to-many tags,
-            // ensure the add() method updates the object's ID.
-        } else {
-            matiereService.update(selectedMatiere);
-        }
-
-        // 5. Flush the Tags to the database (linking them to this Matiere)
-        saveCategoriesToMatiere(selectedMatiere);
-
-        // 6. Update the App UI and return to the list
-        refreshCards(); // Updates the grid with the new data
-        showList();     // Swaps the view back to the cards
     }
 
     @FXML
     private void deleteMatiere(ActionEvent event) {
-        String titleToDelete = titreField.getText();
-        java.util.List<Matiere> allMatieres = matiereService.findAll();
-        
-        for (Matiere m : allMatieres) {
-            if (m.getTitre().equals(titleToDelete)) {
-                matiereService.delete(m);
-                break;
+        try {
+            String titleToDelete = titreField.getText();
+            java.util.List<Matiere> allMatieres = matiereService.findAll();
+            
+            boolean found = false;
+            for (Matiere m : allMatieres) {
+                if (m.getTitre().equals(titleToDelete)) {
+                    matiereService.delete(m);
+                    found = true;
+                    break;
+                }
             }
+            
+            if (!found) {
+                showAlert(Alert.AlertType.WARNING, "Non trouvé", "Aucune matière avec ce titre n'a été trouvée.");
+                return;
+            }
+            
+            showAlert(Alert.AlertType.INFORMATION, "Succès", "La matière a été supprimée avec succès !");
+            refreshCards();
+            showList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Erreur de suppression", 
+                "Impossible de supprimer la matière : " + e.getMessage());
         }
-        
-        refreshCards();
-        showList();
     }
 
     @FXML

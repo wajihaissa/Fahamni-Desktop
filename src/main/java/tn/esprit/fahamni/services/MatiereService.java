@@ -47,7 +47,8 @@ public class MatiereService implements IService<Matiere> {
                 }
             }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.err.println("Database error during add: " + e.getMessage());
+            throw new RuntimeException("Erreur de base de données lors de l'insertion : " + e.getMessage(), e);
         }
     }
 
@@ -63,7 +64,8 @@ public class MatiereService implements IService<Matiere> {
             pst.setInt(5, m.getId());
             pst.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.err.println("Database error during update: " + e.getMessage());
+            throw new RuntimeException("Erreur de base de données lors de la mise à jour : " + e.getMessage(), e);
         }
     }
 
@@ -75,7 +77,8 @@ public class MatiereService implements IService<Matiere> {
             pst.setInt(1, m.getId());
             pst.executeUpdate();
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            System.err.println("Database error during delete: " + e.getMessage());
+            throw new RuntimeException("Erreur de base de données lors de la suppression : " + e.getMessage(), e);
         }
     }
 
