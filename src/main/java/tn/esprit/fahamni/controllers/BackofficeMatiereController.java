@@ -11,6 +11,7 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -21,6 +22,9 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import tn.esprit.fahamni.entities.Matiere;
@@ -55,7 +59,7 @@ public class BackofficeMatiereController implements Initializable {
     private TextArea descriptionArea;
 
     @FXML
-    private TextArea structureArea;
+    private VBox courseBuilderContainer;
 
     @FXML
     private Label imagePathLabel;
@@ -90,14 +94,22 @@ public class BackofficeMatiereController implements Initializable {
         descriptionColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
         structureColumn.setCellValueFactory(new PropertyValueFactory<>("structure"));
         structureColumn.setCellFactory(column -> new TableCell<>() {
+            private final Button btn = new Button("Gérer");
+            {
+                btn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-cursor: hand; -fx-font-weight: bold;");
+                btn.setPrefWidth(80);
+            }
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty) {
-                    setText("");
-                    return;
+                    setGraphic(null);
+                } else {
+                    btn.setOnAction(e -> {
+                        matiereTable.getSelectionModel().select(getIndex());
+                    });
+                    setGraphic(btn);
                 }
-                setText("Voir les chapitres");
             }
         });
         createdAtColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
@@ -124,7 +136,7 @@ public class BackofficeMatiereController implements Initializable {
         Matiere matiere = new Matiere();
         matiere.setTitre(titreField.getText());
         matiere.setDescription(descriptionArea.getText());
-        matiere.setStructure(structureArea.getText());
+        matiere.setStructure("");
         matiere.setCoverImage(selectedImagePath);
         matiere.setCreatedAt(LocalDateTime.now());
 
@@ -142,7 +154,7 @@ public class BackofficeMatiereController implements Initializable {
 
         selectedMatiere.setTitre(titreField.getText());
         selectedMatiere.setDescription(descriptionArea.getText());
-        selectedMatiere.setStructure(structureArea.getText());
+        selectedMatiere.setStructure("");
         selectedMatiere.setCoverImage(selectedImagePath);
 
         matiereService.update(selectedMatiere);
@@ -226,7 +238,7 @@ public class BackofficeMatiereController implements Initializable {
 
         titreField.setText(matiere.getTitre());
         descriptionArea.setText(matiere.getDescription());
-        structureArea.setText(matiere.getStructure());
+
         selectedImagePath = matiere.getCoverImage();
         imagePathLabel.setText(selectedImagePath == null || selectedImagePath.isBlank() ? "Aucune image s\u00e9lectionn\u00e9e" : selectedImagePath);
     }
@@ -235,8 +247,63 @@ public class BackofficeMatiereController implements Initializable {
         matiereTable.getSelectionModel().clearSelection();
         titreField.clear();
         descriptionArea.clear();
-        structureArea.clear();
+        courseBuilderContainer.getChildren().clear();
         selectedImagePath = null;
         imagePathLabel.setText("Aucune image s\u00e9lectionn\u00e9e");
+    }
+
+    @FXML
+    private void addChapterUI(ActionEvent event) {
+        createChapterNode();
+    }
+
+    private void createChapterNode() {
+        VBox chapterBox = new VBox(10);
+        chapterBox.setStyle("-fx-border-color: #cbd5e1; -fx-border-radius: 5; -fx-padding: 10; -fx-background-color: white;");
+
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+        TextField chapterTitle = new TextField();
+        chapterTitle.setPromptText("Titre du Chapitre");
+        HBox.setHgrow(chapterTitle, Priority.ALWAYS);
+
+        Button deleteChapBtn = new Button("X");
+        deleteChapBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+        deleteChapBtn.setOnAction(e -> courseBuilderContainer.getChildren().remove(chapterBox));
+
+        header.getChildren().addAll(new Label("Chapitre:"), chapterTitle, deleteChapBtn);
+
+        VBox sectionsContainer = new VBox(5);
+        sectionsContainer.setStyle("-fx-padding: 0 0 0 20;");
+
+        Button addSectionBtn = new Button("+ Section");
+        addSectionBtn.setStyle("-fx-font-size: 10px; -fx-background-color: #e2e8f0;");
+        addSectionBtn.setOnAction(e -> createSectionNode(sectionsContainer));
+
+        chapterBox.getChildren().addAll(header, sectionsContainer, addSectionBtn);
+        courseBuilderContainer.getChildren().add(chapterBox);
+    }
+
+    private void createSectionNode(VBox parentContainer) {
+        VBox sectionBox = new VBox(5);
+        sectionBox.setStyle("-fx-border-color: #e2e8f0; -fx-border-style: dashed; -fx-padding: 5;");
+
+        HBox header = new HBox(5);
+        header.setAlignment(Pos.CENTER_LEFT);
+        TextField sectionTitle = new TextField();
+        sectionTitle.setPromptText("Titre de la Section");
+        HBox.setHgrow(sectionTitle, Priority.ALWAYS);
+
+        Button deleteSecBtn = new Button("X");
+        deleteSecBtn.setStyle("-fx-background-color: #f87171; -fx-text-fill: white; -fx-font-size: 10px;");
+        deleteSecBtn.setOnAction(e -> parentContainer.getChildren().remove(sectionBox));
+
+        header.getChildren().addAll(new Label("Section:"), sectionTitle, deleteSecBtn);
+
+        Button addResourceBtn = new Button("+ Ressource");
+        addResourceBtn.setStyle("-fx-font-size: 9px; -fx-background-color: #f1f5f9;");
+
+        sectionBox.getChildren().addAll(header, addResourceBtn);
+        parentContainer.getChildren().add(sectionBox);
     }
 }
