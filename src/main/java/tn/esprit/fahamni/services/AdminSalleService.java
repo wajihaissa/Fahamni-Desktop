@@ -14,6 +14,7 @@ import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class AdminSalleService implements IServices<Salle> {
 
@@ -22,6 +23,22 @@ public class AdminSalleService implements IServices<Salle> {
     private static final String UPDATE_SQL =
         "UPDATE salle SET nom = ?, capacite = ?, localisation = ?, typeSalle = ?, etat = ?, description = ?, batiment = ?, etage = ?, typeDisposition = ?, accesHandicape = ?, statutDetaille = ?, dateDerniereMaintenance = ? WHERE idSalle = ?";
     private static final String DELETE_SQL = "DELETE FROM salle WHERE idSalle = ?";
+    private static final String COUNT_DUPLICATE_SALLE_SQL = """
+        SELECT COUNT(*) AS total
+        FROM salle
+        WHERE LOWER(TRIM(nom)) = ?
+          AND LOWER(TRIM(localisation)) = ?
+          AND LOWER(TRIM(COALESCE(batiment, ''))) = ?
+        """;
+    private static final String SELECT_ACTIVE_SEANCE_BY_SALLE_SQL = """
+        SELECT id, matiere, start_at
+        FROM seance
+        WHERE salle_id = ?
+          AND start_at IS NOT NULL
+          AND DATE_ADD(start_at, INTERVAL duration_min MINUTE) > NOW()
+        ORDER BY start_at ASC
+        LIMIT 1
+        """;
     private static final String SELECT_ALL_SQL =
         "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance FROM salle ORDER BY idSalle DESC";
     private static final String SELECT_BY_ID_SQL =
@@ -36,6 +53,7 @@ public class AdminSalleService implements IServices<Salle> {
     @Override
     public void add(Salle salle) throws SQLException {
         validateSalle(salle, false);
+        ensureNoDuplicateSalleForLocationAndBuilding(salle);
 
         try (PreparedStatement statement = requireConnection().prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
             fillStatement(statement, salle);
@@ -44,6 +62,22 @@ public class AdminSalleService implements IServices<Salle> {
             try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     salle.setIdSalle(generatedKeys.getInt(1));
+                }
+            }
+        }
+    }
+
+    private void ensureNoDuplicateSalleForLocationAndBuilding(Salle salle) throws SQLException {
+        try (PreparedStatement statement = requireConnection().prepareStatement(COUNT_DUPLICATE_SALLE_SQL)) {
+            statement.setString(1, normalizeLookupKey(salle.getNom()));
+            statement.setString(2, normalizeLookupKey(salle.getLocalisation()));
+            statement.setString(3, normalizeLookupKey(salle.getBatiment()));
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next() && resultSet.getInt("total") > 0) {
+                    throw new IllegalArgumentException(
+                        "Une salle avec ce nom existe deja dans le meme batiment et la meme localisation."
+                    );
                 }
             }
         }
@@ -66,6 +100,7 @@ public class AdminSalleService implements IServices<Salle> {
     @Override
     public void update(Salle salle) throws SQLException {
         validateSalle(salle, true);
+        ensureNoUpcomingSeanceUsesSalle(salle.getIdSalle());
 
         try (PreparedStatement statement = requireConnection().prepareStatement(UPDATE_SQL)) {
             fillStatement(statement, salle);
@@ -90,11 +125,31 @@ public class AdminSalleService implements IServices<Salle> {
             throw new IllegalArgumentException("L'id de la salle doit etre positif.");
         }
 
+        ensureNoUpcomingSeanceUsesSalle(idSalle);
+
         try (PreparedStatement statement = requireConnection().prepareStatement(DELETE_SQL)) {
             statement.setInt(1, idSalle);
 
             if (statement.executeUpdate() == 0) {
                 throw new SQLException("Aucune salle trouvee avec l'id " + idSalle + ".");
+            }
+        }
+    }
+
+    private void ensureNoUpcomingSeanceUsesSalle(int idSalle) throws SQLException {
+        try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_ACTIVE_SEANCE_BY_SALLE_SQL)) {
+            statement.setInt(1, idSalle);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return;
+                }
+
+                throw new SQLException(
+                    "Cette salle est liee a la seance non encore passee \""
+                        + resultSet.getString("matiere")
+                        + "\" (#" + resultSet.getInt("id")
+                        + "). Supprimez ou modifiez d'abord cette seance."
+                );
             }
         }
     }
@@ -201,6 +256,10 @@ public class AdminSalleService implements IServices<Salle> {
 
     private String normalizeText(String value) {
         return isBlank(value) ? null : value.trim();
+    }
+
+    private String normalizeLookupKey(String value) {
+        return isBlank(value) ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeEtat(String value) {

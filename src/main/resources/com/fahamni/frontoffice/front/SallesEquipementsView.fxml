@@ -92,11 +92,6 @@
                     </tabs>
                 </TabPane>
 
-                <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-note">
-                    <Label text="Integration seances" styleClass="infrastructure-note-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="Les salles et materiels disponibles sont maintenant selectionnables depuis la creation d'une seance presentielle." wrapText="true" styleClass="section-subtitle"/>
-                </HBox>
             </VBox>
 
             <VBox spacing="14.0" prefWidth="340.0" minWidth="320.0" styleClass="infrastructure-detail-panel">

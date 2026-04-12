@@ -305,23 +305,43 @@ public class SeanceService implements IServices<Seance> {
             );
         }
 
+        Connection connection = requireConnection();
         String sql = "DELETE FROM seance WHERE id = ?";
-        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
-            deleteSeanceEquipements(seance.getId());
+        boolean previousAutoCommit;
+        try {
+            previousAutoCommit = connection.getAutoCommit();
+            if (previousAutoCommit) {
+                connection.setAutoCommit(false);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("Suppression impossible: " + e.getMessage(), e);
+        }
+
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
+            deleteSeanceEquipements(connection, seance.getId());
             pst.setInt(1, seance.getId());
             int deletedRows = pst.executeUpdate();
             if (deletedRows == 0) {
                 throw new IllegalStateException("Aucune seance supprimee.");
             }
+            if (previousAutoCommit) {
+                connection.commit();
+            }
         } catch (SQLException e) {
+            rollbackQuietly(connection, previousAutoCommit);
             if ("23000".equals(e.getSQLState())) {
                 throw new IllegalStateException("Suppression impossible: cette seance est deja liee a une reservation.", e);
             }
             throw new IllegalStateException("Suppression impossible: " + e.getMessage(), e);
+        } catch (RuntimeException e) {
+            rollbackQuietly(connection, previousAutoCommit);
+            throw e;
+        } finally {
+            restoreAutoCommit(connection, previousAutoCommit);
         }
     }
 
-    private int countReservationsForSeance(int seanceId) {
+    public int countReservationsForSeance(int seanceId) {
         if (seanceId <= 0) {
             return 0;
         }
@@ -670,15 +690,47 @@ public class SeanceService implements IServices<Seance> {
     }
 
     private void deleteSeanceEquipements(int seanceId) throws SQLException {
+        deleteSeanceEquipements(requireConnection(), seanceId);
+    }
+
+    private void deleteSeanceEquipements(Connection connection, int seanceId) throws SQLException {
         if (seanceId <= 0) {
             return;
         }
 
         String sql = "DELETE FROM seance_equipement WHERE seance_id = ?";
-        try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
+        try (PreparedStatement pst = connection.prepareStatement(sql)) {
             pst.setInt(1, seanceId);
             pst.executeUpdate();
+        } catch (SQLException e) {
+            if (isMissingTable(e)) {
+                return;
+            }
+            throw e;
         }
+    }
+
+    private void rollbackQuietly(Connection connection, boolean shouldRollback) {
+        if (!shouldRollback) {
+            return;
+        }
+        try {
+            connection.rollback();
+        } catch (SQLException ignored) {
+            // Keep the original deletion error.
+        }
+    }
+
+    private void restoreAutoCommit(Connection connection, boolean previousAutoCommit) {
+        try {
+            connection.setAutoCommit(previousAutoCommit);
+        } catch (SQLException ignored) {
+            // Nothing useful to add for the caller here.
+        }
+    }
+
+    private boolean isMissingTable(SQLException exception) {
+        return "42S02".equals(exception.getSQLState()) || exception.getErrorCode() == 1146;
     }
 
     private String blankToNull(String value) {

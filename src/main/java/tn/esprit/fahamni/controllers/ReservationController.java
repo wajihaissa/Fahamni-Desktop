@@ -79,6 +79,9 @@ public class ReservationController {
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, EquipmentSelectionControls> equipmentSelectionControls = new LinkedHashMap<>();
+    private final Map<Integer, RoomSelectionControls> roomSelectionControls = new LinkedHashMap<>();
+    private final Map<Integer, String> roomScheduleConflicts = new LinkedHashMap<>();
+    private Integer selectedSalleId;
     private Integer editingSessionId;
     private int currentSessionPage = 1;
 
@@ -131,7 +134,10 @@ public class ReservationController {
     private CheckBox sessionOnsiteCheckBox;
 
     @FXML
-    private ComboBox<String> sessionRoomComboBox;
+    private VBox sessionRoomChoicesContainer;
+
+    @FXML
+    private Label sessionRoomAvailabilityHintLabel;
 
     @FXML
     private HBox onsiteInfrastructureRow;
@@ -158,7 +164,7 @@ public class ReservationController {
     private FlowPane sessionRoomFactsContainer;
 
     @FXML
-    private FlowPane sessionEquipmentChoicesContainer;
+    private VBox sessionEquipmentChoicesContainer;
 
     @FXML
     private VBox sessionEquipmentPreviewContainer;
@@ -320,11 +326,6 @@ public class ReservationController {
     }
 
     @FXML
-    private void handleRoomSelectionChange() {
-        updateRoomPreview();
-    }
-
-    @FXML
     private void handleClearSessionForm() {
         clearSessionForm();
         resetEditMode();
@@ -349,8 +350,7 @@ public class ReservationController {
             clearSessionForm();
             resetEditMode();
             loadSessionDashboard();
-            showAvailableSessionsSection();
-            showFeedback(
+            showSessionListFeedback(
                 editing ? "La seance a ete modifiee avec succes." : successMessage,
                 true
             );
@@ -395,6 +395,10 @@ public class ReservationController {
             if (selectedSalle == null) {
                 throw new IllegalArgumentException("Choisissez une salle disponible pour une seance presentielle.");
             }
+            findRoomScheduleConflict(selectedSalle.getIdSalle(), startAt, duration)
+                .ifPresent(conflict -> {
+                    throw new IllegalArgumentException(buildRoomScheduleConflictReason(conflict));
+                });
             if (capacity > selectedSalle.getCapacite()) {
                 throw new IllegalArgumentException(
                     "La salle choisie accepte seulement " + selectedSalle.getCapacite() + " participants."
@@ -429,8 +433,16 @@ public class ReservationController {
 
     private void configureInfrastructureChoices() {
         sessionOnsiteCheckBox.setSelected(false);
+        configureRoomScheduleAvailability();
         loadInfrastructureChoices();
         updateOnsiteOptionsVisibility();
+    }
+
+    private void configureRoomScheduleAvailability() {
+        sessionDatePicker.valueProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+        sessionHourComboBox.valueProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+        sessionMinuteComboBox.valueProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+        sessionDurationField.textProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
     }
 
     private void loadInfrastructureChoices() {
@@ -450,8 +462,7 @@ public class ReservationController {
                     .toList()
             );
 
-            sessionRoomComboBox.getItems().setAll(availableSalles.stream().map(this::formatSalleChoice).toList());
-            sessionRoomComboBox.setDisable(availableSalles.isEmpty());
+            refreshRoomChoicesForSchedule();
             renderEquipmentChoices();
             updateInfrastructureHint();
             updateRoomPreview();
@@ -459,9 +470,12 @@ public class ReservationController {
         } catch (SQLException | IllegalStateException exception) {
             availableSalles.clear();
             availableEquipements.clear();
-            sessionRoomComboBox.getItems().clear();
-            sessionRoomComboBox.setDisable(true);
+            selectedSalleId = null;
+            roomSelectionControls.clear();
+            roomScheduleConflicts.clear();
+            sessionRoomChoicesContainer.getChildren().clear();
             renderEquipmentChoices();
+            updateRoomAvailabilityHint();
             infrastructureHintLabel.setText("Chargement des salles et materiels impossible: " + resolveMessage(exception));
             resetRoomPreview();
             updateEquipmentPreview();
@@ -491,12 +505,13 @@ public class ReservationController {
         updateModePresentation();
 
         if (!onsite) {
-            sessionRoomComboBox.getSelectionModel().clearSelection();
+            selectedSalleId = null;
+            updateRoomSelectionStyles();
             clearEquipmentSelection();
             resetRoomPreview();
             updateEquipmentPreview();
-        } else if (sessionRoomComboBox.getValue() == null && !sessionRoomComboBox.getItems().isEmpty()) {
-            sessionRoomComboBox.getSelectionModel().selectFirst();
+        } else if (selectedSalleId == null && !availableSalles.isEmpty()) {
+            selectFirstSelectableSalle();
             updateRoomPreview();
             updateEquipmentPreview();
         } else {
@@ -510,11 +525,258 @@ public class ReservationController {
     }
 
     private Salle resolveSelectedSalle() {
-        int selectedIndex = sessionRoomComboBox.getSelectionModel().getSelectedIndex();
-        if (selectedIndex < 0 || selectedIndex >= availableSalles.size()) {
+        if (selectedSalleId == null) {
             return null;
         }
-        return availableSalles.get(selectedIndex);
+        return availableSalles.stream()
+            .filter(salle -> salle.getIdSalle() == selectedSalleId)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private Integer resolveSelectedSalleId() {
+        return selectedSalleId;
+    }
+
+    private void refreshRoomChoicesForSchedule() {
+        if (sessionRoomChoicesContainer == null) {
+            return;
+        }
+
+        Integer preferredSalleId = resolveSelectedSalleId();
+        updateRoomScheduleConflicts();
+        if (preferredSalleId != null && roomScheduleConflicts.containsKey(preferredSalleId)) {
+            selectedSalleId = null;
+        }
+        renderRoomChoices();
+        updateRoomAvailabilityHint();
+        if (preferredSalleId != null && roomScheduleConflicts.containsKey(preferredSalleId)) {
+            showRoomUnavailablePreview(roomScheduleConflicts.get(preferredSalleId));
+        } else {
+            updateRoomPreview();
+        }
+    }
+
+    private void renderRoomChoices() {
+        sessionRoomChoicesContainer.getChildren().clear();
+        roomSelectionControls.clear();
+
+        if (availableSalles.isEmpty()) {
+            Label emptyLabel = new Label("Aucune salle disponible administrativement pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            sessionRoomChoicesContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        for (Salle salle : availableSalles) {
+            sessionRoomChoicesContainer.getChildren().add(createRoomChoiceCard(salle));
+        }
+        updateRoomSelectionStyles();
+    }
+
+    private VBox createRoomChoiceCard(Salle salle) {
+        VBox card = new VBox(6.0);
+        card.getStyleClass().add("reservation-room-choice-card");
+        card.setMaxWidth(Double.MAX_VALUE);
+
+        String conflictReason = roomScheduleConflicts.get(salle.getIdSalle());
+        boolean unavailableForSlot = conflictReason != null;
+
+        HBox header = new HBox(8.0);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label title = new Label(formatOptionalText(salle.getNom()));
+        title.setWrapText(true);
+        title.getStyleClass().add("reservation-room-choice-title");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label statusChip = new Label(unavailableForSlot ? "Occupee" : "Libre");
+        statusChip.getStyleClass().addAll("reservation-status", unavailableForSlot ? "occupied" : "confirmed");
+        header.getChildren().addAll(title, spacer, statusChip);
+
+        Label meta = new Label(
+            formatOptionalText(salle.getBatiment())
+                + " | "
+                + formatOptionalText(salle.getLocalisation())
+                + " | "
+                + salle.getCapacite()
+                + " places"
+        );
+        meta.setWrapText(true);
+        meta.getStyleClass().add("reservation-room-choice-meta");
+
+        card.getChildren().addAll(header, meta);
+        if (unavailableForSlot) {
+            card.getStyleClass().add("unavailable");
+            card.setOnMouseClicked(event -> {
+                selectedSalleId = null;
+                updateRoomSelectionStyles();
+                showRoomUnavailablePreview(conflictReason);
+            });
+        } else {
+            card.setOnMouseClicked(event -> selectSalle(salle));
+        }
+
+        RoomSelectionControls controls = new RoomSelectionControls(card, statusChip);
+        roomSelectionControls.put(salle.getIdSalle(), controls);
+        return card;
+    }
+
+    private void selectSalle(Salle salle) {
+        if (salle == null || isSalleUnavailableForSelectedSchedule(salle)) {
+            return;
+        }
+        selectedSalleId = salle.getIdSalle();
+        updateRoomSelectionStyles();
+        updateRoomPreview();
+    }
+
+    private void updateRoomSelectionStyles() {
+        for (Map.Entry<Integer, RoomSelectionControls> entry : roomSelectionControls.entrySet()) {
+            VBox card = entry.getValue().card();
+            card.getStyleClass().remove("selected");
+            if (selectedSalleId != null && selectedSalleId.equals(entry.getKey())) {
+                card.getStyleClass().add("selected");
+            }
+        }
+    }
+
+    private void updateRoomScheduleConflicts() {
+        roomScheduleConflicts.clear();
+
+        LocalDateTime candidateStartAt = resolveTentativeStartAt();
+        Integer candidateDuration = resolveTentativeDuration();
+        if (candidateStartAt == null || candidateDuration == null || candidateDuration <= 0) {
+            return;
+        }
+
+        List<Seance> existingSeances = seanceService.getAll();
+        for (Salle salle : availableSalles) {
+            findRoomScheduleConflict(salle.getIdSalle(), candidateStartAt, candidateDuration, existingSeances)
+                .ifPresent(conflict -> roomScheduleConflicts.put(
+                    salle.getIdSalle(),
+                    buildRoomScheduleConflictReason(conflict)
+                ));
+        }
+    }
+
+    private Optional<Seance> findRoomScheduleConflict(int salleId, LocalDateTime candidateStartAt, int candidateDuration) {
+        return findRoomScheduleConflict(salleId, candidateStartAt, candidateDuration, seanceService.getAll());
+    }
+
+    private Optional<Seance> findRoomScheduleConflict(int salleId, LocalDateTime candidateStartAt, int candidateDuration,
+                                                     List<Seance> existingSeances) {
+        if (salleId <= 0 || candidateStartAt == null || candidateDuration <= 0) {
+            return Optional.empty();
+        }
+
+        LocalDateTime candidateEndAt = candidateStartAt.plusMinutes(candidateDuration);
+        int currentEditingId = editingSessionId == null ? 0 : editingSessionId;
+
+        return existingSeances.stream()
+            .filter(existing -> existing.getId() != currentEditingId)
+            .filter(Seance::isPresentiel)
+            .filter(existing -> existing.getSalleId() != null && existing.getSalleId() == salleId)
+            .filter(existing -> existing.getStatus() != 2)
+            .filter(existing -> existing.getStartAt() != null)
+            .filter(existing -> existing.getDurationMin() > 0)
+            .filter(existing -> hasScheduleOverlap(
+                candidateStartAt,
+                candidateEndAt,
+                existing.getStartAt(),
+                existing.getStartAt().plusMinutes(existing.getDurationMin())
+            ))
+            .findFirst();
+    }
+
+    private boolean hasScheduleOverlap(LocalDateTime firstStartAt, LocalDateTime firstEndAt,
+                                       LocalDateTime secondStartAt, LocalDateTime secondEndAt) {
+        if (firstStartAt == null || firstEndAt == null || secondStartAt == null || secondEndAt == null) {
+            return false;
+        }
+        return firstStartAt.isBefore(secondEndAt) && secondStartAt.isBefore(firstEndAt);
+    }
+
+    private String buildRoomScheduleConflictReason(Seance conflict) {
+        return "Indisponible sur ce creneau: deja reservee pour \""
+            + safeText(conflict.getMatiere())
+            + "\" le "
+            + formatDateTime(conflict.getStartAt())
+            + ".";
+    }
+
+    private LocalDateTime resolveTentativeStartAt() {
+        LocalDate selectedDate = sessionDatePicker.getValue();
+        String selectedHour = sessionHourComboBox.getValue();
+        String selectedMinute = sessionMinuteComboBox.getValue();
+        if (selectedDate == null || selectedHour == null || selectedMinute == null) {
+            return null;
+        }
+
+        try {
+            return LocalDateTime.of(
+                selectedDate,
+                LocalTime.of(Integer.parseInt(selectedHour), Integer.parseInt(selectedMinute))
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private Integer resolveTentativeDuration() {
+        String durationText = sessionDurationField.getText();
+        if (durationText == null || durationText.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(durationText.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private void selectFirstSelectableSalle() {
+        for (Salle salle : availableSalles) {
+            if (!isSalleUnavailableForSelectedSchedule(salle)) {
+                selectSalle(salle);
+                return;
+            }
+        }
+        selectedSalleId = null;
+        updateRoomSelectionStyles();
+    }
+
+    private boolean isSalleUnavailableForSelectedSchedule(Salle salle) {
+        return salle != null && roomScheduleConflicts.containsKey(salle.getIdSalle());
+    }
+
+    private void updateRoomAvailabilityHint() {
+        if (sessionRoomAvailabilityHintLabel == null) {
+            return;
+        }
+
+        if (availableSalles.isEmpty()) {
+            sessionRoomAvailabilityHintLabel.setText("Aucune salle disponible administrativement pour le moment.");
+            return;
+        }
+
+        if (resolveTentativeStartAt() == null || resolveTentativeDuration() == null) {
+            sessionRoomAvailabilityHintLabel.setText("Selectionnez la date, l'heure et la duree pour verifier les disponibilites.");
+            return;
+        }
+
+        int blockedCount = roomScheduleConflicts.size();
+        if (blockedCount == 0) {
+            sessionRoomAvailabilityHintLabel.setText("Toutes les salles affichees sont libres sur ce creneau.");
+            return;
+        }
+
+        sessionRoomAvailabilityHintLabel.setText(
+            blockedCount == 1
+                ? "1 salle est grisee car elle est deja reservee sur ce creneau."
+                : blockedCount + " salles sont grisees car elles sont deja reservees sur ce creneau."
+        );
     }
 
     private Map<Integer, Integer> getSelectedEquipmentQuantites() {
@@ -531,19 +793,25 @@ public class ReservationController {
     }
 
     private void selectSalleById(Integer salleId) {
-        sessionRoomComboBox.getSelectionModel().clearSelection();
+        selectedSalleId = null;
         if (salleId == null || salleId <= 0) {
+            updateRoomSelectionStyles();
             updateRoomPreview();
             return;
         }
 
-        for (int index = 0; index < availableSalles.size(); index++) {
-            if (availableSalles.get(index).getIdSalle() == salleId) {
-                sessionRoomComboBox.getSelectionModel().select(index);
-                updateRoomPreview();
+        for (Salle salle : availableSalles) {
+            if (salle.getIdSalle() == salleId) {
+                if (isSalleUnavailableForSelectedSchedule(salle)) {
+                    updateRoomSelectionStyles();
+                    updateRoomPreview();
+                    return;
+                }
+                selectSalle(salle);
                 return;
             }
         }
+        updateRoomSelectionStyles();
         updateRoomPreview();
     }
 
@@ -619,15 +887,6 @@ public class ReservationController {
         }
     }
 
-    private String formatSalleChoice(Salle salle) {
-        return salle.getNom()
-            + " | "
-            + salle.getLocalisation()
-            + " | "
-            + salle.getCapacite()
-            + " places";
-    }
-
     private String formatEquipementChoice(Equipement equipement) {
         return equipement.getNom()
             + " ("
@@ -638,9 +897,8 @@ public class ReservationController {
     }
 
     private VBox createEquipmentChoiceCard(Equipement equipement) {
-        VBox card = new VBox(8.0);
+        VBox card = new VBox(6.0);
         card.getStyleClass().add("reservation-equipment-choice-card");
-        card.setPrefWidth(400.0);
         card.setMaxWidth(Double.MAX_VALUE);
 
         CheckBox checkBox = new CheckBox(formatEquipementChoice(equipement));
@@ -723,6 +981,11 @@ public class ReservationController {
             resetRoomPreview();
             return;
         }
+        String conflictReason = roomScheduleConflicts.get(selectedSalle.getIdSalle());
+        if (conflictReason != null) {
+            showRoomUnavailablePreview(conflictReason);
+            return;
+        }
 
         sessionRoomStatusChipLabel.setText(formatLabel(selectedSalle.getEtat()));
         sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", resolveStatusStyle(selectedSalle.getEtat()));
@@ -742,6 +1005,15 @@ public class ReservationController {
             buildInfrastructureFactCard("Disposition", formatOptionalText(selectedSalle.getTypeDisposition())),
             buildInfrastructureFactCard("Acces", selectedSalle.isAccesHandicape() ? "Handicap" : "Standard")
         );
+    }
+
+    private void showRoomUnavailablePreview(String reason) {
+        sessionRoomStatusChipLabel.setText("Indisponible");
+        sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", "unavailable");
+        sessionRoomPreviewTitleLabel.setText("Salle indisponible sur ce creneau");
+        sessionRoomPreviewSubtitleLabel.setText(reason == null ? "Choisissez une autre salle ou modifiez le creneau." : reason);
+        sessionRoomPreviewDescriptionLabel.setText("Choisissez une autre salle ou changez la date, l'heure ou la duree.");
+        sessionRoomFactsContainer.getChildren().clear();
     }
 
     private void resetRoomPreview() {
@@ -982,7 +1254,7 @@ public class ReservationController {
         Button reserveButton = buildReserveButton(seance, reservationStats);
 
         Button editButton = new Button("Modifier");
-        editButton.getStyleClass().add("backoffice-secondary-button");
+        editButton.getStyleClass().add("backoffice-edit-button");
         editButton.setOnAction(event -> startEditingSession(seance));
 
         Button deleteButton = new Button("Supprimer");
@@ -990,7 +1262,7 @@ public class ReservationController {
         deleteButton.setOnAction(event -> confirmDeleteSession(seance));
 
         actionRow.getChildren().addAll(idChip, actionSpacer);
-        if (TemporaryUserContext.isCurrentStudent()) {
+        if (canReserveAsParticipant(seance)) {
             actionRow.getChildren().add(reserveButton);
         }
         actionRow.getChildren().add(detailsButton);
@@ -1008,12 +1280,25 @@ public class ReservationController {
             && seance.getTuteurId() == TemporaryUserContext.getCurrentTutorId();
     }
 
+    private boolean canReserveAsParticipant(Seance seance) {
+        if (TemporaryUserContext.isCurrentStudent()) {
+            return true;
+        }
+        return TemporaryUserContext.isCurrentTutor()
+            && seance != null
+            && !canManageSession(seance);
+    }
+
+    private int getCurrentReservationParticipantId() {
+        return TemporaryUserContext.getCurrentActorId();
+    }
+
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
         Button reserveButton = new Button("Reserver");
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
-        if (!TemporaryUserContext.isCurrentStudent()) {
-            reserveButton.setText("Compte etudiant requis");
+        if (!canReserveAsParticipant(seance)) {
+            reserveButton.setText(TemporaryUserContext.isCurrentTutor() ? "Votre seance" : "Compte requis");
             reserveButton.setDisable(true);
             return reserveButton;
         }
@@ -1030,7 +1315,8 @@ public class ReservationController {
             return reserveButton;
         }
 
-        if (reservationService.hasActiveReservation(seance.getId(), TemporaryUserContext.getCurrentStudentId())) {
+        int participantId = getCurrentReservationParticipantId();
+        if (reservationService.hasActiveReservation(seance.getId(), participantId)) {
             reserveButton.setText("Deja reserve");
             reserveButton.setDisable(true);
             return reserveButton;
@@ -1041,7 +1327,7 @@ public class ReservationController {
     }
 
     private void reserveSession(Seance seance) {
-        OperationResult result = reservationService.reserveSeance(seance, TemporaryUserContext.getCurrentStudentId());
+        OperationResult result = reservationService.reserveSeance(seance, getCurrentReservationParticipantId());
         loadSessionDashboard();
         showAvailableSessionsSection();
         showReservationActionFeedback(result.getMessage(), result.isSuccess());
@@ -1051,7 +1337,7 @@ public class ReservationController {
         studentReservationsContainer.getChildren().clear();
 
         List<StudentReservationItem> reservations = reservationService.getStudentReservations(
-            TemporaryUserContext.getCurrentStudentId()
+            getCurrentReservationParticipantId()
         );
         long pendingCount = reservations.stream().filter(StudentReservationItem::isPending).count();
         long acceptedCount = reservations.stream().filter(StudentReservationItem::isAccepted).count();
@@ -1145,7 +1431,7 @@ public class ReservationController {
         hideStudentReservationsFeedback();
         OperationResult result = reservationService.cancelStudentReservation(
             reservation.id(),
-            TemporaryUserContext.getCurrentStudentId()
+            getCurrentReservationParticipantId()
         );
         loadSessionDashboard();
         loadStudentReservations();
@@ -1214,7 +1500,7 @@ public class ReservationController {
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
 
         Button acceptButton = new Button("Accepter");
-        acceptButton.getStyleClass().addAll("action-button", "primary");
+        acceptButton.getStyleClass().addAll("action-button", "accept");
         acceptButton.setOnAction(event -> acceptTutorReservationRequest(request));
 
         Button refuseButton = new Button("Refuser");
@@ -1231,11 +1517,6 @@ public class ReservationController {
             } else {
                 actionRow.getChildren().addAll(acceptButton, refuseButton);
             }
-        } else {
-            Button statusButton = new Button(mapReservationRequestStatusLabel(request.status()));
-            statusButton.getStyleClass().addAll("action-button", "secondary");
-            statusButton.setDisable(true);
-            actionRow.getChildren().add(statusButton);
         }
 
         card.getChildren().addAll(headerRow, studentLabel, sessionLabel, actionRow);
@@ -1304,11 +1585,13 @@ public class ReservationController {
     }
 
     private VBox buildSessionDetailsContent(Seance seance, ReservationStats reservationStats, Dialog<ButtonType> detailsDialog) {
+        boolean canManageCurrentSession = canManageSession(seance);
+        int reservationTotal = reservationStats != null ? reservationStats.total() : 0;
         LocalDateTime endAt = seance.getStartAt() != null
             ? seance.getStartAt().plusMinutes(seance.getDurationMin())
             : null;
-        int availableSeats = Math.max(0, seance.getMaxParticipants() - reservationStats.total());
-        double occupancyRate = calculateOccupancyRate(reservationStats.total(), seance.getMaxParticipants());
+        int availableSeats = Math.max(0, seance.getMaxParticipants() - reservationTotal);
+        double occupancyRate = calculateOccupancyRate(reservationTotal, seance.getMaxParticipants());
 
         VBox root = new VBox(16.0);
         root.getStyleClass().add("session-detail-root");
@@ -1329,9 +1612,12 @@ public class ReservationController {
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
 
-        Label reservationChip = new Label(formatReservationCount(reservationStats.total()));
-        reservationChip.getStyleClass().add("session-detail-reservation-chip");
-        header.getChildren().addAll(titleBlock, headerSpacer, reservationChip);
+        header.getChildren().addAll(titleBlock, headerSpacer);
+        if (canManageCurrentSession) {
+            Label reservationChip = new Label(formatReservationCount(reservationTotal));
+            reservationChip.getStyleClass().add("session-detail-reservation-chip");
+            header.getChildren().add(reservationChip);
+        }
 
         FlowPane metrics = new FlowPane(10.0, 10.0);
         metrics.getStyleClass().add("session-detail-metrics");
@@ -1339,9 +1625,17 @@ public class ReservationController {
         metrics.getChildren().addAll(
             buildDetailMetric("Debut", formatDateTimeOrPlaceholder(seance.getStartAt()), "Date et heure"),
             buildDetailMetric("Fin", formatDateTimeOrPlaceholder(endAt), "Fin calculee"),
-            buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance"),
-            buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
-            buildDetailMetric("Reservations", String.valueOf(reservationStats.total()), "Total lie a la seance"),
+            buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance")
+        );
+        if (canManageCurrentSession) {
+            metrics.getChildren().addAll(
+                buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
+                buildDetailMetric("Reservations", String.valueOf(reservationTotal), "Total lie a la seance")
+            );
+        } else {
+            metrics.getChildren().add(buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"));
+        }
+        metrics.getChildren().addAll(
             buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId()),
             buildDetailMetric("Mode", mapModeLabel(seance.getMode()), "Format choisi"),
             buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel"),
@@ -1365,11 +1659,13 @@ public class ReservationController {
 
         HBox statusRow = new HBox(8.0);
         statusRow.getStyleClass().add("session-detail-status-row");
-        statusRow.getChildren().addAll(
-            buildReservationStatusChip("En attente", reservationStats.pending()),
-            buildReservationStatusChip("Acceptees", reservationStats.accepted()),
-            buildReservationStatusChip("Refusees", reservationStats.refused())
-        );
+        if (reservationStats != null) {
+            statusRow.getChildren().addAll(
+                buildReservationStatusChip("En attente", reservationStats.pending()),
+                buildReservationStatusChip("Acceptees", reservationStats.accepted()),
+                buildReservationStatusChip("Refusees", reservationStats.refused())
+            );
+        }
         occupancyCard.getChildren().addAll(occupancyHeader, occupancyProgress, statusRow);
 
         VBox descriptionBox = new VBox(8.0);
@@ -1386,23 +1682,29 @@ public class ReservationController {
         footer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         Label createdAtLabel = new Label("Creation: " + formatDateTimeOrPlaceholder(seance.getCreatedAt()));
         createdAtLabel.getStyleClass().add("session-detail-muted");
-        Region footerSpacer = new Region();
-        HBox.setHgrow(footerSpacer, Priority.ALWAYS);
-        Button editActionButton = new Button("Modifier cette seance");
-        editActionButton.getStyleClass().add("backoffice-primary-button");
-        editActionButton.setOnAction(event -> {
-            detailsDialog.close();
-            startEditingSession(seance);
-        });
         footer.getChildren().add(createdAtLabel);
         if (seance.getUpdatedAt() != null) {
             Label updatedAtLabel = new Label("Mise a jour: " + formatDateTimeOrPlaceholder(seance.getUpdatedAt()));
             updatedAtLabel.getStyleClass().add("session-detail-muted");
             footer.getChildren().add(updatedAtLabel);
         }
-        footer.getChildren().addAll(footerSpacer, editActionButton);
+        if (canManageCurrentSession) {
+            Region footerSpacer = new Region();
+            HBox.setHgrow(footerSpacer, Priority.ALWAYS);
+            Button editActionButton = new Button("Modifier cette seance");
+            editActionButton.getStyleClass().add("backoffice-primary-button");
+            editActionButton.setOnAction(event -> {
+                detailsDialog.close();
+                startEditingSession(seance);
+            });
+            footer.getChildren().addAll(footerSpacer, editActionButton);
+        }
 
-        root.getChildren().addAll(header, metrics, occupancyCard, descriptionBox, footer);
+        root.getChildren().addAll(header, metrics);
+        if (canManageCurrentSession) {
+            root.getChildren().add(occupancyCard);
+        }
+        root.getChildren().addAll(descriptionBox, footer);
         return root;
     }
 
@@ -1517,8 +1819,20 @@ public class ReservationController {
 
     private void confirmDeleteSession(Seance seance) {
         if (!canManageSession(seance)) {
-            showAvailableSessionsSection();
-            showReservationActionFeedback("Seul le tuteur proprietaire peut supprimer cette seance.", false);
+            showSessionListFeedback("Seul le tuteur proprietaire peut supprimer cette seance.", false);
+            return;
+        }
+
+        int linkedReservations;
+        try {
+            linkedReservations = seanceService.countReservationsForSeance(seance.getId());
+        } catch (RuntimeException exception) {
+            showSessionListFeedback(exception.getMessage(), false);
+            return;
+        }
+
+        if (linkedReservations > 0) {
+            showSessionListFeedback(buildDeleteBlockedMessage(linkedReservations), false);
             return;
         }
 
@@ -1529,7 +1843,7 @@ public class ReservationController {
         confirmationAlert.setTitle("Suppression de seance");
         confirmationAlert.setHeaderText("Confirmer la suppression");
         confirmationAlert.setContentText(
-            "La seance \"" + seance.getMatiere() + "\" sera supprimee definitivement si aucune reservation ne la reference."
+            "La seance \"" + seance.getMatiere() + "\" sera supprimee definitivement."
         );
         confirmationAlert.getButtonTypes().setAll(cancelButton, deleteButton);
 
@@ -1541,18 +1855,24 @@ public class ReservationController {
 
     private void deleteSession(Seance seance) {
         hideFeedback();
+        hideReservationActionFeedback();
 
-        try {
-            seanceService.delete(seance);
+        OperationResult result = seanceService.deleteSeance(seance.getId());
+        if (result.isSuccess()) {
             if (editingSessionId != null && editingSessionId == seance.getId()) {
                 clearSessionForm();
                 resetEditMode();
             }
             loadSessionDashboard();
-            showFeedback("La seance a ete supprimee avec succes.", true);
-        } catch (RuntimeException exception) {
-            showFeedback(exception.getMessage(), false);
+            showSessionListFeedback(result.getMessage(), true);
+        } else {
+            showSessionListFeedback(result.getMessage(), false);
         }
+    }
+
+    private String buildDeleteBlockedMessage(int reservationCount) {
+        String suffix = reservationCount > 1 ? " reservations." : " reservation.";
+        return "Suppression impossible: cette seance possede " + reservationCount + suffix;
     }
 
     private LocalDateTime parseStartAt() {
@@ -1803,7 +2123,17 @@ public class ReservationController {
             .filter(salle -> salle.getIdSalle() == salleId)
             .map(Salle::getNom)
             .findFirst()
-            .orElse("Salle #" + salleId);
+            .orElseGet(() -> {
+                try {
+                    Salle salle = salleService.recupererParId(salleId);
+                    if (salle != null && salle.getNom() != null && !salle.getNom().isBlank()) {
+                        return salle.getNom();
+                    }
+                } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+                    return "Salle #" + salleId;
+                }
+                return "Salle #" + salleId;
+            });
     }
 
     private String resolveEquipementNames(Map<Integer, Integer> equipementQuantites) {
@@ -1836,7 +2166,8 @@ public class ReservationController {
         sessionCapacityField.clear();
         sessionDescriptionArea.clear();
         sessionOnsiteCheckBox.setSelected(false);
-        sessionRoomComboBox.getSelectionModel().clearSelection();
+        selectedSalleId = null;
+        updateRoomSelectionStyles();
         clearEquipmentSelection();
         updateOnsiteOptionsVisibility();
         selectDefaultTutor();
@@ -1862,16 +2193,22 @@ public class ReservationController {
         setSectionVisible(reservationRequestsPanel, false);
     }
 
+    private void showSessionListFeedback(String message, boolean success) {
+        hideFeedback();
+        showAvailableSessionsSection();
+        showReservationActionFeedback(message, success);
+    }
+
     private void showAddSessionSection() {
         if (!TemporaryUserContext.isCurrentTutor()) {
-            showAvailableSessionsSection();
-            showReservationActionFeedback("Connectez-vous avec le compte tuteur pour ajouter une seance.", false);
+            showSessionListFeedback("Connectez-vous avec le compte tuteur pour ajouter une seance.", false);
             return;
         }
 
         if (sectionMenuComboBox != null && !SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
             sectionMenuComboBox.setValue(SECTION_ADD_SESSION);
         }
+        hideReservationActionFeedback();
         setSectionVisible(sessionSearchPanel, false);
         setSectionVisible(sessionListPanel, false);
         setSectionVisible(sessionFormPanel, true);
@@ -1880,9 +2217,8 @@ public class ReservationController {
     }
 
     private void showStudentReservationsSection() {
-        if (!TemporaryUserContext.isCurrentStudent()) {
-            showAvailableSessionsSection();
-            showReservationActionFeedback("Connectez-vous avec le compte etudiant pour consulter vos reservations.", false);
+        if (!TemporaryUserContext.isCurrentStudent() && !TemporaryUserContext.isCurrentTutor()) {
+            showSessionListFeedback("Connectez-vous avec un compte etudiant ou tuteur pour consulter vos reservations.", false);
             return;
         }
 
@@ -1923,6 +2259,7 @@ public class ReservationController {
         if (TemporaryUserContext.isCurrentTutor()) {
             sectionMenuComboBox.getItems().setAll(
                 SECTION_AVAILABLE_SESSIONS,
+                SECTION_MY_RESERVATIONS,
                 SECTION_ADD_SESSION,
                 SECTION_RESERVATION_REQUESTS
             );
@@ -2041,6 +2378,9 @@ public class ReservationController {
     }
 
     private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card) {
+    }
+
+    private record RoomSelectionControls(VBox card, Label statusChip) {
     }
 }
 

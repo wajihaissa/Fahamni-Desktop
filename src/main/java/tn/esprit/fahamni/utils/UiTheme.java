@@ -772,6 +772,17 @@ public final class UiTheme {
             -fx-cursor: hand;
         }
 
+        .backoffice-edit-button {
+            -fx-background-color: #f1f4f8;
+            -fx-border-color: #d6dee9;
+            -fx-border-width: 1px;
+            -fx-text-fill: #4e6075;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+        }
+
         .action-button.danger {
             -fx-background-color: #ffe8ec;
             -fx-border-color: #ffcbd3;
@@ -781,6 +792,15 @@ public final class UiTheme {
             -fx-background-radius: 12px;
             -fx-border-radius: 12px;
             -fx-cursor: hand;
+        }
+
+        .action-button.accept {
+            -fx-background-color: linear-gradient(to bottom, #35c779 0%, #1f9f5f 100%);
+            -fx-text-fill: white;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-cursor: hand;
+            -fx-effect: dropshadow(gaussian, rgba(22, 122, 73, 0.22), 12, 0.18, 0, 4);
         }
 
         .action-button.secondary:hover, .review-button:hover, .like-button:hover, .comment-button:hover, .backoffice-secondary-button:hover {
@@ -797,6 +817,14 @@ public final class UiTheme {
 
         .action-button.danger:hover {
             -fx-background-color: #ffdce3;
+        }
+
+        .action-button.accept:hover {
+            -fx-background-color: linear-gradient(to bottom, #42d889 0%, #26ad69 100%);
+        }
+
+        .backoffice-edit-button:hover {
+            -fx-background-color: #e8edf4;
         }
 
         .backoffice-danger-button {
@@ -859,8 +887,8 @@ public final class UiTheme {
         }
 
         .confirmed, .good {
-            -fx-background-color: #e6eeff;
-            -fx-text-fill: #3158a8;
+            -fx-background-color: #e2f5e8;
+            -fx-text-fill: #1f7a45;
         }
 
         .pending {
@@ -869,6 +897,11 @@ public final class UiTheme {
         }
 
         .refused {
+            -fx-background-color: #ffe8ec;
+            -fx-text-fill: #c43b49;
+        }
+
+        .occupied {
             -fx-background-color: #ffe8ec;
             -fx-text-fill: #c43b49;
         }
@@ -1166,16 +1199,27 @@ public final class UiTheme {
             -fx-background-color: #315bb4;
         }
 
+        .reservation-choice-scroll {
+            -fx-background-color: transparent;
+            -fx-background: transparent;
+            -fx-border-color: #e1e8f4;
+            -fx-border-width: 1px;
+            -fx-border-radius: 10px;
+            -fx-background-radius: 10px;
+            -fx-padding: 0;
+        }
+
+        .reservation-choice-scroll > .viewport {
+            -fx-background-color: transparent;
+        }
+
         .reservation-equipment-check {
             -fx-font-size: 13px;
             -fx-font-weight: bold;
             -fx-text-fill: #29476d;
-            -fx-padding: 10px 12px;
-            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
-            -fx-border-color: #dce7f8;
-            -fx-border-width: 1px;
-            -fx-background-radius: 12px;
-            -fx-border-radius: 12px;
+            -fx-padding: 0;
+            -fx-background-color: transparent;
+            -fx-border-width: 0;
         }
 
         .reservation-equipment-check .box {
@@ -1188,8 +1232,8 @@ public final class UiTheme {
         }
 
         .reservation-equipment-check:selected {
-            -fx-background-color: #eef4ff;
-            -fx-border-color: #abc5f8;
+            -fx-background-color: transparent;
+            -fx-border-width: 0;
         }
 
         .reservation-equipment-check:selected .box {
@@ -1202,17 +1246,63 @@ public final class UiTheme {
         }
 
         .reservation-equipment-choice-card {
-            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
-            -fx-border-color: #dce7f8;
+            -fx-background-color: #ffffff;
+            -fx-border-color: #e1e8f4;
             -fx-border-width: 1px;
-            -fx-background-radius: 14px;
-            -fx-border-radius: 14px;
-            -fx-padding: 12px;
+            -fx-background-radius: 8px;
+            -fx-border-radius: 8px;
+            -fx-padding: 10px;
         }
 
         .reservation-equipment-choice-card.selected {
-            -fx-background-color: #eef4ff;
-            -fx-border-color: #abc5f8;
+            -fx-background-color: #f2f6ff;
+            -fx-border-color: #89aef8;
+        }
+
+        .reservation-room-choice-card {
+            -fx-background-color: #ffffff;
+            -fx-border-color: #e1e8f4;
+            -fx-border-width: 1px;
+            -fx-background-radius: 8px;
+            -fx-border-radius: 8px;
+            -fx-padding: 10px;
+            -fx-cursor: hand;
+        }
+
+        .reservation-room-choice-card.selected {
+            -fx-background-color: #f2f6ff;
+            -fx-border-color: #6e97ff;
+            -fx-border-width: 1.5px;
+        }
+
+        .reservation-room-choice-card.unavailable {
+            -fx-background-color: #f5f7fa;
+            -fx-border-color: #d9e0ea;
+            -fx-cursor: default;
+            -fx-opacity: 0.82;
+        }
+
+        .reservation-room-choice-title {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #243c59;
+        }
+
+        .reservation-room-choice-meta {
+            -fx-font-size: 12px;
+            -fx-text-fill: #5c759d;
+        }
+
+        .reservation-room-choice-ok {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1f7a45;
+        }
+
+        .reservation-room-choice-warning {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #586b86;
         }
 
         .reservation-equipment-quantity-label {

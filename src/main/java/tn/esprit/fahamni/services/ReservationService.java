@@ -64,7 +64,10 @@ public class ReservationService {
             return OperationResult.failure("Selectionnez une seance valide.");
         }
         if (participantId <= 0) {
-            return OperationResult.failure("Etudiant invalide pour la reservation.");
+            return OperationResult.failure("Participant invalide pour la reservation.");
+        }
+        if (seance.getTuteurId() == participantId) {
+            return OperationResult.failure("Vous ne pouvez pas reserver votre propre seance.");
         }
         if (seance.getStatus() != 1) {
             return OperationResult.failure("Seules les seances publiees peuvent etre reservees.");
@@ -75,7 +78,7 @@ public class ReservationService {
 
         try {
             if (!participantExists(participantId)) {
-                return OperationResult.failure("Etudiant introuvable dans la base.");
+                return OperationResult.failure("Participant introuvable dans la base.");
             }
             if (hasActiveReservation(seance.getId(), participantId)) {
                 return OperationResult.failure("Vous avez deja reserve cette seance.");
