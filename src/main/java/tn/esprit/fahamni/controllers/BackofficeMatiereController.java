@@ -14,6 +14,7 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -22,6 +23,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -88,6 +90,15 @@ public class BackofficeMatiereController implements Initializable {
     @FXML
     private Button chooseImageButton;
 
+    @FXML
+    private FlowPane categoryTagsContainer;
+
+    @FXML
+    private ComboBox<String> existingCategoriesCombo;
+
+    @FXML
+    private TextField newCategoryField;
+
     private final MatiereService matiereService = new MatiereService();
     private final ObservableList<Matiere> matieres = FXCollections.observableArrayList();
     private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -145,7 +156,7 @@ public class BackofficeMatiereController implements Initializable {
         Matiere matiere = new Matiere();
         matiere.setTitre(titreField.getText());
         matiere.setDescription(descriptionArea.getText());
-        matiere.setStructure("");
+        matiere.setStructure(buildJsonFromUI());
         matiere.setCoverImage(selectedImagePath);
         matiere.setCreatedAt(LocalDateTime.now());
 
@@ -163,7 +174,7 @@ public class BackofficeMatiereController implements Initializable {
 
         selectedMatiere.setTitre(titreField.getText());
         selectedMatiere.setDescription(descriptionArea.getText());
-        selectedMatiere.setStructure("");
+        selectedMatiere.setStructure(buildJsonFromUI());
         selectedMatiere.setCoverImage(selectedImagePath);
 
         matiereService.update(selectedMatiere);
@@ -247,9 +258,15 @@ public class BackofficeMatiereController implements Initializable {
 
         titreField.setText(matiere.getTitre());
         descriptionArea.setText(matiere.getDescription());
-
         selectedImagePath = matiere.getCoverImage();
-        imagePathLabel.setText(selectedImagePath == null || selectedImagePath.isBlank() ? "Aucune image s\u00e9lectionn\u00e9e" : selectedImagePath);
+        imagePathLabel.setText(selectedImagePath == null || selectedImagePath.isBlank() ? "Aucune image sélectionnée" : selectedImagePath);
+        
+        courseBuilderContainer.getChildren().clear();
+        categoryTagsContainer.getChildren().clear();
+        
+        if (matiere.getStructure() != null && !matiere.getStructure().isEmpty()) {
+            loadJsonToUI(matiere.getStructure());
+        }
     }
 
     private void clearInputs() {
@@ -337,5 +354,207 @@ public class BackofficeMatiereController implements Initializable {
 
         sectionBox.getChildren().addAll(header, addResourceBtn);
         parentContainer.getChildren().add(sectionBox);
+    }
+
+    @FXML
+    private void addExistingCategory(ActionEvent event) {
+        String category = existingCategoriesCombo.getValue();
+        if (category != null && !category.isEmpty()) {
+            addCategoryTag(category);
+            existingCategoriesCombo.setValue(null);
+        }
+    }
+
+    @FXML
+    private void createNewCategory(ActionEvent event) {
+        String newCategory = newCategoryField.getText().trim();
+        if (!newCategory.isEmpty()) {
+            addCategoryTag(newCategory);
+            newCategoryField.clear();
+        }
+    }
+
+    private void addCategoryTag(String categoryName) {
+        HBox tag = new HBox(8);
+        tag.setStyle("-fx-background-color: #e0e7ff; -fx-background-radius: 15; -fx-padding: 5 10; -fx-alignment: CENTER;");
+        
+        Label label = new Label(categoryName);
+        Button removeBtn = new Button("×");
+        removeBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 0; -fx-min-width: 20; -fx-min-height: 20;");
+        removeBtn.setOnAction(e -> categoryTagsContainer.getChildren().remove(tag));
+        
+        tag.getChildren().addAll(label, removeBtn);
+        categoryTagsContainer.getChildren().add(tag);
+    }
+
+    private String buildJsonFromUI() {
+        StringBuilder json = new StringBuilder("{\"chapters\":[");
+        
+        int chapterCount = 0;
+        for (Node node : courseBuilderContainer.getChildren()) {
+            if (node instanceof VBox) {
+                VBox chapterBox = (VBox) node;
+                
+                String chapterTitle = "";
+                VBox sectionsContainer = null;
+                
+                // Extract chapter title from first HBox (header)
+                for (Node childNode : chapterBox.getChildren()) {
+                    if (childNode instanceof HBox) {
+                        HBox headerBox = (HBox) childNode;
+                        for (Node headerChild : headerBox.getChildren()) {
+                            if (headerChild instanceof TextField) {
+                                chapterTitle = ((TextField) headerChild).getText();
+                            }
+                        }
+                    } else if (childNode instanceof VBox && sectionsContainer == null) {
+                        // Assuming second VBox is the sections container
+                        sectionsContainer = (VBox) childNode;
+                    }
+                }
+                
+                if (chapterCount > 0) json.append(",");
+                json.append("{\"title\":\"").append(escapeJson(chapterTitle)).append("\",\"sections\":[");
+                
+                int sectionCount = 0;
+                if (sectionsContainer != null) {
+                    for (Node sectionNode : sectionsContainer.getChildren()) {
+                        if (sectionNode instanceof VBox) {
+                            VBox sectionBox = (VBox) sectionNode;
+                            String sectionTitle = "";
+                            
+                            for (Node sectionChild : sectionBox.getChildren()) {
+                                if (sectionChild instanceof HBox) {
+                                    HBox sectionHeader = (HBox) sectionChild;
+                                    for (Node sectionHeaderChild : sectionHeader.getChildren()) {
+                                        if (sectionHeaderChild instanceof TextField) {
+                                            sectionTitle = ((TextField) sectionHeaderChild).getText();
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (sectionCount > 0) json.append(",");
+                            json.append("{\"title\":\"").append(escapeJson(sectionTitle)).append("\"}");
+                            sectionCount++;
+                        }
+                    }
+                }
+                
+                json.append("]}");
+                chapterCount++;
+            }
+        }
+        
+        json.append("]}");
+        return json.toString();
+    }
+
+    private String escapeJson(String str) {
+        if (str == null) return "";
+        return str.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+    }
+
+    private void loadJsonToUI(String json) {
+        try {
+            // Simple manual parsing for JSON structure
+            courseBuilderContainer.getChildren().clear();
+            
+            // Extract chapters
+            int chaptersStart = json.indexOf("[");
+            int chaptersEnd = json.lastIndexOf("]");
+            if (chaptersStart < 0 || chaptersEnd < 0) return;
+            
+            String chaptersContent = json.substring(chaptersStart + 1, chaptersEnd);
+            String[] chapters = splitSafely(chaptersContent, "},{");
+            
+            for (String chapter : chapters) {
+                chapter = chapter.trim().replaceAll("[{}\\[\\]]", "");
+                if (chapter.isEmpty()) continue;
+                
+                // Extract chapter title
+                int titleStart = chapter.indexOf("\"title\":\"") + 9;
+                int titleEnd = chapter.indexOf("\"", titleStart);
+                String chapterTitle = titleEnd > titleStart ? unescapeJson(chapter.substring(titleStart, titleEnd)) : "";
+                
+                createChapterNode();
+                VBox lastChapter = (VBox) courseBuilderContainer.getChildren().get(courseBuilderContainer.getChildren().size() - 1);
+                
+                // Set chapter title
+                for (Node node : lastChapter.getChildren()) {
+                    if (node instanceof HBox) {
+                        HBox header = (HBox) node;
+                        for (Node headerChild : header.getChildren()) {
+                            if (headerChild instanceof TextField) {
+                                ((TextField) headerChild).setText(chapterTitle);
+                            }
+                        }
+                    } else if (node instanceof VBox) {
+                        // Extract and create sections
+                        VBox sectionsContainer = (VBox) node;
+                        int sectionsStart = chapter.indexOf("[");
+                        int sectionsEnd = chapter.lastIndexOf("]");
+                        if (sectionsStart > 0 && sectionsEnd > sectionsStart) {
+                            String sectionsContent = chapter.substring(sectionsStart + 1, sectionsEnd);
+                            String[] sections = splitSafely(sectionsContent, "},{");
+                            
+                            for (String section : sections) {
+                                section = section.trim().replaceAll("[{}\\[\\]]", "");
+                                if (section.isEmpty()) continue;
+                                
+                                int secTitleStart = section.indexOf("\"title\":\"") + 9;
+                                int secTitleEnd = section.indexOf("\"", secTitleStart);
+                                String sectionTitle = secTitleEnd > secTitleStart ? unescapeJson(section.substring(secTitleStart, secTitleEnd)) : "";
+                                
+                                createSectionNode(sectionsContainer);
+                                VBox lastSection = (VBox) sectionsContainer.getChildren().get(sectionsContainer.getChildren().size() - 1);
+                                
+                                // Set section title
+                                for (Node secNode : lastSection.getChildren()) {
+                                    if (secNode instanceof HBox) {
+                                        HBox secHeader = (HBox) secNode;
+                                        for (Node secHeaderChild : secHeader.getChildren()) {
+                                            if (secHeaderChild instanceof TextField) {
+                                                ((TextField) secHeaderChild).setText(sectionTitle);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error parsing JSON structure: " + e.getMessage());
+        }
+    }
+
+    private String[] splitSafely(String str, String delimiter) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        int depth = 0;
+        
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (c == '{' || c == '[') depth++;
+            else if (c == '}' || c == ']') depth--;
+            
+            if (str.startsWith(delimiter, i) && depth == 0) {
+                parts.add(current.toString());
+                current = new StringBuilder();
+                i += delimiter.length() - 1;
+            } else {
+                current.append(c);
+            }
+        }
+        
+        parts.add(current.toString());
+        return parts.toArray(new String[0]);
+    }
+
+    private String unescapeJson(String str) {
+        if (str == null) return "";
+        return str.replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\");
     }
 }
