@@ -1,0 +1,186 @@
+package tn.esprit.fahamni.controllers;
+
+import tn.esprit.fahamni.entities.Matiere;
+import tn.esprit.fahamni.services.MatiereService;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.cell.PropertyValueFactory;
+
+import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ResourceBundle;
+
+public class BackofficeMatiereController implements Initializable {
+
+    @FXML
+    private TableView<Matiere> matiereTable;
+
+    @FXML
+    private TableColumn<Matiere, Integer> idColumn;
+
+    @FXML
+    private TableColumn<Matiere, String> titreColumn;
+
+    @FXML
+    private TableColumn<Matiere, String> descriptionColumn;
+
+    @FXML
+    private TableColumn<Matiere, String> structureColumn;
+
+    @FXML
+    private TableColumn<Matiere, LocalDateTime> createdAtColumn;
+
+    @FXML
+    private TextField titreField;
+
+    @FXML
+    private TextArea descriptionArea;
+
+    @FXML
+    private TextArea structureArea;
+
+    @FXML
+    private TextField createdAtField;
+
+    @FXML
+    private TextField coverImageField;
+
+    @FXML
+    private Button ajouterButton;
+
+    @FXML
+    private Button modifierButton;
+
+    @FXML
+    private Button supprimerButton;
+
+    @FXML
+    private Button viderButton;
+
+    private final MatiereService matiereService = new MatiereService();
+    private final ObservableList<Matiere> matieres = FXCollections.observableArrayList();
+    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
+        titreColumn.setCellValueFactory(new PropertyValueFactory<>("titre"));
+        descriptionColumn.setCellValueFactory(new PropertyValueFactory<>("description"));
+        structureColumn.setCellValueFactory(new PropertyValueFactory<>("structure"));
+        createdAtColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
+        createdAtColumn.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(LocalDateTime item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText("");
+                } else {
+                    setText(item.format(dateFormatter));
+                }
+            }
+        });
+
+        matiereTable.setItems(matieres);
+        refreshTable();
+
+        matiereTable.getSelectionModel().selectedItemProperty().addListener((obs, oldValue, newValue) -> populateForm(newValue));
+    }
+
+    @FXML
+    private void addMatiere(ActionEvent event) {
+        Matiere matiere = new Matiere();
+        matiere.setTitre(titreField.getText());
+        matiere.setDescription(descriptionArea.getText());
+        matiere.setStructure(structureArea.getText());
+        matiere.setCoverImage(coverImageField.getText());
+        matiere.setCreatedAt(LocalDateTime.now());
+        createdAtField.setText(matiere.getCreatedAt().format(dateFormatter));
+
+        matiereService.add(matiere);
+        refreshTable();
+        clearInputs();
+    }
+
+    @FXML
+    private void updateMatiere(ActionEvent event) {
+        Matiere selectedMatiere = matiereTable.getSelectionModel().getSelectedItem();
+        if (selectedMatiere == null) {
+            return;
+        }
+
+        selectedMatiere.setTitre(titreField.getText());
+        selectedMatiere.setDescription(descriptionArea.getText());
+        selectedMatiere.setStructure(structureArea.getText());
+        selectedMatiere.setCreatedAt(parseCreatedAt(createdAtField.getText(), selectedMatiere.getCreatedAt()));
+        selectedMatiere.setCoverImage(coverImageField.getText());
+
+        matiereService.update(selectedMatiere);
+        refreshTable();
+        clearInputs();
+    }
+
+    @FXML
+    private void deleteMatiere(ActionEvent event) {
+        Matiere selectedMatiere = matiereTable.getSelectionModel().getSelectedItem();
+        if (selectedMatiere == null) {
+            return;
+        }
+
+        matiereService.delete(selectedMatiere);
+        refreshTable();
+        clearInputs();
+    }
+
+    @FXML
+    private void clearForm(ActionEvent event) {
+        clearInputs();
+    }
+
+    private void refreshTable() {
+        matieres.setAll(matiereService.findAll());
+        matiereTable.refresh();
+    }
+
+    private void populateForm(Matiere matiere) {
+        if (matiere == null) {
+            return;
+        }
+
+        titreField.setText(matiere.getTitre());
+        descriptionArea.setText(matiere.getDescription());
+        structureArea.setText(matiere.getStructure());
+        createdAtField.setText(matiere.getCreatedAt() != null ? matiere.getCreatedAt().format(dateFormatter) : "");
+        coverImageField.setText(matiere.getCoverImage());
+    }
+
+    private void clearInputs() {
+        matiereTable.getSelectionModel().clearSelection();
+        titreField.clear();
+        descriptionArea.clear();
+        structureArea.clear();
+        createdAtField.clear();
+        coverImageField.clear();
+    }
+
+    private LocalDateTime parseCreatedAt(String value, LocalDateTime fallback) {
+        if (value == null || value.trim().isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            return LocalDateTime.parse(value.trim(), dateFormatter);
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+}
