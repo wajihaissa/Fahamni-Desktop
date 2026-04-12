@@ -1,9 +1,5 @@
 package tn.esprit.fahamni.services;
 
-import tn.esprit.fahamni.entities.Matiere;
-import tn.esprit.fahamni.interfaces.IService;
-import tn.esprit.fahamni.utils.MyDataBase;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,6 +10,10 @@ import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import tn.esprit.fahamni.entities.Matiere;
+import tn.esprit.fahamni.interfaces.IService;
+import tn.esprit.fahamni.utils.MyDataBase;
 
 public class MatiereService implements IService<Matiere> {
 

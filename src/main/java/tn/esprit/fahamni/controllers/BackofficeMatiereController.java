@@ -1,7 +1,11 @@
 package tn.esprit.fahamni.controllers;
 
+import java.awt.Desktop;
 import java.io.File;
+import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
@@ -13,7 +17,9 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -21,8 +27,10 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -409,11 +417,183 @@ public class BackofficeMatiereController implements Initializable {
 
         header.getChildren().addAll(new Label("Section:"), sectionTitle, deleteSecBtn);
 
+        // Create resources container
+        VBox resourcesContainer = new VBox(5);
+        resourcesContainer.setStyle("-fx-padding: 5 0 5 15;");
+
         Button addResourceBtn = new Button("+ Ressource");
         addResourceBtn.setStyle("-fx-font-size: 9px; -fx-background-color: #f1f5f9;");
+        addResourceBtn.setOnAction(e -> showAddResourceDialog(resourcesContainer));
 
-        sectionBox.getChildren().addAll(header, addResourceBtn);
+        sectionBox.getChildren().addAll(header, resourcesContainer, addResourceBtn);
         parentContainer.getChildren().add(sectionBox);
+    }
+
+    // === RESOURCE MANAGEMENT METHODS ===
+
+    private String copyResourceFile(File sourceFile, String type) {
+        try {
+            // Create uploads directory if it doesn't exist
+            String uploadsDir = System.getProperty("user.dir") + "/src/main/resources/uploads/resources";
+            File dir = new File(uploadsDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            // Generate unique filename
+            String newFileName = System.currentTimeMillis() + "_" + sourceFile.getName();
+            File destinationFile = new File(uploadsDir + "/" + newFileName);
+
+            // Copy the file
+            Files.copy(sourceFile.toPath(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+            // Return relative path
+            return "/uploads/resources/" + newFileName;
+        } catch (Exception e) {
+            System.err.println("Error copying resource file: " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Erreur de copie", "Impossible de copier le fichier : " + e.getMessage());
+            return null;
+        }
+    }
+
+    private void showAddResourceDialog(VBox resourcesContainer) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Ajouter une Ressource");
+        dialog.setHeaderText("Ajouter une nouvelle ressource à cette section");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPrefWidth(400);
+
+        // Type selector
+        ComboBox<String> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll("Vidéo", "PDF", "Lien");
+        typeCombo.setValue("Vidéo");
+        grid.add(new Label("Type:"), 0, 0);
+        grid.add(typeCombo, 1, 0);
+
+        // Name field
+        TextField nameField = new TextField();
+        nameField.setPromptText("Nom de la ressource");
+        grid.add(new Label("Nom:"), 0, 1);
+        grid.add(nameField, 1, 1);
+
+        // File/URL field
+        TextField pathField = new TextField();
+        pathField.setPromptText("Chemin ou URL");
+        pathField.setPrefWidth(300);
+        Button browseBtn = new Button("Parcourir");
+
+        browseBtn.setOnAction(e -> {
+            String selectedType = typeCombo.getValue();
+            if ("Vidéo".equals(selectedType)) {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Vidéos", "*.mp4", "*.avi", "*.mkv"));
+                File selectedFile = fileChooser.showOpenDialog(new Stage());
+                if (selectedFile != null) {
+                    pathField.setText(selectedFile.getAbsolutePath());
+                }
+            } else if ("PDF".equals(selectedType)) {
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+                File selectedFile = fileChooser.showOpenDialog(new Stage());
+                if (selectedFile != null) {
+                    pathField.setText(selectedFile.getAbsolutePath());
+                }
+            }
+            // For "Lien", user manually enters the URL
+        });
+
+        HBox pathBox = new HBox(5);
+        pathBox.getChildren().addAll(pathField, browseBtn);
+        HBox.setHgrow(pathField, Priority.ALWAYS);
+        grid.add(new Label("Fichier/Lien:"), 0, 2);
+        grid.add(pathBox, 1, 2);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                String type = typeCombo.getValue();
+                String name = nameField.getText().trim();
+                String pathInput = pathField.getText().trim();
+
+                if (name.isEmpty() || pathInput.isEmpty()) {
+                    showAlert(Alert.AlertType.WARNING, "Champs requis", "Veuillez remplir tous les champs.");
+                    return;
+                }
+
+                String finalPath = pathInput;
+
+                // If it's a file (not a link), copy it
+                if (!"Lien".equals(type)) {
+                    File sourceFile = new File(pathInput);
+                    if (!sourceFile.exists()) {
+                        showAlert(Alert.AlertType.ERROR, "Fichier non trouvé", "Le fichier sélectionné est introuvable.");
+                        return;
+                    }
+                    finalPath = copyResourceFile(sourceFile, type);
+                    if (finalPath == null) {
+                        return; // Error was already shown
+                    }
+                }
+
+                createResourceNode(type, name, finalPath, resourcesContainer);
+            }
+        });
+    }
+
+    private void createResourceNode(String type, String name, String path, VBox container) {
+        HBox resourceBox = new HBox(10);
+        resourceBox.setAlignment(Pos.CENTER_LEFT);
+        resourceBox.setStyle("-fx-background-color: #f3f4f6; -fx-padding: 8; -fx-background-radius: 5;");
+        resourceBox.setUserData(new String[]{type, name, path});
+
+        // Icon label
+        String icon = type.equals("Vidéo") ? "🎬" : type.equals("PDF") ? "📄" : "🔗";
+        Label iconLabel = new Label(icon);
+        iconLabel.setStyle("-fx-font-size: 16;");
+
+        // Name label
+        Label nameLabel = new Label(name);
+        nameLabel.setStyle("-fx-font-weight: bold;");
+
+        // Path label
+        Label pathLabel = new Label(path);
+        pathLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-style: italic; -fx-font-size: 10;");
+        pathLabel.setMaxWidth(200);
+        pathLabel.setWrapText(true);
+
+        // Spacer
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Open button
+        Button openBtn = new Button("Ouvrir");
+        openBtn.setStyle("-fx-font-size: 10;");
+        openBtn.setOnAction(e -> {
+            try {
+                if ("Lien".equals(type)) {
+                    Desktop.getDesktop().browse(new URI(path));
+                } else {
+                    String fullPath = System.getProperty("user.dir") + "/src/main/resources" + path;
+                    Desktop.getDesktop().open(new File(fullPath));
+                }
+            } catch (Exception ex) {
+                showAlert(Alert.AlertType.ERROR, "Erreur d'ouverture", 
+                    "Impossible d'ouvrir la ressource : " + ex.getMessage());
+            }
+        });
+
+        // Delete button
+        Button deleteBtn = new Button("✕");
+        deleteBtn.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12;");
+        deleteBtn.setOnAction(e -> container.getChildren().remove(resourceBox));
+
+        resourceBox.getChildren().addAll(iconLabel, nameLabel, pathLabel, spacer, openBtn, deleteBtn);
+        container.getChildren().add(resourceBox);
     }
 
     @FXML
@@ -552,7 +732,9 @@ public class BackofficeMatiereController implements Initializable {
                         if (sectionNode instanceof VBox) {
                             VBox sectionBox = (VBox) sectionNode;
                             String sectionTitle = "";
+                            VBox resourcesContainer = null;
                             
+                            // Extract section title and resources container
                             for (Node sectionChild : sectionBox.getChildren()) {
                                 if (sectionChild instanceof HBox) {
                                     HBox sectionHeader = (HBox) sectionChild;
@@ -561,11 +743,38 @@ public class BackofficeMatiereController implements Initializable {
                                             sectionTitle = ((TextField) sectionHeaderChild).getText();
                                         }
                                     }
+                                } else if (sectionChild instanceof VBox && resourcesContainer == null) {
+                                    resourcesContainer = (VBox) sectionChild;
                                 }
                             }
                             
+                            // Build section JSON with resources
                             if (sectionCount > 0) json.append(",");
-                            json.append("{\"title\":\"").append(escapeJson(sectionTitle)).append("\"}");
+                            json.append("{\"title\":\"").append(escapeJson(sectionTitle)).append("\",\"resources\":[");
+                            
+                            // Extract resources from the resources container
+                            int resourceCount = 0;
+                            if (resourcesContainer != null) {
+                                for (Node resourceNode : resourcesContainer.getChildren()) {
+                                    if (resourceNode instanceof HBox) {
+                                        HBox resourceBox = (HBox) resourceNode;
+                                        String[] resourceData = (String[]) resourceBox.getUserData();
+                                        if (resourceData != null && resourceData.length == 3) {
+                                            if (resourceCount > 0) json.append(",");
+                                            String type = resourceData[0];
+                                            String name = resourceData[1];
+                                            String path = resourceData[2];
+                                            json.append("{\"type\":\"").append(escapeJson(type))
+                                                .append("\",\"name\":\"").append(escapeJson(name))
+                                                .append("\",\"path\":\"").append(escapeJson(path))
+                                                .append("\"}");
+                                            resourceCount++;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            json.append("]}");
                             sectionCount++;
                         }
                     }
@@ -648,7 +857,8 @@ public class BackofficeMatiereController implements Initializable {
                                 createSectionNode(sectionsContainer);
                                 VBox lastSection = (VBox) sectionsContainer.getChildren().get(sectionsContainer.getChildren().size() - 1);
                                 
-                                // Set section title
+                                // Set section title and load resources
+                                VBox resourcesContainer = null;
                                 for (Node secNode : lastSection.getChildren()) {
                                     if (secNode instanceof HBox) {
                                         HBox secHeader = (HBox) secNode;
@@ -656,6 +866,38 @@ public class BackofficeMatiereController implements Initializable {
                                             if (secHeaderChild instanceof TextField) {
                                                 ((TextField) secHeaderChild).setText(sectionTitle);
                                             }
+                                        }
+                                    } else if (secNode instanceof VBox && resourcesContainer == null) {
+                                        resourcesContainer = (VBox) secNode;
+                                    }
+                                }
+                                
+                                // Load resources from JSON
+                                if (resourcesContainer != null) {
+                                    int resourcesStart = section.indexOf("[", section.indexOf("resources"));
+                                    int resourcesEnd = section.lastIndexOf("]");
+                                    if (resourcesStart > 0 && resourcesEnd > resourcesStart) {
+                                        String resourcesContent = section.substring(resourcesStart + 1, resourcesEnd);
+                                        String[] resources = splitSafely(resourcesContent, "},{");
+                                        
+                                        for (String resource : resources) {
+                                            resource = resource.trim().replaceAll("[{}\\[\\]]", "");
+                                            if (resource.isEmpty()) continue;
+                                            
+                                            // Extract resource type, name, and path
+                                            int typeStart = resource.indexOf("\"type\":\"") + 8;
+                                            int typeEnd = resource.indexOf("\"", typeStart);
+                                            String type = typeEnd > typeStart ? unescapeJson(resource.substring(typeStart, typeEnd)) : "";
+                                            
+                                            int nameStart = resource.indexOf("\"name\":\"") + 8;
+                                            int nameEnd = resource.indexOf("\"", nameStart);
+                                            String name = nameEnd > nameStart ? unescapeJson(resource.substring(nameStart, nameEnd)) : "";
+                                            
+                                            int pathStart = resource.indexOf("\"path\":\"") + 8;
+                                            int pathEnd = resource.indexOf("\"", pathStart);
+                                            String path = pathEnd > pathStart ? unescapeJson(resource.substring(pathStart, pathEnd)) : "";
+                                            
+                                            createResourceNode(type, name, path, resourcesContainer);
                                         }
                                     }
                                 }
