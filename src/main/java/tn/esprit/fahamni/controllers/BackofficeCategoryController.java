@@ -2,16 +2,21 @@ package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.Models.Category;
 import tn.esprit.fahamni.services.CategoryService;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.SceneManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.AnchorPane;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -44,6 +49,9 @@ public class BackofficeCategoryController implements Initializable {
 
     @FXML
     private Button deleteButton;
+
+    @FXML
+    private Button backToMatieresButton;
 
     private final CategoryService categoryService = new CategoryService();
     private final ObservableList<Category> categoryList = FXCollections.observableArrayList();
@@ -101,6 +109,36 @@ public class BackofficeCategoryController implements Initializable {
         categoryService.supprimer(selectedCategory.getId());
         refreshTable();
         clearForm();
+    }
+
+    @FXML
+    private void goBackToMatieres(ActionEvent event) {
+        try {
+            Node matiereView = SceneManager.loadView(
+                Main.class,
+                SceneManager.backofficeView("BackofficeMatiereView.fxml")
+            );
+
+            Node source = (Node) event.getSource();
+            AnchorPane contentPane = (AnchorPane) source.getScene().lookup("#contentPane");
+            if (contentPane == null) {
+                return;
+            }
+
+            contentPane.getChildren().clear();
+            AnchorPane.setTopAnchor(matiereView, 0.0);
+            AnchorPane.setBottomAnchor(matiereView, 0.0);
+            AnchorPane.setLeftAnchor(matiereView, 0.0);
+            AnchorPane.setRightAnchor(matiereView, 0.0);
+            contentPane.getChildren().add(matiereView);
+
+            Label pageTitle = (Label) source.getScene().lookup("#pageTitle");
+            if (pageTitle != null) {
+                pageTitle.setText("Gestion des mati\u00e8res");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void refreshTable() {
