@@ -1,9 +1,11 @@
 package tn.esprit.fahamni.controllers;
 
-import tn.esprit.fahamni.entities.Matiere;
-import tn.esprit.fahamni.services.MatiereService;
-import tn.esprit.fahamni.test.Main;
-import tn.esprit.fahamni.utils.SceneManager;
+import java.io.File;
+import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ResourceBundle;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -21,12 +23,10 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
-import java.net.URL;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ResourceBundle;
-import java.io.File;
+import tn.esprit.fahamni.entities.Matiere;
+import tn.esprit.fahamni.services.MatiereService;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.SceneManager;
 
 public class BackofficeMatiereController implements Initializable {
 
@@ -97,15 +97,7 @@ public class BackofficeMatiereController implements Initializable {
                     setText("");
                     return;
                 }
-
-                String value = item == null ? "" : item.trim();
-                if (value.isEmpty() || "{}".equals(value) || "[]".equals(value)) {
-                    setText("Vide");
-                } else if (value.length() > 30) {
-                    setText(value.substring(0, 30) + "...");
-                } else {
-                    setText(value);
-                }
+                setText("Voir les chapitres");
             }
         });
         createdAtColumn.setCellValueFactory(new PropertyValueFactory<>("createdAt"));
