@@ -1,7 +1,7 @@
 package tn.esprit.fahamni.services;
 
-import tn.esprit.fahamni.Models.Matiere;
-import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.entities.Matiere;
+import tn.esprit.fahamni.interfaces.IService;
 import tn.esprit.fahamni.utils.MyDataBase;
 
 import java.sql.Connection;
@@ -9,11 +9,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MatiereService implements IServices<Matiere> {
+public class MatiereService implements IService<Matiere> {
 
     private final Connection cnx;
 
@@ -21,26 +23,27 @@ public class MatiereService implements IServices<Matiere> {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
-    public void ajouter(Matiere matiere) {
+    @Override
+    public void add(Matiere m) {
         String req = "INSERT INTO matiere (titre, description, structure, created_at, cover_image) VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement pst = cnx.prepareStatement(req, Statement.RETURN_GENERATED_KEYS)) {
-            pst.setString(1, matiere.getTitre());
-            pst.setString(2, matiere.getDescription());
-            pst.setString(3, matiere.getStructure());
+            pst.setString(1, m.getTitre());
+            pst.setString(2, m.getDescription());
+            pst.setString(3, m.getStructure());
 
-            if (matiere.getCreatedAt() != null) {
-                pst.setTimestamp(4, matiere.getCreatedAt());
+            if (m.getCreatedAt() != null) {
+                pst.setTimestamp(4, Timestamp.valueOf(m.getCreatedAt()));
             } else {
                 pst.setNull(4, Types.TIMESTAMP);
             }
 
-            pst.setString(5, matiere.getCoverImage());
+            pst.setString(5, m.getCoverImage());
             pst.executeUpdate();
 
             try (ResultSet rs = pst.getGeneratedKeys()) {
                 if (rs.next()) {
-                    matiere.setId(rs.getInt(1));
+                    m.setId(rs.getInt(1));
                 }
             }
         } catch (SQLException e) {
@@ -48,54 +51,53 @@ public class MatiereService implements IServices<Matiere> {
         }
     }
 
-    public void modifier(Matiere matiere) {
-        String req = "UPDATE matiere SET titre = ?, description = ?, structure = ?, created_at = ?, cover_image = ? WHERE id = ?";
+    @Override
+    public void update(Matiere m) {
+        String req = "UPDATE matiere SET titre = ?, description = ?, structure = ?, cover_image = ? WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {
-            pst.setString(1, matiere.getTitre());
-            pst.setString(2, matiere.getDescription());
-            pst.setString(3, matiere.getStructure());
-
-            if (matiere.getCreatedAt() != null) {
-                pst.setTimestamp(4, matiere.getCreatedAt());
-            } else {
-                pst.setNull(4, Types.TIMESTAMP);
-            }
-
-            pst.setString(5, matiere.getCoverImage());
-            pst.setInt(6, matiere.getId());
+            pst.setString(1, m.getTitre());
+            pst.setString(2, m.getDescription());
+            pst.setString(3, m.getStructure());
+            pst.setString(4, m.getCoverImage());
+            pst.setInt(5, m.getId());
             pst.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
-    public void supprimer(int id) {
+    @Override
+    public void delete(Matiere m) {
         String req = "DELETE FROM matiere WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {
-            pst.setInt(1, id);
+            pst.setInt(1, m.getId());
             pst.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
-    public List<Matiere> afficherList() {
+    @Override
+    public List<Matiere> findAll() {
         List<Matiere> matieres = new ArrayList<>();
         String req = "SELECT * FROM matiere";
 
         try (Statement st = cnx.createStatement();
-             ResultSet rs = st.executeQuery(req)) {
+             ResultSet res = st.executeQuery(req)) {
 
-            while (rs.next()) {
+            while (res.next()) {
+                Timestamp createdAtTimestamp = res.getTimestamp("created_at");
+                LocalDateTime createdAt = createdAtTimestamp != null ? createdAtTimestamp.toLocalDateTime() : null;
+
                 Matiere matiere = new Matiere(
-                    rs.getInt("id"),
-                    rs.getString("titre"),
-                    rs.getString("description"),
-                    rs.getString("structure"),
-                    rs.getTimestamp("created_at"),
-                    rs.getString("cover_image")
+                    res.getInt("id"),
+                    res.getString("titre"),
+                    res.getString("description"),
+                    res.getString("structure"),
+                    createdAt,
+                    res.getString("cover_image")
                 );
                 matieres.add(matiere);
             }
@@ -106,21 +108,25 @@ public class MatiereService implements IServices<Matiere> {
         return matieres;
     }
 
-    public Matiere getOneById(int id) {
+    @Override
+    public Matiere findById(int id) {
         String req = "SELECT * FROM matiere WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {
             pst.setInt(1, id);
 
-            try (ResultSet rs = pst.executeQuery()) {
-                if (rs.next()) {
+            try (ResultSet res = pst.executeQuery()) {
+                if (res.next()) {
+                    Timestamp createdAtTimestamp = res.getTimestamp("created_at");
+                    LocalDateTime createdAt = createdAtTimestamp != null ? createdAtTimestamp.toLocalDateTime() : null;
+
                     return new Matiere(
-                        rs.getInt("id"),
-                        rs.getString("titre"),
-                        rs.getString("description"),
-                        rs.getString("structure"),
-                        rs.getTimestamp("created_at"),
-                        rs.getString("cover_image")
+                        res.getInt("id"),
+                        res.getString("titre"),
+                        res.getString("description"),
+                        res.getString("structure"),
+                        createdAt,
+                        res.getString("cover_image")
                     );
                 }
             }
