@@ -2,6 +2,7 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
@@ -155,6 +156,13 @@
                                                             <children>
                                                                 <Label text="Confirmer le mot de passe" styleClass="login-input-label"/>
                                                                 <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="login-input"/>
+                                                            </children>
+                                                        </VBox>
+
+                                                        <VBox spacing="7.0" styleClass="login-field-group">
+                                                            <children>
+                                                                <Label text="Role" styleClass="login-input-label"/>
+                                                                <ComboBox fx:id="roleComboBox" promptText="Choisir un role" styleClass="login-input"/>
                                                             </children>
                                                         </VBox>
 

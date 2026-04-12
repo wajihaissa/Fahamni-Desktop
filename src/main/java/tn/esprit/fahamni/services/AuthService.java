@@ -71,7 +71,7 @@ public class AuthService {
         return lastAuthenticationError;
     }
 
-    public OperationResult register(String fullName, String email, String password, String confirmPassword) {
+    public OperationResult register(String fullName, String email, String password, String confirmPassword, String role) {
         if (isBlank(fullName) || isBlank(email) || isBlank(password) || isBlank(confirmPassword)) {
             return OperationResult.failure("Veuillez remplir tous les champs.");
         }
@@ -98,7 +98,7 @@ public class AuthService {
             statement.setString(1, email.trim());
             statement.setString(2, password);
             statement.setString(3, fullName.trim());
-            statement.setString(4, mapRegistrationRole());
+            statement.setString(4, mapRegistrationRole(role));
             statement.setBoolean(5, true);
             statement.executeUpdate();
         } catch (SQLException e) {
@@ -159,7 +159,10 @@ public class AuthService {
         return UserRole.USER;
     }
 
-    private String mapRegistrationRole() {
+    private String mapRegistrationRole(String role) {
+        if ("Tutor".equalsIgnoreCase(role) || "Tuteur".equalsIgnoreCase(role)) {
+            return "[\"ROLE_TUTOR\"]";
+        }
         return "[\"ROLE_USER\"]";
     }
 }
