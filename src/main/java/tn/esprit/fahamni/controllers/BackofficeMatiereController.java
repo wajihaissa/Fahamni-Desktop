@@ -7,6 +7,10 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
 
 import javafx.event.ActionEvent;
@@ -33,6 +37,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import tn.esprit.fahamni.Models.Category;
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.CategoryService;
 import tn.esprit.fahamni.services.MatiereService;
@@ -79,6 +84,7 @@ public class BackofficeMatiereController implements Initializable {
 
     private final MatiereService matiereService = new MatiereService();
     private final CategoryService categoryService = new CategoryService();
+    private final Map<String, Category> categoriesByName = new LinkedHashMap<>();
     private String selectedImagePath;
     private Matiere selectedMatiere; // Tracks the matiere being edited (null = new matiere)
 
@@ -90,15 +96,14 @@ public class BackofficeMatiereController implements Initializable {
 
     private void loadCategoriesIntoDropdown() {
         existingCategoriesCombo.getItems().clear();
-        java.util.List<?> categories = categoryService.afficherList();
-        for (Object cat : categories) {
-            try {
-                // Try to get name via reflection or direct method
-                String categoryName = cat.getClass().getMethod("getName").invoke(cat).toString();
-                existingCategoriesCombo.getItems().add(categoryName);
-            } catch (Exception e) {
-                System.err.println("Error loading category: " + e.getMessage());
+        categoriesByName.clear();
+
+        for (Category category : categoryService.afficherList()) {
+            if (category.getName() == null || category.getName().isBlank()) {
+                continue;
             }
+            categoriesByName.put(normalizeCategoryName(category.getName()), category);
+            existingCategoriesCombo.getItems().add(category.getName());
         }
     }
 
@@ -214,8 +219,31 @@ public class BackofficeMatiereController implements Initializable {
         Stage stage = (Stage) source.getScene().getWindow();
         File selectedFile = fileChooser.showOpenDialog(stage);
         if (selectedFile != null) {
-            selectedImagePath = selectedFile.getAbsolutePath();
+            String copiedPath = copyCoverImage(selectedFile);
+            selectedImagePath = copiedPath != null ? copiedPath : selectedFile.getAbsolutePath();
             imagePathLabel.setText(selectedImagePath);
+        }
+    }
+
+    private String copyCoverImage(File sourceFile) {
+        try {
+            String uploadsDir = System.getProperty("user.dir") + "/src/main/resources/uploads/matieres";
+            File dir = new File(uploadsDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String originalName = sourceFile.getName();
+            int dotIndex = originalName.lastIndexOf('.');
+            String extension = dotIndex >= 0 ? originalName.substring(dotIndex) : "";
+            String newFileName = "matiere_" + System.currentTimeMillis() + extension;
+            File destinationFile = new File(dir, newFileName);
+
+            Files.copy(sourceFile.toPath(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return "/uploads/matieres/" + newFileName;
+        } catch (Exception e) {
+            System.err.println("Error copying cover image: " + e.getMessage());
+            return null;
         }
     }
 
@@ -232,31 +260,7 @@ public class BackofficeMatiereController implements Initializable {
         card.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 4); -fx-padding: 15; -fx-pref-width: 280; -fx-min-height: 280;");
         card.setPadding(new javafx.geometry.Insets(15));
 
-        Node coverNode;
-        if (matiere.getCoverImage() != null && !matiere.getCoverImage().isBlank()) {
-            try {
-                Image image = new Image("file:" + matiere.getCoverImage());
-                if (!image.isError()) {
-                    ImageView imageView = new ImageView(image);
-                    imageView.setFitWidth(250);
-                    imageView.setFitHeight(140);
-                    imageView.setPreserveRatio(false);
-                    coverNode = imageView;
-                } else {
-                    Region fallback = new Region();
-                    fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
-                    coverNode = fallback;
-                }
-            } catch (Exception e) {
-                Region fallback = new Region();
-                fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
-                coverNode = fallback;
-            }
-        } else {
-            Region fallback = new Region();
-            fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
-            coverNode = fallback;
-        }
+        Node coverNode = createCoverNode(matiere.getCoverImage());
 
         Label titleLabel = new Label(matiere.getTitre() == null ? "" : matiere.getTitre());
         titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
@@ -264,6 +268,8 @@ public class BackofficeMatiereController implements Initializable {
         Label descLabel = new Label(matiere.getDescription() == null ? "" : matiere.getDescription());
         descLabel.setWrapText(true);
         descLabel.setMaxHeight(40);
+
+        FlowPane categoryPreview = createCategoryPreview(matiere.getId());
 
         HBox actionBox = new HBox(10);
         actionBox.setAlignment(Pos.CENTER_RIGHT);
@@ -281,9 +287,99 @@ public class BackofficeMatiereController implements Initializable {
 
         actionBox.getChildren().addAll(btnSupprimer, btnGerer);
 
-        card.getChildren().addAll(coverNode, titleLabel, descLabel, actionBox);
+        card.getChildren().addAll(coverNode, titleLabel, descLabel, categoryPreview, actionBox);
         VBox.setVgrow(actionBox, Priority.ALWAYS);
         return card;
+    }
+
+    private Node createCoverNode(String storedCoverPath) {
+        Region fallback = createCoverFallback();
+        String imageSource = resolveImageSource(storedCoverPath);
+        if (imageSource == null) {
+            return fallback;
+        }
+
+        try {
+            Image image = new Image(imageSource, false);
+            if (image.isError()) {
+                return fallback;
+            }
+
+            ImageView imageView = new ImageView(image);
+            imageView.setFitWidth(250);
+            imageView.setFitHeight(140);
+            imageView.setPreserveRatio(false);
+            imageView.setSmooth(true);
+            return imageView;
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    private Region createCoverFallback() {
+        Region fallback = new Region();
+        fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
+        fallback.setPrefSize(250, 140);
+        fallback.setMinSize(250, 140);
+        fallback.setMaxSize(250, 140);
+        return fallback;
+    }
+
+    private String resolveImageSource(String storedPath) {
+        if (storedPath == null) {
+            return null;
+        }
+
+        String path = storedPath.trim();
+        if (path.isEmpty()) {
+            return null;
+        }
+
+        if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("file:")) {
+            return path;
+        }
+
+        File directFile = new File(path);
+        if (directFile.exists()) {
+            return directFile.toURI().toString();
+        }
+
+        String normalizedPath = path.replace("\\", "/");
+        String resourcesBase = System.getProperty("user.dir") + "/src/main/resources";
+
+        File resourceFile = normalizedPath.startsWith("/")
+            ? new File(resourcesBase + normalizedPath)
+            : new File(resourcesBase, normalizedPath);
+        if (resourceFile.exists()) {
+            return resourceFile.toURI().toString();
+        }
+
+        File projectRelative = new File(System.getProperty("user.dir"), normalizedPath);
+        if (projectRelative.exists()) {
+            return projectRelative.toURI().toString();
+        }
+
+        return null;
+    }
+
+    private FlowPane createCategoryPreview(int matiereId) {
+        FlowPane preview = new FlowPane();
+        preview.setHgap(6);
+        preview.setVgap(6);
+
+        List<Category> linkedCategories = categoryService.findByMatiereId(matiereId);
+        if (linkedCategories.isEmpty()) {
+            preview.setManaged(false);
+            preview.setVisible(false);
+            return preview;
+        }
+
+        for (Category category : linkedCategories) {
+            Label chip = new Label(category.getName());
+            chip.setStyle("-fx-background-color: #e0e7ff; -fx-background-radius: 12; -fx-padding: 3 8; -fx-text-fill: #3730a3;");
+            preview.getChildren().add(chip);
+        }
+        return preview;
     }
 
     private void populateForm(Matiere matiere) {
@@ -301,20 +397,7 @@ public class BackofficeMatiereController implements Initializable {
         
         courseBuilderContainer.getChildren().clear();
         categoryTagsContainer.getChildren().clear();
-        
-        // Load tags/categories associated with this matiere from the database
-        try {
-            @SuppressWarnings("unchecked")
-            java.util.List<Object> matiereCategories = (java.util.List<Object>) matiere.getClass().getMethod("getCategories").invoke(matiere);
-            if (matiereCategories != null) {
-                for (Object cat : matiereCategories) {
-                    String categoryName = cat.getClass().getMethod("getName").invoke(cat).toString();
-                    addCategoryTag(categoryName);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Could not load categories for matiere: " + e.getMessage());
-        }
+        loadCategoriesForMatiere(matiere);
         
         if (matiere.getStructure() != null && !matiere.getStructure().isEmpty()) {
             loadJsonToUI(matiere.getStructure());
@@ -325,6 +408,9 @@ public class BackofficeMatiereController implements Initializable {
         titreField.clear();
         descriptionArea.clear();
         courseBuilderContainer.getChildren().clear();
+        categoryTagsContainer.getChildren().clear();
+        existingCategoriesCombo.setValue(null);
+        newCategoryField.clear();
         selectedImagePath = null;
         imagePathLabel.setText("Aucune image s\u00e9lectionn\u00e9e");
     }
@@ -579,12 +665,14 @@ public class BackofficeMatiereController implements Initializable {
         resourceBox.getChildren().addAll(iconLabel, nameLabel, pathLabel, spacer, openBtn, deleteBtn);
         container.getChildren().add(resourceBox);
     }
-
     @FXML
     private void addExistingCategory(ActionEvent event) {
-        String category = existingCategoriesCombo.getValue();
-        if (category != null && !category.isEmpty()) {
-            addCategoryTag(category);
+        String categoryName = existingCategoriesCombo.getValue();
+        if (categoryName != null && !categoryName.isEmpty()) {
+            Category selectedCategory = categoriesByName.get(normalizeCategoryName(categoryName));
+            if (selectedCategory != null) {
+                addCategoryTag(selectedCategory);
+            }
             existingCategoriesCombo.setValue(null);
         }
     }
@@ -594,93 +682,117 @@ public class BackofficeMatiereController implements Initializable {
         String newCategoryName = newCategoryField.getText().trim();
         if (!newCategoryName.isEmpty()) {
             try {
-                // Create and save the new category to database
-                Object newCategoryObj = Class.forName("tn.esprit.fahamni.Models.Category").getDeclaredConstructor().newInstance();
-                newCategoryObj.getClass().getMethod("setName", String.class).invoke(newCategoryObj, newCategoryName);
-                
-                // Cast to Category and save
-                tn.esprit.fahamni.Models.Category newCategory = (tn.esprit.fahamni.Models.Category) newCategoryObj;
+                Category newCategory = new Category();
+                newCategory.setName(newCategoryName);
+                newCategory.setSlug(buildSlug(newCategoryName));
                 categoryService.ajouter(newCategory);
-                
-                // Add tag to UI
-                addCategoryTag(newCategoryName);
-                newCategoryField.clear();
-                
-                // Refresh dropdown to include the new category
+
                 loadCategoriesIntoDropdown();
-            } catch (ClassCastException ce) {
-                System.err.println("Error: Created object is not a Category instance");
-                // Fallback: just add the tag visually
-                addCategoryTag(newCategoryName);
+                Category persistedCategory = categoriesByName.get(normalizeCategoryName(newCategoryName));
+                if (persistedCategory != null) {
+                    addCategoryTag(persistedCategory);
+                }
                 newCategoryField.clear();
             } catch (Exception e) {
                 System.err.println("Error creating and saving category: " + e.getMessage());
-                // Fallback: just add the tag visually
-                addCategoryTag(newCategoryName);
-                newCategoryField.clear();
+                showAlert(Alert.AlertType.ERROR, "Erreur categorie", "Impossible de creer la categorie.");
             }
         }
     }
 
-    private void addCategoryTag(String categoryName) {
+    private void addCategoryTag(Category category) {
+        if (category == null || category.getName() == null || category.getName().isBlank()) {
+            return;
+        }
+
+        int categoryId = category.getId();
+        String categoryKey = normalizeCategoryName(category.getName());
+        if (isCategoryAlreadyTagged(categoryId, categoryKey)) {
+            return;
+        }
+
         HBox tag = new HBox(8);
         tag.setStyle("-fx-background-color: #e0e7ff; -fx-background-radius: 15; -fx-padding: 5 10; -fx-alignment: CENTER;");
-        
-        Label label = new Label(categoryName);
-        Button removeBtn = new Button("×");
+        tag.setUserData(categoryId > 0 ? Integer.valueOf(categoryId) : categoryKey);
+
+        Label label = new Label(category.getName());
+        Button removeBtn = new Button("x");
         removeBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 0; -fx-min-width: 20; -fx-min-height: 20;");
         removeBtn.setOnAction(e -> categoryTagsContainer.getChildren().remove(tag));
-        
+
         tag.getChildren().addAll(label, removeBtn);
         categoryTagsContainer.getChildren().add(tag);
     }
 
-    private void saveCategoriesToMatiere(Object matiere) {
-        try {
-            // Get all tags from the UI container
-            java.util.List<String> tagLabels = new java.util.ArrayList<>();
-            for (javafx.scene.Node node : categoryTagsContainer.getChildren()) {
-                if (node instanceof HBox tagBox) {
-                    for (javafx.scene.Node child : tagBox.getChildren()) {
-                        if (child instanceof Label label && !label.getText().equals("×")) {
-                            tagLabels.add(label.getText());
-                        }
-                    }
-                }
+    private boolean isCategoryAlreadyTagged(int categoryId, String categoryKey) {
+        for (Node node : categoryTagsContainer.getChildren()) {
+            if (!(node instanceof HBox)) {
+                continue;
             }
-            
-            // Create or get Category objects for each tag
-            java.util.List<Object> categories = new java.util.ArrayList<>();
-            java.util.List<?> allCategories = categoryService.afficherList();
-            
-            for (String tagLabel : tagLabels) {
-                // Try to find existing category by name
-                Object existingCategory = null;
-                for (Object cat : allCategories) {
-                    try {
-                        String catName = (String) cat.getClass().getMethod("getName").invoke(cat);
-                        if (catName.equals(tagLabel)) {
-                            existingCategory = cat;
-                            break;
-                        }
-                    } catch (Exception ignore) {
-                        // continue searching
-                    }
-                }
-                
-                if (existingCategory != null) {
-                    categories.add(existingCategory);
-                }
+
+            Object tagData = node.getUserData();
+            if (tagData instanceof Integer && categoryId > 0 && ((Integer) tagData) == categoryId) {
+                return true;
             }
-            
-            // Set categories on matiere using reflection
-            matiere.getClass().getMethod("setCategories", java.util.List.class).invoke(matiere, categories);
-        } catch (Exception e) {
-            System.err.println("Error saving categories to matiere: " + e.getMessage());
-            // Non-critical error - continue with matiere save
+            if (tagData instanceof String && tagData.equals(categoryKey)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void loadCategoriesForMatiere(Matiere matiere) {
+        categoryTagsContainer.getChildren().clear();
+        if (matiere == null || matiere.getId() <= 0) {
+            return;
+        }
+
+        List<Category> linkedCategories = categoryService.findByMatiereId(matiere.getId());
+        for (Category category : linkedCategories) {
+            addCategoryTag(category);
         }
     }
 
+    private void saveCategoriesToMatiere(Matiere matiere) {
+        if (matiere == null || matiere.getId() <= 0) {
+            return;
+        }
+
+        List<Integer> categoryIds = new ArrayList<>();
+        for (Node node : categoryTagsContainer.getChildren()) {
+            if (!(node instanceof HBox)) {
+                continue;
+            }
+
+            Object tagData = node.getUserData();
+            if (tagData instanceof Integer && ((Integer) tagData) > 0) {
+                categoryIds.add((Integer) tagData);
+                continue;
+            }
+
+            if (tagData instanceof String) {
+                Category category = categoriesByName.get((String) tagData);
+                if (category != null && category.getId() > 0) {
+                    categoryIds.add(category.getId());
+                }
+            }
+        }
+
+        categoryService.replaceMatiereCategories(matiere.getId(), categoryIds);
+    }
+
+    private String normalizeCategoryName(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
+    }
+
+    private String buildSlug(String source) {
+        String slug = source == null ? "" : source.trim().toLowerCase();
+        slug = slug.replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        if (slug.isBlank()) {
+            slug = "category-" + System.currentTimeMillis();
+        }
+        return slug;
+    }
     private String buildJsonFromUI() {
         StringBuilder json = new StringBuilder("{\"chapters\":[");
         
@@ -931,5 +1043,6 @@ public class BackofficeMatiereController implements Initializable {
         return str.replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\");
     }
 }
+
 
 
