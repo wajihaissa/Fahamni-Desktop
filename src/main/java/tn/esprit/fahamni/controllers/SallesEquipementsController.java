@@ -22,6 +22,7 @@ import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminPlaceService;
 import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.SessionCreationContext;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -142,12 +143,16 @@ public class SallesEquipementsController {
         hideFeedback();
 
         if (selectedElement instanceof Salle salle) {
-            showRoomPreview(salle);
+            useRoomForSession(salle);
             return;
         }
 
         if (selectedElement instanceof Equipement equipement) {
             showEquipmentPreview(equipement);
+            showFeedback(
+                "Le lien direct est disponible pour les salles. Le materiel se choisit ensuite dans le formulaire de seance.",
+                false
+            );
             return;
         }
 
@@ -545,6 +550,29 @@ public class SallesEquipementsController {
         sessionPreviewContainer.setManaged(true);
         sessionPreviewContainer.setVisible(true);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+    }
+
+    private void useRoomForSession(Salle salle) {
+        if (salle == null || !isUsable(salle.getEtat())) {
+            showFeedback("Cette salle n'est pas disponible pour une seance presentielle.", false);
+            return;
+        }
+
+        SessionCreationContext.prepareRoomSelection(salle.getIdSalle());
+        boolean opened = SessionCreationContext.requestSessionCreationOpen();
+        if (opened) {
+            showFeedback(
+                "La salle \"" + formatOptionalText(salle.getNom()) + "\" a ete envoyee vers le formulaire de seance.",
+                true
+            );
+            return;
+        }
+
+        showRoomPreview(salle);
+        showFeedback(
+            "La salle est memorisee. Ouvrez maintenant Trouver un tuteur pour terminer la creation de la seance.",
+            true
+        );
     }
 
     private void showEquipmentPreview(Equipement equipement) {

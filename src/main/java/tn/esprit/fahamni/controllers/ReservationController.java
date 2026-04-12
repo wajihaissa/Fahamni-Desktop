@@ -8,6 +8,7 @@ import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
+import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.utils.OperationResult;
@@ -207,7 +208,7 @@ public class ReservationController {
     private void initialize() {
         tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
         tutorComboBox.setEditable(true);
-        selectTemporaryTutor();
+        selectDefaultTutor();
         configureDateTimeInputs();
         configureInfrastructureChoices();
 
@@ -223,6 +224,7 @@ public class ReservationController {
         hideReservationActionFeedback();
         loadSessionDashboard();
         showAvailableSessionsSection();
+        applyPendingSessionPrefill();
     }
 
     @FXML
@@ -536,6 +538,46 @@ public class ReservationController {
             updateEquipmentSelectionState(controls);
         });
         updateEquipmentPreview();
+    }
+
+    private void applyPendingSessionPrefill() {
+        SessionCreationContext.PendingSelection pendingSelection = SessionCreationContext.consumePendingSelection();
+        if (pendingSelection == null) {
+            return;
+        }
+
+        clearSessionForm();
+        resetEditMode();
+        sessionOnsiteCheckBox.setSelected(true);
+        updateOnsiteOptionsVisibility();
+
+        if (pendingSelection.salleId() != null) {
+            selectSalleById(pendingSelection.salleId());
+        }
+
+        if (!pendingSelection.equipementQuantites().isEmpty()) {
+            selectEquipementsByQuantites(pendingSelection.equipementQuantites());
+        }
+
+        showAddSessionSection();
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (pendingSelection.salleId() != null && selectedSalle == null) {
+            showFeedback("La salle choisie n'est plus disponible. Choisissez-en une autre avant de publier.", false);
+            return;
+        }
+
+        if (selectedSalle != null) {
+            showFeedback(
+                "La salle \"" + formatOptionalText(selectedSalle.getNom()) + "\" est preselectionnee pour votre seance.",
+                true
+            );
+            return;
+        }
+
+        if (!pendingSelection.equipementQuantites().isEmpty()) {
+            showFeedback("Le materiel selectionne a ete pre-rempli pour votre seance.", true);
+        }
     }
 
     private String formatSalleChoice(Salle salle) {
@@ -1470,7 +1512,7 @@ public class ReservationController {
         sessionRoomComboBox.getSelectionModel().clearSelection();
         clearEquipmentSelection();
         updateOnsiteOptionsVisibility();
-        selectTemporaryTutor();
+        selectDefaultTutor();
     }
 
     private void resetEditMode() {
@@ -1492,12 +1534,6 @@ public class ReservationController {
     }
 
     private void showAddSessionSection() {
-        if (!TemporaryUserContext.isCurrentTutor()) {
-            showAvailableSessionsSection();
-            showReservationActionFeedback("Connectez-vous avec le compte tuteur pour ajouter une seance.", false);
-            return;
-        }
-
         if (sectionMenuComboBox != null && !SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
             sectionMenuComboBox.setValue(SECTION_ADD_SESSION);
         }
@@ -1507,18 +1543,13 @@ public class ReservationController {
     }
 
     private void configureWorkspaceSections() {
-        if (TemporaryUserContext.isCurrentTutor()) {
-            sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_ADD_SESSION);
-            return;
-        }
-
-        sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS);
+        sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_ADD_SESSION);
     }
 
-    private void selectTemporaryTutor() {
-        String temporaryTutorName = tutorDirectoryService.getTutorDisplayName(TemporaryUserContext.getCurrentTutorId());
-        if (tutorComboBox.getItems().contains(temporaryTutorName)) {
-            tutorComboBox.setValue(temporaryTutorName);
+    private void selectDefaultTutor() {
+        String currentValue = tutorComboBox.getValue();
+        if (currentValue != null && tutorComboBox.getItems().contains(currentValue)) {
+            tutorComboBox.setValue(currentValue);
         } else if (!tutorComboBox.getItems().isEmpty()) {
             tutorComboBox.setValue(tutorComboBox.getItems().get(0));
         } else {

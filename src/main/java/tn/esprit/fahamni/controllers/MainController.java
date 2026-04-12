@@ -1,5 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
+import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.TemporaryUserContext;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
@@ -47,6 +48,7 @@ public class MainController {
     @FXML
     private void initialize() {
         System.out.println("MainController initialized");
+        SessionCreationContext.registerNavigator(this::showReservations);
         configureProfileCard();
         showDashboard();
     }
@@ -91,6 +93,7 @@ public class MainController {
     @FXML
     private void handleLogout() {
         try {
+            SessionCreationContext.clearPendingSelection();
             TemporaryUserContext.resetToStudent();
             Main.showLogin();
         } catch (Exception e) {
