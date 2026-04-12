@@ -7,7 +7,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 
 import javafx.event.ActionEvent;
@@ -80,7 +79,6 @@ public class BackofficeMatiereController implements Initializable {
 
     private final MatiereService matiereService = new MatiereService();
     private final CategoryService categoryService = new CategoryService();
-    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private String selectedImagePath;
     private Matiere selectedMatiere; // Tracks the matiere being edited (null = new matiere)
 
@@ -155,33 +153,22 @@ public class BackofficeMatiereController implements Initializable {
         }
     }
 
-    @FXML
-    private void deleteMatiere(ActionEvent event) {
+    private void deleteMatiere(Matiere matiere) {
+        if (matiere == null) {
+            return;
+        }
+
         try {
-            String titleToDelete = titreField.getText();
-            java.util.List<Matiere> allMatieres = matiereService.findAll();
-            
-            boolean found = false;
-            for (Matiere m : allMatieres) {
-                if (m.getTitre().equals(titleToDelete)) {
-                    matiereService.delete(m);
-                    found = true;
-                    break;
-                }
+            matiereService.delete(matiere);
+            if (selectedMatiere != null && selectedMatiere.getId() == matiere.getId()) {
+                selectedMatiere = null;
+                clearInputs();
             }
-            
-            if (!found) {
-                showAlert(Alert.AlertType.WARNING, "Non trouvé", "Aucune matière avec ce titre n'a été trouvée.");
-                return;
-            }
-            
-            showAlert(Alert.AlertType.INFORMATION, "Succès", "La matière a été supprimée avec succès !");
             refreshCards();
-            showList();
         } catch (Exception e) {
             e.printStackTrace();
-            showAlert(Alert.AlertType.ERROR, "Erreur de suppression", 
-                "Impossible de supprimer la matière : " + e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Erreur de suppression",
+                "Impossible de supprimer la matiere : " + e.getMessage());
         }
     }
 
@@ -242,62 +229,59 @@ public class BackofficeMatiereController implements Initializable {
 
     private VBox createMatiereCard(Matiere matiere) {
         VBox card = new VBox(10);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 4); -fx-pref-width: 280; -fx-pref-height: 320;");
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 4); -fx-padding: 15; -fx-pref-width: 280; -fx-min-height: 280;");
         card.setPadding(new javafx.geometry.Insets(15));
 
-        // Cover Image
-        ImageView imageView = new ImageView();
-        imageView.setFitWidth(250);
-        imageView.setFitHeight(140);
-        imageView.setPreserveRatio(true);
-        
-        if (matiere.getCoverImage() != null && !matiere.getCoverImage().isEmpty()) {
+        Node coverNode;
+        if (matiere.getCoverImage() != null && !matiere.getCoverImage().isBlank()) {
             try {
                 Image image = new Image("file:" + matiere.getCoverImage());
-                imageView.setImage(image);
+                if (!image.isError()) {
+                    ImageView imageView = new ImageView(image);
+                    imageView.setFitWidth(250);
+                    imageView.setFitHeight(140);
+                    imageView.setPreserveRatio(false);
+                    coverNode = imageView;
+                } else {
+                    Region fallback = new Region();
+                    fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
+                    coverNode = fallback;
+                }
             } catch (Exception e) {
-                // Use a placeholder color region
-                javafx.scene.layout.Region placeholder = new javafx.scene.layout.Region();
-                placeholder.setStyle("-fx-background-color: #e5e7eb;");
-                placeholder.setPrefWidth(250);
-                placeholder.setPrefHeight(140);
-                card.getChildren().add(placeholder);
+                Region fallback = new Region();
+                fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
+                coverNode = fallback;
             }
         } else {
-            javafx.scene.layout.Region placeholder = new javafx.scene.layout.Region();
-            placeholder.setStyle("-fx-background-color: #e5e7eb;");
-            placeholder.setPrefWidth(250);
-            placeholder.setPrefHeight(140);
-            card.getChildren().add(placeholder);
-        }
-        
-        if (imageView.getImage() != null) {
-            card.getChildren().add(imageView);
+            Region fallback = new Region();
+            fallback.setStyle("-fx-background-color: #e2e8f0; -fx-pref-width: 250; -fx-pref-height: 140; -fx-background-radius: 8;");
+            coverNode = fallback;
         }
 
-        // Title
-        Label titleLabel = new Label(matiere.getTitre());
-        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16;");
+        Label titleLabel = new Label(matiere.getTitre() == null ? "" : matiere.getTitre());
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
 
-        // Description
-        Label descLabel = new Label(matiere.getDescription());
+        Label descLabel = new Label(matiere.getDescription() == null ? "" : matiere.getDescription());
         descLabel.setWrapText(true);
-        descLabel.setMaxHeight(60);
+        descLabel.setMaxHeight(40);
 
-        // Action Button
         HBox actionBox = new HBox(10);
         actionBox.setAlignment(Pos.CENTER_RIGHT);
-        
-        Button btnGerer = new Button("Gérer");
-        btnGerer.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 8 16;");
+
+        Button btnSupprimer = new Button("Supprimer");
+        btnSupprimer.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnSupprimer.setOnAction(e -> deleteMatiere(matiere));
+
+        Button btnGerer = new Button("G\u00e9rer");
+        btnGerer.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold;");
         btnGerer.setOnAction(e -> {
             populateForm(matiere);
             showEditor();
         });
-        
-        actionBox.getChildren().add(btnGerer);
 
-        card.getChildren().addAll(titleLabel, descLabel, actionBox);
+        actionBox.getChildren().addAll(btnSupprimer, btnGerer);
+
+        card.getChildren().addAll(coverNode, titleLabel, descLabel, actionBox);
         VBox.setVgrow(actionBox, Priority.ALWAYS);
         return card;
     }
@@ -947,3 +931,5 @@ public class BackofficeMatiereController implements Initializable {
         return str.replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\");
     }
 }
+
+
