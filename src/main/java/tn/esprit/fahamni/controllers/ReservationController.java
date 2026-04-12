@@ -567,6 +567,11 @@ public class ReservationController {
             return;
         }
 
+        if (!pendingSelection.equipementQuantites().isEmpty() && getSelectedEquipmentQuantites().isEmpty()) {
+            showFeedback("Le materiel choisi n'est plus disponible. Choisissez-en un autre avant de publier.", false);
+            return;
+        }
+
         if (selectedSalle != null) {
             showFeedback(
                 "La salle \"" + formatOptionalText(selectedSalle.getNom()) + "\" est preselectionnee pour votre seance.",

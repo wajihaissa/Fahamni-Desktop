@@ -148,11 +148,7 @@ public class SallesEquipementsController {
         }
 
         if (selectedElement instanceof Equipement equipement) {
-            showEquipmentPreview(equipement);
-            showFeedback(
-                "Le lien direct est disponible pour les salles. Le materiel se choisit ensuite dans le formulaire de seance.",
-                false
-            );
+            useEquipmentForSession(equipement);
             return;
         }
 
@@ -571,6 +567,29 @@ public class SallesEquipementsController {
         showRoomPreview(salle);
         showFeedback(
             "La salle est memorisee. Ouvrez maintenant Trouver un tuteur pour terminer la creation de la seance.",
+            true
+        );
+    }
+
+    private void useEquipmentForSession(Equipement equipement) {
+        if (equipement == null || !isUsable(equipement.getEtat()) || equipement.getQuantiteDisponible() <= 0) {
+            showFeedback("Ce materiel n'est pas disponible pour une seance presentielle.", false);
+            return;
+        }
+
+        SessionCreationContext.prepareEquipmentSelection(equipement.getIdEquipement(), 1);
+        boolean opened = SessionCreationContext.requestSessionCreationOpen();
+        if (opened) {
+            showFeedback(
+                "Le materiel \"" + formatOptionalText(equipement.getNom()) + "\" a ete envoye vers le formulaire de seance.",
+                true
+            );
+            return;
+        }
+
+        showEquipmentPreview(equipement);
+        showFeedback(
+            "Le materiel est memorise. Ouvrez maintenant Trouver un tuteur pour terminer la creation de la seance.",
             true
         );
     }
