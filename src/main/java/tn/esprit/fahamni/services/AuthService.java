@@ -4,6 +4,7 @@ import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.MyDataBase;
+import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -82,20 +83,28 @@ public class AuthService {
     }
 
     public OperationResult register(String fullName, String email, String password, String confirmPassword, String role) {
-        if (isBlank(fullName) || isBlank(email) || isBlank(password) || isBlank(confirmPassword) || isBlank(role)) {
-            return OperationResult.failure("Veuillez remplir tous les champs.");
+        String fullNameError = UserInputValidator.validateFullName(fullName);
+        if (fullNameError != null) {
+            return OperationResult.failure(fullNameError);
         }
 
-        if (!email.contains("@")) {
-            return OperationResult.failure("Veuillez saisir une adresse email valide.");
+        String emailError = UserInputValidator.validateEmail(email);
+        if (emailError != null) {
+            return OperationResult.failure(emailError);
         }
 
-        if (password.length() < 4) {
-            return OperationResult.failure("Le mot de passe doit contenir au moins 4 caracteres.");
+        String passwordError = UserInputValidator.validatePassword(password, true);
+        if (passwordError != null) {
+            return OperationResult.failure(passwordError);
         }
 
         if (!password.equals(confirmPassword)) {
             return OperationResult.failure("Les mots de passe ne correspondent pas.");
+        }
+
+        String roleError = UserInputValidator.validateFrontRole(role);
+        if (roleError != null) {
+            return OperationResult.failure(roleError);
         }
 
         if (emailAlreadyExists(email)) {

@@ -3,6 +3,7 @@ package tn.esprit.fahamni.services;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserInputValidator;
 import tn.esprit.fahamni.utils.UserSession;
 
 import java.sql.Connection;
@@ -36,17 +37,20 @@ public class UserAccountService {
             return OperationResult.failure("Ce compte n'est pas synchronise avec la base de donnees.");
         }
 
-        if (isBlank(fullName) || isBlank(email)) {
-            return OperationResult.failure("Le nom complet et l'email sont obligatoires.");
+        String fullNameError = UserInputValidator.validateFullName(fullName);
+        if (fullNameError != null) {
+            return OperationResult.failure(fullNameError);
         }
 
-        if (!email.contains("@")) {
-            return OperationResult.failure("Veuillez saisir une adresse email valide.");
+        String emailError = UserInputValidator.validateEmail(email);
+        if (emailError != null) {
+            return OperationResult.failure(emailError);
         }
 
         if (!isBlank(password) || !isBlank(confirmPassword)) {
-            if (password == null || password.length() < 4) {
-                return OperationResult.failure("Le mot de passe doit contenir au moins 4 caracteres.");
+            String passwordError = UserInputValidator.validatePassword(password, true);
+            if (passwordError != null) {
+                return OperationResult.failure(passwordError);
             }
 
             if (!password.equals(confirmPassword)) {

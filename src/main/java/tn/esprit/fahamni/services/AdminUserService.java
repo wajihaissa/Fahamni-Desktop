@@ -3,6 +3,7 @@ package tn.esprit.fahamni.services;
 import tn.esprit.fahamni.Models.AdminUser;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.MyDataBase;
+import tn.esprit.fahamni.utils.UserInputValidator;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
@@ -80,20 +81,33 @@ public class AdminUserService {
     }
 
     public OperationResult createUser(String fullName, String email, String password, String confirmPassword, String role, String status) {
-        if (isBlank(fullName) || isBlank(email) || isBlank(password) || isBlank(confirmPassword)) {
-            return OperationResult.failure("Veuillez renseigner tous les champs obligatoires.");
+        String fullNameError = UserInputValidator.validateFullName(fullName);
+        if (fullNameError != null) {
+            return OperationResult.failure(fullNameError);
         }
 
-        if (!email.contains("@")) {
-            return OperationResult.failure("Veuillez saisir une adresse email valide.");
+        String emailError = UserInputValidator.validateEmail(email);
+        if (emailError != null) {
+            return OperationResult.failure(emailError);
         }
 
-        if (password.length() < 4) {
-            return OperationResult.failure("Le mot de passe doit contenir au moins 4 caracteres.");
+        String passwordError = UserInputValidator.validatePassword(password, true);
+        if (passwordError != null) {
+            return OperationResult.failure(passwordError);
         }
 
         if (!password.equals(confirmPassword)) {
             return OperationResult.failure("Les mots de passe ne correspondent pas.");
+        }
+
+        String roleError = UserInputValidator.validateBackofficeRole(role);
+        if (roleError != null) {
+            return OperationResult.failure(roleError);
+        }
+
+        String statusError = UserInputValidator.validateStatus(status);
+        if (statusError != null) {
+            return OperationResult.failure(statusError);
         }
 
         if (connection == null) {
@@ -128,8 +142,28 @@ public class AdminUserService {
             return OperationResult.failure("Selectionnez un utilisateur a mettre a jour.");
         }
 
-        if (isBlank(fullName) || isBlank(email)) {
-            return OperationResult.failure("Veuillez renseigner le nom et l'email.");
+        String fullNameError = UserInputValidator.validateFullName(fullName);
+        if (fullNameError != null) {
+            return OperationResult.failure(fullNameError);
+        }
+
+        String emailError = UserInputValidator.validateEmail(email);
+        if (emailError != null) {
+            return OperationResult.failure(emailError);
+        }
+
+        String roleError = UserInputValidator.validateBackofficeRole(role);
+        if (roleError != null) {
+            return OperationResult.failure(roleError);
+        }
+
+        String statusError = UserInputValidator.validateStatus(status);
+        if (statusError != null) {
+            return OperationResult.failure(statusError);
+        }
+
+        if (emailAlreadyExistsForAnotherUser(email, user.getId())) {
+            return OperationResult.failure("Un autre compte utilise deja cette adresse email.");
         }
 
         if (connection == null) {
@@ -265,6 +299,21 @@ public class AdminUserService {
             }
         } catch (SQLException e) {
             System.out.println("Error checking duplicate admin email: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean emailAlreadyExistsForAnotherUser(String email, int userId) {
+        String query = "SELECT 1 FROM `user` WHERE LOWER(email) = LOWER(?) AND id <> ? LIMIT 1";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, email.trim());
+            statement.setInt(2, userId);
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                return resultSet.next();
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking duplicate admin email on update: " + e.getMessage());
             return false;
         }
     }

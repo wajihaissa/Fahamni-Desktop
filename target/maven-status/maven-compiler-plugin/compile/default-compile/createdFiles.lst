@@ -52,6 +52,7 @@ tn\esprit\fahamni\Models\UserRole.class
 tn\esprit\fahamni\utils\SceneManager.class
 tn\esprit\fahamni\controllers\SeanceController.class
 com\fahimni\models\User.class
+tn\esprit\fahamni\controllers\ProfileSettingsController$1.class
 tn\esprit\fahamni\services\AdminUserService.class
 tn\esprit\fahamni\controllers\MessengerController$1.class
 tn\esprit\fahamni\controllers\LoginController.class
