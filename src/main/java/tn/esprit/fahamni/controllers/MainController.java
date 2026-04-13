@@ -1,12 +1,13 @@
 package tn.esprit.fahamni.controllers;
 
-import tn.esprit.fahamni.test.Main;
-import tn.esprit.fahamni.utils.SceneManager;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.ViewNavigator;
 
 public class MainController {
 
@@ -43,6 +44,8 @@ public class MainController {
     @FXML
     private void initialize() {
         System.out.println("MainController initialized");
+        // Initialize the ViewNavigator with references to contentPane and pageTitle
+        ViewNavigator.getInstance().initialize(contentPane, pageTitle);
         // Load dashboard by default
         showDashboard();
     }

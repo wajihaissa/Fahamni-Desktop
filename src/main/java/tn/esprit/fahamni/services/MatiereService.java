@@ -25,6 +25,11 @@ public class MatiereService implements IService<Matiere> {
 
     @Override
     public void add(Matiere m) {
+        if (cnx == null) {
+            System.err.println("Database connection is null - cannot add matiere");
+            throw new RuntimeException("Database connection is not available");
+        }
+        
         String req = "INSERT INTO matiere (titre, description, structure, created_at, cover_image) VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement pst = cnx.prepareStatement(req, Statement.RETURN_GENERATED_KEYS)) {
@@ -54,6 +59,11 @@ public class MatiereService implements IService<Matiere> {
 
     @Override
     public void update(Matiere m) {
+        if (cnx == null) {
+            System.err.println("Database connection is null - cannot update matiere");
+            throw new RuntimeException("Database connection is not available");
+        }
+        
         String req = "UPDATE matiere SET titre = ?, description = ?, structure = ?, cover_image = ? WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {
@@ -71,6 +81,11 @@ public class MatiereService implements IService<Matiere> {
 
     @Override
     public void delete(Matiere m) {
+        if (cnx == null) {
+            System.err.println("Database connection is null - cannot delete matiere");
+            throw new RuntimeException("Database connection is not available");
+        }
+        
         String req = "DELETE FROM matiere WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {
@@ -85,6 +100,12 @@ public class MatiereService implements IService<Matiere> {
     @Override
     public List<Matiere> findAll() {
         List<Matiere> matieres = new ArrayList<>();
+        
+        if (cnx == null) {
+            System.err.println("Database connection is null - cannot fetch all matieres");
+            return matieres;
+        }
+        
         String req = "SELECT * FROM matiere";
 
         try (Statement st = cnx.createStatement();
@@ -113,6 +134,11 @@ public class MatiereService implements IService<Matiere> {
 
     @Override
     public Matiere findById(int id) {
+        if (cnx == null) {
+            System.err.println("Database connection is null - cannot fetch matiere by id");
+            return null;
+        }
+        
         String req = "SELECT * FROM matiere WHERE id = ?";
 
         try (PreparedStatement pst = cnx.prepareStatement(req)) {

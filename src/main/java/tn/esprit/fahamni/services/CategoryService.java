@@ -1,9 +1,5 @@
 package tn.esprit.fahamni.services;
 
-import tn.esprit.fahamni.Models.Category;
-import tn.esprit.fahamni.interfaces.IServices;
-import tn.esprit.fahamni.utils.MyDataBase;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,6 +9,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import tn.esprit.fahamni.Models.Category;
+import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.utils.MyDataBase;
 
 public class CategoryService implements IServices<Category> {
 
@@ -110,6 +110,13 @@ public class CategoryService implements IServices<Category> {
 
     public List<Category> findByMatiereId(int matiereId) {
         List<Category> categories = new ArrayList<>();
+        
+        // Check if connection is available
+        if (cnx == null) {
+            System.err.println("Database connection is null - cannot fetch categories");
+            return categories;
+        }
+        
         String req = "SELECT c.id, c.name, c.slug "
             + "FROM category c "
             + "INNER JOIN matiere_category mc ON mc.category_id = c.id "

@@ -43,6 +43,7 @@ import tn.esprit.fahamni.services.CategoryService;
 import tn.esprit.fahamni.services.MatiereService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.ViewNavigator;
 
 public class BackofficeMatiereController implements Initializable {
 
@@ -185,9 +186,13 @@ public class BackofficeMatiereController implements Initializable {
                 SceneManager.backofficeView("BackofficeCategoryView.fxml")
             );
 
-            Node source = (Node) event.getSource();
-            AnchorPane contentPane = (AnchorPane) source.getScene().lookup("#contentPane");
+            ViewNavigator navigator = ViewNavigator.getInstance();
+            AnchorPane contentPane = navigator.getContentPane();
+            
             if (contentPane == null) {
+                System.err.println("ERROR: ContentPane is null in openCategories!");
+                showAlert(Alert.AlertType.ERROR, "Erreur de Navigation", 
+                    "Le système de navigation n'est pas initialisé correctement.");
                 return;
             }
 
@@ -198,12 +203,15 @@ public class BackofficeMatiereController implements Initializable {
             AnchorPane.setRightAnchor(categoryView, 0.0);
             contentPane.getChildren().add(categoryView);
 
-            Label pageTitle = (Label) source.getScene().lookup("#pageTitle");
+            Label pageTitle = navigator.getPageTitle();
             if (pageTitle != null) {
                 pageTitle.setText("Gestion des categories");
             }
         } catch (Exception e) {
+            System.err.println("Error opening categories: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Erreur", 
+                "Impossible d'ouvrir la page des catégories : " + e.getMessage());
         }
     }
 

@@ -1,9 +1,8 @@
 package tn.esprit.fahamni.controllers;
 
-import tn.esprit.fahamni.Models.Category;
-import tn.esprit.fahamni.services.CategoryService;
-import tn.esprit.fahamni.test.Main;
-import tn.esprit.fahamni.utils.SceneManager;
+import java.net.URL;
+import java.util.ResourceBundle;
+
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -17,9 +16,11 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
-
-import java.net.URL;
-import java.util.ResourceBundle;
+import tn.esprit.fahamni.Models.Category;
+import tn.esprit.fahamni.services.CategoryService;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.ViewNavigator;
 
 public class BackofficeCategoryController implements Initializable {
 
@@ -119,9 +120,11 @@ public class BackofficeCategoryController implements Initializable {
                 SceneManager.backofficeView("BackofficeMatiereView.fxml")
             );
 
-            Node source = (Node) event.getSource();
-            AnchorPane contentPane = (AnchorPane) source.getScene().lookup("#contentPane");
+            ViewNavigator navigator = ViewNavigator.getInstance();
+            AnchorPane contentPane = navigator.getContentPane();
+            
             if (contentPane == null) {
+                System.err.println("ERROR: ContentPane is null when going back to matieres!");
                 return;
             }
 
@@ -132,11 +135,12 @@ public class BackofficeCategoryController implements Initializable {
             AnchorPane.setRightAnchor(matiereView, 0.0);
             contentPane.getChildren().add(matiereView);
 
-            Label pageTitle = (Label) source.getScene().lookup("#pageTitle");
+            Label pageTitle = navigator.getPageTitle();
             if (pageTitle != null) {
-                pageTitle.setText("Gestion des mati\u00e8res");
+                pageTitle.setText("Gestion des matières");
             }
         } catch (Exception e) {
+            System.err.println("Error going back to matieres: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             e.printStackTrace();
         }
     }
