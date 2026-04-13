@@ -38,6 +38,9 @@ public class MainController {
     private Button blogButton;
 
     @FXML
+    private Button coursButton;
+
+    @FXML
     private void initialize() {
         System.out.println("MainController initialized");
         // Load dashboard by default
@@ -88,6 +91,12 @@ public class MainController {
     }
 
     @FXML
+    private void showCours() {
+        loadView("FrontMatiereView.fxml", "Cours");
+        setActiveButton(coursButton);
+    }
+
+    @FXML
     private void handleLogout() {
         try {
             Main.showLogin();
@@ -125,6 +134,7 @@ public class MainController {
         messengerButton.getStyleClass().remove("active");
         quizButton.getStyleClass().remove("active");
         blogButton.getStyleClass().remove("active");
+        coursButton.getStyleClass().remove("active");
 
         // Set active
         if (!activeButton.getStyleClass().contains("active")) {
