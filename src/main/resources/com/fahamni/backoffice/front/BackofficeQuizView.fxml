@@ -74,6 +74,12 @@
                         <Button text="Enregistrer" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                         <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                     </HBox>
+                    <Label text="Generation IA" styleClass="backoffice-form-label"/>
+                    <HBox spacing="10.0" alignment="CENTER_LEFT">
+                        <ComboBox fx:id="aiQuestionCountComboBox" promptText="Questions" prefWidth="100.0" styleClass="backoffice-form-input"/>
+                        <ComboBox fx:id="aiDifficultyComboBox" promptText="Difficulte" prefWidth="120.0" styleClass="backoffice-form-input"/>
+                        <Button text="Generer avec IA" onAction="#handleGenerateQuizWithAi" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
                     <HBox spacing="10.0" alignment="CENTER">
                         <Button text="Modifier" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
                         <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>

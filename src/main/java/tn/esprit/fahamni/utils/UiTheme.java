@@ -8,7 +8,7 @@ import javafx.scene.Scene;
 
 public final class UiTheme {
 
-    private static final String STYLES = """
+    private static final String BASE_STYLES = """
         .root {
             -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
             -fx-base: #ffffff;
@@ -474,7 +474,9 @@ public final class UiTheme {
             -fx-padding: 6px 10px;
             -fx-cursor: hand;
         }
+        """;
 
+    private static final String QUIZ_STYLES = """
         .quiz-question-box {
             -fx-background-color: rgba(248, 250, 255, 0.95);
             -fx-border-color: #d5e1f5;
@@ -484,15 +486,153 @@ public final class UiTheme {
             -fx-padding: 14px;
         }
 
+        .quiz-dialog-pane {
+            -fx-background-color: linear-gradient(to bottom, #f7fbff 0%, #eef4ff 100%);
+        }
+
+        .quiz-dialog-shell {
+            -fx-background-color: transparent;
+        }
+
+        .quiz-dialog-hero {
+            -fx-background-color: linear-gradient(to right, rgba(41, 104, 255, 0.12) 0%, rgba(122, 163, 255, 0.20) 100%);
+            -fx-border-color: rgba(85, 136, 255, 0.20);
+            -fx-border-width: 1px;
+            -fx-border-radius: 20px;
+            -fx-background-radius: 20px;
+            -fx-padding: 18px 20px;
+        }
+
+        .quiz-dialog-eyebrow {
+            -fx-background-color: rgba(255, 255, 255, 0.88);
+            -fx-text-fill: #2d5ecc;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 6px 10px;
+            -fx-background-radius: 999px;
+            -fx-max-width: 120px;
+            -fx-alignment: center;
+        }
+
+        .quiz-dialog-title {
+            -fx-font-size: 26px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #183f82;
+        }
+
+        .quiz-dialog-subtitle {
+            -fx-font-size: 13px;
+            -fx-text-fill: #5f7595;
+        }
+
+        .quiz-progress-step {
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1f477f;
+        }
+
+        .quiz-progress-label {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6c82a4;
+        }
+
+        .quiz-progress-bar {
+            -fx-pref-height: 10px;
+        }
+
+        .quiz-progress-bar > .track {
+            -fx-background-color: #dfe8f8;
+            -fx-background-radius: 999px;
+        }
+
+        .quiz-progress-bar > .bar {
+            -fx-background-color: linear-gradient(to right, #5f8eff 0%, #2f6dff 100%);
+            -fx-background-radius: 999px;
+            -fx-background-insets: 0;
+        }
+
+        .quiz-question-stage-card {
+            -fx-padding: 20px;
+            -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(245, 249, 255, 0.95) 100%);
+            -fx-border-color: #d8e4f8;
+            -fx-background-radius: 20px;
+            -fx-border-radius: 20px;
+        }
+
+        .quiz-step-badge {
+            -fx-background-color: #eaf1ff;
+            -fx-text-fill: #2f63ca;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 7px 12px;
+            -fx-background-radius: 999px;
+        }
+
+        .quiz-step-copy {
+            -fx-font-size: 12px;
+            -fx-text-fill: #6c82a4;
+        }
+
         .quiz-question-label {
-            -fx-font-size: 14px;
+            -fx-font-size: 19px;
             -fx-font-weight: bold;
             -fx-text-fill: #1d3b75;
         }
 
         .quiz-choice-button {
-            -fx-font-size: 13px;
+            -fx-font-size: 14px;
             -fx-text-fill: #243c59;
+            -fx-padding: 14px 16px;
+            -fx-border-color: #d8e4f8;
+            -fx-border-width: 1px;
+            -fx-border-radius: 16px;
+            -fx-background-radius: 16px;
+            -fx-background-color: #ffffff;
+            -fx-cursor: hand;
+        }
+
+        .quiz-choice-button:selected {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #6f98ff;
+        }
+
+        .quiz-choice-button:hover {
+            -fx-background-color: #f8fbff;
+        }
+
+        .quiz-choice-button .radio {
+            -fx-padding: 0 10px 0 0;
+        }
+
+        .quiz-choice-button .dot {
+            -fx-background-color: #2f6dff;
+        }
+
+        .quiz-hint-button {
+            -fx-background-color: rgba(231, 239, 251, 0.90);
+            -fx-border-color: #d4e0f5;
+            -fx-border-width: 1px;
+            -fx-text-fill: #294a78;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+            -fx-padding: 8px 12px;
+        }
+
+        .quiz-hint-button:hover {
+            -fx-background-color: #ecf3ff;
+        }
+
+        .quiz-hint-label {
+            -fx-font-size: 12px;
+            -fx-text-fill: #5d7395;
+            -fx-background-color: #f7faff;
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px;
+            -fx-background-radius: 10px;
+            -fx-border-radius: 10px;
+            -fx-padding: 10px 12px;
         }
 
         .quiz-empty-message, .result-empty-message {
@@ -501,6 +641,87 @@ public final class UiTheme {
             -fx-padding: 12px 0 0 0;
         }
 
+        .quiz-result-shell {
+            -fx-spacing: 16px;
+        }
+
+        .quiz-result-status {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 7px 12px;
+            -fx-background-radius: 999px;
+            -fx-max-width: 120px;
+            -fx-alignment: center;
+        }
+
+        .quiz-result-status-passed {
+            -fx-background-color: #e6f8ee;
+            -fx-text-fill: #1c8b52;
+        }
+
+        .quiz-result-status-retry {
+            -fx-background-color: #fff1dd;
+            -fx-text-fill: #bc7a13;
+        }
+
+        .quiz-result-hero {
+            -fx-background-color: linear-gradient(to right, #1f5cf5 0%, #6a97ff 100%);
+            -fx-background-radius: 22px;
+            -fx-padding: 22px;
+            -fx-alignment: center-left;
+        }
+
+        .quiz-result-score {
+            -fx-font-size: 34px;
+            -fx-font-weight: bold;
+            -fx-text-fill: white;
+        }
+
+        .quiz-result-percentage {
+            -fx-font-size: 15px;
+            -fx-text-fill: rgba(255, 255, 255, 0.92);
+        }
+
+        .quiz-result-stat-card {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 14px;
+        }
+
+        .quiz-result-stat-label {
+            -fx-font-size: 12px;
+            -fx-text-fill: #7385a1;
+        }
+
+        .quiz-result-stat-value {
+            -fx-font-size: 15px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #1e3d73;
+        }
+
+        .result-card-passed {
+            -fx-border-color: #d6ecdf;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f4fff8 100%);
+        }
+
+        .result-card-retry {
+            -fx-border-color: #f2e1bf;
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fffaf0 100%);
+        }
+
+        .result-grade-passed {
+            -fx-text-fill: #1c8b52;
+        }
+
+        .result-grade-retry {
+            -fx-text-fill: #bc7a13;
+        }
+        """;
+
+    private static final String TAIL_STYLES = """
         .action-button.danger {
             -fx-background-color: #ffe8ec;
             -fx-border-color: #ffcbd3;
@@ -1593,7 +1814,31 @@ public final class UiTheme {
         }
 
         .backoffice-table .table-row-cell:selected {
-            -fx-background-color: #eaf1ff;
+            -fx-background-color: linear-gradient(to bottom, #dce9ff 0%, #cfe0ff 100%);
+            -fx-border-color: #8fb0f8;
+            -fx-border-width: 0 0 1 0;
+        }
+
+        .backoffice-table .table-row-cell:selected .table-cell,
+        .backoffice-table .table-row-cell:selected .table-cell .text,
+        .backoffice-table .table-row-cell:selected .text {
+            -fx-text-fill: #14345d;
+            -fx-fill: #14345d;
+            -fx-font-weight: bold;
+        }
+
+        .backoffice-table .table-row-cell.backoffice-recent-row {
+            -fx-background-color: linear-gradient(to bottom, #fff6cf 0%, #ffe8a3 100%);
+            -fx-border-color: #f3c969;
+            -fx-border-width: 0 0 1 0;
+        }
+
+        .backoffice-table .table-row-cell.backoffice-recent-row .table-cell,
+        .backoffice-table .table-row-cell.backoffice-recent-row .table-cell .text,
+        .backoffice-table .table-row-cell.backoffice-recent-row .text {
+            -fx-text-fill: #6b4700;
+            -fx-fill: #6b4700;
+            -fx-font-weight: bold;
         }
 
         .backoffice-feedback.success {
@@ -2491,6 +2736,8 @@ public final class UiTheme {
             -fx-padding: 10px 12px;
         }
         """;
+
+    private static final String STYLES = String.join("", BASE_STYLES, QUIZ_STYLES, TAIL_STYLES);
 
     private static final String STYLESHEET_URI = createStylesheetUri();
 

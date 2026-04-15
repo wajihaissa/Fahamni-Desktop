@@ -18,6 +18,7 @@ import javafx.scene.control.TextField;
 import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.quiz.Question;
 import tn.esprit.fahamni.Models.quiz.Quiz;
+import tn.esprit.fahamni.services.AiQuizAssistantService;
 import tn.esprit.fahamni.services.QuizService;
 
 import java.text.NumberFormat;
@@ -52,11 +53,14 @@ public class BackofficeQuizController {
     @FXML private TextField choice4Field;
 
     @FXML private ComboBox<String> correctChoiceComboBox;
+    @FXML private ComboBox<Integer> aiQuestionCountComboBox;
+    @FXML private ComboBox<String> aiDifficultyComboBox;
     @FXML private Label feedbackLabel;
     @FXML private Label questionsAddedLabel;
     @FXML private ListView<String> questionsListView;
 
     private final QuizService quizService = new QuizService();
+    private final AiQuizAssistantService aiQuizAssistantService = new AiQuizAssistantService();
     private final ObservableList<Quiz> quizItems = FXCollections.observableArrayList();
     private final List<Question> currentQuestions = new ArrayList<>();
     private Quiz selectedQuiz = null;
@@ -108,6 +112,14 @@ public class BackofficeQuizController {
 
         correctChoiceComboBox.getItems().setAll("Choix A", "Choix B", "Choix C", "Choix D");
         correctChoiceComboBox.setValue("Choix A");
+        if (aiQuestionCountComboBox != null) {
+            aiQuestionCountComboBox.getItems().setAll(3, 4, 5);
+            aiQuestionCountComboBox.setValue(5);
+        }
+        if (aiDifficultyComboBox != null) {
+            aiDifficultyComboBox.getItems().setAll("Easy", "Medium", "Hard");
+            aiDifficultyComboBox.setValue("Medium");
+        }
 
         quizzesTable.setItems(quizItems);
         quizzesTable.getSelectionModel().selectedItemProperty()
@@ -269,6 +281,43 @@ public class BackofficeQuizController {
         clearForm();
         refreshQuizData();
         showFeedback("Liste rafraichie !", false);
+    }
+
+    @FXML
+    public void handleGenerateQuizWithAi(ActionEvent event) {
+        String title = titleField.getText() != null ? titleField.getText().trim() : "";
+        String topic = keywordField.getText() != null && !keywordField.getText().trim().isEmpty()
+                ? keywordField.getText().trim()
+                : title;
+
+        if (topic.isEmpty()) {
+            showFeedback("Ajoutez un titre ou un mot-cle avant la generation IA", true);
+            return;
+        }
+
+        int questionCount = aiQuestionCountComboBox != null && aiQuestionCountComboBox.getValue() != null
+                ? aiQuestionCountComboBox.getValue()
+                : MAX_QUESTIONS;
+        String difficulty = aiDifficultyComboBox != null && aiDifficultyComboBox.getValue() != null
+                ? aiDifficultyComboBox.getValue()
+                : "Medium";
+
+        AiQuizAssistantService.GeneratedQuizDraft generatedDraft =
+                aiQuizAssistantService.generateQuizDraft(topic, title, questionCount, difficulty);
+        Quiz generatedQuiz = generatedDraft.quiz();
+
+        if (generatedQuiz == null || generatedQuiz.getQuestions().isEmpty()) {
+            showFeedback("La generation IA a echoue, veuillez reessayer", true);
+            return;
+        }
+
+        titleField.setText(generatedQuiz.getTitre());
+        keywordField.setText(generatedQuiz.getKeyword());
+        currentQuestions.clear();
+        currentQuestions.addAll(generatedQuiz.getQuestions());
+        clearQuestionEditor();
+        updateQuestionsList();
+        showFeedback("Quiz genere avec " + generatedDraft.provider() + ". Verifiez puis enregistrez.", false);
     }
 
     private Quiz buildQuizFromForm() {

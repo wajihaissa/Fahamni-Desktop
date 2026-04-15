@@ -24,6 +24,8 @@ build/
 *.log
 *.tmp
 *.swp
+.env
+.env.*
 .DS_Store
 
 # Java compiled files

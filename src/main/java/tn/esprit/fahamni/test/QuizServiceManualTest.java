@@ -79,7 +79,6 @@ public class QuizServiceManualTest {
             System.out.println("getQuizById returned null for id " + quizId);
             return null;
         }
-
         System.out.println("Fetched title: " + fetched.getTitre());
         System.out.println("Fetched keyword: " + fetched.getKeyword());
         System.out.println("Fetched questions count: " + fetched.getQuestions().size());

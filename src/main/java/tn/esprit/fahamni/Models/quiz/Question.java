@@ -7,6 +7,8 @@ public class Question {
     private Long id;
     private String question;
     private Quiz quiz;
+    private String hint;
+    private String explanation;
     private final List<Choice> choices;
 
     public Question() {
@@ -35,6 +37,22 @@ public class Question {
 
     public void setQuiz(Quiz quiz) {
         this.quiz = quiz;
+    }
+
+    public String getHint() {
+        return hint;
+    }
+
+    public void setHint(String hint) {
+        this.hint = hint;
+    }
+
+    public String getExplanation() {
+        return explanation;
+    }
+
+    public void setExplanation(String explanation) {
+        this.explanation = explanation;
     }
 
     public List<Choice> getChoices() {
