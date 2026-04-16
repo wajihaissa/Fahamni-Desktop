@@ -328,6 +328,7 @@ public class QuizController {
         dialog.getDialogPane().getButtonTypes().addAll(backButtonType, nextButtonType, finishButtonType, ButtonType.CANCEL);
         dialog.getDialogPane().getStyleClass().add("quiz-dialog-pane");
         dialog.getDialogPane().setPrefWidth(700);
+        applyCurrentTheme(dialog.getDialogPane());
 
         VBox content = new VBox(18);
         content.getStyleClass().add("quiz-dialog-shell");
@@ -371,7 +372,16 @@ public class QuizController {
         questionHost.getStyleClass().add("quiz-question-stage");
 
         content.getChildren().addAll(heroBox, progressHeader, progressBar, questionHost);
-        dialog.getDialogPane().setContent(content);
+
+        ScrollPane contentScroll = new ScrollPane(content);
+        contentScroll.setFitToWidth(true);
+        contentScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        contentScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        contentScroll.setPrefViewportWidth(640);
+        contentScroll.setPrefViewportHeight(620);
+        contentScroll.getStyleClass().add("quiz-dialog-scroll");
+
+        dialog.getDialogPane().setContent(contentScroll);
 
         Map<Long, ToggleGroup> answers = new HashMap<>();
         int totalQuestions = quiz.getQuestions().size();
@@ -387,18 +397,22 @@ public class QuizController {
         finishButton.getStyleClass().add("start-quiz-button");
         cancelButton.getStyleClass().add("review-button");
 
-        Runnable refreshStep = () -> {
-            renderQuestionStep(quiz, answers, currentIndex[0], totalQuestions, questionHost, stepLabel, progressLabel, progressBar);
-            ToggleGroup currentGroup = answers.get(quiz.getQuestions().get(currentIndex[0]).getId());
-            boolean answered = currentGroup != null && currentGroup.getSelectedToggle() != null;
+        Runnable refreshControls = () -> updateQuizStepState(
+                quiz,
+                answers,
+                currentIndex[0],
+                totalQuestions,
+                stepLabel,
+                progressLabel,
+                progressBar,
+                backButton,
+                nextButton,
+                finishButton
+        );
 
-            backButton.setDisable(currentIndex[0] == 0);
-            nextButton.setVisible(currentIndex[0] < totalQuestions - 1);
-            nextButton.setManaged(currentIndex[0] < totalQuestions - 1);
-            nextButton.setDisable(!answered);
-            finishButton.setVisible(currentIndex[0] == totalQuestions - 1);
-            finishButton.setManaged(currentIndex[0] == totalQuestions - 1);
-            finishButton.setDisable(!answered);
+        Runnable refreshStep = () -> {
+            renderQuestionStep(quiz, answers, currentIndex[0], totalQuestions, questionHost, refreshControls);
+            refreshControls.run();
         };
 
         backButton.addEventFilter(ActionEvent.ACTION, event -> {
@@ -450,15 +464,52 @@ public class QuizController {
             int questionIndex,
             int totalQuestions,
             VBox questionHost,
-            Label stepLabel,
-            Label progressLabel,
-            ProgressBar progressBar
+            Runnable onAnswerChanged
     ) {
         Question question = quiz.getQuestions().get(questionIndex);
-        progressBar.setProgress((questionIndex + 1) / (double) totalQuestions);
+        questionHost.getChildren().setAll(buildQuestionCard(
+                quiz,
+                question,
+                questionIndex,
+                totalQuestions,
+                answers,
+                onAnswerChanged
+        ));
+    }
+
+    private void updateQuizStepState(
+            Quiz quiz,
+            Map<Long, ToggleGroup> answers,
+            int questionIndex,
+            int totalQuestions,
+            Label stepLabel,
+            Label progressLabel,
+            ProgressBar progressBar,
+            Button backButton,
+            Button nextButton,
+            Button finishButton
+    ) {
+        long answeredCount = quiz.getQuestions().stream()
+                .filter(currentQuestion -> {
+                    ToggleGroup group = answers.get(currentQuestion.getId());
+                    return group != null && group.getSelectedToggle() != null;
+                })
+                .count();
+
+        ToggleGroup currentGroup = answers.get(quiz.getQuestions().get(questionIndex).getId());
+        boolean answered = currentGroup != null && currentGroup.getSelectedToggle() != null;
+
+        progressBar.setProgress(answeredCount / (double) totalQuestions);
         stepLabel.setText("Question " + (questionIndex + 1) + " of " + totalQuestions);
-        progressLabel.setText((int) Math.round(((questionIndex + 1) * 100.0) / totalQuestions) + "% complete");
-        questionHost.getChildren().setAll(buildQuestionCard(quiz, question, questionIndex, totalQuestions, answers));
+        progressLabel.setText((int) Math.round((answeredCount * 100.0) / totalQuestions) + "% complete");
+
+        backButton.setDisable(questionIndex == 0);
+        nextButton.setVisible(questionIndex < totalQuestions - 1);
+        nextButton.setManaged(questionIndex < totalQuestions - 1);
+        nextButton.setDisable(!answered);
+        finishButton.setVisible(questionIndex == totalQuestions - 1);
+        finishButton.setManaged(questionIndex == totalQuestions - 1);
+        finishButton.setDisable(!answered);
     }
 
     private VBox buildQuestionCard(
@@ -466,7 +517,8 @@ public class QuizController {
             Question question,
             int questionIndex,
             int totalQuestions,
-            Map<Long, ToggleGroup> answers
+            Map<Long, ToggleGroup> answers,
+            Runnable onAnswerChanged
     ) {
         VBox questionBox = new VBox(14);
         questionBox.getStyleClass().addAll("quiz-question-box", "quiz-question-stage-card");
@@ -496,6 +548,7 @@ public class QuizController {
             radioButton.getStyleClass().add("quiz-choice-button");
             radioButton.setWrapText(true);
             radioButton.setMaxWidth(Double.MAX_VALUE);
+            radioButton.setOnAction(event -> onAnswerChanged.run());
             choicesBox.getChildren().add(radioButton);
         }
 
@@ -526,6 +579,7 @@ public class QuizController {
         dialog.setHeaderText(null);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
         dialog.getDialogPane().getStyleClass().add("quiz-dialog-pane");
+        applyCurrentTheme(dialog.getDialogPane());
 
         VBox content = new VBox(18);
         content.getStyleClass().addAll("quiz-dialog-shell", "quiz-result-shell");
@@ -568,6 +622,13 @@ public class QuizController {
         content.getChildren().addAll(statusBadge, titleLabel, summaryLabel, scoreHero, statsRow);
         dialog.getDialogPane().setContent(content);
         dialog.showAndWait();
+    }
+
+    private void applyCurrentTheme(javafx.scene.control.DialogPane dialogPane) {
+        if (dialogPane == null || availableQuizzesBox == null || availableQuizzesBox.getScene() == null) {
+            return;
+        }
+        dialogPane.getStylesheets().setAll(availableQuizzesBox.getScene().getStylesheets());
     }
 
     private VBox buildResultStat(String label, String value) {

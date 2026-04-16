@@ -494,6 +494,17 @@ public final class UiTheme {
             -fx-background-color: transparent;
         }
 
+        .quiz-dialog-scroll,
+        .quiz-dialog-scroll > .viewport {
+            -fx-background-color: transparent;
+        }
+
+        .quiz-dialog-scroll {
+            -fx-background-insets: 0;
+            -fx-padding: 0;
+            -fx-border-color: transparent;
+        }
+
         .quiz-dialog-hero {
             -fx-background-color: linear-gradient(to right, rgba(41, 104, 255, 0.12) 0%, rgba(122, 163, 255, 0.20) 100%);
             -fx-border-color: rgba(85, 136, 255, 0.20);
