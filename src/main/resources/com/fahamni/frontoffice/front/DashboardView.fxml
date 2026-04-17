@@ -8,13 +8,13 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<ScrollPane fitToWidth="true" styleClass="dashboard-scroll"
+<ScrollPane id="dashboardHomeRoot" fitToWidth="true" styleClass="dashboard-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.DashboardController">
-    <VBox spacing="20.0" styleClass="dashboard-content">
+    <VBox id="dashboardHomeContent" spacing="20.0" styleClass="dashboard-content">
         <padding>
-            <Insets top="20" right="20" bottom="20" left="20"/>
+            <Insets top="8" right="20" bottom="20" left="20"/>
         </padding>
 
         <VBox spacing="10.0" styleClass="welcome-section">

@@ -36,6 +36,7 @@ public class SallesEquipementsController {
     private static final String FILTER_ALL_TYPES = "Tous les types";
     private static final String FILTER_ALL_STATUSES = "Tous les etats";
     private static final String STATUS_AVAILABLE = "disponible";
+    private static final String STATUS_PENDING = "attente";
     private static final int CATALOG_COLUMNS = 3;
     private static final double CATALOG_CARD_GAP = 14.0;
 
@@ -666,7 +667,7 @@ public class SallesEquipementsController {
         selectCard(null);
         detailTypeLabel.setText("Selection");
         detailStatusLabel.setText("En attente");
-        detailStatusLabel.getStyleClass().setAll("status-chip", "unavailable");
+        detailStatusLabel.getStyleClass().setAll("status-chip", "pending");
         detailTitleLabel.setText("Selectionnez une carte");
         detailSubtitleLabel.setText("Les informations detaillees apparaitront ici.");
         detailFactsContainer.getChildren().clear();
@@ -743,6 +744,9 @@ public class SallesEquipementsController {
         String normalizedStatus = normalize(status);
         if (isUsable(status)) {
             return "available";
+        }
+        if (normalizedStatus.contains(STATUS_PENDING)) {
+            return "pending";
         }
         if (normalizedStatus.contains("maintenance")) {
             return "maintenance";

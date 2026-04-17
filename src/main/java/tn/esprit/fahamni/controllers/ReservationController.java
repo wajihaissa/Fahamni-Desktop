@@ -61,6 +61,7 @@ public class ReservationController {
     private static final String MODE_ONLINE_LABEL = "En ligne";
     private static final String MODE_ONSITE_LABEL = "Presentiel";
     private static final String STATUS_AVAILABLE = "disponible";
+    private static final String STATUS_PENDING = "attente";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -1018,7 +1019,7 @@ public class ReservationController {
 
     private void resetRoomPreview() {
         sessionRoomStatusChipLabel.setText("En attente");
-        sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", "unavailable");
+        sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", "pending");
         sessionRoomPreviewTitleLabel.setText("Choisissez une salle");
         sessionRoomPreviewSubtitleLabel.setText("La salle choisie apparaitra ici avec ses details principaux.");
         sessionRoomPreviewDescriptionLabel.setText("Aucune salle selectionnee.");
@@ -1964,6 +1965,9 @@ public class ReservationController {
         String normalizedStatus = status == null ? "" : status.toLowerCase().trim();
         if (STATUS_AVAILABLE.equals(normalizedStatus)) {
             return "available";
+        }
+        if (normalizedStatus.contains(STATUS_PENDING)) {
+            return "pending";
         }
         if (normalizedStatus.contains("maintenance")) {
             return "maintenance";

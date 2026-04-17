@@ -1,0 +1,298 @@
+/* Calendar page */
+
+#studentCalendarRoot,
+#studentCalendarRoot > .viewport {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+#studentCalendarRoot .calendar-layout-root {
+    -fx-padding: 4px;
+    -fx-spacing: 20px;
+}
+
+#studentCalendarRoot .calendar-sidebar-panel {
+    -fx-background-color:
+        radial-gradient(center 12% 8%, radius 38%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.00) 72%),
+        linear-gradient(to bottom, #f2eeff 0%, #edf1ff 100%);
+    -fx-border-color: #ddd7f3;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(76, 66, 137, 0.10), 18, 0.16, 0, 5);
+}
+
+#studentCalendarRoot .calendar-toolbar {
+    -fx-background-color:
+        linear-gradient(to right, #f7f4ff 0%, #eef2ff 100%);
+    -fx-border-color: #dddff0;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 16px 18px;
+    -fx-effect: dropshadow(gaussian, rgba(31, 34, 43, 0.08), 18, 0.16, 0, 5);
+}
+
+#studentCalendarRoot .calendar-board-shell {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fafafe 100%);
+    -fx-border-color: #dde2ec;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 12px;
+    -fx-spacing: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.06), 16, 0.14, 0, 4);
+}
+
+#studentCalendarRoot .calendar-page-title {
+    -fx-text-fill: #4b3a8f;
+    -fx-font-size: 25px;
+    -fx-font-weight: bold;
+}
+
+#studentCalendarRoot .calendar-side-icon {
+    -fx-min-width: 28px;
+    -fx-min-height: 28px;
+    -fx-alignment: center;
+    -fx-background-color: linear-gradient(to bottom right, #7c6ce0 0%, #5a75d8 100%);
+    -fx-background-radius: 999px;
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+#studentCalendarRoot .calendar-side-title {
+    -fx-text-fill: #202734;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+#studentCalendarRoot .calendar-upcoming-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #faf8ff 100%);
+    -fx-border-color: #e3def4;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 12px;
+    -fx-spacing: 6px;
+    -fx-cursor: hand;
+}
+
+#studentCalendarRoot .calendar-upcoming-card:hover,
+#studentCalendarRoot .calendar-upcoming-card.selected {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f3efff 100%);
+    -fx-border-color: #9182ef;
+    -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.14), 14, 0.16, 0, 4);
+}
+
+#studentCalendarRoot .calendar-upcoming-chip {
+    -fx-background-color: #f1eeff;
+    -fx-border-color: #ddd7fb;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-padding: 4px 8px;
+    -fx-text-fill: #5b49be;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+#studentCalendarRoot .calendar-upcoming-title,
+#studentCalendarRoot .calendar-selected-empty-title,
+#studentCalendarRoot .calendar-selected-title {
+    -fx-text-fill: #202734;
+}
+
+#studentCalendarRoot .calendar-upcoming-meta,
+#studentCalendarRoot .calendar-selected-description {
+    -fx-text-fill: #6f788b;
+}
+
+#studentCalendarRoot .calendar-selected-panel {
+    -fx-background-color: rgba(255, 255, 255, 0.48);
+    -fx-border-color: #dedaf0;
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 12px;
+}
+
+#studentCalendarRoot .calendar-selected-empty-card,
+#studentCalendarRoot .calendar-selected-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f9f9fd 100%);
+    -fx-border-color: #e2e6ef;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 12px;
+    -fx-spacing: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.05), 12, 0.14, 0, 3);
+}
+
+#studentCalendarRoot .calendar-selected-label {
+    -fx-text-fill: #70788b;
+}
+
+#studentCalendarRoot .calendar-selected-value {
+    -fx-text-fill: #25324e;
+}
+
+#studentCalendarRoot .calendar-selected-description {
+    -fx-background-color: #f7f5ff;
+    -fx-border-color: #e3ddf6;
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 9px;
+}
+
+#studentCalendarRoot .calendar-month-toolbar {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fe 100%);
+    -fx-border-color: #dddff0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-padding: 6px 10px;
+}
+
+#studentCalendarRoot .calendar-month-label {
+    -fx-text-fill: #3b3f76;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+#studentCalendarRoot .calendar-view-switch {
+    -fx-background-color: #f5f6fc;
+    -fx-border-color: #dde2ec;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-padding: 4px;
+}
+
+#studentCalendarRoot .calendar-toolbar .topbar-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7f8fd 100%);
+    -fx-border-color: #d6dcef;
+    -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+    -fx-text-fill: #4b3a8f;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-min-width: 38px;
+    -fx-min-height: 38px;
+}
+
+#studentCalendarRoot .calendar-toolbar .topbar-button:hover {
+    -fx-background-color: #f3f0ff;
+    -fx-border-color: #cfc7f3;
+}
+
+#studentCalendarRoot .calendar-toolbar .backoffice-primary-button {
+    -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-effect: dropshadow(gaussian, rgba(94, 77, 199, 0.20), 10, 0.16, 0, 3);
+}
+
+#studentCalendarRoot .calendar-toolbar .backoffice-primary-button:hover {
+    -fx-background-color: linear-gradient(to right, #6d5dd3 0%, #5b76d6 100%);
+}
+
+#studentCalendarRoot .calendar-toolbar .backoffice-secondary-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fd 100%);
+    -fx-border-color: #d7dcef;
+    -fx-border-width: 1px;
+    -fx-text-fill: #344158;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+}
+
+#studentCalendarRoot .calendar-toolbar .backoffice-secondary-button:hover {
+    -fx-background-color: #f4f2ff;
+    -fx-border-color: #c8c0f0;
+    -fx-text-fill: #5b49be;
+}
+
+#studentCalendarRoot .calendar-weekday {
+    -fx-background-color: #f5f2ff;
+    -fx-border-color: #e1ddf4;
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 10px 0;
+    -fx-alignment: center;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #6c6589;
+}
+
+#studentCalendarRoot .calendar-day-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fbfaff 100%);
+    -fx-border-color: #e4e6f0;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 8px;
+    -fx-spacing: 6px;
+}
+
+#studentCalendarRoot .calendar-day-card.outside-month {
+    -fx-background-color: linear-gradient(to bottom, #f6f7fa 0%, #f1f3f8 100%);
+    -fx-border-color: #e8ebf1;
+}
+
+#studentCalendarRoot .calendar-day-card.today {
+    -fx-border-color: #8e7ff1;
+    -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.14), 12, 0.16, 0, 2);
+}
+
+#studentCalendarRoot .calendar-day-number {
+    -fx-background-color: #f1eeff;
+    -fx-background-radius: 10px;
+    -fx-padding: 5px 9px;
+    -fx-text-fill: #4b4289;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+#studentCalendarRoot .calendar-day-number.muted {
+    -fx-background-color: #eef0f5;
+    -fx-text-fill: #b1b7c7;
+}
+
+#studentCalendarRoot .calendar-day-number.active {
+    -fx-background-color: linear-gradient(to bottom, #7c6ce0 0%, #5b49be 100%);
+    -fx-text-fill: white;
+}
+
+#studentCalendarRoot .calendar-session-pill {
+    -fx-background-color: #f2efff;
+    -fx-border-color: #ddd7fb;
+    -fx-border-width: 1px;
+    -fx-background-radius: 10px;
+    -fx-border-radius: 10px;
+    -fx-padding: 4px 6px;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #453f78;
+    -fx-cursor: hand;
+}
+
+#studentCalendarRoot .calendar-session-pill:hover {
+    -fx-background-color: #ebe6ff;
+    -fx-border-color: #c6bef1;
+}
+
+#studentCalendarRoot .calendar-session-pill.selected {
+    -fx-background-color: linear-gradient(to right, #6d5bd1 0%, #5b76d6 100%);
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(93, 79, 170, 0.18), 10, 0.16, 0, 3);
+}
+
+#studentCalendarRoot .calendar-session-more {
+    -fx-text-fill: #7c7596;
+}

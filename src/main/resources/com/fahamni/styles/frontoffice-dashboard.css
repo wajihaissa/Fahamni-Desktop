@@ -1,0 +1,143 @@
+/* Dashboard page */
+
+#dashboardHomeRoot,
+#dashboardHomeRoot > .viewport {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+#dashboardHomeContent {
+    -fx-background-color: transparent;
+    -fx-spacing: 22px;
+}
+
+#dashboardHomeRoot .welcome-section {
+    -fx-background-color:
+        radial-gradient(center 15% 10%, radius 38%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.00) 72%),
+        radial-gradient(center 86% 14%, radius 34%, rgba(196, 208, 255, 0.16) 0%, rgba(196, 208, 255, 0.00) 76%),
+        linear-gradient(to right, #6d5bd1 0%, #7d6ce0 46%, #95a2f2 100%);
+    -fx-border-color: rgba(232, 227, 255, 0.22);
+    -fx-border-width: 1px;
+    -fx-background-radius: 28px;
+    -fx-border-radius: 28px;
+    -fx-padding: 26px 28px;
+    -fx-effect: dropshadow(gaussian, rgba(93, 79, 170, 0.20), 20, 0.16, 0, 6);
+}
+
+#dashboardHomeRoot .welcome-title {
+    -fx-text-fill: white;
+    -fx-font-size: 31px;
+}
+
+#dashboardHomeRoot .welcome-subtitle {
+    -fx-text-fill: rgba(244, 241, 255, 0.82);
+    -fx-font-size: 14px;
+}
+
+#dashboardHomeRoot .stat-card,
+#dashboardHomeRoot .upcoming-sessions,
+#dashboardHomeRoot .learning-progress,
+#dashboardHomeRoot .recommended-tutors {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fc 100%);
+    -fx-border-color: #dde1ea;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 20px;
+    -fx-effect: dropshadow(gaussian, rgba(31, 34, 43, 0.06), 16, 0.14, 0, 4);
+}
+
+#dashboardHomeRoot .stats-row {
+    -fx-spacing: 16px;
+}
+
+#dashboardHomeRoot .stats-row .stat-card {
+    -fx-background-color: linear-gradient(to bottom, #fbfbfd 0%, #f2f0ff 100%);
+    -fx-border-color: #dfdaf0;
+    -fx-padding: 18px 20px;
+}
+
+#dashboardHomeRoot .section-title,
+#dashboardHomeRoot .session-subject,
+#dashboardHomeRoot .tutor-name {
+    -fx-text-fill: #202532;
+}
+
+#dashboardHomeRoot .section-subtitle,
+#dashboardHomeRoot .stat-label,
+#dashboardHomeRoot .session-time,
+#dashboardHomeRoot .session-tutor,
+#dashboardHomeRoot .tutor-subject,
+#dashboardHomeRoot .tutor-rating {
+    -fx-text-fill: #6f778a;
+}
+
+#dashboardHomeRoot .stat-value,
+#dashboardHomeRoot .session-price,
+#dashboardHomeRoot .progress-percentage {
+    -fx-text-fill: #5f49bf;
+    -fx-font-weight: bold;
+}
+
+#dashboardHomeRoot .profile-role-badge {
+    -fx-background-color: #f2efff;
+    -fx-border-color: #ded7fe;
+    -fx-border-width: 1px;
+    -fx-text-fill: #5f49bf;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+}
+
+#dashboardHomeRoot .session-card,
+#dashboardHomeRoot .tutor-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f9f9fc 100%);
+    -fx-border-color: #e3e6ee;
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 16px;
+}
+
+#dashboardHomeRoot .session-card:hover,
+#dashboardHomeRoot .tutor-card:hover {
+    -fx-border-color: #ccc5eb;
+    -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.08), 14, 0.14, 0, 4);
+}
+
+#dashboardHomeRoot .session-button,
+#dashboardHomeRoot .contact-button {
+    -fx-background-color: linear-gradient(to right, #7967df 0%, #5f49bf 100%);
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 10px 16px;
+    -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.20), 10, 0.16, 0, 3);
+}
+
+#dashboardHomeRoot .session-button:hover,
+#dashboardHomeRoot .contact-button:hover {
+    -fx-background-color: linear-gradient(to right, #8a79eb 0%, #6d58d3 100%);
+}
+
+#dashboardHomeRoot .progress-subject {
+    -fx-text-fill: #313747;
+}
+
+#dashboardHomeRoot .progress-bar > .track {
+    -fx-background-color: #e2e5ee;
+    -fx-background-radius: 999px;
+}
+
+#dashboardHomeRoot .progress-bar > .bar {
+    -fx-background-color: linear-gradient(to right, #8a79eb 0%, #6350c7 100%);
+    -fx-background-radius: 999px;
+    -fx-background-insets: 0;
+}
+
+#dashboardHomeRoot .tutor-avatar {
+    -fx-background-color: #f2efff;
+    -fx-border-color: #ded7fe;
+    -fx-border-width: 1px;
+    -fx-text-fill: #5f49bf;
+}

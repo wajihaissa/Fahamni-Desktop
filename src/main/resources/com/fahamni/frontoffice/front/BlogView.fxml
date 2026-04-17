@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<ScrollPane fitToWidth="true"
+<ScrollPane id="blogResourceRoot"
+            fitToWidth="true"
             hbarPolicy="NEVER"
             focusTraversable="false"
             styleClass="blog-scroll"
@@ -12,110 +14,102 @@
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.BlogController">
 
-    <VBox spacing="20" styleClass="blog-content">
-        <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+    <VBox id="blogResourceContent" spacing="20" styleClass="blog-content">
+        <padding><Insets top="8" right="24" bottom="24" left="24"/></padding>
 
-        <!-- Header -->
-        <HBox alignment="CENTER_LEFT" spacing="12"
-              style="-fx-background-color: linear-gradient(to right, #3a7bd5, #00d2ff);
-                     -fx-padding: 14 20; -fx-background-radius: 12;">
-            <Label text="Blog Fahamni"
-                   style="-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: white;"/>
-            <Label text="—  Articles et ressources educatives de notre communaute"
-                   style="-fx-font-size: 12; -fx-text-fill: rgba(255,255,255,0.85);"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <!-- Cloche notification tuteur -->
-            <StackPane onMouseClicked="#handleNotifBellClick" style="-fx-cursor: hand;">
-                <Label text="🔔"
-                       style="-fx-font-size: 18; -fx-padding: 5;
-                              -fx-background-color: rgba(255,255,255,0.2);
-                              -fx-background-radius: 50;"/>
-                <Label fx:id="notifBellBadge" text=""
-                       style="-fx-background-color: #e74c3c; -fx-text-fill: white;
-                              -fx-font-size: 9; -fx-font-weight: bold;
-                              -fx-background-radius: 10; -fx-padding: 1 5;
-                              -fx-min-width: 16; -fx-alignment: center;"
-                       StackPane.alignment="TOP_RIGHT"
-                       managed="false" visible="false"/>
-            </StackPane>
+        <HBox id="blogResourceHero" alignment="CENTER_LEFT" spacing="16">
+            <styleClass>
+                <String fx:value="blog-header"/>
+                <String fx:value="front-blog-hero"/>
+            </styleClass>
+            <VBox spacing="8">
+                <Label text="Blog Fahamni" styleClass="blog-hero-title"/>
+                <Label text="Articles et ressources educatives de notre communaute"
+                       wrapText="true"
+                       styleClass="blog-hero-subtitle"/>
+            </VBox>
         </HBox>
 
-        <!-- Barre de recherche + Tri -->
-        <HBox spacing="12" alignment="CENTER_LEFT"
-              style="-fx-background-color: white; -fx-padding: 12 16; -fx-background-radius: 12;
-                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);">
-            <Label text="🔍" style="-fx-font-size: 16; -fx-text-fill: #94a3b8;"/>
+        <HBox id="blogResourceToolbar" spacing="12" alignment="CENTER_LEFT">
+            <styleClass>
+                <String fx:value="blog-controls"/>
+                <String fx:value="front-blog-toolbar"/>
+            </styleClass>
+            <Label text="Recherche" styleClass="blog-search-icon"/>
             <TextField fx:id="searchField"
                        promptText="Rechercher un article..."
                        styleClass="search-field"
                        focusTraversable="true"
-                       HBox.hgrow="ALWAYS"
-                       style="-fx-background-color: transparent; -fx-border-width: 0;
-                              -fx-font-size: 13; -fx-text-fill: #1e293b;"/>
+                       HBox.hgrow="ALWAYS"/>
             <Separator orientation="VERTICAL" style="-fx-opacity: 0.3;"/>
-            <Label text="Trier par :" style="-fx-font-size: 12; -fx-text-fill: #64748b;"/>
-            <ComboBox fx:id="sortComboBox" focusTraversable="false"
-                      style="-fx-background-color: #f1f5f9; -fx-background-radius: 8;
-                             -fx-border-width: 0; -fx-font-size: 12; -fx-cursor: hand;
-                             -fx-padding: 4 8;"/>
+            <Label text="Trier par :" styleClass="blog-sort-label"/>
+            <ComboBox fx:id="sortComboBox" focusTraversable="false">
+                <styleClass>
+                    <String fx:value="filter-combo"/>
+                    <String fx:value="blog-sort-combo"/>
+                </styleClass>
+            </ComboBox>
         </HBox>
 
-        <!-- Filtres + bouton Créer sur la même ligne -->
-        <HBox spacing="10" alignment="CENTER_LEFT">
+        <HBox id="blogCategoryBar" spacing="10" alignment="CENTER_LEFT" styleClass="blog-category-row">
             <Button fx:id="btnTous" text="Tous"
                     focusTraversable="false"
-                    onAction="#filterTous"
-                    style="-fx-background-color: #3a7bd5; -fx-text-fill: white;
-                           -fx-background-radius: 20; -fx-padding: 8 20;
-                           -fx-font-size: 13; -fx-font-weight: bold; -fx-cursor: hand;"/>
+                    onAction="#filterTous">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="active"/>
+                </styleClass>
+            </Button>
             <Button fx:id="btnMath" text="Mathematiques"
                     focusTraversable="false"
-                    onAction="#filterMath"
-                    style="-fx-background-color: white; -fx-text-fill: #3a7bd5;
-                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
-                           -fx-cursor: hand; -fx-border-color: #3a7bd5; -fx-border-radius: 20;"/>
+                    onAction="#filterMath">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="math"/>
+                </styleClass>
+            </Button>
             <Button fx:id="btnScience" text="Sciences"
                     focusTraversable="false"
-                    onAction="#filterScience"
-                    style="-fx-background-color: white; -fx-text-fill: #11998e;
-                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
-                           -fx-cursor: hand; -fx-border-color: #11998e; -fx-border-radius: 20;"/>
+                    onAction="#filterScience">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="science"/>
+                </styleClass>
+            </Button>
             <Button fx:id="btnInfo" text="Informatique"
                     focusTraversable="false"
-                    onAction="#filterInfo"
-                    style="-fx-background-color: white; -fx-text-fill: #8e44ad;
-                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
-                           -fx-cursor: hand; -fx-border-color: #8e44ad; -fx-border-radius: 20;"/>
+                    onAction="#filterInfo">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="info"/>
+                </styleClass>
+            </Button>
             <Button fx:id="btnLangue" text="Langues"
                     focusTraversable="false"
-                    onAction="#filterLangue"
-                    style="-fx-background-color: white; -fx-text-fill: #f7971e;
-                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
-                           -fx-cursor: hand; -fx-border-color: #f7971e; -fx-border-radius: 20;"/>
+                    onAction="#filterLangue">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="languages"/>
+                </styleClass>
+            </Button>
             <Button fx:id="btnAutre" text="Autres"
                     focusTraversable="false"
-                    onAction="#filterAutre"
-                    style="-fx-background-color: white; -fx-text-fill: #7f8c8d;
-                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-font-size: 13;
-                           -fx-cursor: hand; -fx-border-color: #7f8c8d; -fx-border-radius: 20;"/>
-            <!-- Spacer pour pousser le bouton à droite -->
+                    onAction="#filterAutre">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="neutral"/>
+                </styleClass>
+            </Button>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button fx:id="createArticleBtn" text="+ Créer un article"
+            <Button fx:id="createArticleBtn" text="+ Creer un article"
                     focusTraversable="false"
                     onAction="#openCreateForm"
-                    style="-fx-background-color: linear-gradient(to right, #11998e, #38ef7d);
-                           -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13;
-                           -fx-background-radius: 20; -fx-padding: 8 20; -fx-cursor: hand;
-                           -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 6, 0, 0, 2);"/>
+                    styleClass="front-blog-create-button"/>
         </HBox>
 
-        <!-- Conteneur dynamique des blogs -->
         <VBox fx:id="blogsContainer" spacing="16"/>
 
-        <!-- Barre de pagination -->
-        <HBox fx:id="paginationBar" spacing="8" alignment="CENTER_LEFT"
-              style="-fx-background-color: white; -fx-padding: 12 16; -fx-background-radius: 12;
-                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);">
+        <HBox fx:id="paginationBar" spacing="8" alignment="CENTER_LEFT" styleClass="front-blog-pagination">
         </HBox>
 
     </VBox>
