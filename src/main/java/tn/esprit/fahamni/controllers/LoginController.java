@@ -85,7 +85,13 @@ public class LoginController {
             return;
         }
 
-        UserSession.setCurrentUser(authenticatedUser);
+        String jwtToken = authService.issueJwt(authenticatedUser);
+        if (jwtToken == null || !authService.isJwtValidForUser(jwtToken, authenticatedUser)) {
+            showMessage(loginMessageLabel, "Erreur lors de la creation du token de session.", false);
+            return;
+        }
+
+        UserSession.start(authenticatedUser, jwtToken);
 
         try {
             if (authenticatedUser.getRole() == UserRole.ADMIN) {

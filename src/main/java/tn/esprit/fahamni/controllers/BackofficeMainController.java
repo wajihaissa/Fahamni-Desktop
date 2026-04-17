@@ -34,6 +34,11 @@ public class BackofficeMainController {
 
     @FXML
     private void initialize() {
+        if (!UserSession.hasCurrentUser() || !UserSession.hasValidJwtToken()) {
+            handleLogout();
+            return;
+        }
+
         showDashboard();
     }
 

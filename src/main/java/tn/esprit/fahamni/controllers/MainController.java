@@ -74,6 +74,11 @@ public class MainController {
 
     @FXML
     private void initialize() {
+        if (!UserSession.hasCurrentUser() || !UserSession.hasValidJwtToken()) {
+            handleLogout();
+            return;
+        }
+
         refreshCurrentUserSummary();
         hideAccountMenuInstant();
         rootPane.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {

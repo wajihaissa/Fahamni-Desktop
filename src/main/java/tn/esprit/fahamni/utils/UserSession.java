@@ -6,6 +6,7 @@ import tn.esprit.fahamni.Models.UserRole;
 public final class UserSession {
 
     private static User currentUser;
+    private static String currentJwtToken;
 
     private UserSession() {
     }
@@ -18,8 +19,26 @@ public final class UserSession {
         currentUser = user;
     }
 
+    public static void start(User user, String jwtToken) {
+        currentUser = user;
+        currentJwtToken = jwtToken;
+    }
+
+    public static String getCurrentJwtToken() {
+        return currentJwtToken;
+    }
+
+    public static boolean hasValidJwtToken() {
+        return JwtService.isTokenValid(currentJwtToken);
+    }
+
+    public static JwtService.JwtClaims getCurrentJwtClaims() {
+        return JwtService.extractClaims(currentJwtToken);
+    }
+
     public static void clear() {
         currentUser = null;
+        currentJwtToken = null;
     }
 
     public static boolean hasCurrentUser() {

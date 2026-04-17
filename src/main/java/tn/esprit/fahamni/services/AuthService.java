@@ -2,6 +2,7 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
+import tn.esprit.fahamni.utils.JwtService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.UserInputValidator;
@@ -80,6 +81,18 @@ public class AuthService {
 
     public String getLastAuthenticationError() {
         return lastAuthenticationError;
+    }
+
+    public String issueJwt(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        return JwtService.generateToken(user);
+    }
+
+    public boolean isJwtValidForUser(String token, User user) {
+        return JwtService.isTokenValidForUser(token, user);
     }
 
     public OperationResult register(String fullName, String email, String password, String confirmPassword, String role) {
