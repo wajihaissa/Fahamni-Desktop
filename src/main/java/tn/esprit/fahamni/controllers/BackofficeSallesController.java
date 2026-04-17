@@ -80,7 +80,7 @@ public class BackofficeSallesController {
     private TextField localisationField;
 
     @FXML
-    private TextField batimentField;
+    private ComboBox<String> batimentComboBox;
 
     @FXML
     private ComboBox<String> typeComboBox;
@@ -89,7 +89,7 @@ public class BackofficeSallesController {
     private ComboBox<String> etatComboBox;
 
     @FXML
-    private TextField etageField;
+    private ComboBox<Integer> etageComboBox;
 
     @FXML
     private ComboBox<String> dispositionComboBox;
@@ -266,9 +266,11 @@ public class BackofficeSallesController {
         capaciteSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 5000, 24));
         capaciteSpinner.setEditable(true);
 
+        batimentComboBox.getItems().setAll(salleService.getAvailableBatiments());
         typeComboBox.getItems().setAll(salleService.getAvailableTypes());
         etatComboBox.getItems().setAll(salleService.getAvailableEtats());
         dispositionComboBox.getItems().setAll(salleService.getAvailableDispositions());
+        etageComboBox.getItems().setAll(0, 1, 2, 3, 4);
     }
 
     private void configurePagination() {
@@ -312,10 +314,10 @@ public class BackofficeSallesController {
         nomField.setText(salle.getNom());
         capaciteSpinner.getValueFactory().setValue(salle.getCapacite());
         localisationField.setText(salle.getLocalisation());
-        batimentField.setText(defaultString(salle.getBatiment()));
+        batimentComboBox.setValue(normalizeBatimentValue(salle.getBatiment()));
         typeComboBox.setValue(salle.getTypeSalle());
         etatComboBox.setValue(salle.getEtat());
-        etageField.setText(salle.getEtage() == null ? "" : String.valueOf(salle.getEtage()));
+        etageComboBox.setValue(normalizeEtageValue(salle.getEtage()));
         dispositionComboBox.setValue(salle.getTypeDisposition());
         accesHandicapeCheckBox.setSelected(salle.isAccesHandicape());
         statutDetailleField.setText(defaultString(salle.getStatutDetaille()));
@@ -328,10 +330,10 @@ public class BackofficeSallesController {
         nomField.clear();
         capaciteSpinner.getValueFactory().setValue(24);
         localisationField.clear();
-        batimentField.clear();
+        batimentComboBox.setValue(null);
         typeComboBox.setValue(typeComboBox.getItems().isEmpty() ? null : typeComboBox.getItems().get(0));
         etatComboBox.setValue(etatComboBox.getItems().isEmpty() ? null : etatComboBox.getItems().get(0));
-        etageField.clear();
+        etageComboBox.setValue(null);
         dispositionComboBox.setValue(null);
         accesHandicapeCheckBox.setSelected(false);
         statutDetailleField.clear();
@@ -370,6 +372,7 @@ public class BackofficeSallesController {
         String nom = requireText(nomField.getText(), "Le nom de la salle est obligatoire.");
         int capacite = parsePositiveInteger(capaciteSpinner.getEditor().getText(), "La capacite doit etre un entier positif.");
         String localisation = requireText(localisationField.getText(), "La localisation est obligatoire.");
+        String batiment = requireText(batimentComboBox.getValue(), "Le batiment est obligatoire.");
         String typeSalle = requireText(typeComboBox.getValue(), "Le type de salle est obligatoire.");
         String etat = requireText(etatComboBox.getValue(), "L'etat de la salle est obligatoire.");
 
@@ -381,8 +384,8 @@ public class BackofficeSallesController {
             typeSalle,
             etat,
             trimToNull(descriptionArea.getText()),
-            trimToNull(batimentField.getText()),
-            parseOptionalInteger(etageField.getText(), "L'etage doit etre un nombre entier."),
+            batiment,
+            etageComboBox.getValue(),
             trimToNull(dispositionComboBox.getValue()),
             accesHandicapeCheckBox.isSelected(),
             trimToNull(statutDetailleField.getText()),
@@ -397,19 +400,6 @@ public class BackofficeSallesController {
                 throw new IllegalArgumentException(errorMessage);
             }
             return value;
-        } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException(errorMessage);
-        }
-    }
-
-    private Integer parseOptionalInteger(String rawValue, String errorMessage) {
-        String normalizedValue = trimToNull(rawValue);
-        if (normalizedValue == null) {
-            return null;
-        }
-
-        try {
-            return Integer.parseInt(normalizedValue);
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException(errorMessage);
         }
@@ -513,6 +503,21 @@ public class BackofficeSallesController {
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private Integer normalizeEtageValue(Integer etage) {
+        if (etage == null || etage < 0 || etage > 4) {
+            return null;
+        }
+        return etage;
+    }
+
+    private String normalizeBatimentValue(String batiment) {
+        String normalizedBatiment = trimToNull(batiment);
+        if (normalizedBatiment == null || !batimentComboBox.getItems().contains(normalizedBatiment)) {
+            return null;
+        }
+        return normalizedBatiment;
     }
 
     private String resolveMessage(Exception exception) {

@@ -17,6 +17,13 @@ import java.util.List;
 import java.util.Locale;
 
 public class AdminSalleService implements IServices<Salle> {
+    private static final List<String> DEFAULT_BATIMENTS = List.of(
+        "Batiment A",
+        "Batiment B",
+        "Batiment C",
+        "Batiment D",
+        "Batiment E"
+    );
 
     private static final String INSERT_SQL =
         "INSERT INTO salle (nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -176,6 +183,10 @@ public class AdminSalleService implements IServices<Salle> {
         return List.of("Cours", "Conference", "Laboratoire", "Amphitheatre");
     }
 
+    public List<String> getAvailableBatiments() {
+        return DEFAULT_BATIMENTS;
+    }
+
     public List<String> getAvailableEtats() {
         return List.of("disponible", "en maintenance", "indisponible");
     }
@@ -234,6 +245,9 @@ public class AdminSalleService implements IServices<Salle> {
         }
         if (isBlank(salle.getLocalisation())) {
             throw new IllegalArgumentException("La localisation est obligatoire.");
+        }
+        if (isBlank(salle.getBatiment())) {
+            throw new IllegalArgumentException("Le batiment est obligatoire.");
         }
         if (isBlank(salle.getTypeSalle())) {
             throw new IllegalArgumentException("Le type de salle est obligatoire.");

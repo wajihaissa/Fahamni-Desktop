@@ -137,8 +137,8 @@
                         </VBox>
 
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Batiment" styleClass="backoffice-form-label"/>
-                            <TextField fx:id="batimentField" promptText="Ex: Batiment B" styleClass="backoffice-form-input"/>
+                            <Label text="Batiment *" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="batimentComboBox" promptText="Choisir un batiment" styleClass="backoffice-form-input"/>
                         </VBox>
                     </HBox>
 
@@ -157,7 +157,7 @@
                     <HBox spacing="12.0">
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                             <Label text="Etage" styleClass="backoffice-form-label"/>
-                            <TextField fx:id="etageField" promptText="Ex: 2 ou -1" styleClass="backoffice-form-input"/>
+                            <ComboBox fx:id="etageComboBox" promptText="Choisir un etage" styleClass="backoffice-form-input"/>
                         </VBox>
 
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
