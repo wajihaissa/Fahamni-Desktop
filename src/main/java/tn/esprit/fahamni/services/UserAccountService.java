@@ -3,6 +3,7 @@ package tn.esprit.fahamni.services;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserInputValidator;
 import tn.esprit.fahamni.utils.UserSession;
 
 import java.sql.Connection;
@@ -36,25 +37,25 @@ public class UserAccountService {
             return OperationResult.failure("Ce compte n'est pas synchronise avec la base de donnees.");
         }
 
-        if (isBlank(fullName) || isBlank(email)) {
-            return OperationResult.failure("Le nom complet et l'email sont obligatoires.");
+        String fullNameError = UserInputValidator.validateFullName(fullName);
+        if (fullNameError != null) {
+            return OperationResult.failure(fullNameError);
         }
 
-        if (!email.contains("@")) {
-            return OperationResult.failure("Veuillez saisir une adresse email valide.");
+        String emailError = UserInputValidator.validateEmail(email);
+        if (emailError != null) {
+            return OperationResult.failure(emailError);
         }
 
-        if (!isBlank(password) || !isBlank(confirmPassword)) {
-            if (password == null || password.length() < 4) {
-                return OperationResult.failure("Le mot de passe doit contenir au moins 4 caracteres.");
-            }
-
-            if (!password.equals(confirmPassword)) {
-                return OperationResult.failure("Les mots de passe ne correspondent pas.");
-            }
+        String passwordError = UserInputValidator.validatePassword(password, confirmPassword, false);
+        if (passwordError != null) {
+            return OperationResult.failure(passwordError);
         }
 
-        if (emailAlreadyUsedByAnotherUser(email, currentUser.getId())) {
+        String normalizedEmail = UserInputValidator.normalizeEmail(email);
+        String normalizedFullName = UserInputValidator.normalizeFullName(fullName);
+
+        if (emailAlreadyUsedByAnotherUser(normalizedEmail, currentUser.getId())) {
             return OperationResult.failure("Un autre compte utilise deja cette adresse email.");
         }
 
@@ -65,8 +66,8 @@ public class UserAccountService {
         String updatedPassword = isBlank(password) ? currentUser.getPassword() : password;
         String query = "UPDATE `user` SET `full_name` = ?, `email` = ?, `password` = ? WHERE `id` = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, fullName.trim());
-            statement.setString(2, email.trim());
+            statement.setString(1, normalizedFullName);
+            statement.setString(2, normalizedEmail);
             statement.setString(3, updatedPassword);
             statement.setInt(4, currentUser.getId());
             statement.executeUpdate();
@@ -77,8 +78,8 @@ public class UserAccountService {
 
         UserSession.setCurrentUser(new User(
             currentUser.getId(),
-            fullName.trim(),
-            email.trim(),
+            normalizedFullName,
+            normalizedEmail,
             updatedPassword,
             currentUser.getRole()
         ));

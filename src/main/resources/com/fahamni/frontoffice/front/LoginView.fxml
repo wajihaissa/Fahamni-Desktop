@@ -22,7 +22,7 @@
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.LoginController">
     <children>
-        <Polygon fill="#f7fbff" mouseTransparent="true"
+        <Polygon fill="#fff6ea" mouseTransparent="true"
                  points="0.0, 0.0, 418.0, 0.0, 306.0, 600.0, 0.0, 600.0"/>
 
         <HBox alignment="CENTER" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"

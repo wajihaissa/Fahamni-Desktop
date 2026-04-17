@@ -6,6 +6,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -14,123 +15,127 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox spacing="16.0" styleClass="backoffice-page backoffice-users-page"
-      xmlns="http://javafx.com/javafx/17"
-      xmlns:fx="http://javafx.com/fxml"
-      fx:controller="tn.esprit.fahamni.controllers.BackofficeUsersController">
-    <padding>
-        <Insets top="22.0" right="22.0" bottom="22.0" left="22.0"/>
-    </padding>
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeUsersController">
+    <content>
+        <VBox spacing="16.0" styleClass="backoffice-page backoffice-users-page">
+            <padding>
+                <Insets top="22.0" right="22.0" bottom="22.0" left="22.0"/>
+            </padding>
 
-    <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="backoffice-users-hero">
-        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-            <Label text="Users Management" styleClass="backoffice-users-hero-title"/>
-            <Label text="Manage registrations, user access and profile status from one place."
-                   styleClass="backoffice-panel-copy"/>
-        </VBox>
-        <Label fx:id="totalUsersLabel" text="0 users" styleClass="backoffice-users-count-badge"/>
-        <Button onAction="#handleAddNewUser" styleClass="backoffice-users-add-button" text="Add New User"/>
-    </HBox>
+            <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="backoffice-users-hero">
+                <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                    <Label text="Users Management" styleClass="backoffice-users-hero-title"/>
+                    <Label text="Manage registrations, user access and profile status from one place."
+                           styleClass="backoffice-panel-copy"/>
+                </VBox>
+                <Label fx:id="totalUsersLabel" text="0 users" styleClass="backoffice-users-count-badge"/>
+                <Button onAction="#handleAddNewUser" styleClass="backoffice-users-add-button" text="Add New User"/>
+            </HBox>
 
-    <VBox spacing="12.0" styleClass="backoffice-users-pending-panel">
-        <VBox spacing="4.0">
-            <Label text="Pending Registrations" styleClass="backoffice-users-section-title-light"/>
-            <Label text="Review recent accounts and decide whether to approve or suspend them."
-                   styleClass="backoffice-users-section-copy-light"/>
-        </VBox>
+            <VBox spacing="12.0" styleClass="backoffice-users-pending-panel">
+                <VBox spacing="4.0">
+                    <Label text="Pending Registrations" styleClass="backoffice-users-section-title-light"/>
+                    <Label text="Review recent accounts and decide whether to approve or suspend them."
+                           styleClass="backoffice-users-section-copy-light"/>
+                </VBox>
 
-        <ListView fx:id="pendingRegistrationsList" prefHeight="260.0" styleClass="backoffice-pending-list"/>
-    </VBox>
-
-    <VBox spacing="14.0" styleClass="backoffice-users-directory-panel">
-        <HBox alignment="CENTER_LEFT" spacing="10.0">
-            <Label text="Reviewed User Directory" styleClass="backoffice-panel-title"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Label fx:id="directorySummaryLabel" text="All users" styleClass="backoffice-users-filter-chip active"/>
-        </HBox>
-
-        <HBox spacing="8.0">
-            <Label text="All" styleClass="backoffice-users-filter-chip active"/>
-            <Label text="Approved" styleClass="backoffice-users-filter-chip"/>
-            <Label text="Declined" styleClass="backoffice-users-filter-chip"/>
-        </HBox>
-
-        <HBox spacing="10.0">
-            <TextField fx:id="searchField" promptText="Search by name or email..." styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
-            <ComboBox fx:id="statusFilterComboBox" prefWidth="150.0" styleClass="backoffice-form-input"/>
-            <ComboBox fx:id="roleFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
-        </HBox>
-
-        <TableView fx:id="usersTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table backoffice-users-table">
-            <columns>
-                <TableColumn fx:id="fullNameColumn" prefWidth="170.0" text="Name"/>
-                <TableColumn fx:id="emailColumn" prefWidth="220.0" text="Email"/>
-                <TableColumn fx:id="roleColumn" prefWidth="120.0" text="Role"/>
-                <TableColumn fx:id="statusColumn" prefWidth="120.0" text="Status"/>
-                <TableColumn fx:id="fraudRiskColumn" prefWidth="260.0" text="Fraud Risk"/>
-                <TableColumn fx:id="createdAtColumn" prefWidth="150.0" text="Created"/>
-                <TableColumn fx:id="actionsColumn" prefWidth="220.0" text="Actions"/>
-            </columns>
-        </TableView>
-    </VBox>
-
-    <VBox spacing="14.0" styleClass="backoffice-panel backoffice-users-editor-panel">
-        <HBox alignment="CENTER_LEFT" spacing="12.0">
-            <VBox spacing="4.0" HBox.hgrow="ALWAYS">
-                <Label text="Quick Editor" styleClass="backoffice-section-title"/>
-                <Label text="Create a new user or update the selected account from the directory."
-                       styleClass="backoffice-panel-copy"/>
+                <ListView fx:id="pendingRegistrationsList" prefHeight="260.0" styleClass="backoffice-pending-list"/>
             </VBox>
-            <Button onAction="#handleRefreshUsers" styleClass="backoffice-secondary-button" text="Refresh"/>
-            <Button onAction="#handleResetForm" styleClass="backoffice-secondary-button" text="Reset Form"/>
-        </HBox>
 
-        <HBox spacing="18.0">
-            <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                <VBox spacing="6.0">
-                    <Label text="Full Name" styleClass="backoffice-form-label"/>
-                    <TextField fx:id="fullNameField" promptText="Nom complet" styleClass="backoffice-form-input"/>
-                </VBox>
+            <VBox spacing="14.0" styleClass="backoffice-users-directory-panel">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label text="Reviewed User Directory" styleClass="backoffice-panel-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="directorySummaryLabel" text="All users" styleClass="backoffice-users-filter-chip active"/>
+                </HBox>
 
-                <VBox spacing="6.0">
-                    <Label text="Email Address" styleClass="backoffice-form-label"/>
-                    <TextField fx:id="emailField" promptText="Email" styleClass="backoffice-form-input"/>
-                </VBox>
+                <HBox spacing="8.0">
+                    <Label text="All" styleClass="backoffice-users-filter-chip active"/>
+                    <Label text="Approved" styleClass="backoffice-users-filter-chip"/>
+                    <Label text="Declined" styleClass="backoffice-users-filter-chip"/>
+                </HBox>
 
-                <HBox spacing="14.0">
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label text="Role" styleClass="backoffice-form-label"/>
-                        <ComboBox fx:id="roleComboBox" styleClass="backoffice-form-input"/>
+                <HBox spacing="10.0">
+                    <TextField fx:id="searchField" promptText="Search by name or email..." styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
+                    <ComboBox fx:id="statusFilterComboBox" prefWidth="150.0" styleClass="backoffice-form-input"/>
+                    <ComboBox fx:id="roleFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
+                </HBox>
+
+                <TableView fx:id="usersTable" prefHeight="320.0" VBox.vgrow="ALWAYS" styleClass="backoffice-table backoffice-users-table">
+                    <columns>
+                        <TableColumn fx:id="fullNameColumn" prefWidth="170.0" text="Name"/>
+                        <TableColumn fx:id="emailColumn" prefWidth="220.0" text="Email"/>
+                        <TableColumn fx:id="roleColumn" prefWidth="120.0" text="Role"/>
+                        <TableColumn fx:id="statusColumn" prefWidth="120.0" text="Status"/>
+                        <TableColumn fx:id="fraudRiskColumn" prefWidth="260.0" text="Fraud Risk"/>
+                        <TableColumn fx:id="createdAtColumn" prefWidth="150.0" text="Created"/>
+                        <TableColumn fx:id="actionsColumn" prefWidth="220.0" text="Actions"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel backoffice-users-editor-panel">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                        <Label text="Quick Editor" styleClass="backoffice-section-title"/>
+                        <Label text="Create a new user or update the selected account from the directory."
+                               styleClass="backoffice-panel-copy"/>
                     </VBox>
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label text="Status" styleClass="backoffice-form-label"/>
-                        <ComboBox fx:id="statusComboBox" styleClass="backoffice-form-input"/>
+                    <Button onAction="#handleRefreshUsers" styleClass="backoffice-secondary-button" text="Refresh"/>
+                    <Button onAction="#handleResetForm" styleClass="backoffice-secondary-button" text="Reset Form"/>
+                </HBox>
+
+                <HBox spacing="18.0">
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <VBox spacing="6.0">
+                            <Label text="Full Name" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="fullNameField" promptText="Nom complet" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Email Address" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="emailField" promptText="Email" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <HBox spacing="14.0">
+                            <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                                <Label text="Role" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="roleComboBox" styleClass="backoffice-form-input"/>
+                            </VBox>
+                            <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                                <Label text="Status" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="statusComboBox" styleClass="backoffice-form-input"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <VBox spacing="6.0">
+                            <Label text="Temporary Password" styleClass="backoffice-form-label"/>
+                            <PasswordField fx:id="passwordField" promptText="Mot de passe temporaire" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
+                            <Label text="Confirm Password" styleClass="backoffice-form-label"/>
+                            <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <Label text="Use the create flow for new registrations. Updating a selected user keeps the password unchanged."
+                               wrapText="true" styleClass="backoffice-panel-copy"/>
                     </VBox>
                 </HBox>
+
+                <HBox spacing="10.0">
+                    <Button onAction="#handleCreateUser" styleClass="backoffice-primary-button" text="Create User"/>
+                    <Button onAction="#handleUpdateUser" styleClass="backoffice-secondary-button" text="Update Selected"/>
+                    <Button onAction="#handleDeleteUser" styleClass="backoffice-secondary-button" text="Suspend Selected"/>
+                </HBox>
+
+                <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
             </VBox>
-
-            <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                <VBox spacing="6.0">
-                    <Label text="Temporary Password" styleClass="backoffice-form-label"/>
-                    <PasswordField fx:id="passwordField" promptText="Mot de passe temporaire" styleClass="backoffice-form-input"/>
-                </VBox>
-
-                <VBox spacing="6.0">
-                    <Label text="Confirm Password" styleClass="backoffice-form-label"/>
-                    <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="backoffice-form-input"/>
-                </VBox>
-
-                <Label text="Use the create flow for new registrations. Updating a selected user keeps the password unchanged."
-                       wrapText="true" styleClass="backoffice-panel-copy"/>
-            </VBox>
-        </HBox>
-
-        <HBox spacing="10.0">
-            <Button onAction="#handleCreateUser" styleClass="backoffice-primary-button" text="Create User"/>
-            <Button onAction="#handleUpdateUser" styleClass="backoffice-secondary-button" text="Update Selected"/>
-            <Button onAction="#handleDeleteUser" styleClass="backoffice-secondary-button" text="Suspend Selected"/>
-        </HBox>
-
-        <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
-    </VBox>
-</VBox>
+        </VBox>
+    </content>
+</ScrollPane>
