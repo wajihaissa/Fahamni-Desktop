@@ -8,14 +8,19 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Window;
 import javafx.util.Duration;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.Models.User;
@@ -25,6 +30,7 @@ import tn.esprit.fahamni.services.PasswordResetService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 
+import java.net.URL;
 import java.util.Optional;
 
 public class LoginController {
@@ -171,17 +177,19 @@ public class LoginController {
     private void handleForgotPassword() {
         String initialEmail = emailField != null ? emailField.getText().trim() : "";
 
-        TextInputDialog dialog = new TextInputDialog(initialEmail);
-        dialog.setTitle("Mot de passe oublie");
-        dialog.setHeaderText("Recevoir un code de reinitialisation");
-        dialog.setContentText("Adresse email :");
-
+        Dialog<String> dialog = createForgotPasswordDialog(initialEmail);
         Optional<String> result = dialog.showAndWait();
         if (result.isEmpty()) {
             return;
         }
 
-        OperationResult requestResult = passwordResetService.requestReset(result.get());
+        String requestedEmail = result.get() == null ? "" : result.get().trim();
+        if (requestedEmail.isEmpty()) {
+            showForgotPasswordFeedback(OperationResult.failure("Veuillez saisir une adresse email."));
+            return;
+        }
+
+        OperationResult requestResult = passwordResetService.requestReset(requestedEmail);
         showForgotPasswordFeedback(requestResult);
     }
 
@@ -291,6 +299,64 @@ public class LoginController {
         Alert alert = new Alert(alertType, result.getMessage(), ButtonType.OK);
         alert.setTitle("Reinitialisation du mot de passe");
         alert.setHeaderText(result.isSuccess() ? "Demande envoyee" : "Demande impossible");
+        styleDialog(alert.getDialogPane());
         alert.showAndWait();
+    }
+
+    private Dialog<String> createForgotPasswordDialog(String initialEmail) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Mot de passe oublie");
+        dialog.setHeaderText("Recevoir un code de reinitialisation");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        styleDialog(dialogPane);
+
+        ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType sendButtonType = new ButtonType("Envoyer le code", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().setAll(cancelButtonType, sendButtonType);
+
+        Label leadCopy = new Label("Saisissez votre adresse email pour recevoir un code de reinitialisation temporaire.");
+        leadCopy.getStyleClass().add("login-dialog-copy");
+        leadCopy.setWrapText(true);
+
+        Label emailLabel = new Label("Adresse email");
+        emailLabel.getStyleClass().add("login-dialog-label");
+
+        TextField emailInput = new TextField(initialEmail);
+        emailInput.setPromptText("Entrer votre email");
+        emailInput.getStyleClass().add("login-input");
+
+        VBox content = new VBox(12.0, leadCopy, emailLabel, emailInput);
+        content.getStyleClass().add("login-dialog-content");
+        VBox.setVgrow(emailInput, Priority.NEVER);
+
+        dialogPane.setGraphic(null);
+        dialogPane.setContent(content);
+        dialog.setResultConverter(buttonType -> buttonType == sendButtonType ? emailInput.getText() : null);
+
+        Window owner = loginRoot != null && loginRoot.getScene() != null ? loginRoot.getScene().getWindow() : null;
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+
+        return dialog;
+    }
+
+    private void styleDialog(DialogPane dialogPane) {
+        if (dialogPane == null) {
+            return;
+        }
+
+        dialogPane.getStyleClass().add("login-dialog-pane");
+        dialogPane.setMinHeight(Region.USE_PREF_SIZE);
+        dialogPane.setGraphic(null);
+
+        URL stylesheet = getClass().getResource("/com/fahamni/styles/frontoffice-login.css");
+        if (stylesheet != null) {
+            String stylesheetUri = stylesheet.toExternalForm();
+            if (!dialogPane.getStylesheets().contains(stylesheetUri)) {
+                dialogPane.getStylesheets().add(stylesheetUri);
+            }
+        }
     }
 }

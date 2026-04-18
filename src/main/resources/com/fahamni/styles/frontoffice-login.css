@@ -377,3 +377,88 @@
     -fx-background-color: rgba(225, 93, 111, 0.12);
     -fx-border-color: rgba(255, 171, 183, 0.16);
 }
+
+.login-dialog-pane {
+    -fx-background-color:
+        linear-gradient(to bottom right, #07162f 0%, #0b1f43 46%, #113264 100%);
+    -fx-border-color: rgba(139, 184, 255, 0.24);
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-background-radius: 24px;
+    -fx-padding: 0;
+}
+
+.login-dialog-pane > .header-panel {
+    -fx-background-color:
+        linear-gradient(to right, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    -fx-border-color: rgba(146, 183, 242, 0.12);
+    -fx-border-width: 0 0 1px 0;
+    -fx-background-radius: 24px 24px 0 0;
+    -fx-border-radius: 24px 24px 0 0;
+    -fx-padding: 22px 24px 14px 24px;
+}
+
+.login-dialog-pane > .header-panel .label {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.login-dialog-pane > .content.label {
+    -fx-text-fill: rgba(214, 227, 255, 0.76);
+    -fx-font-size: 12px;
+    -fx-padding: 12px 24px 0 24px;
+}
+
+.login-dialog-pane .button-bar {
+    -fx-padding: 0 22px 20px 22px;
+}
+
+.login-dialog-pane .button-bar .container {
+    -fx-spacing: 10px;
+}
+
+.login-dialog-pane .button-bar .button {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: rgba(147, 197, 255, 0.20);
+    -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+    -fx-text-fill: #e9f5ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 16px;
+    -fx-cursor: hand;
+}
+
+.login-dialog-pane .button-bar .button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+}
+
+.login-dialog-pane .button-bar .button:default {
+    -fx-background-color:
+        linear-gradient(to right, #8be0ff 0%, #66a8ff 40%, #5b7cff 100%);
+    -fx-border-color: rgba(219, 243, 255, 0.24);
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(91, 124, 255, 0.26), 16, 0.20, 0, 6);
+}
+
+.login-dialog-pane .button-bar .button:default:hover {
+    -fx-background-color:
+        linear-gradient(to right, #9be5ff 0%, #78b5ff 40%, #6d8cff 100%);
+}
+
+.login-dialog-content {
+    -fx-padding: 18px 24px 20px 24px;
+}
+
+.login-dialog-copy {
+    -fx-text-fill: rgba(214, 227, 255, 0.76);
+    -fx-font-size: 12px;
+}
+
+.login-dialog-label {
+    -fx-text-fill: #eef6ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
