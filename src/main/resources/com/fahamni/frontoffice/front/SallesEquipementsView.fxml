@@ -9,61 +9,122 @@
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TextField?>
+<?import java.lang.String?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<ScrollPane fitToWidth="true" styleClass="infrastructure-scroll"
+<ScrollPane id="infrastructureCatalogRoot" fitToWidth="true" styleClass="infrastructure-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.SallesEquipementsController">
-    <VBox spacing="20.0" styleClass="infrastructure-content">
+    <VBox id="infrastructureCatalogContent" spacing="20.0">
+        <styleClass>
+            <String fx:value="infrastructure-content"/>
+            <String fx:value="infrastructure-catalog-shell"/>
+        </styleClass>
         <padding>
             <Insets top="20" right="20" bottom="20" left="20"/>
         </padding>
 
-        <VBox spacing="8.0" styleClass="infrastructure-header">
-            <Label text="Salles &amp; materiel" styleClass="section-title"/>
-            <Label text="Consultez l'infrastructure disponible avant de creer une seance presentielle." wrapText="true" styleClass="section-subtitle"/>
+        <VBox id="infrastructureCatalogHero" spacing="18.0">
+            <styleClass>
+                <String fx:value="infrastructure-header"/>
+                <String fx:value="infrastructure-header-card"/>
+            </styleClass>
+            <HBox alignment="TOP_LEFT" spacing="24.0">
+                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                    <Label text="INFRASTRUCTURE WORKSPACE" styleClass="workspace-eyebrow"/>
+                    <Label text="Salles &amp; materiel" styleClass="section-title" wrapText="true"/>
+                    <Label text="Consultez l'infrastructure disponible avant de creer une seance presentielle." wrapText="true" styleClass="section-subtitle"/>
+                </VBox>
+            </HBox>
+
+            <FlowPane hgap="12.0" vgap="12.0" prefWrapLength="1200.0">
+                <styleClass>
+                    <String fx:value="infrastructure-stats-row"/>
+                    <String fx:value="infrastructure-hero-stats-row"/>
+                </styleClass>
+                <HBox alignment="CENTER_LEFT" spacing="12.0" prefWidth="280.0" styleClass="workspace-stat-card">
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="SA" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="Salles referencees" styleClass="workspace-stat-title"/>
+                        <Label fx:id="totalRoomsStatLabel" text="0" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="12.0" prefWidth="280.0">
+                    <styleClass>
+                        <String fx:value="workspace-stat-card"/>
+                    </styleClass>
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="DI" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="Salles disponibles" styleClass="workspace-stat-title"/>
+                        <Label fx:id="availableRoomsStatLabel" text="0" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="12.0" prefWidth="280.0" styleClass="workspace-stat-card">
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="MT" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="Types de materiel" styleClass="workspace-stat-title"/>
+                        <Label fx:id="totalEquipmentsStatLabel" text="0" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="12.0" prefWidth="280.0">
+                    <styleClass>
+                        <String fx:value="workspace-stat-card"/>
+                    </styleClass>
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="EQ" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="Equipements disponibles" styleClass="workspace-stat-title"/>
+                        <Label fx:id="availableEquipmentsStatLabel" text="0" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+            </FlowPane>
         </VBox>
 
-        <HBox spacing="14.0">
-            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
-                <Label fx:id="totalRoomsStatLabel" text="0" styleClass="stat-value"/>
-                <Label text="Salles referencees" styleClass="stat-label"/>
-            </VBox>
-            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
-                <Label fx:id="availableRoomsStatLabel" text="0" styleClass="stat-value"/>
-                <Label text="Salles disponibles" styleClass="stat-label"/>
-            </VBox>
-            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
-                <Label fx:id="totalEquipmentsStatLabel" text="0" styleClass="stat-value"/>
-                <Label text="Types de materiel" styleClass="stat-label"/>
-            </VBox>
-            <VBox styleClass="infrastructure-stat-card" HBox.hgrow="ALWAYS">
-                <Label fx:id="availableEquipmentsStatLabel" text="0" styleClass="stat-value"/>
-                <Label text="Equipements disponibles" styleClass="stat-label"/>
-            </VBox>
-        </HBox>
-
-        <HBox spacing="20.0" alignment="TOP_LEFT">
-            <VBox spacing="14.0" HBox.hgrow="ALWAYS">
-                <TabPane styleClass="reservation-tabs" tabClosingPolicy="UNAVAILABLE">
+        <HBox spacing="20.0" alignment="TOP_LEFT" styleClass="infrastructure-body">
+            <VBox spacing="14.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-main-column">
+                <TabPane tabClosingPolicy="UNAVAILABLE">
+                    <styleClass>
+                        <String fx:value="reservation-tabs"/>
+                        <String fx:value="infrastructure-tabs"/>
+                    </styleClass>
                     <tabs>
                         <Tab text="Salles">
-                            <VBox spacing="16.0" styleClass="infrastructure-panel">
-                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <VBox spacing="16.0">
+                                <styleClass>
+                                    <String fx:value="infrastructure-panel"/>
+                                    <String fx:value="infrastructure-catalog-panel"/>
+                                </styleClass>
+                                <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-toolbar">
                                     <TextField fx:id="roomSearchField" promptText="Rechercher une salle..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
                                     <ComboBox fx:id="roomTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
                                     <ComboBox fx:id="roomStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
                                     <CheckBox fx:id="accessibilityFilterCheckBox" text="Acces handicap" styleClass="backoffice-check"/>
-                                    <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
+                                    <Button text="Actualiser" onAction="#handleRefresh">
+                                        <styleClass>
+                                            <String fx:value="action-button"/>
+                                            <String fx:value="secondary"/>
+                                        </styleClass>
+                                    </Button>
                                 </HBox>
 
-                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-toolbar-meta">
                                     <Label fx:id="roomCountLabel" text="Aucune salle chargee" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
                                     <Label text="Vue catalogue" styleClass="infrastructure-small-chip"/>
                                 </HBox>
@@ -73,15 +134,24 @@
                         </Tab>
 
                         <Tab text="Materiel">
-                            <VBox spacing="16.0" styleClass="infrastructure-panel">
-                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                            <VBox spacing="16.0">
+                                <styleClass>
+                                    <String fx:value="infrastructure-panel"/>
+                                    <String fx:value="infrastructure-catalog-panel"/>
+                                </styleClass>
+                                <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-toolbar">
                                     <TextField fx:id="equipmentSearchField" promptText="Rechercher un equipement..." styleClass="search-field" HBox.hgrow="ALWAYS"/>
                                     <ComboBox fx:id="equipmentTypeFilterComboBox" promptText="Type" styleClass="filter-combo"/>
                                     <ComboBox fx:id="equipmentStatusFilterComboBox" promptText="Etat" styleClass="filter-combo"/>
-                                    <Button text="Actualiser" onAction="#handleRefresh" styleClass="action-button secondary"/>
+                                    <Button text="Actualiser" onAction="#handleRefresh">
+                                        <styleClass>
+                                            <String fx:value="action-button"/>
+                                            <String fx:value="secondary"/>
+                                        </styleClass>
+                                    </Button>
                                 </HBox>
 
-                                <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="infrastructure-toolbar-meta">
                                     <Label fx:id="equipmentCountLabel" text="Aucun equipement charge" styleClass="section-subtitle" HBox.hgrow="ALWAYS"/>
                                     <Label text="Catalogue global" styleClass="infrastructure-small-chip"/>
                                 </HBox>
@@ -94,8 +164,12 @@
 
             </VBox>
 
-            <VBox spacing="14.0" prefWidth="340.0" minWidth="320.0" styleClass="infrastructure-detail-panel">
-                <HBox spacing="8.0" alignment="CENTER_LEFT">
+            <VBox spacing="14.0" prefWidth="340.0" minWidth="320.0">
+                <styleClass>
+                    <String fx:value="infrastructure-detail-panel"/>
+                    <String fx:value="infrastructure-aside-panel"/>
+                </styleClass>
+                <HBox spacing="8.0" alignment="CENTER_LEFT" styleClass="infrastructure-detail-top">
                     <Label fx:id="detailTypeLabel" text="Selection" styleClass="infrastructure-small-chip"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="detailStatusLabel" text="En attente" styleClass="status-chip"/>

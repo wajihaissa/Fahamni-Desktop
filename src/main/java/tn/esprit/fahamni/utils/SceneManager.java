@@ -3,6 +3,7 @@ package tn.esprit.fahamni.utils;
 import java.io.IOException;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 
 public final class SceneManager {
@@ -19,13 +20,17 @@ public final class SceneManager {
     public static Scene loadScene(Class<?> resourceOwner, String fxmlPath, double width, double height) throws IOException {
         FXMLLoader loader = new FXMLLoader(resourceOwner.getResource(fxmlPath));
         Scene scene = new Scene(loader.load(), width, height);
-        applyTheme(scene);
+        applyTheme(scene, fxmlPath);
         return scene;
     }
 
     public static Node loadView(Class<?> resourceOwner, String fxmlPath) throws IOException {
         FXMLLoader loader = new FXMLLoader(resourceOwner.getResource(fxmlPath));
-        return loader.load();
+        Node view = loader.load();
+        if (view instanceof Parent parent && fxmlPath != null && fxmlPath.startsWith(FRONTOFFICE_VIEW_BASE)) {
+            FrontOfficeUiTheme.applyViewTheme(parent, fxmlPath);
+        }
+        return view;
     }
 
     public static String frontofficeView(String fxmlFile) {
@@ -36,8 +41,12 @@ public final class SceneManager {
         return BACKOFFICE_VIEW_BASE + fxmlFile;
     }
 
-    public static void applyTheme(Scene scene) {
-        UiTheme.apply(scene);
+    public static void applyTheme(Scene scene, String fxmlPath) {
+        if (fxmlPath != null && fxmlPath.startsWith(BACKOFFICE_VIEW_BASE)) {
+            BackOfficeUiTheme.apply(scene);
+            return;
+        }
+        FrontOfficeUiTheme.apply(scene);
     }
 }
 

@@ -1,0 +1,282 @@
+/* Reservation page */
+
+#tutorDiscoveryRoot,
+#tutorDiscoveryRoot > .viewport {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryContent {
+    -fx-spacing: 22px;
+}
+
+#tutorDiscoveryHero {
+    -fx-background-color:
+        radial-gradient(center 15% 10%, radius 38%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.00) 72%),
+        radial-gradient(center 86% 14%, radius 34%, rgba(196, 208, 255, 0.16) 0%, rgba(196, 208, 255, 0.00) 76%),
+        linear-gradient(to right, #6d5bd1 0%, #7d6ce0 46%, #95a2f2 100%);
+    -fx-border-color: rgba(232, 227, 255, 0.22);
+    -fx-border-width: 1px;
+    -fx-background-radius: 28px;
+    -fx-border-radius: 28px;
+    -fx-padding: 24px 26px;
+    -fx-effect: dropshadow(gaussian, rgba(93, 79, 170, 0.20), 20, 0.16, 0, 6);
+}
+
+#tutorDiscoveryRoot .workspace-eyebrow,
+#tutorDiscoveryRoot .workspace-label {
+    -fx-text-fill: rgba(238, 234, 255, 0.88);
+}
+
+#tutorDiscoveryRoot .workspace-title {
+    -fx-text-fill: white;
+    -fx-font-size: 29px;
+}
+
+#tutorDiscoveryRoot .workspace-subtitle {
+    -fx-text-fill: rgba(244, 241, 255, 0.82);
+}
+
+#tutorDiscoveryRoot .workspace-stat-card {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(247, 245, 255, 0.96) 100%);
+    -fx-border-color: rgba(226, 220, 248, 0.68);
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 16px 18px;
+    -fx-effect: dropshadow(gaussian, rgba(59, 53, 117, 0.10), 12, 0.14, 0, 3);
+}
+
+#tutorDiscoveryRoot .workspace-menu-combo,
+#tutorDiscoveryRoot .workspace-menu-combo.combo-box-base {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(246, 243, 255, 0.97) 100%);
+    -fx-border-color: rgba(220, 214, 245, 0.84);
+    -fx-border-width: 1px;
+    -fx-border-radius: 16px;
+    -fx-background-radius: 16px;
+    -fx-text-fill: #243147;
+    -fx-effect: dropshadow(gaussian, rgba(59, 53, 117, 0.08), 8, 0.12, 0, 2);
+}
+
+#tutorDiscoveryRoot .workspace-menu-combo,
+#tutorDiscoveryRoot .reservation-mode-combo,
+#tutorDiscoveryRoot .reservation-search-field,
+#tutorDiscoveryRoot .reservation-time-combo {
+    -fx-pref-height: 40px;
+}
+
+#tutorDiscoveryRoot .workspace-stat-icon {
+    -fx-background-color: linear-gradient(to bottom, #f4efff 0%, #ede8ff 100%);
+    -fx-border-color: #d7cef8;
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+}
+
+#tutorDiscoveryRoot .workspace-stat-icon-text {
+    -fx-text-fill: #6555cb;
+}
+
+#tutorDiscoveryRoot .workspace-stat-title {
+    -fx-text-fill: #70788b;
+}
+
+#tutorDiscoveryRoot .workspace-stat-value {
+    -fx-text-fill: #5e50c6;
+}
+
+#tutorDiscoveryRoot .reservation-search-panel,
+#tutorDiscoveryRoot .reservation-section-panel {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7f8fc 100%);
+    -fx-border-color: #dde2ec;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.07), 18, 0.16, 0, 5);
+}
+
+#tutorDiscoveryRoot .reservation-form-shell,
+#tutorDiscoveryRoot .reservation-infrastructure-toggle-row,
+#tutorDiscoveryRoot .reservation-room-choice-card,
+#tutorDiscoveryRoot .reservation-equipment-choice-card,
+#tutorDiscoveryRoot .reservation-equipment-preview-card,
+#tutorDiscoveryRoot .pagination-bar,
+#tutorDiscoveryRoot .infrastructure-detail-panel {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fafafe 100%);
+    -fx-border-color: #e3e6ef;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.05), 12, 0.14, 0, 4);
+}
+
+#tutorDiscoveryRoot .reservation-infrastructure-separator .line {
+    -fx-border-color: #e3e1f3;
+}
+
+#tutorDiscoveryRoot .reservation-search-title,
+#tutorDiscoveryRoot .subsection-title,
+#tutorDiscoveryRoot .reservation-preview-title,
+#tutorDiscoveryRoot .infrastructure-detail-section-title {
+    -fx-text-fill: #1f2737;
+}
+
+#tutorDiscoveryRoot .reservation-section-copy,
+#tutorDiscoveryRoot .section-subtitle,
+#tutorDiscoveryRoot .reservation-room-choice-meta,
+#tutorDiscoveryRoot .infrastructure-detail-section-copy,
+#tutorDiscoveryRoot .infrastructure-detail-fact-label {
+    -fx-text-fill: #6f788b;
+}
+
+#tutorDiscoveryRoot .workspace-chip {
+    -fx-background-color: #f1eeff;
+    -fx-border-color: #ddd7fb;
+    -fx-text-fill: #5b49be;
+}
+
+#tutorDiscoveryRoot .workspace-chip.workspace-chip-muted,
+#tutorDiscoveryRoot .infrastructure-small-chip {
+    -fx-background-color: #f6f7fc;
+    -fx-border-color: #e2e6ef;
+    -fx-text-fill: #6d7689;
+}
+
+#tutorDiscoveryRoot .reservation-mode-chip-onsite {
+    -fx-background-color: #edf1ff;
+    -fx-border-color: #d6def9;
+    -fx-text-fill: #4d5fc8;
+}
+
+#tutorDiscoveryRoot .reservation-content .search-field,
+#tutorDiscoveryRoot .reservation-content .form-field,
+#tutorDiscoveryRoot .reservation-content .filter-combo,
+#tutorDiscoveryRoot .reservation-content .combo-box-base,
+#tutorDiscoveryRoot .reservation-content .date-picker,
+#tutorDiscoveryRoot .reservation-content .text-area,
+#tutorDiscoveryRoot .reservation-content .pagination-page-size-combo,
+#tutorDiscoveryRoot .reservation-content .reservation-equipment-quantity-spinner {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f9faff 100%);
+    -fx-border-color: #d9dfea;
+    -fx-border-width: 1px;
+    -fx-border-radius: 15px;
+    -fx-background-radius: 15px;
+    -fx-text-fill: #243147;
+    -fx-prompt-text-fill: #98a1b4;
+}
+
+#tutorDiscoveryRoot .reservation-content .search-field:focused,
+#tutorDiscoveryRoot .reservation-content .form-field:focused,
+#tutorDiscoveryRoot .reservation-content .combo-box-base:focused,
+#tutorDiscoveryRoot .reservation-content .date-picker:focused,
+#tutorDiscoveryRoot .reservation-content .text-area:focused,
+#tutorDiscoveryRoot .reservation-content .pagination-page-size-combo:focused,
+#tutorDiscoveryRoot .reservation-content .reservation-equipment-quantity-spinner:focused {
+    -fx-border-color: #6b5dd3;
+    -fx-effect: dropshadow(gaussian, rgba(107, 93, 211, 0.18), 12, 0.18, 0, 2);
+}
+
+#tutorDiscoveryRoot .reservation-choice-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: #e1e5ef;
+    -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+}
+
+#tutorDiscoveryRoot .reservation-equipment-check,
+#tutorDiscoveryRoot .session-mode-toggle {
+    -fx-text-fill: #46556f;
+}
+
+#tutorDiscoveryRoot .reservation-equipment-check .box,
+#tutorDiscoveryRoot .session-mode-toggle .box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cfd7e7;
+    -fx-border-radius: 7px;
+    -fx-background-radius: 7px;
+}
+
+#tutorDiscoveryRoot .reservation-equipment-check:selected .box,
+#tutorDiscoveryRoot .session-mode-toggle:selected .box {
+    -fx-background-color: #f0edff;
+    -fx-border-color: #6b5dd3;
+}
+
+#tutorDiscoveryRoot .reservation-equipment-check:selected .mark,
+#tutorDiscoveryRoot .session-mode-toggle:selected .mark {
+    -fx-background-color: #4f46ba;
+}
+
+#tutorDiscoveryRoot .form-label,
+#tutorDiscoveryRoot .reservation-room-choice-title,
+#tutorDiscoveryRoot .reservation-equipment-quantity-label,
+#tutorDiscoveryRoot .infrastructure-detail-fact-value {
+    -fx-text-fill: #424d63;
+}
+
+#tutorDiscoveryRoot .reservation-time-separator {
+    -fx-text-fill: #6a77bf;
+}
+
+#tutorDiscoveryRoot .reservation-room-choice-card.selected,
+#tutorDiscoveryRoot .reservation-equipment-choice-card.selected {
+    -fx-background-color: #f4f1ff;
+    -fx-border-color: #8e7ff1;
+}
+
+#tutorDiscoveryRoot .reservation-room-choice-card.unavailable {
+    -fx-background-color: #f4f5f8;
+    -fx-border-color: #dde1ea;
+}
+
+#tutorDiscoveryRoot .reservation-content .backoffice-primary-button,
+#tutorDiscoveryRoot .reservation-content .action-button.primary {
+    -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-effect: dropshadow(gaussian, rgba(94, 77, 199, 0.20), 12, 0.18, 0, 4);
+}
+
+#tutorDiscoveryRoot .reservation-content .backoffice-primary-button:hover,
+#tutorDiscoveryRoot .reservation-content .action-button.primary:hover {
+    -fx-background-color: linear-gradient(to right, #6d5dd3 0%, #5b76d6 100%);
+}
+
+#tutorDiscoveryRoot .reservation-content .backoffice-secondary-button,
+#tutorDiscoveryRoot .reservation-content .action-button.secondary,
+#tutorDiscoveryRoot .reservation-content .backoffice-edit-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fd 100%);
+    -fx-border-color: #d7dcef;
+    -fx-border-width: 1px;
+    -fx-text-fill: #344158;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+}
+
+#tutorDiscoveryRoot .reservation-content .backoffice-secondary-button:hover,
+#tutorDiscoveryRoot .reservation-content .action-button.secondary:hover,
+#tutorDiscoveryRoot .reservation-content .backoffice-edit-button:hover {
+    -fx-background-color: #f4f2ff;
+    -fx-border-color: #c8c0f0;
+    -fx-text-fill: #5b49be;
+}
+
+#tutorDiscoveryRoot .reservation-content .backoffice-page-button.active-page {
+    -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .reservation-content .frontoffice-feedback.success {
+    -fx-background-color: #ecf7f0;
+    -fx-text-fill: #1d6b46;
+}
+
+#tutorDiscoveryRoot .reservation-content .frontoffice-feedback.error {
+    -fx-background-color: #fff0f1;
+    -fx-text-fill: #b9495a;
+}

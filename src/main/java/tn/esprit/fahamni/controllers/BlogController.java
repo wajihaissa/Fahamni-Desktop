@@ -37,6 +37,9 @@ public class BlogController {
     private Popup notifPopup;
 
     private static final int PAGE_SIZE = 6;
+    private static final int BLOG_CARD_COLUMNS = 3;
+    private static final double BLOG_CARD_COLLAPSED_HEIGHT = 244;
+    private static final double BLOG_CARD_EXCERPT_HEIGHT = 34;
     private int currentPage = 1;
     private List<Blog> currentBlogList = new ArrayList<>();
 
@@ -86,9 +89,6 @@ public class BlogController {
         sortComboBox.setOnAction(ev -> loadBlogs(applySorting(currentBlogList)));
 
         // Badge cloche + bannières
-        refreshBellBadge();
-        showTuteurNotifications();
-
         // Bouton "Creer un article" : visible uniquement pour les tuteurs
         tn.esprit.fahamni.Models.User u = tn.esprit.fahamni.utils.SessionManager.getCurrentUser();
         boolean canCreate = u != null && u.getRole() == tn.esprit.fahamni.Models.UserRole.TUTOR;
@@ -96,6 +96,8 @@ public class BlogController {
             createArticleBtn.setVisible(canCreate);
             createArticleBtn.setManaged(canCreate);
         }
+
+        setActiveCategoryButton(btnTous);
     }
 
     /** Affiche un toast temporaire (3 s) pour chaque notification non lue du tuteur */
@@ -182,7 +184,7 @@ public class BlogController {
 
         if (blogs.isEmpty()) {
             Label empty = new Label("Aucun article trouvé pour cette catégorie.");
-            empty.setStyle("-fx-text-fill: #7f8c8d; -fx-font-size: 14; -fx-padding: 30;");
+            empty.getStyleClass().add("blog-empty-label");
             blogsContainer.getChildren().add(empty);
             buildPaginationBar(0);
             return;
@@ -192,6 +194,11 @@ public class BlogController {
         int fromIdx = (currentPage - 1) * PAGE_SIZE;
         int toIdx = Math.min(fromIdx + PAGE_SIZE, total);
         List<Blog> pageBlogs = blogs.subList(fromIdx, toIdx);
+        GridPane grid = buildBlogGrid(pageBlogs);
+        blogsContainer.getChildren().add(grid);
+        buildPaginationBar(total);
+        return;
+/*
 
         // Grille 3 colonnes — toutes les cartes d'une rangée ont la même hauteur
         final int COLS = 3;
@@ -218,6 +225,37 @@ public class BlogController {
         }
 
         buildPaginationBar(total);
+*/
+    }
+
+    private GridPane buildBlogGrid(List<Blog> pageBlogs) {
+        GridPane grid = new GridPane();
+        grid.setHgap(14);
+        grid.setVgap(14);
+        grid.setMaxWidth(Double.MAX_VALUE);
+
+        for (int col = 0; col < BLOG_CARD_COLUMNS; col++) {
+            ColumnConstraints constraints = new ColumnConstraints();
+            constraints.setPercentWidth(100.0 / BLOG_CARD_COLUMNS);
+            constraints.setFillWidth(true);
+            constraints.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(constraints);
+        }
+
+        for (int index = 0; index < pageBlogs.size(); index++) {
+            VBox card;
+            try {
+                card = createBlogCard(pageBlogs.get(index));
+            } catch (Exception ex) {
+                card = new VBox();
+            }
+            card.setMaxWidth(Double.MAX_VALUE);
+            GridPane.setHgrow(card, Priority.ALWAYS);
+            GridPane.setFillWidth(card, true);
+            grid.add(card, index % BLOG_CARD_COLUMNS, index / BLOG_CARD_COLUMNS);
+        }
+
+        return grid;
     }
 
     private void buildPaginationBar(int total) {
@@ -238,7 +276,7 @@ public class BlogController {
 
         // Label "Affichage X-Y de Z article(s)"
         Label info = new Label("Affichage " + fromIdx + "-" + toIdx + " de " + total + " article(s)");
-        info.setStyle("-fx-font-size: 12; -fx-text-fill: #64748b;");
+        info.setStyle("-fx-font-size: 12; -fx-text-fill: #6f788b; -fx-font-weight: bold;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         paginationBar.getChildren().addAll(info, spacer);
@@ -257,7 +295,7 @@ public class BlogController {
                 // Ajouter "..." une seule fois par groupe
                 if (p == currentPage - 2 || p == currentPage + 2) {
                     Label dots = new Label("...");
-                    dots.setStyle("-fx-font-size: 12; -fx-text-fill: #94a3b8; -fx-padding: 0 4;");
+                    dots.setStyle("-fx-font-size: 12; -fx-text-fill: #98a1b4; -fx-padding: 0 4;");
                     paginationBar.getChildren().add(dots);
                 }
                 continue;
@@ -279,12 +317,14 @@ public class BlogController {
 
     private void stylePaginationBtn(Button btn, boolean active) {
         if (active) {
-            btn.setStyle("-fx-background-color: #3a7bd5; -fx-text-fill: white; " +
-                    "-fx-font-weight: bold; -fx-background-radius: 8; " +
-                    "-fx-padding: 5 11; -fx-font-size: 12; -fx-cursor: hand;");
+            btn.setStyle("-fx-background-color: linear-gradient(to right, #6b5dd3, #5068d1); -fx-text-fill: white; " +
+                    "-fx-font-weight: bold; -fx-background-radius: 10; " +
+                    "-fx-padding: 5 11; -fx-font-size: 12; -fx-cursor: hand; " +
+                    "-fx-effect: dropshadow(gaussian, rgba(95,73,191,0.16), 8, 0.14, 0, 2);");
         } else {
-            btn.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #475569; " +
-                    "-fx-background-radius: 8; -fx-padding: 5 11; -fx-font-size: 12; -fx-cursor: hand;");
+            btn.setStyle("-fx-background-color: linear-gradient(to bottom, #ffffff, #f6f4ff); -fx-text-fill: #4a5167; " +
+                    "-fx-border-color: #ddd8f4; -fx-border-width: 1; -fx-border-radius: 10; " +
+                    "-fx-background-radius: 10; -fx-padding: 5 11; -fx-font-size: 12; -fx-cursor: hand;");
         }
         btn.setMinWidth(Region.USE_PREF_SIZE);
     }
@@ -294,23 +334,31 @@ public class BlogController {
 
         // Carte — hauteur naturelle, toutes les cartes d'une même ligne s'égalisent via HBox
         VBox card = new VBox(0);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.09), 10, 0, 0, 3);");
+        card.getStyleClass().add("blog-card-shell");
+        card.setMinWidth(0);
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.setMinHeight(BLOG_CARD_COLLAPSED_HEIGHT);
+        card.setPrefHeight(BLOG_CARD_COLLAPSED_HEIGHT);
+        card.setMaxHeight(BLOG_CARD_COLLAPSED_HEIGHT);
+        card.setStyle("-fx-border-color: " + accent + " #e3e6ef #e3e6ef #e3e6ef; -fx-border-width: 3px 1px 1px 1px;");
 
         // ── Bande colorée fine en haut ──
         HBox topBar = new HBox(8);
         topBar.setPrefHeight(28);
         topBar.setMinHeight(28);
         topBar.setMaxHeight(28);
-        topBar.setPadding(new Insets(4, 10, 4, 10));
+        topBar.setPadding(new Insets(10, 14, 0, 14));
         topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setStyle("-fx-background-color: " + getBannerColor(blog.getImage()) + "; -fx-background-radius: 12 12 0 0;");
+        topBar.getStyleClass().add("blog-card-meta-row");
 
         Label catIcon = new Label(getCategoryIcon(blog.getImage()));
-        catIcon.setStyle("-fx-font-size: 14;");
+        catIcon.getStyleClass().add("blog-card-banner-icon");
+        catIcon.setTextFill(Color.web(accent));
         Label catBadge = new Label(getCategoryLabel(blog.getImage()));
-        catBadge.setStyle("-fx-text-fill: white; -fx-font-size: 10; -fx-font-weight: bold; " +
-                "-fx-background-color: rgba(0,0,0,0.2); -fx-background-radius: 8; -fx-padding: 2 6;");
+        catBadge.getStyleClass().add("blog-card-banner-badge");
+        catBadge.setStyle("-fx-background-color: " + withOpacity(accent, 0.10) + "; "
+                + "-fx-border-color: " + withOpacity(accent, 0.22) + "; "
+                + "-fx-text-fill: " + accent + ";");
 
         Region barSpacer = new Region(); HBox.setHgrow(barSpacer, Priority.ALWAYS);
 
@@ -318,39 +366,44 @@ public class BlogController {
                 ? blog.getPublishedAt().format(DATE_FORMATTER)
                 : (blog.getCreatedAt() != null ? blog.getCreatedAt().format(DATE_FORMATTER) : "");
         Label dateSmall = new Label(dateStr2);
-        dateSmall.setStyle("-fx-text-fill: rgba(255,255,255,0.85); -fx-font-size: 10;");
+        dateSmall.getStyleClass().add("blog-card-banner-date");
+        dateSmall.setTextFill(Color.web("#8b93a7"));
 
         topBar.getChildren().addAll(catIcon, catBadge, barSpacer, dateSmall);
         card.getChildren().add(topBar);
 
         // ── Corps principal ──
-        VBox body = new VBox(5);
-        body.setPadding(new Insets(8, 12, 6, 12));
+        VBox body = new VBox(7);
+        body.setPadding(new Insets(10, 14, 8, 14));
 
         // Titre — 1 ligne tronquée
         Label title = new Label(blog.getTitre());
         title.setMaxWidth(Double.MAX_VALUE);
-        title.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        title.setWrapText(false);
+        title.getStyleClass().add("blog-card-title");
         title.setTextOverrun(javafx.scene.control.OverrunStyle.ELLIPSIS);
+        title.setMinHeight(22);
+        title.setPrefHeight(22);
+        title.setMaxHeight(22);
 
         // Auteur inline
         HBox authorRow = new HBox(5);
         authorRow.setAlignment(Pos.CENTER_LEFT);
         StackPane avatar = new StackPane();
         avatar.setPrefSize(20, 20); avatar.setMinSize(20, 20); avatar.setMaxSize(20, 20);
-        avatar.setStyle("-fx-background-radius: 10; -fx-background-color: " + accent + ";");
+        avatar.setStyle("-fx-background-radius: 999; -fx-background-color: " + accent + ";");
         String initial = (blog.getPublishedBy() != null && !blog.getPublishedBy().isEmpty())
                 ? String.valueOf(blog.getPublishedBy().charAt(0)).toUpperCase() : "?";
         Label avatarLabel = new Label(initial);
-        avatarLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 9;");
+        avatarLabel.getStyleClass().add("blog-card-author-initial");
         avatar.getChildren().add(avatarLabel);
         Label authorName = new Label(blog.getPublishedBy() != null ? blog.getPublishedBy() : "Anonyme");
-        authorName.setStyle("-fx-font-size: 11; -fx-text-fill: #64748b;");
+        authorName.getStyleClass().add("blog-card-author-name");
         authorRow.getChildren().addAll(avatar, authorName);
 
         // Séparateur fin
         Separator sep1 = new Separator();
-        sep1.setStyle("-fx-opacity: 0.2;");
+        sep1.getStyleClass().add("blog-card-separator");
 
         // Extrait — tronqué à 80 chars, 2 lignes max
         String rawContent = blog.getContent() != null ? blog.getContent() : "";
@@ -360,7 +413,10 @@ public class BlogController {
 
         Label contentLabel = new Label(excerpt);
         contentLabel.setWrapText(true);
-        contentLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 11;");
+        contentLabel.getStyleClass().add("blog-card-excerpt");
+        contentLabel.setMinHeight(BLOG_CARD_EXCERPT_HEIGHT);
+        contentLabel.setPrefHeight(BLOG_CARD_EXCERPT_HEIGHT);
+        contentLabel.setMaxHeight(BLOG_CARD_EXCERPT_HEIGHT);
 
         body.getChildren().addAll(title, authorRow, sep1, contentLabel);
         card.getChildren().add(body);
@@ -385,7 +441,7 @@ public class BlogController {
 
         boolean alreadyLiked = blogService.hasUserLiked(blog.getId(), dbUserId);
 
-        Separator sepAct = new Separator(); sepAct.setStyle("-fx-opacity: 0.15;");
+        Separator sepAct = new Separator(); sepAct.getStyleClass().add("blog-card-separator");
         card.getChildren().add(sepAct);
         card.setMinWidth(0);
 
@@ -406,9 +462,9 @@ public class BlogController {
         Button btn3 = new Button("😮 " + r3);
         Button likeBtn = btn1; // alias pour compatibilité animation
 
-        styleReactionBtn(btn1, userReaction == 1);
-        styleReactionBtn(btn2, userReaction == 2);
-        styleReactionBtn(btn3, userReaction == 3);
+        styleReactionBtn(btn1, 1, userReaction == 1);
+        styleReactionBtn(btn2, 2, userReaction == 2);
+        styleReactionBtn(btn3, 3, userReaction == 3);
 
         final int[] currentReaction = {userReaction};
 
@@ -417,16 +473,16 @@ public class BlogController {
                 // Retirer la réaction
                 blogService.removeReaction(blog.getId(), dbUserId);
                 currentReaction[0] = 0;
-                styleReactionBtn(btn1, false);
-                styleReactionBtn(btn2, false);
-                styleReactionBtn(btn3, false);
+                styleReactionBtn(btn1, 1, false);
+                styleReactionBtn(btn2, 2, false);
+                styleReactionBtn(btn3, 3, false);
             } else {
                 // Nouvelle réaction
                 blogService.addReaction(blog.getId(), type, currentUserName);
                 currentReaction[0] = type;
-                styleReactionBtn(btn1, type == 1);
-                styleReactionBtn(btn2, type == 2);
-                styleReactionBtn(btn3, type == 3);
+                styleReactionBtn(btn1, 1, type == 1);
+                styleReactionBtn(btn2, 2, type == 2);
+                styleReactionBtn(btn3, 3, type == 3);
             }
             animateCounter(btn1, "👍 " + blogService.countReaction(blog.getId(), 1));
             animateCounter(btn2, "❤️ " + blogService.countReaction(blog.getId(), 2));
@@ -438,26 +494,20 @@ public class BlogController {
         btn3.setOnAction(e -> onReact.accept(btn3, 3));
 
         Button commentBtn = new Button("\uD83D\uDCAC " + commentsCount);
-        styleCompactBtn(commentBtn, "#f0f4ff", "#3a7bd5");
+        styleCompactBtn(commentBtn, "#eff2ff", "#5068d1", "#d9def6");
 
         Region actSpacer = new Region(); HBox.setHgrow(actSpacer, Priority.ALWAYS);
 
         // Bouton Lire la suite
-        Button readBtn = new Button("Lire \u2192");
-        readBtn.setStyle("-fx-background-color: " + accent + "; -fx-text-fill: white; " +
-                "-fx-background-radius: 8; -fx-padding: 4 10; -fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand;");
+        Button readBtn = new Button("Voir plus");
+        readBtn.getStyleClass().add("blog-card-read-button");
         readBtn.setMinWidth(Region.USE_PREF_SIZE);
         if (!isTruncated) { readBtn.setVisible(false); readBtn.setManaged(false); }
-        final boolean[] expanded = {false};
-        readBtn.setOnAction(e -> {
-            expanded[0] = !expanded[0];
-            contentLabel.setText(expanded[0] ? cleanContent : excerpt);
-            readBtn.setText(expanded[0] ? "\u2191 Moins" : "Lire \u2192");
-        });
+        readBtn.setOnAction(e -> openArticleDetail(blog));
 
         // Bouton Partager
         Button shareBtn = new Button("\uD83D\uDD17");
-        styleCompactBtn(shareBtn, "#f0f9ff", "#0284c7");
+        styleCompactBtn(shareBtn, "#f3f1ff", "#6656ca", "#ddd6fb");
         shareBtn.setTooltip(new Tooltip("Copier le titre et l'auteur"));
         shareBtn.setOnAction(e -> {
             String texte = "« " + blog.getTitre() + " »"
@@ -490,12 +540,12 @@ public class BlogController {
 
         if (isMyArticle) {
             Button editBtn = new Button("\u270F");
-            styleCompactBtn(editBtn, "#f5f0ff", "#8e44ad");
+            styleCompactBtn(editBtn, "#f4f0ff", "#7a5cd8", "#ddd3fb");
             editBtn.setTooltip(new Tooltip("Modifier mon article"));
             editBtn.setOnAction(e -> openEditForm(blog));
 
             Button deleteArticleBtn = new Button("\uD83D\uDDD1");
-            styleCompactBtn(deleteArticleBtn, "#fee2e2", "#dc2626");
+            styleCompactBtn(deleteArticleBtn, "#fff1f2", "#d1435b", "#fecdd3");
             deleteArticleBtn.setTooltip(new Tooltip("Supprimer mon article"));
             deleteArticleBtn.setOnAction(e -> {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Supprimer \"" + blog.getTitre() + "\" ?");
@@ -524,9 +574,9 @@ public class BlogController {
         commentsSection.setPadding(new Insets(0, 10, 10, 10));
         commentsSection.setManaged(false);
         commentsSection.setVisible(false);
-        commentsSection.setStyle("-fx-background-color: #f8faff; -fx-background-radius: 0 0 12 12;");
+        commentsSection.getStyleClass().add("blog-card-comments-shell");
 
-        Separator sepCom = new Separator(); sepCom.setStyle("-fx-opacity: 0.15;");
+        Separator sepCom = new Separator(); sepCom.getStyleClass().add("blog-card-separator");
 
         // ── Commentaires paginés (3 par défaut + "Voir plus") ──
         List<Interaction> commentList = new ArrayList<>();
@@ -543,7 +593,7 @@ public class BlogController {
         // Bouton "Voir plus" réutilisable
         Button voirPlusBtn = new Button();
         voirPlusBtn.setStyle(
-            "-fx-background-color: transparent; -fx-text-fill: #3a7bd5; " +
+            "-fx-background-color: transparent; -fx-text-fill: #5f49bf; " +
             "-fx-font-size: 11; -fx-font-weight: bold; -fx-cursor: hand; " +
             "-fx-padding: 4 0; -fx-underline: true;");
 
@@ -641,6 +691,15 @@ public class BlogController {
             boolean v = commentsSection.isVisible();
             commentsSection.setManaged(!v);
             commentsSection.setVisible(!v);
+            if (v) {
+                card.setMinHeight(BLOG_CARD_COLLAPSED_HEIGHT);
+                card.setPrefHeight(BLOG_CARD_COLLAPSED_HEIGHT);
+                card.setMaxHeight(BLOG_CARD_COLLAPSED_HEIGHT);
+            } else {
+                card.setMinHeight(Region.USE_COMPUTED_SIZE);
+                card.setPrefHeight(Region.USE_COMPUTED_SIZE);
+                card.setMaxHeight(Double.MAX_VALUE);
+            }
         });
 
         return card;
@@ -689,19 +748,63 @@ public class BlogController {
         btn.setMinWidth(Region.USE_PREF_SIZE);
     }
 
+    private void setDialogFieldError(Control control, boolean invalid) {
+        if (control == null) {
+            return;
+        }
+
+        if (invalid) {
+            if (!control.getStyleClass().contains("blog-dialog-field-error")) {
+                control.getStyleClass().add("blog-dialog-field-error");
+            }
+            return;
+        }
+
+        control.getStyleClass().remove("blog-dialog-field-error");
+    }
+
     private void styleCompactBtn(Button btn, String bg, String fg) {
+        styleCompactBtn(btn, bg, fg, "transparent");
+    }
+
+    private void styleCompactBtn(Button btn, String bg, String fg, String border) {
         btn.setStyle("-fx-background-color: " + bg + "; -fx-text-fill: " + fg + "; " +
+                "-fx-border-color: " + border + "; -fx-border-width: 1; -fx-border-radius: 8; " +
                 "-fx-background-radius: 8; -fx-padding: 4 10; -fx-font-size: 11; -fx-cursor: hand;");
         btn.setMinWidth(Region.USE_PREF_SIZE);
     }
 
-    private void styleReactionBtn(Button btn, boolean active) {
-        btn.setStyle(active
-            ? "-fx-background-color: #fef9c3; -fx-text-fill: #854d0e; -fx-background-radius: 8; " +
-              "-fx-padding: 4 10; -fx-font-size: 12; -fx-cursor: hand; " +
-              "-fx-border-color: #f59e0b; -fx-border-radius: 8; -fx-border-width: 1.5;"
-            : "-fx-background-color: #f8fafc; -fx-text-fill: #475569; -fx-background-radius: 8; " +
-              "-fx-padding: 4 10; -fx-font-size: 12; -fx-cursor: hand;");
+    private void styleReactionBtn(Button btn, int reactionType, boolean active) {
+        String background;
+        String text;
+        String border;
+
+        switch (reactionType) {
+            case 1 -> {
+                background = active ? "#eef2ff" : "#f8faff";
+                text = active ? "#4f63d2" : "#6b7bb5";
+                border = active ? "#cfd8ff" : "#e1e8f7";
+            }
+            case 2 -> {
+                background = active ? "#fff1f5" : "#fff7f9";
+                text = active ? "#d14378" : "#c16c90";
+                border = active ? "#ffc9da" : "#f4dbe4";
+            }
+            case 3 -> {
+                background = active ? "#fff6e9" : "#fffaf2";
+                text = active ? "#d48a2f" : "#bf9358";
+                border = active ? "#ffd9a8" : "#f2e4c9";
+            }
+            default -> {
+                background = active ? "#f2efff" : "#f8f9fc";
+                text = active ? "#5f49bf" : "#546074";
+                border = active ? "#d7cff8" : "#e1e5ef";
+            }
+        }
+
+        btn.setStyle("-fx-background-color: " + background + "; -fx-text-fill: " + text + "; " +
+                "-fx-background-radius: 8; -fx-padding: 4 10; -fx-font-size: 12; -fx-cursor: hand; " +
+                "-fx-border-color: " + border + "; -fx-border-radius: 8; -fx-border-width: " + (active ? "1.5" : "1") + ";");
         btn.setMinWidth(Region.USE_PREF_SIZE);
     }
 
@@ -723,7 +826,7 @@ public class BlogController {
         StackPane avatar = new StackPane();
         avatar.setPrefSize(32, 32);
         avatar.setMinSize(32, 32);
-        String color = isMine ? "#3a7bd5" : "#8e44ad";
+        String color = isMine ? "#5d68d8" : "#7d5bd8";
         avatar.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 16;");
         String initial = (author != null && !author.isEmpty())
                 ? String.valueOf(author.charAt(0)).toUpperCase() : "?";
@@ -733,7 +836,7 @@ public class BlogController {
 
         // Bulle avec nom + texte
         VBox bubble = new VBox(4);
-        bubble.setStyle("-fx-background-color: " + (isMine ? "#eaf4ff" : "#f5f7fa") + "; " +
+        bubble.setStyle("-fx-background-color: " + (isMine ? "#eff2ff" : "#f7f5ff") + "; " +
                 "-fx-padding: 8 12; -fx-background-radius: 12;");
         HBox.setHgrow(bubble, Priority.ALWAYS);
 
@@ -762,12 +865,12 @@ public class BlogController {
             TextField replyField = new TextField();
             replyField.setPromptText("Répondre à " + (author != null ? author : "Anonyme") + "...");
             replyField.setStyle("-fx-background-color: white; -fx-background-radius: 12; " +
-                "-fx-border-radius: 12; -fx-border-color: #3a7bd5; -fx-padding: 5 10; -fx-font-size: 11;");
+                "-fx-border-radius: 12; -fx-border-color: #6b5dd3; -fx-padding: 5 10; -fx-font-size: 11;");
             HBox.setHgrow(replyField, Priority.ALWAYS);
 
             Button sendReply = new Button("→");
             sendReply.setDisable(true);
-            sendReply.setStyle("-fx-background-color: #3a7bd5; -fx-text-fill: white; " +
+            sendReply.setStyle("-fx-background-color: #6b5dd3; -fx-text-fill: white; " +
                 "-fx-background-radius: 12; -fx-padding: 5 10; -fx-font-size: 11; -fx-cursor: hand;");
 
             replyField.textProperty().addListener((obs, o, n) ->
@@ -873,25 +976,40 @@ public class BlogController {
 
     // ---- Helpers visuels ----
     private String getBannerColor(String cat) {
-        if (cat == null) return "linear-gradient(to right, #3a7bd5, #00d2ff)";
+        if (cat == null) return "linear-gradient(to right, #6870d8, #93a0f1)";
         switch (cat.toLowerCase()) {
-            case "math": return "linear-gradient(to right, #3a7bd5, #1a5fb4)";
-            case "physique": case "science": return "linear-gradient(to right, #f7971e, #ffd200)";
-            case "informatique": return "linear-gradient(to right, #8e44ad, #e91e8c)";
-            case "langue": return "linear-gradient(to right, #11998e, #38ef7d)";
-            default: return "linear-gradient(to right, #636e72, #b2bec3)";
+            case "math": return "linear-gradient(to right, #5d68d8, #7f8df0)";
+            case "physique": case "science": return "linear-gradient(to right, #6f61d4, #938cf0)";
+            case "informatique": return "linear-gradient(to right, #7d5bd8, #a178ee)";
+            case "langue": return "linear-gradient(to right, #5f7ed9, #8ea4f2)";
+            default: return "linear-gradient(to right, #6d748f, #9ca5c8)";
         }
     }
 
     private String getAvatarColor(String cat) {
-        if (cat == null) return "#3a7bd5";
+        if (cat == null) return "#6870d8";
         switch (cat.toLowerCase()) {
-            case "math": return "#3a7bd5";
-            case "physique": case "science": return "#f7971e";
-            case "informatique": return "#8e44ad";
-            case "langue": return "#11998e";
-            default: return "#636e72";
+            case "math": return "#5d68d8";
+            case "physique": case "science": return "#6f61d4";
+            case "informatique": return "#7d5bd8";
+            case "langue": return "#5f7ed9";
+            default: return "#6d748f";
         }
+    }
+
+    private String withOpacity(String hexColor, double opacity) {
+        Color color = Color.web(hexColor);
+        return String.format("rgba(%d,%d,%d,%.2f)",
+                (int) Math.round(color.getRed() * 255),
+                (int) Math.round(color.getGreen() * 255),
+                (int) Math.round(color.getBlue() * 255),
+                opacity);
+    }
+
+    private double computeArticleDialogHeight(String content) {
+        String cleanContent = cleanMarkdown(content == null ? "" : content).trim();
+        int estimatedLines = Math.max(1, (int) Math.ceil(cleanContent.length() / 65.0));
+        return Math.max(430, Math.min(680, 332 + (estimatedLines * 18)));
     }
 
     private String getCategoryLabel(String cat) {
@@ -923,37 +1041,36 @@ public class BlogController {
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setTitle(blog.getTitre());
         dialog.setMinWidth(660);
-        dialog.setMinHeight(500);
+        dialog.setMinHeight(420);
 
         VBox root = new VBox(0);
-        root.setStyle("-fx-background-color: #f0f4f8;");
+        root.getStyleClass().addAll("blog-dialog-root", "blog-view-root");
 
         // Bannière
         StackPane banner = new StackPane();
-        banner.setPrefHeight(160);
+        banner.setPrefHeight(180);
+        banner.getStyleClass().add("blog-view-banner");
         banner.setStyle("-fx-background-color: " + getBannerColor(blog.getImage()) + ";");
 
         Label icon = new Label(getCategoryIcon(blog.getImage()));
-        icon.setStyle("-fx-font-size: 64; -fx-opacity: 0.25;");
+        icon.getStyleClass().add("blog-view-banner-icon");
         StackPane.setAlignment(icon, Pos.CENTER_RIGHT);
-        StackPane.setMargin(icon, new Insets(0, 30, 0, 0));
+        StackPane.setMargin(icon, new Insets(0, 34, 0, 0));
 
         Label badge = new Label(getCategoryLabel(blog.getImage()));
-        badge.setStyle("-fx-background-color: rgba(0,0,0,0.25); -fx-text-fill: white; " +
-                "-fx-font-weight: bold; -fx-padding: 5 14; -fx-background-radius: 20; -fx-font-size: 12;");
+        badge.getStyleClass().add("blog-view-badge");
         StackPane.setAlignment(badge, Pos.BOTTOM_LEFT);
-        StackPane.setMargin(badge, new Insets(0, 0, 16, 20));
+        StackPane.setMargin(badge, new Insets(0, 0, 22, 24));
 
         VBox titleBox = new VBox(6);
         titleBox.setAlignment(Pos.BOTTOM_LEFT);
-        StackPane.setMargin(titleBox, new Insets(0, 0, 40, 20));
+        StackPane.setMargin(titleBox, new Insets(0, 0, 52, 24));
         StackPane.setAlignment(titleBox, Pos.BOTTOM_LEFT);
 
         Label titleLabel = new Label(blog.getTitre());
         titleLabel.setWrapText(true);
         titleLabel.setMaxWidth(560);
-        titleLabel.setStyle("-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 6, 0, 0, 2);");
+        titleLabel.getStyleClass().add("blog-view-title");
         titleBox.getChildren().add(titleLabel);
 
         banner.getChildren().addAll(icon, badge, titleBox);
@@ -961,62 +1078,70 @@ public class BlogController {
         // Corps de l'article
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        scrollPane.setFitToHeight(true);
+        scrollPane.getStyleClass().add("blog-view-scroll");
         scrollPane.setFocusTraversable(false);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         VBox body = new VBox(18);
-        body.setPadding(new Insets(24, 30, 24, 30));
-        body.setStyle("-fx-background-color: white;");
+        body.setPadding(new Insets(26, 30, 28, 30));
+        body.getStyleClass().add("blog-view-body");
 
         // Méta (auteur + date)
         HBox meta = new HBox(12);
         meta.setAlignment(Pos.CENTER_LEFT);
+        meta.getStyleClass().add("blog-view-meta");
 
         StackPane avatar = new StackPane();
         avatar.setPrefSize(44, 44);
         avatar.setMinSize(44, 44);
-        avatar.setStyle("-fx-background-radius: 22; -fx-background-color: " + getAvatarColor(blog.getImage()) + ";");
+        avatar.getStyleClass().add("blog-view-avatar");
+        avatar.setStyle("-fx-background-color: " + getAvatarColor(blog.getImage()) + ";");
         String initial = (blog.getPublishedBy() != null && !blog.getPublishedBy().isEmpty())
                 ? String.valueOf(blog.getPublishedBy().charAt(0)).toUpperCase() : "?";
         Label avatarLabel = new Label(initial);
-        avatarLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 18;");
+        avatarLabel.getStyleClass().add("blog-view-avatar-label");
         avatar.getChildren().add(avatarLabel);
 
         VBox authorBox = new VBox(2);
         Label authorName = new Label(blog.getPublishedBy() != null ? blog.getPublishedBy() : "Anonyme");
-        authorName.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 14;");
+        authorName.getStyleClass().add("blog-view-author-name");
         String dateStr = blog.getPublishedAt() != null
                 ? blog.getPublishedAt().format(DATE_FORMATTER)
                 : (blog.getCreatedAt() != null ? blog.getCreatedAt().format(DATE_FORMATTER) : "");
         Label dateLabel = new Label("\uD83D\uDCC5  " + dateStr);
-        dateLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-size: 12;");
+        dateLabel.getStyleClass().add("blog-view-date");
         authorBox.getChildren().addAll(authorName, dateLabel);
 
         meta.getChildren().addAll(avatar, authorBox);
 
         Separator sep = new Separator();
-        sep.setStyle("-fx-opacity: 0.3;");
+        sep.getStyleClass().add("blog-view-separator");
 
         // Contenu complet
         Label fullContent = new Label(blog.getContent());
         fullContent.setWrapText(true);
-        fullContent.setStyle("-fx-text-fill: #2c3e50; -fx-font-size: 14; -fx-line-spacing: 7;");
+        fullContent.getStyleClass().add("blog-view-content");
+
+        Region viewSpacer = new Region();
+        VBox.setVgrow(viewSpacer, Priority.ALWAYS);
 
         // Bouton fermer
         Button closeBtn = new Button("Fermer");
-        closeBtn.setStyle("-fx-background-color: #ecf0f1; -fx-text-fill: #2c3e50; " +
-                "-fx-background-radius: 10; -fx-padding: 10 28; -fx-font-size: 13; -fx-cursor: hand;");
+        closeBtn.getStyleClass().add("blog-dialog-button-secondary");
         closeBtn.setOnAction(e -> dialog.close());
         HBox closebar = new HBox();
         closebar.setAlignment(Pos.CENTER_RIGHT);
+        closebar.getStyleClass().add("blog-view-closebar");
         closebar.getChildren().add(closeBtn);
 
-        body.getChildren().addAll(meta, sep, fullContent, closebar);
+        body.getChildren().addAll(meta, sep, fullContent, viewSpacer, closebar);
         scrollPane.setContent(body);
 
         root.getChildren().addAll(banner, scrollPane);
 
-        Scene scene = new Scene(root, 680, 580);
+        Scene scene = new Scene(root, 680, computeArticleDialogHeight(blog.getContent()));
+        tn.esprit.fahamni.utils.FrontOfficeUiTheme.applyBlogDialog(scene);
         dialog.setScene(scene);
         dialog.showAndWait();
     }
@@ -1029,56 +1154,52 @@ public class BlogController {
         dialog.setMinWidth(560);
 
         VBox root = new VBox(0);
-        root.setStyle("-fx-background-color: #f0f4f8;");
+        root.getStyleClass().addAll("blog-dialog-root", "blog-edit-dialog-root");
 
         // En-tête
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(20, 24, 20, 24));
-        header.setStyle("-fx-background-color: linear-gradient(to right, #8e44ad, #e91e8c);");
+        header.getStyleClass().add("blog-dialog-header");
         Label headerTitle = new Label("\u270F\uFE0F  Modifier l'Article");
-        headerTitle.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: white;");
+        headerTitle.getStyleClass().add("blog-dialog-header-title");
         header.getChildren().add(headerTitle);
 
         VBox form = new VBox(16);
-        form.setPadding(new Insets(24));
+        form.getStyleClass().add("blog-dialog-form");
 
         // Titre
         VBox titreGroup = new VBox(6);
         Label titreLabel = new Label("Titre de l'article *");
-        titreLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        titreLabel.getStyleClass().add("blog-dialog-label");
         TextField titreField = new TextField(blog.getTitre());
-        titreField.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+        titreField.getStyleClass().add("blog-dialog-field");
         titreGroup.getChildren().addAll(titreLabel, titreField);
 
         // Catégorie
         VBox catGroup = new VBox(6);
         Label catLabel = new Label("Catégorie *");
-        catLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        catLabel.getStyleClass().add("blog-dialog-label");
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll("math", "physique", "science", "informatique", "langue", "autre");
         catBox.setValue(blog.getImage() != null ? blog.getImage() : "autre");
         catBox.setMaxWidth(Double.MAX_VALUE);
-        catBox.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-font-size: 13;");
+        catBox.getStyleClass().add("blog-dialog-field");
         catGroup.getChildren().addAll(catLabel, catBox);
 
         // Image
         final String[] selectedImagePath = {blog.getImage()};
         VBox imageGroup = new VBox(6);
         Label imageLabel = new Label("Image de l'article (optionnel)");
-        imageLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        imageLabel.getStyleClass().add("blog-dialog-label");
         HBox imageRow = new HBox(10);
-        imageRow.setAlignment(Pos.CENTER_LEFT);
+        imageRow.getStyleClass().add("blog-dialog-file-row");
         String currentImg = blog.getImage() != null ? blog.getImage() : "Aucune image";
         Label imagePathLabel = new Label(currentImg);
-        imagePathLabel.setStyle("-fx-text-fill: #2c3e50; -fx-font-size: 12;");
+        imagePathLabel.getStyleClass().add("blog-dialog-image-path");
         imagePathLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(imagePathLabel, Priority.ALWAYS);
         Button browseBtn = new Button("\uD83D\uDCC1  Parcourir...");
-        browseBtn.setStyle("-fx-background-color: #8e44ad; -fx-text-fill: white; " +
-                "-fx-background-radius: 8; -fx-padding: 8 16; -fx-font-size: 12; -fx-cursor: hand;");
+        browseBtn.getStyleClass().add("blog-dialog-button-browse");
         browseBtn.setOnAction(e -> {
             javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
             fileChooser.setTitle("Choisir une image");
@@ -1096,30 +1217,27 @@ public class BlogController {
 
         // Contenu
         VBox contentGroup = new VBox(6);
+        contentGroup.getStyleClass().add("blog-dialog-group");
         Label contentLabel = new Label("Contenu de l'article *");
-        contentLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        contentLabel.getStyleClass().add("blog-dialog-label");
         TextArea contentArea = new TextArea(blog.getContent());
         contentArea.setPrefRowCount(7);
         contentArea.setWrapText(true);
-        contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+        contentArea.getStyleClass().add("blog-dialog-field");
         contentGroup.getChildren().addAll(contentLabel, contentArea);
 
         Label errorLabel = new Label("");
-        errorLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 12;");
+        errorLabel.getStyleClass().add("blog-dialog-error-message");
 
         HBox buttons = new HBox(12);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
+        buttons.getStyleClass().add("blog-dialog-actions");
 
         Button cancelBtn = new Button("Annuler");
-        cancelBtn.setStyle("-fx-background-color: #ecf0f1; -fx-text-fill: #2c3e50; " +
-                "-fx-background-radius: 10; -fx-padding: 10 24; -fx-font-size: 13; -fx-cursor: hand;");
+        cancelBtn.getStyleClass().add("blog-dialog-button-secondary");
         cancelBtn.setOnAction(e -> dialog.close());
 
         Button saveBtn = new Button("\u2705  Enregistrer les modifications");
-        saveBtn.setStyle("-fx-background-color: linear-gradient(to right, #8e44ad, #e91e8c); " +
-                "-fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; " +
-                "-fx-padding: 10 24; -fx-font-size: 13; -fx-cursor: hand;");
+        saveBtn.getStyleClass().add("blog-dialog-button-primary");
         saveBtn.setOnAction(e -> {
             String titre = titreField.getText().trim();
             String content = contentArea.getText().trim();
@@ -1143,6 +1261,7 @@ public class BlogController {
         root.getChildren().addAll(header, form);
 
         Scene scene = new Scene(root);
+        tn.esprit.fahamni.utils.FrontOfficeUiTheme.applyBlogDialog(scene);
         dialog.setScene(scene);
         dialog.showAndWait();
     }
@@ -1156,57 +1275,62 @@ public class BlogController {
         dialog.setMinWidth(560);
 
         VBox root = new VBox(0);
-        root.setStyle("-fx-background-color: #f0f4f8;");
+        root.getStyleClass().add("blog-dialog-root");
 
         // En-tête du formulaire
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(20, 24, 20, 24));
-        header.setStyle("-fx-background-color: linear-gradient(to right, #3a7bd5, #00d2ff);");
+        header.getStyleClass().add("blog-dialog-header");
         Label headerTitle = new Label("✏️  Nouvel Article");
-        headerTitle.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: white;");
+        headerTitle.getStyleClass().add("blog-dialog-header-title");
         header.getChildren().add(headerTitle);
 
         // Corps du formulaire
         VBox form = new VBox(16);
-        form.setPadding(new Insets(24));
+        form.getStyleClass().add("blog-dialog-form");
 
         // Titre
         VBox titreGroup = new VBox(6);
+        titreGroup.getStyleClass().add("blog-dialog-group");
+        titreGroup.getStyleClass().add("blog-dialog-group");
+        titreGroup.getStyleClass().add("blog-dialog-group");
         Label titreLabel = new Label("Titre de l'article *");
-        titreLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        titreLabel.getStyleClass().add("blog-dialog-label");
         TextField titreField = new TextField();
         titreField.setPromptText("Ex: Les bases de l'algèbre...");
-        titreField.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+        titreField.getStyleClass().add("blog-dialog-field");
         titreGroup.getChildren().addAll(titreLabel, titreField);
 
         // Catégorie
         VBox catGroup = new VBox(6);
+        catGroup.getStyleClass().add("blog-dialog-group");
+        catGroup.getStyleClass().add("blog-dialog-group");
+        catGroup.getStyleClass().add("blog-dialog-group");
         Label catLabel = new Label("Catégorie *");
-        catLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        catLabel.getStyleClass().add("blog-dialog-label");
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll("math", "physique", "science", "informatique", "langue", "autre");
         catBox.setPromptText("Choisir une catégorie");
         catBox.setMaxWidth(Double.MAX_VALUE);
-        catBox.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-font-size: 13;");
+        catBox.getStyleClass().add("blog-dialog-field");
         catGroup.getChildren().addAll(catLabel, catBox);
 
         // Image - Parcourir depuis PC
         final String[] selectedImagePath = {null};
         VBox imageGroup = new VBox(6);
+        imageGroup.getStyleClass().add("blog-dialog-group");
+        imageGroup.getStyleClass().add("blog-dialog-group");
+        imageGroup.getStyleClass().add("blog-dialog-group");
         Label imageLabel = new Label("Image de l'article (optionnel)");
-        imageLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        imageLabel.getStyleClass().add("blog-dialog-label");
         HBox imageRow = new HBox(10);
-        imageRow.setAlignment(Pos.CENTER_LEFT);
+        imageRow.getStyleClass().add("blog-dialog-file-row");
         Label imagePathLabel = new Label("Aucune image sélectionnée");
-        imagePathLabel.setStyle("-fx-text-fill: #95a5a6; -fx-font-size: 12;");
+        imagePathLabel.getStyleClass().add("blog-dialog-image-path");
         imagePathLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(imagePathLabel, Priority.ALWAYS);
         Button browseBtn = new Button("📁  Parcourir...");
-        browseBtn.setStyle("-fx-background-color: #3a7bd5; -fx-text-fill: white; " +
-                "-fx-background-radius: 8; -fx-padding: 8 16; -fx-font-size: 12; -fx-cursor: hand;");
+        browseBtn.getStyleClass().add("blog-dialog-button-browse");
         browseBtn.setOnAction(e -> {
             javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
             fileChooser.setTitle("Choisir une image");
@@ -1217,7 +1341,7 @@ public class BlogController {
             if (file != null) {
                 selectedImagePath[0] = file.toURI().toString();
                 imagePathLabel.setText(file.getName());
-                imagePathLabel.setStyle("-fx-text-fill: #2c3e50; -fx-font-size: 12;");
+                imagePathLabel.setStyle("-fx-text-fill: #243147; -fx-font-size: 12px; -fx-font-weight: bold;");
             }
         });
         imageRow.getChildren().addAll(imagePathLabel, browseBtn);
@@ -1226,16 +1350,16 @@ public class BlogController {
         // Contenu + compteur X/500
         final int MAX_CONTENT = 500;
         VBox contentGroup = new VBox(4);
+        contentGroup.getStyleClass().add("blog-dialog-group");
         Label contentLabel = new Label("Contenu de l'article *  (min. 20 · max. 500 caractères)");
-        contentLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-font-size: 13;");
+        contentLabel.getStyleClass().add("blog-dialog-label");
         TextArea contentArea = new TextArea();
         contentArea.setPromptText("Rédigez votre article ici...");
         contentArea.setPrefRowCount(7);
         contentArea.setWrapText(true);
-        contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+        contentArea.getStyleClass().add("blog-dialog-field");
         Label contentCounter = new Label("0/" + MAX_CONTENT);
-        contentCounter.setStyle("-fx-font-size: 11; -fx-text-fill: #94a3b8;");
+        contentCounter.getStyleClass().add("blog-dialog-counter");
         contentArea.textProperty().addListener((obs, o, n) -> {
             if (n != null && n.length() > MAX_CONTENT) {
                 contentArea.setText(o); // bloquer au-delà de 500
@@ -1243,26 +1367,26 @@ public class BlogController {
             }
             int len = n == null ? 0 : n.trim().length();
             contentCounter.setText(len + "/" + MAX_CONTENT);
-            String color = len < 20 ? "#e74c3c" : (len > 450 ? "#f59e0b" : "#10b981");
+            String color = len < 20 ? "#d1435b" : (len > 450 ? "#d48a2f" : "#5f49bf");
             contentCounter.setStyle("-fx-font-size: 11; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
         });
         contentGroup.getChildren().addAll(contentLabel, contentArea, contentCounter);
 
         // Compteur titre
         Label titreCounter = new Label("0/100");
-        titreCounter.setStyle("-fx-font-size: 11; -fx-text-fill: #94a3b8;");
+        titreCounter.getStyleClass().add("blog-dialog-counter");
         titreField.textProperty().addListener((obs, o, n) -> {
             int len = n == null ? 0 : n.length();
             // Bloquer à 100 caractères
             if (len > 100) { titreField.setText(o); return; }
             titreCounter.setText(len + "/100");
-            titreCounter.setStyle("-fx-font-size: 11; -fx-text-fill: " + (len < 5 ? "#e74c3c" : "#10b981") + ";");
+            titreCounter.setStyle("-fx-font-size: 11; -fx-font-weight: bold; -fx-text-fill: " + (len < 5 ? "#d1435b" : "#5f49bf") + ";");
         });
         titreGroup.getChildren().add(titreCounter);
 
         // Message d'erreur
         Label errorLabel = new Label("");
-        errorLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-size: 12; -fx-font-weight: bold;");
+        errorLabel.getStyleClass().add("blog-dialog-error-message");
         errorLabel.setWrapText(true);
 
         // Anti-spam : bloquer si 2 soumissions en moins de 30 secondes
@@ -1270,41 +1394,41 @@ public class BlogController {
 
         // Boutons
         HBox buttons = new HBox(12);
-        buttons.setAlignment(Pos.CENTER_RIGHT);
+        buttons.getStyleClass().add("blog-dialog-actions");
 
         Button cancelBtn = new Button("Annuler");
-        cancelBtn.setStyle("-fx-background-color: #ecf0f1; -fx-text-fill: #2c3e50; " +
-                "-fx-background-radius: 10; -fx-padding: 10 24; -fx-font-size: 13; -fx-cursor: hand;");
+        cancelBtn.getStyleClass().add("blog-dialog-button-secondary");
         cancelBtn.setOnAction(e -> dialog.close());
 
         Button saveBtn = new Button("✅  Publier l'article");
-        saveBtn.setStyle("-fx-background-color: linear-gradient(to right, #3a7bd5, #00d2ff); " +
-                "-fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; " +
-                "-fx-padding: 10 24; -fx-font-size: 13; -fx-cursor: hand;");
+        saveBtn.getStyleClass().add("blog-dialog-button-primary");
         saveBtn.setOnAction(e -> {
             String titre   = titreField.getText().trim();
             String content = contentArea.getText().trim();
             String cat     = catBox.getValue();
+            setDialogFieldError(titreField, false);
+            setDialogFieldError(contentArea, false);
+            setDialogFieldError(catBox, false);
+            errorLabel.setText("");
 
             // ── Contrôle 1 : Titre obligatoire (5–100 caractères) ──
             if (titre.length() < 5) {
                 errorLabel.setText("⚠️  Le titre doit contenir au moins 5 caractères.");
-                titreField.setStyle(titreField.getStyle().replace("#d0d9e8", "#e74c3c") +
-                    "; -fx-border-color: #e74c3c;");
+                setDialogFieldError(titreField, true);
                 return;
             }
 
             // ── Contrôle 2 : Contenu obligatoire (min. 20 caractères) ──
             if (content.length() < 20) {
                 errorLabel.setText("⚠️  Le contenu doit contenir au moins 20 caractères.");
-                contentArea.setStyle(contentArea.getStyle() + "; -fx-border-color: #e74c3c;");
+                setDialogFieldError(contentArea, true);
                 return;
             }
 
             // ── Contrôle 3 : Catégorie obligatoire ──
             if (cat == null || cat.isBlank()) {
                 errorLabel.setText("⚠️  Veuillez sélectionner une catégorie.");
-                catBox.setStyle(catBox.getStyle() + "; -fx-border-color: #e74c3c;");
+                setDialogFieldError(catBox, true);
                 return;
             }
 
@@ -1316,12 +1440,7 @@ public class BlogController {
                 return;
             }
 
-            // Réinitialiser les styles
-            errorLabel.setText("");
-            titreField.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
-            contentArea.setStyle("-fx-background-color: white; -fx-border-color: #d0d9e8; " +
-                "-fx-border-radius: 8; -fx-background-radius: 8; -fx-padding: 10 12; -fx-font-size: 13;");
+            // Validation passée, publication autorisée
 
             // Décaler les timestamps : [0]=avant-dernière, [1]=dernière
             submitTimes[0] = submitTimes[1];
@@ -1347,6 +1466,7 @@ public class BlogController {
         root.getChildren().addAll(header, form);
 
         Scene scene = new Scene(root);
+        tn.esprit.fahamni.utils.FrontOfficeUiTheme.applyBlogDialog(scene);
         dialog.setScene(scene);
         dialog.showAndWait();
     }
@@ -1395,27 +1515,44 @@ public class BlogController {
     }
 
     @FXML private void filterTous() {
+        setActiveCategoryButton(btnTous);
         loadBlogs(applySorting(blogService.getAllBlogs()));
     }
 
     @FXML private void filterMath() {
+        setActiveCategoryButton(btnMath);
         loadBlogs(applySorting(blogService.filterByCategory("math")));
     }
 
     @FXML private void filterScience() {
+        setActiveCategoryButton(btnScience);
         loadBlogs(applySorting(blogService.filterByCategory("physique", "science")));
     }
 
     @FXML private void filterInfo() {
+        setActiveCategoryButton(btnInfo);
         loadBlogs(applySorting(blogService.filterByCategory("informatique")));
     }
 
     @FXML private void filterLangue() {
+        setActiveCategoryButton(btnLangue);
         loadBlogs(applySorting(blogService.filterByCategory("langue")));
     }
 
     @FXML private void filterAutre() {
+        setActiveCategoryButton(btnAutre);
         loadBlogs(applySorting(blogService.filterByCategory("autre", "study-tips")));
+    }
+
+    private void setActiveCategoryButton(Button activeButton) {
+        List<Button> filterButtons = List.of(btnTous, btnMath, btnScience, btnInfo, btnLangue, btnAutre);
+        for (Button button : filterButtons) {
+            if (button == null) continue;
+            button.getStyleClass().remove("active");
+        }
+        if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
+            activeButton.getStyleClass().add("active");
+        }
     }
 
     /** Popup informant le tuteur que son article est en attente de validation */
@@ -1476,14 +1613,14 @@ public class BlogController {
         container.setStyle(
             "-fx-background-color: white; -fx-background-radius: 14;" +
             "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);" +
-            "-fx-border-color: #e2e8f0; -fx-border-radius: 14; -fx-border-width: 1;");
+            "-fx-border-color: #e3e6ef; -fx-border-radius: 14; -fx-border-width: 1;");
         container.setPrefWidth(340);
 
         // En-tête
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(14, 16, 12, 16));
-        header.setStyle("-fx-background-color: linear-gradient(to right,#3a7bd5,#00d2ff);" +
+        header.setStyle("-fx-background-color: linear-gradient(to right,#6b5dd3,#5068d1);" +
                         "-fx-background-radius: 14 14 0 0;");
         Label titleLbl = new Label("🔔  Mes Notifications");
         titleLbl.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white;");
@@ -1630,3 +1767,4 @@ public class BlogController {
         popup.showAndWait();
     }
 }
+

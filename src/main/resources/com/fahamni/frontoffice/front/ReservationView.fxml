@@ -5,16 +5,16 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.Separator?>
 
-<ScrollPane fitToWidth="true" styleClass="reservation-scroll"
+<ScrollPane id="tutorDiscoveryRoot" fitToWidth="true" styleClass="reservation-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.ReservationController">
-    <VBox spacing="20.0" styleClass="reservation-content">
+    <VBox id="tutorDiscoveryContent" spacing="20.0" styleClass="reservation-content">
         <padding>
-            <Insets top="20" right="20" bottom="20" left="20"/>
+            <Insets top="8" right="20" bottom="20" left="20"/>
         </padding>
 
-        <VBox spacing="18.0" styleClass="reservation-workspace">
+        <VBox id="tutorDiscoveryHero" spacing="18.0" styleClass="reservation-workspace">
             <HBox alignment="TOP_LEFT" spacing="24.0">
                 <VBox spacing="10.0" HBox.hgrow="ALWAYS">
                     <Label text="FIND TUTORS WORKSPACE" styleClass="workspace-eyebrow"/>
@@ -149,7 +149,7 @@
                             <HBox alignment="CENTER_LEFT" spacing="10.0">
                                 <Label text="Salle" styleClass="infrastructure-detail-section-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
-                                <Label fx:id="sessionRoomStatusChipLabel" text="En attente" styleClass="status-chip unavailable"/>
+                                <Label fx:id="sessionRoomStatusChipLabel" text="En attente" styleClass="status-chip pending"/>
                             </HBox>
 
                             <Label fx:id="sessionRoomAvailabilityHintLabel" text="Selectionnez le creneau pour verifier les disponibilites." wrapText="true" styleClass="reservation-section-copy"/>
