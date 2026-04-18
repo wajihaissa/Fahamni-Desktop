@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 public final class FrontOfficeUiTheme {
 
     private static final String STYLESHEET = "/com/fahamni/styles/frontoffice-theme.css";
+    private static final String LOGIN_STYLESHEET = "/com/fahamni/styles/frontoffice-login.css";
     private static final String DASHBOARD_STYLESHEET = "/com/fahamni/styles/frontoffice-dashboard.css";
     private static final String RESERVATION_STYLESHEET = "/com/fahamni/styles/frontoffice-reservation.css";
     private static final String CALENDAR_STYLESHEET = "/com/fahamni/styles/frontoffice-calendar.css";
@@ -17,6 +18,16 @@ public final class FrontOfficeUiTheme {
 
     public static void apply(Scene scene) {
         UiTheme.apply(scene, STYLESHEET);
+    }
+
+    public static void apply(Scene scene, String fxmlPath) {
+        String stylesheet = resolveViewStylesheet(fxmlPath);
+        if (stylesheet == null) {
+            UiTheme.apply(scene, STYLESHEET);
+            return;
+        }
+
+        UiTheme.apply(scene, STYLESHEET, stylesheet);
     }
 
     public static void applyBlogDialog(Scene scene) {
@@ -39,6 +50,7 @@ public final class FrontOfficeUiTheme {
 
         String fileName = fxmlPath.substring(fxmlPath.lastIndexOf('/') + 1);
         return switch (fileName) {
+            case "LoginView.fxml" -> LOGIN_STYLESHEET;
             case "DashboardView.fxml" -> DASHBOARD_STYLESHEET;
             case "ReservationView.fxml" -> RESERVATION_STYLESHEET;
             case "SeanceListView.fxml" -> CALENDAR_STYLESHEET;

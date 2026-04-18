@@ -1,18 +1,25 @@
 package tn.esprit.fahamni.controllers;
 
-import tn.esprit.fahamni.test.Main;
-import tn.esprit.fahamni.Models.User;
-import tn.esprit.fahamni.Models.UserRole;
-import tn.esprit.fahamni.services.AuthService;
-import tn.esprit.fahamni.utils.OperationResult;
-import tn.esprit.fahamni.utils.UserSession;
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.Models.User;
+import tn.esprit.fahamni.Models.UserRole;
+import tn.esprit.fahamni.services.AuthService;
+import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserSession;
 
 public class LoginController {
 
@@ -58,6 +65,18 @@ public class LoginController {
     private Label registerMessageLabel;
 
     @FXML
+    private AnchorPane loginRoot;
+
+    @FXML
+    private VBox brandBlock;
+
+    @FXML
+    private VBox loginFormCard;
+
+    @FXML
+    private ImageView loginArtImage;
+
+    @FXML
     public void initialize() {
         if (roleComboBox != null) {
             roleComboBox.getItems().setAll("Student", "Tutor");
@@ -66,6 +85,7 @@ public class LoginController {
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
         switchMode(true);
+        playIntroAnimation();
     }
 
     @FXML
@@ -141,10 +161,28 @@ public class LoginController {
     }
 
     private void switchMode(boolean signInMode) {
-        signInPane.setManaged(signInMode);
-        signInPane.setVisible(signInMode);
-        signUpPane.setManaged(!signInMode);
-        signUpPane.setVisible(!signInMode);
+        VBox activePane = signInMode ? signInPane : signUpPane;
+        VBox inactivePane = signInMode ? signUpPane : signInPane;
+
+        inactivePane.setOpacity(0.0);
+        inactivePane.setTranslateX(signInMode ? 16.0 : -16.0);
+        inactivePane.setManaged(false);
+        inactivePane.setVisible(false);
+
+        activePane.setManaged(true);
+        activePane.setVisible(true);
+        activePane.setOpacity(0.0);
+        activePane.setTranslateX(signInMode ? -16.0 : 16.0);
+
+        FadeTransition fadeTransition = new FadeTransition(Duration.millis(260), activePane);
+        fadeTransition.setFromValue(0.0);
+        fadeTransition.setToValue(1.0);
+
+        TranslateTransition slideTransition = new TranslateTransition(Duration.millis(260), activePane);
+        slideTransition.setFromX(signInMode ? -16.0 : 16.0);
+        slideTransition.setToX(0.0);
+
+        new ParallelTransition(fadeTransition, slideTransition).play();
 
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
@@ -172,5 +210,54 @@ public class LoginController {
         label.getStyleClass().setAll("login-message-label");
         label.setManaged(false);
         label.setVisible(false);
+    }
+
+    private void playIntroAnimation() {
+        if (brandBlock != null) {
+            brandBlock.setOpacity(0.0);
+            brandBlock.setTranslateX(-28.0);
+
+            FadeTransition fadeTransition = new FadeTransition(Duration.millis(520), brandBlock);
+            fadeTransition.setFromValue(0.0);
+            fadeTransition.setToValue(1.0);
+
+            TranslateTransition slideTransition = new TranslateTransition(Duration.millis(520), brandBlock);
+            slideTransition.setFromX(-28.0);
+            slideTransition.setToX(0.0);
+
+            new ParallelTransition(fadeTransition, slideTransition).play();
+        }
+
+        if (loginFormCard != null) {
+            loginFormCard.setOpacity(0.0);
+            loginFormCard.setTranslateX(34.0);
+            loginFormCard.setScaleX(0.98);
+            loginFormCard.setScaleY(0.98);
+
+            FadeTransition fadeTransition = new FadeTransition(Duration.millis(560), loginFormCard);
+            fadeTransition.setFromValue(0.0);
+            fadeTransition.setToValue(1.0);
+
+            TranslateTransition slideTransition = new TranslateTransition(Duration.millis(560), loginFormCard);
+            slideTransition.setFromX(34.0);
+            slideTransition.setToX(0.0);
+
+            ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(560), loginFormCard);
+            scaleTransition.setFromX(0.98);
+            scaleTransition.setFromY(0.98);
+            scaleTransition.setToX(1.0);
+            scaleTransition.setToY(1.0);
+
+            new ParallelTransition(fadeTransition, slideTransition, scaleTransition).play();
+        }
+
+        if (loginArtImage != null) {
+            TranslateTransition floatTransition = new TranslateTransition(Duration.seconds(3.8), loginArtImage);
+            floatTransition.setFromY(-7.0);
+            floatTransition.setToY(7.0);
+            floatTransition.setCycleCount(TranslateTransition.INDEFINITE);
+            floatTransition.setAutoReverse(true);
+            floatTransition.play();
+        }
     }
 }
