@@ -8,6 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
+import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AdminArticlesService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
@@ -35,6 +36,7 @@ public class BackofficeMainController {
     @FXML private Button maintenanceButton;
     @FXML private Button equipementsButton;
     @FXML private Button infrastructureStatsButton;
+    @FXML private Button frontDeskButton;
 
     private boolean infrastructureExpanded;
 
@@ -45,6 +47,7 @@ public class BackofficeMainController {
             return;
         }
 
+        configureFrontDeskAccess();
         setInfrastructureExpanded(false);
         showDashboard();
         refreshArticlesBadge();
@@ -197,6 +200,19 @@ public class BackofficeMainController {
         }
     }
 
+    @FXML
+    private void handleOpenFrontDesk() {
+        if (!UserSession.hasCurrentUser() || UserSession.getCurrentUser().getRole() != UserRole.ADMIN) {
+            return;
+        }
+
+        try {
+            Main.showMain();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void loadView(String fxmlFile, String title, String subtitle) {
         try {
             Node view = SceneManager.loadView(Main.class, SceneManager.backofficeView(fxmlFile));
@@ -292,5 +308,15 @@ public class BackofficeMainController {
         if (infrastructureChevron != null) {
             infrastructureChevron.setText(expanded ? "v" : ">");
         }
+    }
+
+    private void configureFrontDeskAccess() {
+        if (frontDeskButton == null) {
+            return;
+        }
+
+        boolean adminLoggedIn = UserSession.hasCurrentUser() && UserSession.getCurrentUser().getRole() == UserRole.ADMIN;
+        frontDeskButton.setManaged(adminLoggedIn);
+        frontDeskButton.setVisible(adminLoggedIn);
     }
 }

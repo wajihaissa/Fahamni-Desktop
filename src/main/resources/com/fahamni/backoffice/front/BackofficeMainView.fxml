@@ -86,6 +86,7 @@
                 <Label fx:id="pageSubtitle" text="Vue d'ensemble des operations, contenus et activites du backoffice." styleClass="backoffice-page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="frontDeskButton" managed="false" onAction="#handleOpenFrontDesk" text="Aller au frontoffice" visible="false" styleClass="backoffice-frontdesk-button"/>
             <Label text="Administrateur" styleClass="backoffice-badge"/>
         </HBox>
     </top>
