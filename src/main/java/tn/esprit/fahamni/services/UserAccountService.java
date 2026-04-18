@@ -47,18 +47,15 @@ public class UserAccountService {
             return OperationResult.failure(emailError);
         }
 
-        if (!isBlank(password) || !isBlank(confirmPassword)) {
-            String passwordError = UserInputValidator.validatePassword(password, true);
-            if (passwordError != null) {
-                return OperationResult.failure(passwordError);
-            }
-
-            if (!password.equals(confirmPassword)) {
-                return OperationResult.failure("Les mots de passe ne correspondent pas.");
-            }
+        String passwordError = UserInputValidator.validatePassword(password, confirmPassword, false);
+        if (passwordError != null) {
+            return OperationResult.failure(passwordError);
         }
 
-        if (emailAlreadyUsedByAnotherUser(email, currentUser.getId())) {
+        String normalizedEmail = UserInputValidator.normalizeEmail(email);
+        String normalizedFullName = UserInputValidator.normalizeFullName(fullName);
+
+        if (emailAlreadyUsedByAnotherUser(normalizedEmail, currentUser.getId())) {
             return OperationResult.failure("Un autre compte utilise deja cette adresse email.");
         }
 
@@ -69,8 +66,8 @@ public class UserAccountService {
         String updatedPassword = isBlank(password) ? currentUser.getPassword() : password;
         String query = "UPDATE `user` SET `full_name` = ?, `email` = ?, `password` = ? WHERE `id` = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, fullName.trim());
-            statement.setString(2, email.trim());
+            statement.setString(1, normalizedFullName);
+            statement.setString(2, normalizedEmail);
             statement.setString(3, updatedPassword);
             statement.setInt(4, currentUser.getId());
             statement.executeUpdate();
@@ -81,8 +78,8 @@ public class UserAccountService {
 
         UserSession.setCurrentUser(new User(
             currentUser.getId(),
-            fullName.trim(),
-            email.trim(),
+            normalizedFullName,
+            normalizedEmail,
             updatedPassword,
             currentUser.getRole()
         ));

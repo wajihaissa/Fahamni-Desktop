@@ -15,10 +15,15 @@ public class MyDataBase {
     private Connection cnx;
 
     private MyDataBase() {
+        connect();
+    }
+
+    private void connect() {
         try {
             cnx = DriverManager.getConnection(URL, USERNAME, PASSWORD);
             System.out.println("Connected ...");
         } catch (SQLException e) {
+            cnx = null;
             System.out.println(e.getMessage());
         }
     }
@@ -31,14 +36,23 @@ public class MyDataBase {
     }
 
     public Connection getCnx() {
+        try {
+            if (cnx == null || cnx.isClosed()) {
+                connect();
+            }
+        } catch (SQLException e) {
+            cnx = null;
+            connect();
+        }
         return cnx;
     }
+
     public static void main(String[] args) {
-    MyDataBase db = MyDataBase.getInstance();
-    if (db.getCnx() != null) {
-        System.out.println("Connexion réussie ✅");
-    } else {
-        System.out.println("Connexion échouée ❌");
+        MyDataBase db = MyDataBase.getInstance();
+        if (db.getCnx() != null) {
+            System.out.println("Connexion reussie");
+        } else {
+            System.out.println("Connexion echouee");
+        }
     }
-}
 }

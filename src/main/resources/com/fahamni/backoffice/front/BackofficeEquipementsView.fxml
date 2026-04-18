@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Spinner?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeEquipementsController">
+    <content>
+        <VBox spacing="20.0" styleClass="backoffice-page">
+            <padding>
+                <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+            </padding>
+
+            <VBox spacing="6.0" styleClass="backoffice-header-block">
+                <Label text="Gestion des equipements" styleClass="backoffice-panel-title"/>
+                <Label text="Centralisez le parc materiel, les niveaux de stock et l'etat courant des ressources mises a disposition dans les salles." styleClass="backoffice-panel-copy"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel backoffice-room-hero">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0">
+                        <Label text="Vue parc materiel" styleClass="backoffice-section-title"/>
+                        <Label text="Une interface simple pour suivre les references critiques et garder le stock exploitable." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="selectionBadgeLabel" text="Nouvel equipement pret a etre configure" styleClass="backoffice-room-chip"/>
+                </HBox>
+
+                <HBox spacing="14.0">
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="References suivies" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="totalEquipementsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Types d'equipements visibles dans le catalogue" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Disponibles" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="availableEquipementsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="References directement mobilisables" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="En maintenance" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="maintenanceEquipementsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="References techniques a surveiller" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Stock total" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="totalQuantityValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Total des unites declarees disponibles" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox alignment="TOP_LEFT" spacing="18.0">
+                <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                            <Label text="Catalogue des equipements" styleClass="backoffice-section-title"/>
+                            <Label text="Filtrez les references du parc puis selectionnez-en une pour modifier sa fiche." styleClass="backoffice-panel-copy"/>
+                        </VBox>
+                        <Button onAction="#handleDeleteEquipement" text="Supprimer la selection" styleClass="backoffice-danger-button"/>
+                        <Button onAction="#handleRefresh" text="Actualiser" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <TextField fx:id="searchField" promptText="Rechercher par nom, type, etat ou description" styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
+                        <ComboBox fx:id="statusFilterComboBox" prefWidth="220.0" styleClass="backoffice-form-input"/>
+                    </HBox>
+
+                    <TableView fx:id="equipementsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+                        <columns>
+                            <TableColumn fx:id="nomColumn" prefWidth="165.0" text="Equipement"/>
+                            <TableColumn fx:id="typeColumn" prefWidth="150.0" text="Type"/>
+                            <TableColumn fx:id="quantiteColumn" prefWidth="105.0" text="Quantite"/>
+                            <TableColumn fx:id="etatColumn" prefWidth="135.0" text="Etat"/>
+                            <TableColumn fx:id="descriptionColumn" prefWidth="220.0" text="Description"/>
+                        </columns>
+                    </TableView>
+
+                    <BorderPane styleClass="backoffice-pagination-bar">
+                        <left>
+                            <Label fx:id="paginationSummaryLabel" text="Aucun equipement a afficher" styleClass="backoffice-pagination-summary" BorderPane.alignment="CENTER_LEFT"/>
+                        </left>
+
+                        <center>
+                            <HBox alignment="CENTER" spacing="12.0" styleClass="backoffice-pagination-nav" BorderPane.alignment="CENTER">
+                                <Button fx:id="previousPageButton" onAction="#handlePreviousPage" text="Precedent" styleClass="backoffice-secondary-button"/>
+                                <HBox fx:id="pageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                                <Button fx:id="nextPageButton" onAction="#handleNextPage" text="Suivant" styleClass="backoffice-secondary-button"/>
+                            </HBox>
+                        </center>
+
+                        <right>
+                            <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="backoffice-pagination-controls" BorderPane.alignment="CENTER_RIGHT">
+                                <Label text="Par page" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="pageSizeComboBox" prefWidth="92.0" styleClass="backoffice-pagination-combo"/>
+                            </HBox>
+                        </right>
+                    </BorderPane>
+                </VBox>
+
+                <VBox spacing="12.0" styleClass="backoffice-panel" prefWidth="430.0" minWidth="430.0">
+                    <Label text="Fiche equipement" styleClass="backoffice-section-title"/>
+
+                    <VBox spacing="6.0">
+                        <Label text="Nom" styleClass="backoffice-form-label"/>
+                        <TextField fx:id="nomField" promptText="Ex: Projecteur Epson EB-2250U" styleClass="backoffice-form-input"/>
+                    </VBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Type d'equipement" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="typeComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" prefWidth="150.0">
+                            <Label text="Quantite disponible" styleClass="backoffice-form-label"/>
+                            <Spinner fx:id="quantiteSpinner" editable="true" styleClass="backoffice-form-spinner"/>
+                        </VBox>
+                    </HBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Etat courant" styleClass="backoffice-form-label"/>
+                        <ComboBox fx:id="etatComboBox" styleClass="backoffice-form-input"/>
+                        <Label text="A la creation, l'equipement est automatiquement en statut disponible. Selectionnez une fiche existante pour modifier cet etat." wrapText="true" styleClass="backoffice-panel-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Description" styleClass="backoffice-form-label"/>
+                        <TextArea fx:id="descriptionArea" prefRowCount="6" wrapText="true" styleClass="backoffice-form-textarea"/>
+                    </VBox>
+
+                    <HBox spacing="10.0">
+                        <Button maxWidth="Infinity" onAction="#handleCreateEquipement" text="Ajouter l'equipement" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button maxWidth="Infinity" onAction="#handleUpdateEquipement" text="Mettre a jour" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Button maxWidth="Infinity" onAction="#handleResetForm" text="Reinitialiser le formulaire" styleClass="backoffice-secondary-button"/>
+
+                    <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </content>
+</ScrollPane>

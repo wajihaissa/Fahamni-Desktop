@@ -46,7 +46,7 @@ public class LoginController {
     private PasswordField confirmPasswordField;
 
     @FXML
-    private ComboBox<String> registerRoleComboBox;
+    private ComboBox<String> roleComboBox;
 
     @FXML
     private Button createAccountButton;
@@ -59,10 +59,12 @@ public class LoginController {
 
     @FXML
     public void initialize() {
+        if (roleComboBox != null) {
+            roleComboBox.getItems().setAll("Student", "Tutor");
+            roleComboBox.setValue("Student");
+        }
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
-        registerRoleComboBox.getItems().setAll("Etudiant", "Tuteur");
-        registerRoleComboBox.setValue("Etudiant");
         switchMode(true);
     }
 
@@ -113,8 +115,9 @@ public class LoginController {
         String email = registerEmailField.getText().trim();
         String password = registerPasswordField.getText();
         String confirmPassword = confirmPasswordField.getText();
+        String selectedRole = roleComboBox != null ? roleComboBox.getValue() : null;
 
-        OperationResult result = authService.register(fullName, email, password, confirmPassword, registerRoleComboBox.getValue());
+        OperationResult result = authService.register(fullName, email, password, confirmPassword, selectedRole);
         if (!result.isSuccess()) {
             showMessage(registerMessageLabel, result.getMessage(), false);
             return;
@@ -152,7 +155,9 @@ public class LoginController {
         registerEmailField.clear();
         registerPasswordField.clear();
         confirmPasswordField.clear();
-        registerRoleComboBox.setValue("Etudiant");
+        if (roleComboBox != null) {
+            roleComboBox.setValue("Student");
+        }
     }
 
     private void showMessage(Label label, String message, boolean success) {
@@ -169,4 +174,3 @@ public class LoginController {
         label.setVisible(false);
     }
 }
-

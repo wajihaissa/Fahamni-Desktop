@@ -1,22 +1,2394 @@
 package tn.esprit.fahamni.controllers;
 
-import tn.esprit.fahamni.Models.Reservation;
+import tn.esprit.fahamni.Models.Equipement;
+import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.services.AdminEquipementService;
+import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
+import tn.esprit.fahamni.services.ReservationService.ReservationStats;
+import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
+import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
+import tn.esprit.fahamni.services.SessionCreationContext;
+import tn.esprit.fahamni.services.SeanceService;
+import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DateCell;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.IntStream;
+
+import javafx.util.StringConverter;
 
 public class ReservationController {
 
+    private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
+    private static final String SECTION_ADD_SESSION = "Ajouter une seance";
+    private static final String SECTION_MY_RESERVATIONS = "Mes reservations";
+    private static final String SECTION_RESERVATION_REQUESTS = "Demandes de reservation";
+    private static final String MODE_ONLINE_LABEL = "En ligne";
+    private static final String MODE_ONSITE_LABEL = "Presentiel";
+    private static final String STATUS_AVAILABLE = "disponible";
+    private static final String STATUS_PENDING = "attente";
+    private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
+    private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
+    private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
+        .mapToObj(value -> String.format("%02d", value))
+        .toList();
+    private static final List<String> MINUTE_OPTIONS = IntStream.range(0, 60)
+        .mapToObj(value -> String.format("%02d", value))
+        .toList();
+
+    private final SeanceService seanceService = new SeanceService();
+    private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final ReservationService reservationService = new ReservationService();
-    private List<Reservation> reservations;
+    private final AdminSalleService salleService = new AdminSalleService();
+    private final AdminEquipementService equipementService = new AdminEquipementService();
+    private final List<Salle> availableSalles = new ArrayList<>();
+    private final List<Equipement> availableEquipements = new ArrayList<>();
+    private final Map<Integer, EquipmentSelectionControls> equipmentSelectionControls = new LinkedHashMap<>();
+    private final Map<Integer, RoomSelectionControls> roomSelectionControls = new LinkedHashMap<>();
+    private final Map<Integer, String> roomScheduleConflicts = new LinkedHashMap<>();
+    private Integer selectedSalleId;
+    private Integer editingSessionId;
+    private int currentSessionPage = 1;
+
+    @FXML
+    private Label publishedSessionsCountLabel;
+
+    @FXML
+    private Label draftSessionsCountLabel;
+
+    @FXML
+    private ComboBox<String> tutorComboBox;
+
+    @FXML
+    private ComboBox<String> sectionMenuComboBox;
+
+    @FXML
+    private VBox sessionSearchPanel;
+
+    @FXML
+    private VBox sessionFormPanel;
+
+    @FXML
+    private VBox sessionListPanel;
+
+    @FXML
+    private TextField sessionSearchField;
+
+    @FXML
+    private ComboBox<String> sessionSearchModeComboBox;
+
+    @FXML
+    private TextField sessionSubjectField;
+
+    @FXML
+    private DatePicker sessionDatePicker;
+
+    @FXML
+    private ComboBox<String> sessionHourComboBox;
+
+    @FXML
+    private ComboBox<String> sessionMinuteComboBox;
+
+    @FXML
+    private TextField sessionDurationField;
+
+    @FXML
+    private TextField sessionCapacityField;
+
+    @FXML
+    private CheckBox sessionOnsiteCheckBox;
+
+    @FXML
+    private VBox sessionRoomChoicesContainer;
+
+    @FXML
+    private Label sessionRoomAvailabilityHintLabel;
+
+    @FXML
+    private HBox onsiteInfrastructureRow;
+
+    @FXML
+    private Label sessionModeDescriptionLabel;
+
+    @FXML
+    private Label sessionModeStateChipLabel;
+
+    @FXML
+    private Label sessionRoomStatusChipLabel;
+
+    @FXML
+    private Label sessionRoomPreviewTitleLabel;
+
+    @FXML
+    private Label sessionRoomPreviewSubtitleLabel;
+
+    @FXML
+    private Label sessionRoomPreviewDescriptionLabel;
+
+    @FXML
+    private FlowPane sessionRoomFactsContainer;
+
+    @FXML
+    private VBox sessionEquipmentChoicesContainer;
+
+    @FXML
+    private VBox sessionEquipmentPreviewContainer;
+
+    @FXML
+    private Label sessionEquipmentSelectionSummaryLabel;
+
+    @FXML
+    private Label infrastructureHintLabel;
+
+    @FXML
+    private TextArea sessionDescriptionArea;
+
+    @FXML
+    private Label publishFeedbackLabel;
+
+    @FXML
+    private Label sessionFormTitleLabel;
+
+    @FXML
+    private Label sessionFormModeChipLabel;
+
+    @FXML
+    private Label editingSessionLabel;
+
+    @FXML
+    private VBox recentSessionsContainer;
+
+    @FXML
+    private Label reservationActionFeedbackLabel;
+
+    @FXML
+    private VBox studentReservationsPanel;
+
+    @FXML
+    private Label studentReservationsSummaryLabel;
+
+    @FXML
+    private Label studentReservationsFeedbackLabel;
+
+    @FXML
+    private VBox studentReservationsContainer;
+
+    @FXML
+    private VBox reservationRequestsPanel;
+
+    @FXML
+    private Label tutorReservationRequestsSummaryLabel;
+
+    @FXML
+    private Label tutorReservationRequestsFeedbackLabel;
+
+    @FXML
+    private VBox tutorReservationRequestsContainer;
+
+    @FXML
+    private HBox sessionPaginationBar;
+
+    @FXML
+    private Label sessionPaginationSummaryLabel;
+
+    @FXML
+    private Button sessionPreviousPageButton;
+
+    @FXML
+    private Button sessionNextPageButton;
+
+    @FXML
+    private HBox sessionPageButtonsContainer;
+
+    @FXML
+    private ComboBox<Integer> sessionsPerPageComboBox;
 
     @FXML
     private void initialize() {
-        reservations = reservationService.getAllReservations();
+        tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
+        tutorComboBox.setEditable(true);
+        selectDefaultTutor();
+        configureDateTimeInputs();
+        configureInfrastructureChoices();
+
+        configureWorkspaceSections();
+        sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
+        sessionSearchModeComboBox.getItems().setAll(seanceService.getAvailableSearchStatuses());
+        sessionSearchModeComboBox.setValue("Toutes les seances");
+        sessionsPerPageComboBox.getItems().setAll(SESSION_PAGE_SIZE_OPTIONS);
+        sessionsPerPageComboBox.setValue(DEFAULT_SESSION_PAGE_SIZE);
+
+        resetEditMode();
+        hideFeedback();
+        hideReservationActionFeedback();
+        hideStudentReservationsFeedback();
+        hideTutorReservationRequestsFeedback();
+        loadSessionDashboard();
+        showAvailableSessionsSection();
+        applyPendingSessionPrefill();
     }
 
-    public List<Reservation> getReservations() {
-        return reservations;
+    @FXML
+    private void handleChangeWorkspaceSection() {
+        if (SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
+            showAddSessionSection();
+        } else if (SECTION_MY_RESERVATIONS.equals(sectionMenuComboBox.getValue())) {
+            showStudentReservationsSection();
+        } else if (SECTION_RESERVATION_REQUESTS.equals(sectionMenuComboBox.getValue())) {
+            showReservationRequestsSection();
+        } else {
+            showAvailableSessionsSection();
+        }
+    }
+
+    @FXML
+    private void handleSearchSessions() {
+        currentSessionPage = 1;
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handleClearSessionSearch() {
+        sessionSearchField.clear();
+        sessionSearchModeComboBox.setValue("Toutes les seances");
+        currentSessionPage = 1;
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handlePreviousSessionsPage() {
+        if (currentSessionPage > 1) {
+            currentSessionPage--;
+            applySessionFilters();
+        }
+    }
+
+    @FXML
+    private void handleNextSessionsPage() {
+        currentSessionPage++;
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handleChangeSessionsPageSize() {
+        currentSessionPage = 1;
+        applySessionFilters();
+    }
+
+    @FXML
+    private void handleSaveDraftSession() {
+        submitSession(0, "La seance a ete enregistree en brouillon.");
+    }
+
+    @FXML
+    private void handlePublishSession() {
+        submitSession(1, "La seance a ete publiee avec succes.");
+    }
+
+    @FXML
+    private void handleSessionModeChange() {
+        updateOnsiteOptionsVisibility();
+    }
+
+    @FXML
+    private void handleClearSessionForm() {
+        clearSessionForm();
+        resetEditMode();
+        hideFeedback();
+    }
+
+    private void submitSession(int status, String successMessage) {
+        hideFeedback();
+        boolean editing = editingSessionId != null;
+
+        try {
+            Seance seance = buildSeance(status);
+            if (editing) {
+                seance.setId(editingSessionId);
+                seance.setUpdatedAt(LocalDateTime.now());
+                seanceService.update(seance);
+            } else {
+                seance.setCreatedAt(LocalDateTime.now());
+                seanceService.add(seance);
+            }
+
+            clearSessionForm();
+            resetEditMode();
+            loadSessionDashboard();
+            showSessionListFeedback(
+                editing ? "La seance a ete modifiee avec succes." : successMessage,
+                true
+            );
+        } catch (RuntimeException exception) {
+            showFeedback(exception.getMessage(), false);
+        }
+    }
+
+    private Seance buildSeance(int status) {
+        String subject = requireText(sessionSubjectField.getText(), "Renseignez la matiere de la seance.");
+        String tutorName = requireText(tutorComboBox.getValue(), "Choisissez un tuteur.");
+        LocalDateTime startAt = parseStartAt();
+        int duration = parseBoundedInt(
+            sessionDurationField.getText(),
+            SeanceService.MIN_DURATION_MINUTES,
+            SeanceService.MAX_DURATION_MINUTES,
+            "La duree doit etre comprise entre " + SeanceService.MIN_DURATION_MINUTES + " et " + SeanceService.MAX_DURATION_MINUTES + " minutes."
+        );
+        int capacity = parseBoundedInt(
+            sessionCapacityField.getText(),
+            SeanceService.MIN_CAPACITY,
+            SeanceService.MAX_CAPACITY,
+            "La capacite doit etre comprise entre " + SeanceService.MIN_CAPACITY + " et " + SeanceService.MAX_CAPACITY + " participants."
+        );
+        String description = requireMinimumLengthText(
+            sessionDescriptionArea.getText(),
+            SeanceService.MIN_DESCRIPTION_LENGTH,
+            "Ajoute une description de la seance.",
+            "La description doit contenir au moins " + SeanceService.MIN_DESCRIPTION_LENGTH + " caracteres."
+        );
+        int tutorId = tutorDirectoryService.resolveTutorId(tutorName);
+
+        if (tutorId <= 0) {
+            throw new IllegalArgumentException("Le tuteur choisi est invalide pour le moment.");
+        }
+
+        String mode = resolveSelectedMode();
+        Integer salleId = null;
+        Map<Integer, Integer> equipementQuantites = Map.of();
+        if (Seance.MODE_ONSITE.equals(mode)) {
+            Salle selectedSalle = resolveSelectedSalle();
+            if (selectedSalle == null) {
+                throw new IllegalArgumentException("Choisissez une salle disponible pour une seance presentielle.");
+            }
+            findRoomScheduleConflict(selectedSalle.getIdSalle(), startAt, duration)
+                .ifPresent(conflict -> {
+                    throw new IllegalArgumentException(buildRoomScheduleConflictReason(conflict));
+                });
+            if (capacity > selectedSalle.getCapacite()) {
+                throw new IllegalArgumentException(
+                    "La salle choisie accepte seulement " + selectedSalle.getCapacite() + " participants."
+                );
+            }
+            salleId = selectedSalle.getIdSalle();
+            equipementQuantites = getSelectedEquipmentQuantites();
+        }
+
+        sessionSubjectField.setText(subject);
+        setStartAtSelection(startAt);
+        sessionDurationField.setText(String.valueOf(duration));
+        sessionCapacityField.setText(String.valueOf(capacity));
+        sessionDescriptionArea.setText(description);
+        tutorComboBox.setValue(tutorName);
+        sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(mode));
+        updateModePresentation();
+
+        Seance seance = new Seance();
+        seance.setMatiere(subject);
+        seance.setStartAt(startAt);
+        seance.setDurationMin(duration);
+        seance.setMaxParticipants(capacity);
+        seance.setStatus(status);
+        seance.setDescription(description);
+        seance.setTuteurId(tutorId);
+        seance.setMode(mode);
+        seance.setSalleId(salleId);
+        seance.setEquipementQuantites(equipementQuantites);
+        return seance;
+    }
+
+    private void configureInfrastructureChoices() {
+        sessionOnsiteCheckBox.setSelected(false);
+        configureRoomScheduleAvailability();
+        loadInfrastructureChoices();
+        updateOnsiteOptionsVisibility();
+    }
+
+    private void configureRoomScheduleAvailability() {
+        sessionDatePicker.valueProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+        sessionHourComboBox.valueProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+        sessionMinuteComboBox.valueProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+        sessionDurationField.textProperty().addListener((obs, oldValue, newValue) -> refreshRoomChoicesForSchedule());
+    }
+
+    private void loadInfrastructureChoices() {
+        try {
+            availableSalles.clear();
+            availableSalles.addAll(
+                salleService.getAll().stream()
+                    .filter(salle -> isAvailable(salle.getEtat()))
+                    .toList()
+            );
+
+            availableEquipements.clear();
+            availableEquipements.addAll(
+                equipementService.getAll().stream()
+                    .filter(equipement -> isAvailable(equipement.getEtat()))
+                    .filter(equipement -> equipement.getQuantiteDisponible() > 0)
+                    .toList()
+            );
+
+            refreshRoomChoicesForSchedule();
+            renderEquipmentChoices();
+            updateInfrastructureHint();
+            updateRoomPreview();
+            updateEquipmentPreview();
+        } catch (SQLException | IllegalStateException exception) {
+            availableSalles.clear();
+            availableEquipements.clear();
+            selectedSalleId = null;
+            roomSelectionControls.clear();
+            roomScheduleConflicts.clear();
+            sessionRoomChoicesContainer.getChildren().clear();
+            renderEquipmentChoices();
+            updateRoomAvailabilityHint();
+            infrastructureHintLabel.setText("Chargement des salles et materiels impossible: " + resolveMessage(exception));
+            resetRoomPreview();
+            updateEquipmentPreview();
+        }
+    }
+
+    private void renderEquipmentChoices() {
+        sessionEquipmentChoicesContainer.getChildren().clear();
+        equipmentSelectionControls.clear();
+
+        if (availableEquipements.isEmpty()) {
+            Label emptyLabel = new Label("Aucun materiel disponible pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            sessionEquipmentChoicesContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        for (Equipement equipement : availableEquipements) {
+            sessionEquipmentChoicesContainer.getChildren().add(createEquipmentChoiceCard(equipement));
+        }
+    }
+
+    private void updateOnsiteOptionsVisibility() {
+        boolean onsite = Seance.MODE_ONSITE.equals(resolveSelectedMode());
+        setInfrastructureSectionVisible(onsiteInfrastructureRow, onsite);
+        updateModePresentation();
+
+        if (!onsite) {
+            selectedSalleId = null;
+            updateRoomSelectionStyles();
+            clearEquipmentSelection();
+            resetRoomPreview();
+            updateEquipmentPreview();
+        } else if (selectedSalleId == null && !availableSalles.isEmpty()) {
+            selectFirstSelectableSalle();
+            updateRoomPreview();
+            updateEquipmentPreview();
+        } else {
+            updateRoomPreview();
+            updateEquipmentPreview();
+        }
+    }
+
+    private String resolveSelectedMode() {
+        return sessionOnsiteCheckBox.isSelected() ? Seance.MODE_ONSITE : Seance.MODE_ONLINE;
+    }
+
+    private Salle resolveSelectedSalle() {
+        if (selectedSalleId == null) {
+            return null;
+        }
+        return availableSalles.stream()
+            .filter(salle -> salle.getIdSalle() == selectedSalleId)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private Integer resolveSelectedSalleId() {
+        return selectedSalleId;
+    }
+
+    private void refreshRoomChoicesForSchedule() {
+        if (sessionRoomChoicesContainer == null) {
+            return;
+        }
+
+        Integer preferredSalleId = resolveSelectedSalleId();
+        updateRoomScheduleConflicts();
+        if (preferredSalleId != null && roomScheduleConflicts.containsKey(preferredSalleId)) {
+            selectedSalleId = null;
+        }
+        renderRoomChoices();
+        updateRoomAvailabilityHint();
+        if (preferredSalleId != null && roomScheduleConflicts.containsKey(preferredSalleId)) {
+            showRoomUnavailablePreview(roomScheduleConflicts.get(preferredSalleId));
+        } else {
+            updateRoomPreview();
+        }
+    }
+
+    private void renderRoomChoices() {
+        sessionRoomChoicesContainer.getChildren().clear();
+        roomSelectionControls.clear();
+
+        if (availableSalles.isEmpty()) {
+            Label emptyLabel = new Label("Aucune salle disponible administrativement pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            sessionRoomChoicesContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        for (Salle salle : availableSalles) {
+            sessionRoomChoicesContainer.getChildren().add(createRoomChoiceCard(salle));
+        }
+        updateRoomSelectionStyles();
+    }
+
+    private VBox createRoomChoiceCard(Salle salle) {
+        VBox card = new VBox(6.0);
+        card.getStyleClass().add("reservation-room-choice-card");
+        card.setMaxWidth(Double.MAX_VALUE);
+
+        String conflictReason = roomScheduleConflicts.get(salle.getIdSalle());
+        boolean unavailableForSlot = conflictReason != null;
+
+        HBox header = new HBox(8.0);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label title = new Label(formatOptionalText(salle.getNom()));
+        title.setWrapText(true);
+        title.getStyleClass().add("reservation-room-choice-title");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label statusChip = new Label(unavailableForSlot ? "Occupee" : "Libre");
+        statusChip.getStyleClass().addAll("reservation-status", unavailableForSlot ? "occupied" : "confirmed");
+        header.getChildren().addAll(title, spacer, statusChip);
+
+        Label meta = new Label(
+            formatOptionalText(salle.getBatiment())
+                + " | "
+                + formatOptionalText(salle.getLocalisation())
+                + " | "
+                + salle.getCapacite()
+                + " places"
+        );
+        meta.setWrapText(true);
+        meta.getStyleClass().add("reservation-room-choice-meta");
+
+        card.getChildren().addAll(header, meta);
+        if (unavailableForSlot) {
+            card.getStyleClass().add("unavailable");
+            card.setOnMouseClicked(event -> {
+                selectedSalleId = null;
+                updateRoomSelectionStyles();
+                showRoomUnavailablePreview(conflictReason);
+            });
+        } else {
+            card.setOnMouseClicked(event -> selectSalle(salle));
+        }
+
+        RoomSelectionControls controls = new RoomSelectionControls(card, statusChip);
+        roomSelectionControls.put(salle.getIdSalle(), controls);
+        return card;
+    }
+
+    private void selectSalle(Salle salle) {
+        if (salle == null || isSalleUnavailableForSelectedSchedule(salle)) {
+            return;
+        }
+        selectedSalleId = salle.getIdSalle();
+        updateRoomSelectionStyles();
+        updateRoomPreview();
+    }
+
+    private void updateRoomSelectionStyles() {
+        for (Map.Entry<Integer, RoomSelectionControls> entry : roomSelectionControls.entrySet()) {
+            VBox card = entry.getValue().card();
+            card.getStyleClass().remove("selected");
+            if (selectedSalleId != null && selectedSalleId.equals(entry.getKey())) {
+                card.getStyleClass().add("selected");
+            }
+        }
+    }
+
+    private void updateRoomScheduleConflicts() {
+        roomScheduleConflicts.clear();
+
+        LocalDateTime candidateStartAt = resolveTentativeStartAt();
+        Integer candidateDuration = resolveTentativeDuration();
+        if (candidateStartAt == null || candidateDuration == null || candidateDuration <= 0) {
+            return;
+        }
+
+        List<Seance> existingSeances = seanceService.getAll();
+        for (Salle salle : availableSalles) {
+            findRoomScheduleConflict(salle.getIdSalle(), candidateStartAt, candidateDuration, existingSeances)
+                .ifPresent(conflict -> roomScheduleConflicts.put(
+                    salle.getIdSalle(),
+                    buildRoomScheduleConflictReason(conflict)
+                ));
+        }
+    }
+
+    private Optional<Seance> findRoomScheduleConflict(int salleId, LocalDateTime candidateStartAt, int candidateDuration) {
+        return findRoomScheduleConflict(salleId, candidateStartAt, candidateDuration, seanceService.getAll());
+    }
+
+    private Optional<Seance> findRoomScheduleConflict(int salleId, LocalDateTime candidateStartAt, int candidateDuration,
+                                                     List<Seance> existingSeances) {
+        if (salleId <= 0 || candidateStartAt == null || candidateDuration <= 0) {
+            return Optional.empty();
+        }
+
+        LocalDateTime candidateEndAt = candidateStartAt.plusMinutes(candidateDuration);
+        int currentEditingId = editingSessionId == null ? 0 : editingSessionId;
+
+        return existingSeances.stream()
+            .filter(existing -> existing.getId() != currentEditingId)
+            .filter(Seance::isPresentiel)
+            .filter(existing -> existing.getSalleId() != null && existing.getSalleId() == salleId)
+            .filter(existing -> existing.getStatus() != 2)
+            .filter(existing -> existing.getStartAt() != null)
+            .filter(existing -> existing.getDurationMin() > 0)
+            .filter(existing -> hasScheduleOverlap(
+                candidateStartAt,
+                candidateEndAt,
+                existing.getStartAt(),
+                existing.getStartAt().plusMinutes(existing.getDurationMin())
+            ))
+            .findFirst();
+    }
+
+    private boolean hasScheduleOverlap(LocalDateTime firstStartAt, LocalDateTime firstEndAt,
+                                       LocalDateTime secondStartAt, LocalDateTime secondEndAt) {
+        if (firstStartAt == null || firstEndAt == null || secondStartAt == null || secondEndAt == null) {
+            return false;
+        }
+        return firstStartAt.isBefore(secondEndAt) && secondStartAt.isBefore(firstEndAt);
+    }
+
+    private String buildRoomScheduleConflictReason(Seance conflict) {
+        return "Indisponible sur ce creneau: deja reservee pour \""
+            + safeText(conflict.getMatiere())
+            + "\" le "
+            + formatDateTime(conflict.getStartAt())
+            + ".";
+    }
+
+    private LocalDateTime resolveTentativeStartAt() {
+        LocalDate selectedDate = sessionDatePicker.getValue();
+        String selectedHour = sessionHourComboBox.getValue();
+        String selectedMinute = sessionMinuteComboBox.getValue();
+        if (selectedDate == null || selectedHour == null || selectedMinute == null) {
+            return null;
+        }
+
+        try {
+            return LocalDateTime.of(
+                selectedDate,
+                LocalTime.of(Integer.parseInt(selectedHour), Integer.parseInt(selectedMinute))
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private Integer resolveTentativeDuration() {
+        String durationText = sessionDurationField.getText();
+        if (durationText == null || durationText.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Integer.parseInt(durationText.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private void selectFirstSelectableSalle() {
+        for (Salle salle : availableSalles) {
+            if (!isSalleUnavailableForSelectedSchedule(salle)) {
+                selectSalle(salle);
+                return;
+            }
+        }
+        selectedSalleId = null;
+        updateRoomSelectionStyles();
+    }
+
+    private boolean isSalleUnavailableForSelectedSchedule(Salle salle) {
+        return salle != null && roomScheduleConflicts.containsKey(salle.getIdSalle());
+    }
+
+    private void updateRoomAvailabilityHint() {
+        if (sessionRoomAvailabilityHintLabel == null) {
+            return;
+        }
+
+        if (availableSalles.isEmpty()) {
+            sessionRoomAvailabilityHintLabel.setText("Aucune salle disponible administrativement pour le moment.");
+            return;
+        }
+
+        if (resolveTentativeStartAt() == null || resolveTentativeDuration() == null) {
+            sessionRoomAvailabilityHintLabel.setText("Selectionnez la date, l'heure et la duree pour verifier les disponibilites.");
+            return;
+        }
+
+        int blockedCount = roomScheduleConflicts.size();
+        if (blockedCount == 0) {
+            sessionRoomAvailabilityHintLabel.setText("Toutes les salles affichees sont libres sur ce creneau.");
+            return;
+        }
+
+        sessionRoomAvailabilityHintLabel.setText(
+            blockedCount == 1
+                ? "1 salle est grisee car elle est deja reservee sur ce creneau."
+                : blockedCount + " salles sont grisees car elles sont deja reservees sur ce creneau."
+        );
+    }
+
+    private Map<Integer, Integer> getSelectedEquipmentQuantites() {
+        LinkedHashMap<Integer, Integer> selectedQuantities = new LinkedHashMap<>();
+        for (Map.Entry<Integer, EquipmentSelectionControls> entry : equipmentSelectionControls.entrySet()) {
+            EquipmentSelectionControls controls = entry.getValue();
+            if (!controls.checkBox().isSelected()) {
+                continue;
+            }
+            int quantite = controls.quantitySpinner().getValue() == null ? 1 : controls.quantitySpinner().getValue();
+            selectedQuantities.put(entry.getKey(), Math.max(1, quantite));
+        }
+        return selectedQuantities;
+    }
+
+    private void selectSalleById(Integer salleId) {
+        selectedSalleId = null;
+        if (salleId == null || salleId <= 0) {
+            updateRoomSelectionStyles();
+            updateRoomPreview();
+            return;
+        }
+
+        for (Salle salle : availableSalles) {
+            if (salle.getIdSalle() == salleId) {
+                if (isSalleUnavailableForSelectedSchedule(salle)) {
+                    updateRoomSelectionStyles();
+                    updateRoomPreview();
+                    return;
+                }
+                selectSalle(salle);
+                return;
+            }
+        }
+        updateRoomSelectionStyles();
+        updateRoomPreview();
+    }
+
+    private void selectEquipementsByQuantites(Map<Integer, Integer> equipementQuantites) {
+        clearEquipmentSelection();
+        if (equipementQuantites == null || equipementQuantites.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
+            EquipmentSelectionControls controls = equipmentSelectionControls.get(entry.getKey());
+            if (controls == null) {
+                continue;
+            }
+            controls.checkBox().setSelected(true);
+            controls.quantitySpinner().getValueFactory().setValue(Math.max(1, entry.getValue() == null ? 1 : entry.getValue()));
+            updateEquipmentSelectionState(controls);
+        }
+        updateEquipmentPreview();
+    }
+
+    private void clearEquipmentSelection() {
+        equipmentSelectionControls.values().forEach(controls -> {
+            controls.checkBox().setSelected(false);
+            controls.quantitySpinner().getValueFactory().setValue(1);
+            updateEquipmentSelectionState(controls);
+        });
+        updateEquipmentPreview();
+    }
+
+    private void applyPendingSessionPrefill() {
+        SessionCreationContext.PendingSelection pendingSelection = SessionCreationContext.consumePendingSelection();
+        if (pendingSelection == null) {
+            return;
+        }
+
+        clearSessionForm();
+        resetEditMode();
+        sessionOnsiteCheckBox.setSelected(true);
+        updateOnsiteOptionsVisibility();
+
+        if (pendingSelection.salleId() != null) {
+            selectSalleById(pendingSelection.salleId());
+        }
+
+        if (!pendingSelection.equipementQuantites().isEmpty()) {
+            selectEquipementsByQuantites(pendingSelection.equipementQuantites());
+        }
+
+        showAddSessionSection();
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (pendingSelection.salleId() != null && selectedSalle == null) {
+            showFeedback("La salle choisie n'est plus disponible. Choisissez-en une autre avant de publier.", false);
+            return;
+        }
+
+        if (!pendingSelection.equipementQuantites().isEmpty() && getSelectedEquipmentQuantites().isEmpty()) {
+            showFeedback("Le materiel choisi n'est plus disponible. Choisissez-en un autre avant de publier.", false);
+            return;
+        }
+
+        if (selectedSalle != null) {
+            showFeedback(
+                "La salle \"" + formatOptionalText(selectedSalle.getNom()) + "\" est preselectionnee pour votre seance.",
+                true
+            );
+            return;
+        }
+
+        if (!pendingSelection.equipementQuantites().isEmpty()) {
+            showFeedback("Le materiel selectionne a ete pre-rempli pour votre seance.", true);
+        }
+    }
+
+    private String formatEquipementChoice(Equipement equipement) {
+        return equipement.getNom()
+            + " ("
+            + equipement.getTypeEquipement()
+            + ", "
+            + equipement.getQuantiteDisponible()
+            + " dispo)";
+    }
+
+    private VBox createEquipmentChoiceCard(Equipement equipement) {
+        VBox card = new VBox(6.0);
+        card.getStyleClass().add("reservation-equipment-choice-card");
+        card.setMaxWidth(Double.MAX_VALUE);
+
+        CheckBox checkBox = new CheckBox(formatEquipementChoice(equipement));
+        checkBox.setWrapText(true);
+        checkBox.setMaxWidth(Double.MAX_VALUE);
+        checkBox.getStyleClass().add("reservation-equipment-check");
+
+        Spinner<Integer> quantitySpinner = new Spinner<>();
+        quantitySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(
+            1,
+            Math.max(1, equipement.getQuantiteDisponible()),
+            1
+        ));
+        quantitySpinner.setEditable(true);
+        quantitySpinner.setPrefWidth(92.0);
+        quantitySpinner.getStyleClass().add("reservation-equipment-quantity-spinner");
+        quantitySpinner.setDisable(true);
+
+        EquipmentSelectionControls controls = new EquipmentSelectionControls(checkBox, quantitySpinner, card);
+        equipmentSelectionControls.put(equipement.getIdEquipement(), controls);
+
+        checkBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
+            updateEquipmentSelectionState(controls);
+            updateEquipmentPreview();
+        });
+        quantitySpinner.valueProperty().addListener((obs, oldValue, newValue) -> updateEquipmentPreview());
+
+        Label quantityLabel = new Label("Quantite");
+        quantityLabel.getStyleClass().add("reservation-equipment-quantity-label");
+
+        VBox quantityBox = new VBox(4.0, quantityLabel, quantitySpinner);
+        quantityBox.setMinWidth(112.0);
+        quantityBox.setPrefWidth(112.0);
+        quantityBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+
+        HBox header = new HBox(12.0, checkBox, quantityBox);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        HBox.setHgrow(checkBox, Priority.ALWAYS);
+
+        Label description = new Label(formatDescription(equipement.getDescription()));
+        description.setWrapText(true);
+        description.getStyleClass().add("reservation-section-copy");
+
+        card.getChildren().addAll(header, description);
+        updateEquipmentSelectionState(controls);
+        return card;
+    }
+
+    private void updateEquipmentSelectionState(EquipmentSelectionControls controls) {
+        boolean selected = controls.checkBox().isSelected();
+        controls.quantitySpinner().setDisable(!selected);
+        controls.card().getStyleClass().remove("selected");
+        if (selected) {
+            controls.card().getStyleClass().add("selected");
+        }
+    }
+
+    private void updateModePresentation() {
+        boolean onsite = Seance.MODE_ONSITE.equals(resolveSelectedMode());
+        sessionModeStateChipLabel.setText(onsite ? MODE_ONSITE_LABEL : MODE_ONLINE_LABEL);
+        sessionModeStateChipLabel.getStyleClass().setAll(
+            "workspace-chip",
+            onsite ? "reservation-mode-chip-onsite" : "workspace-chip-muted"
+        );
+        sessionModeDescriptionLabel.setText(
+            onsite
+                ? "Presentiel. Choisissez une salle adaptee puis le materiel disponible avec previsualisation detaillee."
+                : "En ligne. Aucun espace physique n'est requis pour cette seance."
+        );
+    }
+
+    private void updateRoomPreview() {
+        if (!Seance.MODE_ONSITE.equals(resolveSelectedMode())) {
+            resetRoomPreview();
+            return;
+        }
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (selectedSalle == null) {
+            resetRoomPreview();
+            return;
+        }
+        String conflictReason = roomScheduleConflicts.get(selectedSalle.getIdSalle());
+        if (conflictReason != null) {
+            showRoomUnavailablePreview(conflictReason);
+            return;
+        }
+
+        sessionRoomStatusChipLabel.setText(formatLabel(selectedSalle.getEtat()));
+        sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", resolveStatusStyle(selectedSalle.getEtat()));
+        sessionRoomPreviewTitleLabel.setText(formatOptionalText(selectedSalle.getNom()));
+        sessionRoomPreviewSubtitleLabel.setText(
+            formatOptionalText(selectedSalle.getTypeSalle())
+                + " | "
+                + selectedSalle.getCapacite()
+                + " places | "
+                + formatOptionalText(selectedSalle.getLocalisation())
+        );
+        sessionRoomPreviewDescriptionLabel.setText(formatDescription(selectedSalle.getDescription()));
+
+        sessionRoomFactsContainer.getChildren().setAll(
+            buildInfrastructureFactCard("Batiment", formatOptionalText(selectedSalle.getBatiment())),
+            buildInfrastructureFactCard("Etage", selectedSalle.getEtage() == null ? "Non renseigne" : String.valueOf(selectedSalle.getEtage())),
+            buildInfrastructureFactCard("Disposition", formatOptionalText(selectedSalle.getTypeDisposition())),
+            buildInfrastructureFactCard("Acces", selectedSalle.isAccesHandicape() ? "Handicap" : "Standard")
+        );
+    }
+
+    private void showRoomUnavailablePreview(String reason) {
+        sessionRoomStatusChipLabel.setText("Indisponible");
+        sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", "unavailable");
+        sessionRoomPreviewTitleLabel.setText("Salle indisponible sur ce creneau");
+        sessionRoomPreviewSubtitleLabel.setText(reason == null ? "Choisissez une autre salle ou modifiez le creneau." : reason);
+        sessionRoomPreviewDescriptionLabel.setText("Choisissez une autre salle ou changez la date, l'heure ou la duree.");
+        sessionRoomFactsContainer.getChildren().clear();
+    }
+
+    private void resetRoomPreview() {
+        sessionRoomStatusChipLabel.setText("En attente");
+        sessionRoomStatusChipLabel.getStyleClass().setAll("status-chip", "pending");
+        sessionRoomPreviewTitleLabel.setText("Choisissez une salle");
+        sessionRoomPreviewSubtitleLabel.setText("La salle choisie apparaitra ici avec ses details principaux.");
+        sessionRoomPreviewDescriptionLabel.setText("Aucune salle selectionnee.");
+        sessionRoomFactsContainer.getChildren().clear();
+    }
+
+    private void updateEquipmentPreview() {
+        sessionEquipmentPreviewContainer.getChildren().clear();
+
+        if (!Seance.MODE_ONSITE.equals(resolveSelectedMode())) {
+            sessionEquipmentSelectionSummaryLabel.setText("0 selection");
+            sessionEquipmentPreviewContainer.getChildren().add(createEmptyEquipmentPreview(
+                "Le materiel n'est necessaire que pour une seance presentielle."
+            ));
+            return;
+        }
+
+        Map<Integer, Integer> selectedEquipementQuantites = getSelectedEquipmentQuantites();
+        int selectedCount = selectedEquipementQuantites.size();
+        int totalUnits = selectedEquipementQuantites.values().stream().mapToInt(Integer::intValue).sum();
+        sessionEquipmentSelectionSummaryLabel.setText(
+            selectedCount == 0
+                ? "0 selection"
+                : selectedCount + " choix | " + totalUnits + " unite(s)"
+        );
+
+        if (selectedEquipementQuantites.isEmpty()) {
+            sessionEquipmentPreviewContainer.getChildren().add(createEmptyEquipmentPreview(
+                "Aucun materiel selectionne. Vous pouvez garder la seance presentielle sans materiel particulier."
+            ));
+            return;
+        }
+
+        selectedEquipementQuantites.entrySet().stream()
+            .map(entry -> createEquipmentPreviewCard(findEquipementById(entry.getKey()), entry.getValue()))
+            .filter(card -> card != null)
+            .forEach(sessionEquipmentPreviewContainer.getChildren()::add);
+    }
+
+    private VBox createEmptyEquipmentPreview(String text) {
+        VBox card = new VBox(6.0);
+        card.getStyleClass().addAll("infrastructure-detail-preview", "reservation-equipment-preview-card");
+
+        Label title = new Label("Apercu materiel");
+        title.getStyleClass().add("infrastructure-detail-section-title");
+
+        Label copy = new Label(text);
+        copy.setWrapText(true);
+        copy.getStyleClass().add("infrastructure-detail-section-copy");
+
+        card.getChildren().addAll(title, copy);
+        return card;
+    }
+
+    private VBox createEquipmentPreviewCard(Equipement equipement, int quantiteChoisie) {
+        if (equipement == null) {
+            return null;
+        }
+
+        VBox card = new VBox(8.0);
+        card.getStyleClass().addAll("infrastructure-detail-preview", "reservation-equipment-preview-card");
+
+        HBox header = new HBox(8.0);
+        Label title = new Label(formatOptionalText(equipement.getNom()));
+        title.getStyleClass().add("infrastructure-detail-section-title");
+        title.setWrapText(true);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label status = new Label(formatLabel(equipement.getEtat()));
+        status.getStyleClass().setAll("status-chip", resolveStatusStyle(equipement.getEtat()));
+        header.getChildren().addAll(title, spacer, status);
+
+        Label subtitle = new Label(
+            formatLabel(equipement.getTypeEquipement())
+                + " | "
+                + quantiteChoisie
+                + " unite(s) choisie(s) sur "
+                + equipement.getQuantiteDisponible()
+                + " disponible(s)"
+        );
+        subtitle.setWrapText(true);
+        subtitle.getStyleClass().add("infrastructure-detail-section-copy");
+
+        FlowPane facts = new FlowPane(10.0, 10.0);
+        facts.getChildren().addAll(
+            buildInfrastructureFactCard("Type", formatLabel(equipement.getTypeEquipement())),
+            buildInfrastructureFactCard("Quantite", quantiteChoisie + " unite(s)"),
+            buildInfrastructureFactCard("Stock", equipement.getQuantiteDisponible() + " unite(s)")
+        );
+
+        Label description = new Label(formatDescription(equipement.getDescription()));
+        description.setWrapText(true);
+        description.getStyleClass().add("infrastructure-detail-section-copy");
+
+        card.getChildren().addAll(header, subtitle, facts, description);
+        return card;
+    }
+
+    private VBox buildInfrastructureFactCard(String label, String value) {
+        VBox card = new VBox(5.0);
+        card.getStyleClass().add("infrastructure-detail-fact-card");
+        card.setPrefWidth(150.0);
+
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("infrastructure-detail-fact-label");
+
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.getStyleClass().add("infrastructure-detail-fact-value");
+
+        card.getChildren().addAll(labelNode, valueNode);
+        return card;
+    }
+
+    private Equipement findEquipementById(Integer equipementId) {
+        if (equipementId == null || equipementId <= 0) {
+            return null;
+        }
+
+        return availableEquipements.stream()
+            .filter(equipement -> equipement.getIdEquipement() == equipementId)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private void updateInfrastructureHint() {
+        infrastructureHintLabel.setText(
+            availableSalles.size()
+                + " salle(s) disponible(s), "
+                + availableEquipements.size()
+                + " type(s) de materiel disponible(s). Precisez la quantite voulue uniquement pour le materiel existant."
+        );
+    }
+
+    private void loadSessionDashboard() {
+        List<Seance> allSessions = seanceService.getAll();
+        long publishedCount = allSessions.stream().filter(seance -> seance.getStatus() == 1).count();
+        long draftCount = allSessions.stream().filter(seance -> seance.getStatus() == 0).count();
+
+        publishedSessionsCountLabel.setText(String.valueOf(publishedCount));
+        draftSessionsCountLabel.setText(String.valueOf(draftCount));
+        applySessionFilters();
+    }
+
+    private void applySessionFilters() {
+        recentSessionsContainer.getChildren().clear();
+        List<Seance> filteredSessions = seanceService.search(
+            sessionSearchField.getText(),
+            sessionSearchModeComboBox.getValue(),
+            0
+        );
+        boolean hasSessionsInDatabase = !seanceService.getAll().isEmpty();
+
+        if (filteredSessions.isEmpty() && !hasSessionsInDatabase) {
+            Label emptyLabel = new Label("Aucune seance en base de donnees n'est disponible pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            recentSessionsContainer.getChildren().add(emptyLabel);
+            hideSessionPagination();
+            return;
+        }
+
+        if (filteredSessions.isEmpty()) {
+            Label emptyLabel = new Label("Aucune seance en base ne correspond aux filtres actuels.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            recentSessionsContainer.getChildren().add(emptyLabel);
+            hideSessionPagination();
+            return;
+        }
+
+        int totalItems = filteredSessions.size();
+        int pageSize = getSelectedSessionPageSize();
+        int totalPages = calculateTotalPages(totalItems, pageSize);
+        currentSessionPage = clamp(currentSessionPage, 1, totalPages);
+
+        int fromIndex = (currentSessionPage - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, totalItems);
+
+        filteredSessions.subList(fromIndex, toIndex).stream()
+            .map(this::buildRecentSessionCard)
+            .forEach(recentSessionsContainer.getChildren()::add);
+
+        updateSessionPagination(totalItems, fromIndex + 1, toIndex, totalPages);
+    }
+
+    private VBox buildRecentSessionCard(Seance seance) {
+        VBox card = new VBox(10.0);
+        card.getStyleClass().add("reservation-form-shell");
+        ReservationStats reservationStats = reservationService.getStatsBySeanceId(seance.getId());
+
+        HBox headerRow = new HBox(10.0);
+        Label titleLabel = new Label(seance.getMatiere());
+        titleLabel.getStyleClass().add("subsection-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label statusChip = new Label(mapStatusLabel(seance.getStatus()));
+        statusChip.getStyleClass().addAll("reservation-status", mapStatusStyle(seance.getStatus()));
+        headerRow.getChildren().addAll(titleLabel, spacer, statusChip);
+
+        Label metaLabel = new Label(
+            "Tuteur: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())
+                + " | " + formatDateTime(seance.getStartAt())
+                + " | " + seance.getDurationMin() + " min"
+                + " | " + seance.getMaxParticipants() + " places"
+                + " | " + buildInfrastructureSummary(seance)
+                + " | " + formatReservationCount(reservationStats.total())
+        );
+        metaLabel.setWrapText(true);
+        metaLabel.getStyleClass().add("reservation-section-copy");
+
+        Label descriptionLabel = new Label(
+            seance.getDescription() != null && !seance.getDescription().isBlank()
+                ? seance.getDescription()
+                : "Aucune description ajoutee pour cette seance."
+        );
+        descriptionLabel.setWrapText(true);
+        descriptionLabel.getStyleClass().add("reservation-section-copy");
+
+        HBox actionRow = new HBox(10.0);
+        Label idChip = new Label("Seance #" + seance.getId());
+        idChip.getStyleClass().add("workspace-chip");
+
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+        Button detailsButton = new Button("Voir detail");
+        detailsButton.getStyleClass().add("backoffice-secondary-button");
+        detailsButton.setOnAction(event -> showSessionDetails(seance, reservationStats));
+
+        Button reserveButton = buildReserveButton(seance, reservationStats);
+
+        Button editButton = new Button("Modifier");
+        editButton.getStyleClass().add("backoffice-edit-button");
+        editButton.setOnAction(event -> startEditingSession(seance));
+
+        Button deleteButton = new Button("Supprimer");
+        deleteButton.getStyleClass().add("backoffice-danger-button");
+        deleteButton.setOnAction(event -> confirmDeleteSession(seance));
+
+        actionRow.getChildren().addAll(idChip, actionSpacer);
+        if (canReserveAsParticipant(seance)) {
+            actionRow.getChildren().add(reserveButton);
+        }
+        actionRow.getChildren().add(detailsButton);
+        if (canManageSession(seance)) {
+            actionRow.getChildren().addAll(editButton, deleteButton);
+        }
+
+        card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
+        return card;
+    }
+
+    private boolean canManageSession(Seance seance) {
+        return UserSession.isCurrentTutor()
+            && seance != null
+            && seance.getTuteurId() == getCurrentTutorId();
+    }
+
+    private boolean canReserveAsParticipant(Seance seance) {
+        if (UserSession.isCurrentStudent()) {
+            return true;
+        }
+        return UserSession.isCurrentTutor()
+            && seance != null
+            && !canManageSession(seance);
+    }
+
+    private int getCurrentReservationParticipantId() {
+        return UserSession.getCurrentUserId();
+    }
+
+    private int getCurrentTutorId() {
+        return UserSession.isCurrentTutor() ? UserSession.getCurrentUserId() : 0;
+    }
+
+    private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
+        Button reserveButton = new Button("Reserver");
+        reserveButton.getStyleClass().add("backoffice-primary-button");
+
+        if (!canReserveAsParticipant(seance)) {
+            reserveButton.setText(UserSession.isCurrentTutor() ? "Votre seance" : "Compte requis");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        if (seance.getStatus() != 1) {
+            reserveButton.setText("Indisponible");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        if (reservationStats.total() >= seance.getMaxParticipants()) {
+            reserveButton.setText("Complet");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        int participantId = getCurrentReservationParticipantId();
+        if (reservationService.hasActiveReservation(seance.getId(), participantId)) {
+            reserveButton.setText("Deja reserve");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        reserveButton.setOnAction(event -> reserveSession(seance));
+        return reserveButton;
+    }
+
+    private void reserveSession(Seance seance) {
+        OperationResult result = reservationService.reserveSeance(seance, getCurrentReservationParticipantId());
+        loadSessionDashboard();
+        showAvailableSessionsSection();
+        showReservationActionFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void loadStudentReservations() {
+        studentReservationsContainer.getChildren().clear();
+
+        List<StudentReservationItem> reservations = reservationService.getStudentReservations(
+            getCurrentReservationParticipantId()
+        );
+        long pendingCount = reservations.stream().filter(StudentReservationItem::isPending).count();
+        long acceptedCount = reservations.stream().filter(StudentReservationItem::isAccepted).count();
+        long refusedCount = reservations.stream().filter(StudentReservationItem::isRefused).count();
+        studentReservationsSummaryLabel.setText(
+            formatStudentReservationsSummary(reservations.size(), pendingCount, acceptedCount, refusedCount)
+        );
+
+        if (reservations.isEmpty()) {
+            Label emptyLabel = new Label("Aucune reservation active pour le moment. Reserve une seance depuis le catalogue.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            studentReservationsContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        reservations.stream()
+            .map(this::buildStudentReservationCard)
+            .forEach(studentReservationsContainer.getChildren()::add);
+    }
+
+    private VBox buildStudentReservationCard(StudentReservationItem reservation) {
+        VBox card = new VBox(10.0);
+        card.getStyleClass().add("reservation-form-shell");
+
+        HBox headerRow = new HBox(10.0);
+        Label titleLabel = new Label(safeText(reservation.seanceTitle()));
+        titleLabel.getStyleClass().add("subsection-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label statusChip = new Label(mapReservationRequestStatusLabel(reservation.status()));
+        statusChip.getStyleClass().addAll("reservation-status", mapReservationRequestStatusStyle(reservation.status()));
+        headerRow.getChildren().addAll(titleLabel, spacer, statusChip);
+
+        Label sessionLabel = new Label(
+            "Tuteur: " + tutorDirectoryService.getTutorDisplayName(reservation.tutorId())
+                + " | Seance: " + formatDateTimeOrPlaceholder(reservation.seanceStartAt())
+                + " | " + reservation.durationMin() + " min"
+                + " | " + reservation.maxParticipants() + " places"
+        );
+        sessionLabel.setWrapText(true);
+        sessionLabel.getStyleClass().add("reservation-section-copy");
+
+        Label requestLabel = new Label(
+            "Reservation envoyee: " + formatDateTimeOrPlaceholder(reservation.reservedAt())
+                + " | ID reservation #" + reservation.id()
+                + " | Seance #" + reservation.seanceId()
+        );
+        requestLabel.setWrapText(true);
+        requestLabel.getStyleClass().add("reservation-section-copy");
+
+        HBox actionRow = new HBox(10.0);
+        Label idChip = new Label("Reservation #" + reservation.id());
+        idChip.getStyleClass().add("workspace-chip");
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+        actionRow.getChildren().addAll(idChip, actionSpacer);
+
+        if (reservation.isPending()) {
+            Button cancelButton = new Button("Annuler ma reservation");
+            cancelButton.getStyleClass().addAll("action-button", "danger");
+            cancelButton.setOnAction(event -> confirmCancelStudentReservation(reservation));
+            actionRow.getChildren().add(cancelButton);
+        }
+
+        card.getChildren().addAll(headerRow, sessionLabel, requestLabel, actionRow);
+        return card;
+    }
+
+    private void confirmCancelStudentReservation(StudentReservationItem reservation) {
+        ButtonType cancelButton = new ButtonType("Garder", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButton = new ButtonType("Annuler la reservation", ButtonBar.ButtonData.OK_DONE);
+
+        Alert confirmationAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmationAlert.setTitle("Annulation de reservation");
+        confirmationAlert.setHeaderText("Confirmer l'annulation");
+        confirmationAlert.setContentText(
+            "Ta demande pour la seance \"" + safeText(reservation.seanceTitle()) + "\" sera annulee."
+        );
+        confirmationAlert.getButtonTypes().setAll(cancelButton, confirmButton);
+
+        Optional<ButtonType> choice = confirmationAlert.showAndWait();
+        if (choice.isPresent() && choice.get() == confirmButton) {
+            cancelStudentReservation(reservation);
+        }
+    }
+
+    private void cancelStudentReservation(StudentReservationItem reservation) {
+        hideStudentReservationsFeedback();
+        OperationResult result = reservationService.cancelStudentReservation(
+            reservation.id(),
+            getCurrentReservationParticipantId()
+        );
+        loadSessionDashboard();
+        loadStudentReservations();
+        showStudentReservationsFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void loadTutorReservationRequests() {
+        tutorReservationRequestsContainer.getChildren().clear();
+
+        List<TutorReservationRequest> requests = reservationService.getTutorReservationRequests(
+            getCurrentTutorId()
+        );
+        long pendingCount = requests.stream().filter(TutorReservationRequest::isPending).count();
+        tutorReservationRequestsSummaryLabel.setText(formatTutorRequestsSummary(requests.size(), pendingCount));
+
+        if (requests.isEmpty()) {
+            Label emptyLabel = new Label("Aucune demande de reservation pour vos seances pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            tutorReservationRequestsContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        requests.stream()
+            .map(this::buildTutorReservationRequestCard)
+            .forEach(tutorReservationRequestsContainer.getChildren()::add);
+    }
+
+    private VBox buildTutorReservationRequestCard(TutorReservationRequest request) {
+        VBox card = new VBox(10.0);
+        card.getStyleClass().add("reservation-form-shell");
+
+        HBox headerRow = new HBox(10.0);
+        Label titleLabel = new Label(safeText(request.seanceTitle()));
+        titleLabel.getStyleClass().add("subsection-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label statusChip = new Label(mapReservationRequestStatusLabel(request.status()));
+        statusChip.getStyleClass().addAll("reservation-status", mapReservationRequestStatusStyle(request.status()));
+        headerRow.getChildren().addAll(titleLabel, spacer, statusChip);
+
+        Label studentLabel = new Label(
+            "Etudiant: " + safeText(request.participantName())
+                + " | Email: " + safeText(request.participantEmail())
+                + " | Demande envoyee: " + formatDateTimeOrPlaceholder(request.reservedAt())
+        );
+        studentLabel.setWrapText(true);
+        studentLabel.getStyleClass().add("reservation-section-copy");
+
+        Label sessionLabel = new Label(
+            "Seance: " + formatDateTimeOrPlaceholder(request.seanceStartAt())
+                + " | " + request.durationMin() + " min"
+                + " | " + request.acceptedReservations() + "/" + request.maxParticipants() + " acceptee(s)"
+                + " | " + formatAvailableSeats(request.availableAcceptedSeats())
+                + " | ID reservation #" + request.id()
+        );
+        sessionLabel.setWrapText(true);
+        sessionLabel.getStyleClass().add("reservation-section-copy");
+
+        HBox actionRow = new HBox(10.0);
+        Label idChip = new Label("Seance #" + request.seanceId());
+        idChip.getStyleClass().add("workspace-chip");
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+        Button acceptButton = new Button("Accepter");
+        acceptButton.getStyleClass().addAll("action-button", "accept");
+        acceptButton.setOnAction(event -> acceptTutorReservationRequest(request));
+
+        Button refuseButton = new Button("Refuser");
+        refuseButton.getStyleClass().addAll("action-button", "danger");
+        refuseButton.setOnAction(event -> confirmRefuseTutorReservationRequest(request));
+
+        actionRow.getChildren().addAll(idChip, actionSpacer);
+        if (request.isPending()) {
+            if (request.isSessionCapacityReached()) {
+                Button fullButton = new Button("Capacite atteinte");
+                fullButton.getStyleClass().addAll("action-button", "secondary");
+                fullButton.setDisable(true);
+                actionRow.getChildren().addAll(fullButton, refuseButton);
+            } else {
+                actionRow.getChildren().addAll(acceptButton, refuseButton);
+            }
+        }
+
+        card.getChildren().addAll(headerRow, studentLabel, sessionLabel, actionRow);
+        return card;
+    }
+
+    private void acceptTutorReservationRequest(TutorReservationRequest request) {
+        hideTutorReservationRequestsFeedback();
+        if (request.isSessionCapacityReached()) {
+            showTutorReservationRequestsFeedback("La capacite de cette seance est deja atteinte.", false);
+            loadTutorReservationRequests();
+            return;
+        }
+
+        OperationResult result = reservationService.acceptReservation(
+            request.id(),
+            getCurrentTutorId()
+        );
+        loadSessionDashboard();
+        loadTutorReservationRequests();
+        showTutorReservationRequestsFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void confirmRefuseTutorReservationRequest(TutorReservationRequest request) {
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType refuseButton = new ButtonType("Refuser", ButtonBar.ButtonData.OK_DONE);
+
+        Alert confirmationAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmationAlert.setTitle("Refus de reservation");
+        confirmationAlert.setHeaderText("Confirmer le refus");
+        confirmationAlert.setContentText(
+            "La demande de " + safeText(request.participantName())
+                + " pour la seance \"" + safeText(request.seanceTitle()) + "\" sera marquee comme refusee."
+        );
+        confirmationAlert.getButtonTypes().setAll(cancelButton, refuseButton);
+
+        Optional<ButtonType> choice = confirmationAlert.showAndWait();
+        if (choice.isPresent() && choice.get() == refuseButton) {
+            refuseTutorReservationRequest(request);
+        }
+    }
+
+    private void refuseTutorReservationRequest(TutorReservationRequest request) {
+        hideTutorReservationRequestsFeedback();
+        OperationResult result = reservationService.refuseReservation(
+            request.id(),
+            getCurrentTutorId()
+        );
+        loadSessionDashboard();
+        loadTutorReservationRequests();
+        showTutorReservationRequestsFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private void showSessionDetails(Seance seance, ReservationStats reservationStats) {
+        Dialog<ButtonType> detailsDialog = new Dialog<>();
+        ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
+        DialogPane dialogPane = detailsDialog.getDialogPane();
+
+        detailsDialog.setTitle("Detail de la seance");
+        dialogPane.getButtonTypes().setAll(closeButton);
+        dialogPane.setContent(buildSessionDetailsContent(seance, reservationStats, detailsDialog));
+        dialogPane.setPrefWidth(720);
+        dialogPane.getStyleClass().add("session-detail-dialog");
+        applyCurrentTheme(dialogPane);
+        detailsDialog.showAndWait();
+    }
+
+    private VBox buildSessionDetailsContent(Seance seance, ReservationStats reservationStats, Dialog<ButtonType> detailsDialog) {
+        boolean canManageCurrentSession = canManageSession(seance);
+        int reservationTotal = reservationStats != null ? reservationStats.total() : 0;
+        LocalDateTime endAt = seance.getStartAt() != null
+            ? seance.getStartAt().plusMinutes(seance.getDurationMin())
+            : null;
+        int availableSeats = Math.max(0, seance.getMaxParticipants() - reservationTotal);
+        double occupancyRate = calculateOccupancyRate(reservationTotal, seance.getMaxParticipants());
+
+        VBox root = new VBox(16.0);
+        root.getStyleClass().add("session-detail-root");
+
+        HBox header = new HBox(12.0);
+        header.getStyleClass().add("session-detail-header");
+
+        VBox titleBlock = new VBox(5.0);
+        HBox titleRow = new HBox(8.0);
+        Label titleLabel = new Label(safeText(seance.getMatiere()));
+        titleLabel.getStyleClass().add("session-detail-title");
+        Label statusChip = new Label(mapStatusLabel(seance.getStatus()));
+        statusChip.getStyleClass().addAll("reservation-status", mapStatusStyle(seance.getStatus()));
+        titleRow.getChildren().addAll(titleLabel, statusChip);
+
+        titleBlock.getChildren().add(titleRow);
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+
+        header.getChildren().addAll(titleBlock, headerSpacer);
+        if (canManageCurrentSession) {
+            Label reservationChip = new Label(formatReservationCount(reservationTotal));
+            reservationChip.getStyleClass().add("session-detail-reservation-chip");
+            header.getChildren().add(reservationChip);
+        }
+
+        FlowPane metrics = new FlowPane(10.0, 10.0);
+        metrics.getStyleClass().add("session-detail-metrics");
+        metrics.setPrefWrapLength(560.0);
+        metrics.getChildren().addAll(
+            buildDetailMetric("Debut", formatDateTimeOrPlaceholder(seance.getStartAt()), "Date et heure"),
+            buildDetailMetric("Fin", formatDateTimeOrPlaceholder(endAt), "Fin calculee"),
+            buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance")
+        );
+        if (canManageCurrentSession) {
+            metrics.getChildren().addAll(
+                buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
+                buildDetailMetric("Reservations", String.valueOf(reservationTotal), "Total lie a la seance")
+            );
+        } else {
+            metrics.getChildren().add(buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"));
+        }
+        metrics.getChildren().addAll(
+            buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId()),
+            buildDetailMetric("Mode", mapModeLabel(seance.getMode()), "Format choisi"),
+            buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel"),
+            buildDetailMetric("Materiel", resolveEquipementNames(seance.getEquipementQuantites()), "Existant")
+        );
+
+        VBox occupancyCard = new VBox(9.0);
+        occupancyCard.getStyleClass().add("session-detail-occupancy-card");
+        HBox occupancyHeader = new HBox(10.0);
+        Label occupancyTitle = new Label("Remplissage de la seance");
+        occupancyTitle.getStyleClass().add("session-detail-section-title");
+        Region occupancySpacer = new Region();
+        HBox.setHgrow(occupancySpacer, Priority.ALWAYS);
+        Label occupancyValue = new Label(formatPercent(occupancyRate));
+        occupancyValue.getStyleClass().add("session-detail-occupancy-value");
+        occupancyHeader.getChildren().addAll(occupancyTitle, occupancySpacer, occupancyValue);
+
+        ProgressBar occupancyProgress = new ProgressBar(occupancyRate);
+        occupancyProgress.setMaxWidth(Double.MAX_VALUE);
+        occupancyProgress.getStyleClass().add("session-detail-progress");
+
+        HBox statusRow = new HBox(8.0);
+        statusRow.getStyleClass().add("session-detail-status-row");
+        if (reservationStats != null) {
+            statusRow.getChildren().addAll(
+                buildReservationStatusChip("En attente", reservationStats.pending()),
+                buildReservationStatusChip("Acceptees", reservationStats.accepted()),
+                buildReservationStatusChip("Refusees", reservationStats.refused())
+            );
+        }
+        occupancyCard.getChildren().addAll(occupancyHeader, occupancyProgress, statusRow);
+
+        VBox descriptionBox = new VBox(8.0);
+        descriptionBox.getStyleClass().add("session-detail-description-card");
+        Label descriptionTitle = new Label("Description");
+        descriptionTitle.getStyleClass().add("session-detail-section-title");
+        Label descriptionText = new Label(safeText(seance.getDescription()));
+        descriptionText.setWrapText(true);
+        descriptionText.getStyleClass().add("session-detail-description-text");
+        descriptionBox.getChildren().addAll(descriptionTitle, descriptionText);
+
+        HBox footer = new HBox(10.0);
+        footer.getStyleClass().add("session-detail-footer");
+        footer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label createdAtLabel = new Label("Creation: " + formatDateTimeOrPlaceholder(seance.getCreatedAt()));
+        createdAtLabel.getStyleClass().add("session-detail-muted");
+        footer.getChildren().add(createdAtLabel);
+        if (seance.getUpdatedAt() != null) {
+            Label updatedAtLabel = new Label("Mise a jour: " + formatDateTimeOrPlaceholder(seance.getUpdatedAt()));
+            updatedAtLabel.getStyleClass().add("session-detail-muted");
+            footer.getChildren().add(updatedAtLabel);
+        }
+        if (canManageCurrentSession) {
+            Region footerSpacer = new Region();
+            HBox.setHgrow(footerSpacer, Priority.ALWAYS);
+            Button editActionButton = new Button("Modifier cette seance");
+            editActionButton.getStyleClass().add("backoffice-primary-button");
+            editActionButton.setOnAction(event -> {
+                detailsDialog.close();
+                startEditingSession(seance);
+            });
+            footer.getChildren().addAll(footerSpacer, editActionButton);
+        }
+
+        root.getChildren().addAll(header, metrics);
+        if (canManageCurrentSession) {
+            root.getChildren().add(occupancyCard);
+        }
+        root.getChildren().addAll(descriptionBox, footer);
+        return root;
+    }
+
+    private VBox buildDetailMetric(String label, String value, String hint) {
+        VBox metric = new VBox(4.0);
+        metric.getStyleClass().add("session-detail-metric-card");
+        metric.setPrefWidth(172.0);
+
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("session-detail-metric-label");
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.getStyleClass().add("session-detail-metric-value");
+        Label hintNode = new Label(hint);
+        hintNode.setWrapText(true);
+        hintNode.getStyleClass().add("session-detail-metric-hint");
+
+        metric.getChildren().addAll(labelNode, valueNode, hintNode);
+        return metric;
+    }
+
+    private Label buildReservationStatusChip(String label, int count) {
+        Label chip = new Label(label + ": " + count);
+        chip.getStyleClass().add("session-detail-status-chip");
+        return chip;
+    }
+
+    private int getSelectedSessionPageSize() {
+        Integer selectedValue = sessionsPerPageComboBox != null ? sessionsPerPageComboBox.getValue() : null;
+        return selectedValue != null && selectedValue > 0 ? selectedValue : DEFAULT_SESSION_PAGE_SIZE;
+    }
+
+    private int calculateTotalPages(int totalItems, int pageSize) {
+        if (totalItems <= 0) {
+            return 1;
+        }
+        return (int) Math.ceil((double) totalItems / pageSize);
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(value, max));
+    }
+
+    private void updateSessionPagination(int totalItems, int fromItem, int toItem, int totalPages) {
+        sessionPaginationBar.setManaged(true);
+        sessionPaginationBar.setVisible(true);
+        sessionPaginationSummaryLabel.setText(fromItem + "-" + toItem + " sur " + totalItems + " seances affichees");
+        sessionPreviousPageButton.setDisable(currentSessionPage <= 1);
+        sessionNextPageButton.setDisable(currentSessionPage >= totalPages);
+
+        sessionPageButtonsContainer.getChildren().clear();
+        for (int page : buildVisiblePageNumbers(totalPages)) {
+            Button pageButton = new Button(String.valueOf(page));
+            pageButton.getStyleClass().add("backoffice-page-button");
+            if (page == currentSessionPage) {
+                pageButton.getStyleClass().add("active-page");
+            } else {
+                pageButton.setOnAction(event -> {
+                    currentSessionPage = page;
+                    applySessionFilters();
+                });
+            }
+            sessionPageButtonsContainer.getChildren().add(pageButton);
+        }
+    }
+
+    private List<Integer> buildVisiblePageNumbers(int totalPages) {
+        int firstPage = Math.max(1, currentSessionPage - 2);
+        int lastPage = Math.min(totalPages, firstPage + 4);
+        firstPage = Math.max(1, lastPage - 4);
+
+        java.util.ArrayList<Integer> pages = new java.util.ArrayList<>();
+        for (int page = firstPage; page <= lastPage; page++) {
+            pages.add(page);
+        }
+        return pages;
+    }
+
+    private void hideSessionPagination() {
+        sessionPaginationBar.setManaged(false);
+        sessionPaginationBar.setVisible(false);
+        sessionPaginationSummaryLabel.setText("");
+        sessionPageButtonsContainer.getChildren().clear();
+    }
+
+    private void startEditingSession(Seance seance) {
+        editingSessionId = seance.getId();
+        sessionSubjectField.setText(seance.getMatiere());
+        setStartAtSelection(seance.getStartAt());
+        sessionDurationField.setText(String.valueOf(seance.getDurationMin()));
+        sessionCapacityField.setText(String.valueOf(seance.getMaxParticipants()));
+        sessionDescriptionArea.setText(seance.getDescription() != null ? seance.getDescription() : "");
+
+        String tutorValue = resolveTutorValueForEdit(seance.getTuteurId());
+        tutorComboBox.setValue(tutorValue);
+        sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(seance.getMode()));
+        updateOnsiteOptionsVisibility();
+        selectSalleById(seance.getSalleId());
+        selectEquipementsByQuantites(seance.getEquipementQuantites());
+
+        sessionFormTitleLabel.setText("Modifier une seance");
+        sessionFormModeChipLabel.setText("Modification");
+        editingSessionLabel.setText(
+            "Mode modification actif pour la seance #" + seance.getId()
+                + ". Mets a jour les champs puis clique sur brouillon ou publier."
+        );
+        editingSessionLabel.setManaged(true);
+        editingSessionLabel.setVisible(true);
+        hideFeedback();
+        showAddSessionSection();
+    }
+
+    private void confirmDeleteSession(Seance seance) {
+        if (!canManageSession(seance)) {
+            showSessionListFeedback("Seul le tuteur proprietaire peut supprimer cette seance.", false);
+            return;
+        }
+
+        int linkedReservations;
+        try {
+            linkedReservations = seanceService.countReservationsForSeance(seance.getId());
+        } catch (RuntimeException exception) {
+            showSessionListFeedback(exception.getMessage(), false);
+            return;
+        }
+
+        if (linkedReservations > 0) {
+            showSessionListFeedback(buildDeleteBlockedMessage(linkedReservations), false);
+            return;
+        }
+
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType deleteButton = new ButtonType("Supprimer", ButtonBar.ButtonData.OK_DONE);
+
+        Alert confirmationAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmationAlert.setTitle("Suppression de seance");
+        confirmationAlert.setHeaderText("Confirmer la suppression");
+        confirmationAlert.setContentText(
+            "La seance \"" + seance.getMatiere() + "\" sera supprimee definitivement."
+        );
+        confirmationAlert.getButtonTypes().setAll(cancelButton, deleteButton);
+
+        Optional<ButtonType> choice = confirmationAlert.showAndWait();
+        if (choice.isPresent() && choice.get() == deleteButton) {
+            deleteSession(seance);
+        }
+    }
+
+    private void deleteSession(Seance seance) {
+        hideFeedback();
+        hideReservationActionFeedback();
+
+        OperationResult result = seanceService.deleteSeance(seance.getId());
+        if (result.isSuccess()) {
+            if (editingSessionId != null && editingSessionId == seance.getId()) {
+                clearSessionForm();
+                resetEditMode();
+            }
+            loadSessionDashboard();
+            showSessionListFeedback(result.getMessage(), true);
+        } else {
+            showSessionListFeedback(result.getMessage(), false);
+        }
+    }
+
+    private String buildDeleteBlockedMessage(int reservationCount) {
+        String suffix = reservationCount > 1 ? " reservations." : " reservation.";
+        return "Suppression impossible: cette seance possede " + reservationCount + suffix;
+    }
+
+    private LocalDateTime parseStartAt() {
+        LocalDate selectedDate = sessionDatePicker.getValue();
+        if (selectedDate == null) {
+            throw new IllegalArgumentException("Choisissez la date de la seance.");
+        }
+
+        String selectedHour = requireText(sessionHourComboBox.getValue(), "Choisissez l'heure de la seance.");
+        String selectedMinute = requireText(sessionMinuteComboBox.getValue(), "Choisissez les minutes de la seance.");
+
+        LocalDateTime parsedValue = LocalDateTime.of(
+            selectedDate,
+            LocalTime.of(Integer.parseInt(selectedHour), Integer.parseInt(selectedMinute))
+        );
+        if (!parsedValue.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("La date de la seance doit etre dans le futur.");
+        }
+        return parsedValue;
+    }
+
+    private int parseBoundedInt(String value, int min, int max, String errorMessage) {
+        String candidate = requireText(value, errorMessage);
+        try {
+            int parsedValue = Integer.parseInt(candidate);
+            if (parsedValue < min || parsedValue > max) {
+                throw new NumberFormatException();
+            }
+            return parsedValue;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+    }
+
+    private String requireText(String value, String errorMessage) {
+        String normalizedValue = normalizeText(value);
+        if (normalizedValue == null || normalizedValue.isEmpty()) {
+            throw new IllegalArgumentException(errorMessage);
+        }
+        return normalizedValue;
+    }
+
+    private String requireMinimumLengthText(String value, int minLength, String emptyMessage, String shortMessage) {
+        String normalizedValue = requireText(value, emptyMessage);
+        if (normalizedValue.length() < minLength) {
+            throw new IllegalArgumentException(shortMessage);
+        }
+        return normalizedValue;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalizedValue = value.trim().replaceAll("\\s+", " ");
+        return normalizedValue.isEmpty() ? null : normalizedValue;
+    }
+
+    private String formatOptionalText(String value) {
+        String normalizedValue = normalizeText(value);
+        return normalizedValue != null ? normalizedValue : "Non renseigne";
+    }
+
+    private String formatDescription(String value) {
+        String normalizedValue = normalizeText(value);
+        return normalizedValue != null ? normalizedValue : "Aucune description renseignee.";
+    }
+
+    private String formatLabel(String value) {
+        String normalizedValue = normalizeText(value);
+        if (normalizedValue == null) {
+            return "Non defini";
+        }
+
+        String lowered = normalizedValue.toLowerCase();
+        return Character.toUpperCase(lowered.charAt(0)) + lowered.substring(1);
+    }
+
+    private boolean isAvailable(String status) {
+        String normalizedStatus = status == null ? "" : status.toLowerCase().trim();
+        return STATUS_AVAILABLE.equals(normalizedStatus);
+    }
+
+    private String resolveStatusStyle(String status) {
+        String normalizedStatus = status == null ? "" : status.toLowerCase().trim();
+        if (STATUS_AVAILABLE.equals(normalizedStatus)) {
+            return "available";
+        }
+        if (normalizedStatus.contains(STATUS_PENDING)) {
+            return "pending";
+        }
+        if (normalizedStatus.contains("maintenance")) {
+            return "maintenance";
+        }
+        return "unavailable";
+    }
+
+    private String resolveMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
+    }
+
+    private String formatReservationCount(int reservationCount) {
+        if (reservationCount <= 0) {
+            return "0 reservation";
+        }
+        return reservationCount == 1 ? "1 reservation" : reservationCount + " reservations";
+    }
+
+    private String formatAvailableSeats(int availableSeats) {
+        if (availableSeats <= 0) {
+            return "capacite atteinte";
+        }
+        return availableSeats == 1 ? "1 place disponible" : availableSeats + " places disponibles";
+    }
+
+    private double calculateOccupancyRate(int reservationCount, int capacity) {
+        if (reservationCount <= 0 || capacity <= 0) {
+            return 0.0;
+        }
+        return Math.min(1.0, (double) reservationCount / capacity);
+    }
+
+    private String formatPercent(double value) {
+        return Math.round(value * 100) + "%";
+    }
+
+    private String safeText(String value) {
+        String normalizedValue = normalizeText(value);
+        return normalizedValue != null ? normalizedValue : "Non renseigne";
+    }
+
+    private String formatDateTimeOrPlaceholder(LocalDateTime value) {
+        return value != null ? value.format(DISPLAY_FORMATTER) : "Non renseigne";
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        return value != null ? value.format(DISPLAY_FORMATTER) : "";
+    }
+
+    private void configureDateTimeInputs() {
+        sessionDatePicker.setEditable(false);
+        sessionDatePicker.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(LocalDate value) {
+                return value != null ? value.format(DATE_PICKER_FORMATTER) : "";
+            }
+
+            @Override
+            public LocalDate fromString(String value) {
+                return value == null || value.isBlank() ? null : LocalDate.parse(value, DATE_PICKER_FORMATTER);
+            }
+        });
+        sessionDatePicker.setDayCellFactory(picker -> new DateCell() {
+            @Override
+            public void updateItem(LocalDate item, boolean empty) {
+                super.updateItem(item, empty);
+                setDisable(empty || item == null || item.isBefore(LocalDate.now()));
+            }
+        });
+
+        sessionHourComboBox.getItems().setAll(HOUR_OPTIONS);
+        sessionMinuteComboBox.getItems().setAll(MINUTE_OPTIONS);
+        sessionHourComboBox.setEditable(false);
+        sessionMinuteComboBox.setEditable(false);
+    }
+
+    private void setStartAtSelection(LocalDateTime value) {
+        if (value == null) {
+            sessionDatePicker.setValue(null);
+            sessionHourComboBox.getSelectionModel().clearSelection();
+            sessionMinuteComboBox.getSelectionModel().clearSelection();
+            return;
+        }
+
+        sessionDatePicker.setValue(value.toLocalDate());
+        sessionHourComboBox.setValue(String.format("%02d", value.getHour()));
+        sessionMinuteComboBox.setValue(String.format("%02d", value.getMinute()));
+    }
+
+    private String mapStatusLabel(int status) {
+        return switch (status) {
+            case 1 -> "Publiee";
+            case 2 -> "Archivee";
+            default -> "Brouillon";
+        };
+    }
+
+    private String mapStatusStyle(int status) {
+        return switch (status) {
+            case 1 -> "confirmed";
+            case 2 -> "completed";
+            default -> "pending";
+        };
+    }
+
+    private String mapReservationRequestStatusLabel(int status) {
+        return switch (status) {
+            case ReservationService.STATUS_ACCEPTED -> "Acceptee";
+            case ReservationService.STATUS_REFUSED -> "Refusee";
+            default -> "En attente";
+        };
+    }
+
+    private String mapReservationRequestStatusStyle(int status) {
+        return switch (status) {
+            case ReservationService.STATUS_ACCEPTED -> "confirmed";
+            case ReservationService.STATUS_REFUSED -> "refused";
+            default -> "pending";
+        };
+    }
+
+    private String formatTutorRequestsSummary(int totalRequests, long pendingRequests) {
+        String totalLabel = totalRequests <= 1 ? totalRequests + " demande" : totalRequests + " demandes";
+        String pendingLabel = pendingRequests <= 1 ? pendingRequests + " en attente" : pendingRequests + " en attente";
+        return totalLabel + " | " + pendingLabel;
+    }
+
+    private String formatStudentReservationsSummary(int totalReservations, long pendingReservations,
+                                                    long acceptedReservations, long refusedReservations) {
+        String totalLabel = totalReservations <= 1
+            ? totalReservations + " reservation"
+            : totalReservations + " reservations";
+        return totalLabel
+            + " | " + pendingReservations + " en attente"
+            + " | " + acceptedReservations + " acceptee(s)"
+            + " | " + refusedReservations + " refusee(s)";
+    }
+
+    private String mapModeLabel(String mode) {
+        return Seance.MODE_ONSITE.equals(mode) ? MODE_ONSITE_LABEL : MODE_ONLINE_LABEL;
+    }
+
+    private String buildInfrastructureSummary(Seance seance) {
+        if (seance == null || !seance.isPresentiel()) {
+            return MODE_ONLINE_LABEL;
+        }
+
+        String equipmentSummary = seance.getEquipementQuantites().isEmpty()
+            ? "sans materiel"
+            : resolveEquipementNames(seance.getEquipementQuantites());
+        return MODE_ONSITE_LABEL + " - " + resolveSalleName(seance.getSalleId()) + " - " + equipmentSummary;
+    }
+
+    private String resolveSalleName(Integer salleId) {
+        if (salleId == null || salleId <= 0) {
+            return "Non requis";
+        }
+
+        return availableSalles.stream()
+            .filter(salle -> salle.getIdSalle() == salleId)
+            .map(Salle::getNom)
+            .findFirst()
+            .orElseGet(() -> {
+                try {
+                    Salle salle = salleService.recupererParId(salleId);
+                    if (salle != null && salle.getNom() != null && !salle.getNom().isBlank()) {
+                        return salle.getNom();
+                    }
+                } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+                    return "Salle #" + salleId;
+                }
+                return "Salle #" + salleId;
+            });
+    }
+
+    private String resolveEquipementNames(Map<Integer, Integer> equipementQuantites) {
+        if (equipementQuantites == null || equipementQuantites.isEmpty()) {
+            return "Aucun materiel";
+        }
+
+        List<String> names = equipementQuantites.entrySet().stream()
+            .map(entry -> resolveEquipementName(entry.getKey()) + " x" + Math.max(1, entry.getValue()))
+            .toList();
+        return String.join(", ", names);
+    }
+
+    private String resolveEquipementName(Integer equipementId) {
+        if (equipementId == null || equipementId <= 0) {
+            return "Materiel inconnu";
+        }
+
+        return availableEquipements.stream()
+            .filter(equipement -> equipement.getIdEquipement() == equipementId)
+            .map(Equipement::getNom)
+            .findFirst()
+            .orElse("Materiel #" + equipementId);
+    }
+
+    private void clearSessionForm() {
+        sessionSubjectField.clear();
+        setStartAtSelection(null);
+        sessionDurationField.clear();
+        sessionCapacityField.clear();
+        sessionDescriptionArea.clear();
+        sessionOnsiteCheckBox.setSelected(false);
+        selectedSalleId = null;
+        updateRoomSelectionStyles();
+        clearEquipmentSelection();
+        updateOnsiteOptionsVisibility();
+        selectDefaultTutor();
+    }
+
+    private void resetEditMode() {
+        editingSessionId = null;
+        sessionFormTitleLabel.setText("Publier une seance");
+        sessionFormModeChipLabel.setText("Ajout direct");
+        editingSessionLabel.setText("");
+        editingSessionLabel.setManaged(false);
+        editingSessionLabel.setVisible(false);
+    }
+
+    private void showAvailableSessionsSection() {
+        if (sectionMenuComboBox != null && !SECTION_AVAILABLE_SESSIONS.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
+        }
+        setSectionVisible(sessionSearchPanel, true);
+        setSectionVisible(sessionListPanel, true);
+        setSectionVisible(sessionFormPanel, false);
+        setSectionVisible(studentReservationsPanel, false);
+        setSectionVisible(reservationRequestsPanel, false);
+    }
+
+    private void showSessionListFeedback(String message, boolean success) {
+        hideFeedback();
+        showAvailableSessionsSection();
+        showReservationActionFeedback(message, success);
+    }
+
+    private void showAddSessionSection() {
+        if (!UserSession.isCurrentTutor()) {
+            showSessionListFeedback("Connectez-vous avec le compte tuteur pour ajouter une seance.", false);
+            return;
+        }
+
+        if (sectionMenuComboBox != null && !SECTION_ADD_SESSION.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_ADD_SESSION);
+        }
+        hideReservationActionFeedback();
+        setSectionVisible(sessionSearchPanel, false);
+        setSectionVisible(sessionListPanel, false);
+        setSectionVisible(sessionFormPanel, true);
+        setSectionVisible(studentReservationsPanel, false);
+        setSectionVisible(reservationRequestsPanel, false);
+    }
+
+    private void showStudentReservationsSection() {
+        if (!UserSession.canUseReservationWorkspace()) {
+            showSessionListFeedback("Connectez-vous avec un compte etudiant ou tuteur pour consulter vos reservations.", false);
+            return;
+        }
+
+        if (sectionMenuComboBox != null && !SECTION_MY_RESERVATIONS.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_MY_RESERVATIONS);
+        }
+
+        hideStudentReservationsFeedback();
+        setSectionVisible(sessionSearchPanel, false);
+        setSectionVisible(sessionListPanel, false);
+        setSectionVisible(sessionFormPanel, false);
+        setSectionVisible(studentReservationsPanel, true);
+        setSectionVisible(reservationRequestsPanel, false);
+        loadStudentReservations();
+    }
+
+    private void showReservationRequestsSection() {
+        if (!UserSession.isCurrentTutor()) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback("Connectez-vous avec le compte tuteur pour consulter les demandes.", false);
+            return;
+        }
+
+        if (sectionMenuComboBox != null && !SECTION_RESERVATION_REQUESTS.equals(sectionMenuComboBox.getValue())) {
+            sectionMenuComboBox.setValue(SECTION_RESERVATION_REQUESTS);
+        }
+
+        hideTutorReservationRequestsFeedback();
+        setSectionVisible(sessionSearchPanel, false);
+        setSectionVisible(sessionListPanel, false);
+        setSectionVisible(sessionFormPanel, false);
+        setSectionVisible(studentReservationsPanel, false);
+        setSectionVisible(reservationRequestsPanel, true);
+        loadTutorReservationRequests();
+    }
+
+    private void configureWorkspaceSections() {
+        if (UserSession.isCurrentTutor()) {
+            sectionMenuComboBox.getItems().setAll(
+                SECTION_AVAILABLE_SESSIONS,
+                SECTION_MY_RESERVATIONS,
+                SECTION_ADD_SESSION,
+                SECTION_RESERVATION_REQUESTS
+            );
+            return;
+        }
+
+        sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_MY_RESERVATIONS);
+    }
+
+    private void selectDefaultTutor() {
+        String temporaryTutorName = tutorDirectoryService.getTutorDisplayName(getCurrentTutorId());
+        if (tutorComboBox.getItems().contains(temporaryTutorName)) {
+            tutorComboBox.setValue(temporaryTutorName);
+            return;
+        }
+
+        String currentValue = tutorComboBox.getValue();
+        if (currentValue != null && tutorComboBox.getItems().contains(currentValue)) {
+            tutorComboBox.setValue(currentValue);
+        } else if (!tutorComboBox.getItems().isEmpty()) {
+            tutorComboBox.setValue(tutorComboBox.getItems().get(0));
+        } else {
+            tutorComboBox.setValue(null);
+        }
+    }
+
+    private void setInfrastructureSectionVisible(HBox section, boolean visible) {
+        if (section == null) {
+            return;
+        }
+        section.setManaged(visible);
+        section.setVisible(visible);
+    }
+
+    private void setSectionVisible(VBox section, boolean visible) {
+        if (section == null) {
+            return;
+        }
+        section.setManaged(visible);
+        section.setVisible(visible);
+    }
+
+    private String resolveTutorValueForEdit(int tutorId) {
+        if (tutorId <= 0) {
+            return "";
+        }
+
+        String tutorDisplayName = tutorDirectoryService.getTutorDisplayName(tutorId);
+        if (tutorDisplayName.startsWith("Tuteur #")) {
+            return String.valueOf(tutorId);
+        }
+        return tutorDisplayName;
+    }
+
+    private void showFeedback(String message, boolean success) {
+        publishFeedbackLabel.setText(message);
+        publishFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", success ? "success" : "error");
+        publishFeedbackLabel.setManaged(true);
+        publishFeedbackLabel.setVisible(true);
+    }
+
+    private void hideFeedback() {
+        publishFeedbackLabel.setText("");
+        publishFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
+        publishFeedbackLabel.setManaged(false);
+        publishFeedbackLabel.setVisible(false);
+    }
+
+    private void showReservationActionFeedback(String message, boolean success) {
+        reservationActionFeedbackLabel.setText(message);
+        reservationActionFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", success ? "success" : "error");
+        reservationActionFeedbackLabel.setManaged(true);
+        reservationActionFeedbackLabel.setVisible(true);
+    }
+
+    private void hideReservationActionFeedback() {
+        reservationActionFeedbackLabel.setText("");
+        reservationActionFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
+        reservationActionFeedbackLabel.setManaged(false);
+        reservationActionFeedbackLabel.setVisible(false);
+    }
+
+    private void showStudentReservationsFeedback(String message, boolean success) {
+        studentReservationsFeedbackLabel.setText(message);
+        studentReservationsFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", success ? "success" : "error");
+        studentReservationsFeedbackLabel.setManaged(true);
+        studentReservationsFeedbackLabel.setVisible(true);
+    }
+
+    private void hideStudentReservationsFeedback() {
+        studentReservationsFeedbackLabel.setText("");
+        studentReservationsFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
+        studentReservationsFeedbackLabel.setManaged(false);
+        studentReservationsFeedbackLabel.setVisible(false);
+    }
+
+    private void showTutorReservationRequestsFeedback(String message, boolean success) {
+        tutorReservationRequestsFeedbackLabel.setText(message);
+        tutorReservationRequestsFeedbackLabel.getStyleClass().setAll("frontoffice-feedback", success ? "success" : "error");
+        tutorReservationRequestsFeedbackLabel.setManaged(true);
+        tutorReservationRequestsFeedbackLabel.setVisible(true);
+    }
+
+    private void hideTutorReservationRequestsFeedback() {
+        tutorReservationRequestsFeedbackLabel.setText("");
+        tutorReservationRequestsFeedbackLabel.getStyleClass().setAll("frontoffice-feedback");
+        tutorReservationRequestsFeedbackLabel.setManaged(false);
+        tutorReservationRequestsFeedbackLabel.setVisible(false);
+    }
+
+    private void applyCurrentTheme(DialogPane dialogPane) {
+        if (dialogPane == null || recentSessionsContainer == null || recentSessionsContainer.getScene() == null) {
+            return;
+        }
+        dialogPane.getStylesheets().setAll(recentSessionsContainer.getScene().getStylesheets());
+    }
+
+    private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card) {
+    }
+
+    private record RoomSelectionControls(VBox card, Label statusChip) {
     }
 }
 

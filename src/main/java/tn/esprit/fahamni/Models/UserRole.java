@@ -5,4 +5,3 @@ public enum UserRole {
     USER,
     TUTOR
 }
-

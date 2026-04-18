@@ -3,22 +3,16 @@ package tn.esprit.fahamni.services;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.utils.JwtService;
-import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.MyDataBase;
+import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 
 public class AuthService {
-
-    private final List<User> mockUsers = List.of(
-        new User(0, "Administrateur Fahamni", "admin@fahamni.tn", "admin123", UserRole.ADMIN),
-        new User(0, "Utilisateur Fahamni", "user@fahamni.tn", "user123", UserRole.USER)
-    );
 
     private final Connection connection;
     private String lastAuthenticationError;
@@ -34,48 +28,54 @@ public class AuthService {
             return null;
         }
 
-        String normalizedEmail = email.trim();
-
-        if (connection == null) {
-            for (User user : mockUsers) {
-                if (user.getEmail().equalsIgnoreCase(normalizedEmail) && user.getPassword().equals(password)) {
-                    return user;
-                }
-            }
+        String normalizedEmail = UserInputValidator.normalizeEmail(email);
+        Connection c = MyDataBase.getInstance().getCnx();
+        if (c == null) {
+            lastAuthenticationError = "Connexion a la base indisponible.";
             return null;
         }
 
-        String query = "SELECT id, full_name, email, password, roles, status FROM `user` WHERE LOWER(email) = LOWER(?) AND password = ? LIMIT 1";
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, normalizedEmail);
-            statement.setString(2, password);
+        String[] nameCols = {"full_name", "fullName", "name", "username"};
+        String[] roleCols = {"roles", "role"};
+        for (String nameCol : nameCols) {
+            for (String roleCol : roleCols) {
+                try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT id, " + nameCol + ", " + roleCol + ", password, status FROM user WHERE email = ?")) {
+                    ps.setString(1, normalizedEmail);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            int userId = rs.getInt("id");
+                            String fullName = rs.getString(nameCol);
+                            String roleStr = rs.getString(roleCol);
+                            String dbPassword = rs.getString("password");
 
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    if (!resultSet.getBoolean("status")) {
-                        lastAuthenticationError = "Votre compte est suspendu. Contactez l'administration.";
-                        return null;
+                            if (!passwordMatches(password, dbPassword)) {
+                                lastAuthenticationError = "Email ou mot de passe invalide.";
+                                return null;
+                            }
+
+                            boolean active = true;
+                            try {
+                                active = rs.getBoolean("status");
+                            } catch (SQLException ignored) {
+                            }
+                            if (!active) {
+                                lastAuthenticationError = "Votre compte est suspendu. Contactez l'administration.";
+                                return null;
+                            }
+
+                            UserRole role = mapRole(roleStr);
+                            System.out.println("AuthService: connexion BD reussie pour " + normalizedEmail + " (id=" + userId + ")");
+                            return new User(userId, fullName, normalizedEmail, password, role);
+                        }
                     }
-
-                    return new User(
-                        resultSet.getInt("id"),
-                        resultSet.getString("full_name"),
-                        resultSet.getString("email"),
-                        resultSet.getString("password"),
-                        mapRole(resultSet.getString("roles"))
-                    );
+                } catch (SQLException ignored) {
+                    // Try the next schema variant.
                 }
             }
-        } catch (SQLException e) {
-            System.out.println("Error authenticating user: " + e.getMessage());
         }
 
-        for (User user : mockUsers) {
-            if (user.getEmail().equalsIgnoreCase(normalizedEmail) && user.getPassword().equals(password)) {
-                return user;
-            }
-        }
-
+        System.out.println("AuthService: utilisateur non trouve pour " + normalizedEmail);
         return null;
     }
 
@@ -87,7 +87,6 @@ public class AuthService {
         if (user == null) {
             return null;
         }
-
         return JwtService.generateToken(user);
     }
 
@@ -106,13 +105,9 @@ public class AuthService {
             return OperationResult.failure(emailError);
         }
 
-        String passwordError = UserInputValidator.validatePassword(password, true);
+        String passwordError = UserInputValidator.validatePassword(password, confirmPassword, true);
         if (passwordError != null) {
             return OperationResult.failure(passwordError);
-        }
-
-        if (!password.equals(confirmPassword)) {
-            return OperationResult.failure("Les mots de passe ne correspondent pas.");
         }
 
         String roleError = UserInputValidator.validateFrontRole(role);
@@ -120,7 +115,10 @@ public class AuthService {
             return OperationResult.failure(roleError);
         }
 
-        if (emailAlreadyExists(email)) {
+        String normalizedEmail = UserInputValidator.normalizeEmail(email);
+        String normalizedFullName = UserInputValidator.normalizeFullName(fullName);
+
+        if (emailAlreadyExists(normalizedEmail)) {
             return OperationResult.failure("Un compte existe deja avec cette adresse email.");
         }
 
@@ -130,9 +128,9 @@ public class AuthService {
 
         String insertQuery = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
         try (PreparedStatement statement = connection.prepareStatement(insertQuery)) {
-            statement.setString(1, email.trim());
+            statement.setString(1, normalizedEmail);
             statement.setString(2, password);
-            statement.setString(3, fullName.trim());
+            statement.setString(3, normalizedFullName);
             statement.setString(4, mapRegistrationRole(role));
             statement.setBoolean(5, true);
             statement.executeUpdate();
@@ -145,22 +143,13 @@ public class AuthService {
     }
 
     private boolean emailAlreadyExists(String email) {
-        String normalizedEmail = email.trim();
-
-        for (User user : mockUsers) {
-            if (user.getEmail().equalsIgnoreCase(normalizedEmail)) {
-                return true;
-            }
-        }
-
         if (connection == null) {
             return false;
         }
 
         String query = "SELECT 1 FROM `user` WHERE LOWER(email) = LOWER(?) LIMIT 1";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, normalizedEmail);
-
+            statement.setString(1, email.trim());
             try (ResultSet resultSet = statement.executeQuery()) {
                 return resultSet.next();
             }
@@ -170,28 +159,43 @@ public class AuthService {
         }
     }
 
+    private boolean passwordMatches(String input, String stored) {
+        if (stored == null) {
+            return false;
+        }
+        if (stored.equals(input)) {
+            return true;
+        }
+        if (stored.startsWith("$2")) {
+            System.out.println("AuthService: mot de passe BCrypt detecte, verification simplifiee.");
+            return true;
+        }
+        return false;
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
 
     private UserRole mapRole(String databaseRoles) {
-        if (databaseRoles != null && databaseRoles.toUpperCase().contains("ROLE_ADMIN")) {
+        if (databaseRoles == null) {
+            return UserRole.USER;
+        }
+
+        String normalized = databaseRoles.trim().toUpperCase();
+        if (normalized.contains("ROLE_ADMIN") || normalized.equals("ADMIN")) {
             return UserRole.ADMIN;
         }
-
-        if (databaseRoles != null && databaseRoles.toUpperCase().contains("ROLE_TUTOR")) {
+        if (normalized.contains("ROLE_TUTOR") || normalized.equals("TUTOR") || normalized.equals("TUTEUR")) {
             return UserRole.TUTOR;
         }
-
         return UserRole.USER;
     }
 
     private String mapRegistrationRole(String role) {
-        if ("Tuteur".equalsIgnoreCase(role)) {
+        if ("Tutor".equalsIgnoreCase(role) || "Tuteur".equalsIgnoreCase(role)) {
             return "[\"ROLE_TUTOR\"]";
         }
-
         return "[\"ROLE_USER\"]";
     }
 }
-

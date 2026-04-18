@@ -1,5 +1,6 @@
 package tn.esprit.fahamni.utils;
 
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -17,47 +18,65 @@ public final class UserInputValidator {
     }
 
     public static String validateFullName(String fullName) {
-        if (isBlank(fullName)) {
+        String normalized = normalizeFullName(fullName);
+        if (normalized == null) {
             return "Le nom complet est obligatoire.";
         }
-
-        String normalizedName = fullName.trim().replaceAll("\\s+", " ");
-        if (!FULL_NAME_PATTERN.matcher(normalizedName).matches()) {
+        if (!FULL_NAME_PATTERN.matcher(normalized).matches()) {
             return "Le nom complet doit contenir entre 4 et 80 caracteres valides.";
         }
-
-        if (normalizedName.split(" ").length < 2) {
+        if (normalized.split(" ").length < 2) {
             return "Veuillez saisir au moins un prenom et un nom.";
         }
-
         return null;
     }
 
     public static String validateEmail(String email) {
-        if (isBlank(email)) {
+        String normalized = normalizeEmail(email);
+        if (normalized == null) {
             return "L'adresse email est obligatoire.";
         }
-
-        if (!EMAIL_PATTERN.matcher(email.trim()).matches()) {
+        if (!EMAIL_PATTERN.matcher(normalized).matches()) {
             return "Veuillez saisir une adresse email valide.";
         }
-
         return null;
     }
 
     public static String validatePassword(String password, boolean required) {
-        if (isBlank(password)) {
-            return required ? "Le mot de passe est obligatoire." : null;
+        if (!required && isBlank(password)) {
+            return null;
         }
-
+        if (isBlank(password)) {
+            return "Le mot de passe est obligatoire.";
+        }
         if (password.length() < 6) {
             return "Le mot de passe doit contenir au moins 6 caracteres.";
         }
-
         if (!PASSWORD_LETTER_PATTERN.matcher(password).matches() || !PASSWORD_DIGIT_PATTERN.matcher(password).matches()) {
             return "Le mot de passe doit contenir au moins une lettre et un chiffre.";
         }
+        return null;
+    }
 
+    public static String validatePassword(String password, String confirmPassword, boolean required) {
+        boolean passwordBlank = isBlank(password);
+        boolean confirmBlank = isBlank(confirmPassword);
+
+        if (!required && passwordBlank && confirmBlank) {
+            return null;
+        }
+        if (passwordBlank || confirmBlank) {
+            return "Veuillez remplir les deux champs mot de passe.";
+        }
+
+        String passwordError = validatePassword(password, true);
+        if (passwordError != null) {
+            return passwordError;
+        }
+
+        if (!password.equals(confirmPassword)) {
+            return "Les mots de passe ne correspondent pas.";
+        }
         return null;
     }
 
@@ -65,7 +84,6 @@ public final class UserInputValidator {
         if (isBlank(role) || !ALLOWED_FRONT_ROLES.contains(role.trim())) {
             return "Veuillez choisir un role valide.";
         }
-
         return null;
     }
 
@@ -73,7 +91,6 @@ public final class UserInputValidator {
         if (isBlank(role) || !ALLOWED_BACKOFFICE_ROLES.contains(role.trim())) {
             return "Veuillez choisir un role valide.";
         }
-
         return null;
     }
 
@@ -81,8 +98,25 @@ public final class UserInputValidator {
         if (isBlank(status) || !ALLOWED_STATUSES.contains(status.trim())) {
             return "Veuillez choisir un statut valide.";
         }
-
         return null;
+    }
+
+    public static String normalizeFullName(String fullName) {
+        String normalized = trimToNull(fullName);
+        return normalized == null ? null : normalized.replaceAll("\\s+", " ");
+    }
+
+    public static String normalizeEmail(String email) {
+        String normalized = trimToNull(email);
+        return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private static boolean isBlank(String value) {

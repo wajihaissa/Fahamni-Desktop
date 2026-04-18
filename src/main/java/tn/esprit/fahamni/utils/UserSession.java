@@ -17,11 +17,13 @@ public final class UserSession {
 
     public static void setCurrentUser(User user) {
         currentUser = user;
+        SessionManager.setCurrentUser(user);
     }
 
     public static void start(User user, String jwtToken) {
         currentUser = user;
         currentJwtToken = jwtToken;
+        SessionManager.setCurrentUser(user);
     }
 
     public static String getCurrentJwtToken() {
@@ -39,6 +41,7 @@ public final class UserSession {
     public static void clear() {
         currentUser = null;
         currentJwtToken = null;
+        SessionManager.clear();
     }
 
     public static boolean hasCurrentUser() {
@@ -46,12 +49,12 @@ public final class UserSession {
     }
 
     public static String getDisplayName() {
-        return currentUser == null ? "Etudiant Fahamni" : currentUser.getFullName();
+        return currentUser == null ? "Utilisateur" : currentUser.getFullName();
     }
 
     public static String getInitials() {
         if (currentUser == null || currentUser.getFullName() == null || currentUser.getFullName().isBlank()) {
-            return "FS";
+            return "US";
         }
 
         String[] parts = currentUser.getFullName().trim().split("\\s+");
@@ -65,7 +68,7 @@ public final class UserSession {
             }
         }
 
-        return initials.length() == 0 ? "FS" : initials.toString();
+        return initials.length() == 0 ? "US" : initials.toString();
     }
 
     public static String getRoleLabel() {
@@ -82,5 +85,23 @@ public final class UserSession {
         }
 
         return "Espace Etudiant";
+    }
+
+    public static int getCurrentUserId() {
+        return currentUser == null ? 0 : currentUser.getId();
+    }
+
+    public static boolean isCurrentTutor() {
+        return currentUser != null && currentUser.getRole() == UserRole.TUTOR && currentUser.getId() > 0;
+    }
+
+    public static boolean isCurrentStudent() {
+        return currentUser != null && currentUser.getRole() == UserRole.USER && currentUser.getId() > 0;
+    }
+
+    public static boolean canUseReservationWorkspace() {
+        return currentUser != null
+            && currentUser.getId() > 0
+            && (currentUser.getRole() == UserRole.USER || currentUser.getRole() == UserRole.TUTOR);
     }
 }

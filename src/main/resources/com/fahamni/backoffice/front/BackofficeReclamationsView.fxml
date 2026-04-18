@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeReclamationsController">
+    <content>
+        <VBox spacing="20.0" styleClass="backoffice-page">
+            <padding>
+                <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+            </padding>
+
+            <VBox spacing="6.0" styleClass="backoffice-header-block">
+                <Label text="Reclamations des salles" styleClass="backoffice-panel-title"/>
+                <Label text="Recevez les signalements lies aux seances presencielles et transformez-les en actions administratives exploitables." styleClass="backoffice-panel-copy"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel backoffice-room-hero">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0">
+                        <Label text="Canal d'alerte" styleClass="backoffice-section-title"/>
+                        <Label text="Le tuteur signale un probleme, puis l'administration l'analyse, le rejette ou le convertit en maintenance." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="selectionBadgeLabel" text="Nouveau signalement pret a etre enregistre" styleClass="backoffice-room-chip"/>
+                </HBox>
+
+                <HBox spacing="14.0">
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Nouvelles" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="newClaimsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Signalements recents a analyser" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="En analyse" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="analysisClaimsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Dossiers ouverts cote admin" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Converties" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="maintenanceClaimsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Reclamations passees en maintenance" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Priorite haute" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="highPriorityClaimsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Cas urgents a traiter en premier" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox alignment="TOP_LEFT" spacing="18.0">
+                <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                            <Label text="Liste des reclamations" styleClass="backoffice-section-title"/>
+                            <Label text="Filtrez les signalements puis selectionnez une ligne pour traiter le dossier." styleClass="backoffice-panel-copy"/>
+                        </VBox>
+                        <Button onAction="#handleRefresh" text="Actualiser" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <TextField fx:id="searchField" promptText="Rechercher par salle, declarant, seance ou description" styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
+                        <ComboBox fx:id="statusFilterComboBox" prefWidth="220.0" styleClass="backoffice-form-input"/>
+                    </HBox>
+
+                    <TableView fx:id="reclamationsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+                        <columns>
+                            <TableColumn fx:id="salleColumn" prefWidth="150.0" text="Salle"/>
+                            <TableColumn fx:id="declarantColumn" prefWidth="130.0" text="Declarant"/>
+                            <TableColumn fx:id="typeColumn" prefWidth="155.0" text="Probleme"/>
+                            <TableColumn fx:id="prioriteColumn" prefWidth="100.0" text="Priorite"/>
+                            <TableColumn fx:id="statutColumn" prefWidth="150.0" text="Statut"/>
+                            <TableColumn fx:id="dateColumn" prefWidth="150.0" text="Date"/>
+                        </columns>
+                    </TableView>
+
+                    <BorderPane styleClass="backoffice-pagination-bar">
+                        <left>
+                            <Label fx:id="paginationSummaryLabel" text="Aucune reclamation a afficher" styleClass="backoffice-pagination-summary" BorderPane.alignment="CENTER_LEFT"/>
+                        </left>
+
+                        <center>
+                            <HBox alignment="CENTER" spacing="12.0" styleClass="backoffice-pagination-nav" BorderPane.alignment="CENTER">
+                                <Button fx:id="previousPageButton" onAction="#handlePreviousPage" text="Precedent" styleClass="backoffice-secondary-button"/>
+                                <HBox fx:id="pageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                                <Button fx:id="nextPageButton" onAction="#handleNextPage" text="Suivant" styleClass="backoffice-secondary-button"/>
+                            </HBox>
+                        </center>
+
+                        <right>
+                            <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="backoffice-pagination-controls" BorderPane.alignment="CENTER_RIGHT">
+                                <Label text="Par page" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="pageSizeComboBox" prefWidth="92.0" styleClass="backoffice-pagination-combo"/>
+                            </HBox>
+                        </right>
+                    </BorderPane>
+                </VBox>
+
+                <VBox spacing="12.0" styleClass="backoffice-panel" prefWidth="450.0" minWidth="450.0">
+                    <Label text="Nouveau signalement" styleClass="backoffice-section-title"/>
+
+                    <VBox spacing="6.0">
+                        <Label text="Salle concernee" styleClass="backoffice-form-label"/>
+                        <ComboBox fx:id="roomComboBox" styleClass="backoffice-form-input"/>
+                    </VBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Declarant" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="declarantField" promptText="Ex: Ahmed Ben Salah" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Reference seance" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="seanceReferenceField" promptText="Ex: Algebraie - 10/04 14h" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Type de probleme" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="typeProblemeComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" prefWidth="130.0">
+                            <Label text="Priorite" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="prioriteComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Description du signalement" styleClass="backoffice-form-label"/>
+                        <TextArea fx:id="descriptionArea" prefRowCount="4" wrapText="true" styleClass="backoffice-form-textarea"/>
+                    </VBox>
+
+                    <Button maxWidth="Infinity" onAction="#handleCreateReclamation" text="Enregistrer la reclamation" styleClass="backoffice-primary-button"/>
+
+                    <Region minHeight="8.0"/>
+
+                    <Label text="Traitement admin" styleClass="backoffice-section-title"/>
+
+                    <VBox spacing="10.0" styleClass="backoffice-mini-card">
+                        <Label text="Dossier selectionne" styleClass="backoffice-form-label"/>
+                        <Label fx:id="selectedClaimTitleLabel" text="Aucune reclamation selectionnee" styleClass="backoffice-mini-title"/>
+                        <Label fx:id="selectedClaimMetaLabel" text="Selectionnez une ligne pour consulter le signalement et le traiter." wrapText="true" styleClass="backoffice-mini-copy"/>
+                        <Label fx:id="selectedClaimStatusLabel" text="Aucun statut" styleClass="backoffice-room-chip"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-mini-card">
+                        <Label text="Description recue" styleClass="backoffice-form-label"/>
+                        <Label fx:id="selectedClaimDescriptionLabel" text="La description du probleme apparaitra ici." wrapText="true" styleClass="backoffice-mini-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Commentaire admin" styleClass="backoffice-form-label"/>
+                        <TextArea fx:id="commentaireAdminArea" prefRowCount="4" wrapText="true" styleClass="backoffice-form-textarea"/>
+                    </VBox>
+
+                    <Label fx:id="selectedClaimAdminHintLabel" text="Vous pourrez ajouter un commentaire admin puis lancer une action de traitement." wrapText="true" styleClass="backoffice-panel-copy"/>
+
+                    <HBox spacing="10.0">
+                        <Button fx:id="startAnalysisButton" maxWidth="Infinity" onAction="#handleStartAnalysis" text="Passer en analyse" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="convertMaintenanceButton" maxWidth="Infinity" onAction="#handleConvertToMaintenance" text="Convertir en maintenance" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <HBox spacing="10.0">
+                        <Button fx:id="resolveButton" maxWidth="Infinity" onAction="#handleResolve" text="Marquer resolue" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="rejectButton" maxWidth="Infinity" onAction="#handleReject" text="Rejeter" styleClass="backoffice-danger-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Button fx:id="resetSelectionButton" maxWidth="Infinity" onAction="#handleResetSelection" text="Reinitialiser la selection" styleClass="backoffice-secondary-button"/>
+
+                    <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </content>
+</ScrollPane>

@@ -16,13 +16,12 @@ public class User {
         this.role = role;
     }
 
+    /** Constructeur sans id (compatibilité) */
     public User(String fullName, String email, String password, UserRole role) {
         this(0, fullName, email, password, role);
     }
 
-    public int getId() {
-        return id;
-    }
+    public int getId() { return id; }
 
     public String getFullName() {
         return fullName;

@@ -1,11 +1,11 @@
 package tn.esprit.fahamni.services;
 
-import tn.esprit.fahamni.Models.AdminUser;
-import tn.esprit.fahamni.utils.OperationResult;
-import tn.esprit.fahamni.utils.MyDataBase;
-import tn.esprit.fahamni.utils.UserInputValidator;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import tn.esprit.fahamni.Models.AdminUser;
+import tn.esprit.fahamni.utils.MyDataBase;
+import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -91,13 +91,9 @@ public class AdminUserService {
             return OperationResult.failure(emailError);
         }
 
-        String passwordError = UserInputValidator.validatePassword(password, true);
+        String passwordError = UserInputValidator.validatePassword(password, confirmPassword, true);
         if (passwordError != null) {
             return OperationResult.failure(passwordError);
-        }
-
-        if (!password.equals(confirmPassword)) {
-            return OperationResult.failure("Les mots de passe ne correspondent pas.");
         }
 
         String roleError = UserInputValidator.validateBackofficeRole(role);
@@ -114,7 +110,10 @@ public class AdminUserService {
             return OperationResult.failure("Connexion a la base indisponible. Creation impossible.");
         }
 
-        if (emailAlreadyExists(email)) {
+        String normalizedEmail = UserInputValidator.normalizeEmail(email);
+        String normalizedFullName = UserInputValidator.normalizeFullName(fullName);
+
+        if (emailAlreadyExists(normalizedEmail)) {
             return OperationResult.failure("Un compte existe deja avec cette adresse email.");
         }
 
@@ -122,9 +121,9 @@ public class AdminUserService {
         String normalizedStatus = normalizeStatus(status);
         String query = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, email.trim());
+            statement.setString(1, normalizedEmail);
             statement.setString(2, password);
-            statement.setString(3, fullName.trim());
+            statement.setString(3, normalizedFullName);
             statement.setString(4, mapRoleToDatabaseValue(normalizedRole));
             statement.setBoolean(5, toDatabaseStatus(normalizedStatus));
             statement.executeUpdate();
@@ -162,20 +161,22 @@ public class AdminUserService {
             return OperationResult.failure(statusError);
         }
 
-        if (emailAlreadyExistsForAnotherUser(email, user.getId())) {
-            return OperationResult.failure("Un autre compte utilise deja cette adresse email.");
-        }
-
         if (connection == null) {
             return OperationResult.failure("Connexion a la base indisponible. Mise a jour impossible.");
+        }
+
+        String normalizedEmail = UserInputValidator.normalizeEmail(email);
+        String normalizedFullName = UserInputValidator.normalizeFullName(fullName);
+        if (emailAlreadyExistsForAnotherUser(normalizedEmail, user.getId())) {
+            return OperationResult.failure("Un autre compte utilise deja cette adresse email.");
         }
 
         String normalizedStatus = normalizeStatus(status);
         String normalizedRole = isBlank(role) ? user.getRole() : role.trim();
         String query = "UPDATE `user` SET `email` = ?, `full_name` = ?, `roles` = ?, `status` = ? WHERE `id` = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, email.trim());
-            statement.setString(2, fullName.trim());
+            statement.setString(1, normalizedEmail);
+            statement.setString(2, normalizedFullName);
             statement.setString(3, mapRoleToDatabaseValue(normalizedRole));
             statement.setBoolean(4, toDatabaseStatus(normalizedStatus));
             statement.setInt(5, user.getId());
@@ -185,8 +186,8 @@ public class AdminUserService {
             return OperationResult.failure("Erreur lors de la mise a jour : " + e.getMessage());
         }
 
-        user.setFullName(fullName.trim());
-        user.setEmail(email.trim());
+        user.setFullName(normalizedFullName);
+        user.setEmail(normalizedEmail);
         user.setRole(normalizedRole);
         user.setStatus(normalizedStatus);
         return OperationResult.success("Utilisateur mis a jour (nom, email, role et statut).");
@@ -399,4 +400,3 @@ public class AdminUserService {
         return value == null || value.trim().isEmpty();
     }
 }
-

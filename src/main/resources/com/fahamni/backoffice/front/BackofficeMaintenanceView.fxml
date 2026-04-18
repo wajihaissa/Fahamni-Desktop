@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeMaintenanceController">
+    <content>
+        <VBox spacing="20.0" styleClass="backoffice-page">
+            <padding>
+                <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+            </padding>
+
+            <VBox spacing="6.0" styleClass="backoffice-header-block">
+                <Label text="Maintenance des salles" styleClass="backoffice-panel-title"/>
+                <Label text="Pilotez de vrais dossiers de maintenance, relies ou non a des reclamations, et gardez une trace historique des interventions." styleClass="backoffice-panel-copy"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel backoffice-room-hero">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0">
+                        <Label text="Historique technique" styleClass="backoffice-section-title"/>
+                        <Label text="Chaque maintenance devient un dossier a part entiere, pendant que la salle conserve seulement son etat courant." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="selectionBadgeLabel" text="Suivi des interventions pret" styleClass="backoffice-room-chip"/>
+                </HBox>
+
+                <HBox spacing="14.0">
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Ouvertes" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="openMaintenanceValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Dossiers encore actifs a suivre" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Planifiees ce mois" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="plannedMaintenanceValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Interventions programmees ce mois" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Liees a reclamation" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="linkedClaimsValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Maintenances issues d'un signalement" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Terminees" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="completedMaintenanceValueLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Interventions cloturees dans l'historique" styleClass="backoffice-stat-copy"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox alignment="TOP_LEFT" spacing="18.0">
+                <VBox spacing="12.0" styleClass="backoffice-panel" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                            <Label text="Dossiers maintenance" styleClass="backoffice-section-title"/>
+                            <Label text="Filtrez les dossiers puis selectionnez-en un pour mettre a jour son avancement et garder la salle synchronisee." styleClass="backoffice-panel-copy"/>
+                        </VBox>
+                        <Button onAction="#handleRefresh" text="Actualiser" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <TextField fx:id="searchField" promptText="Rechercher par salle, type, responsable, details ou origine" styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
+                        <ComboBox fx:id="statusFilterComboBox" prefWidth="220.0" styleClass="backoffice-form-input"/>
+                    </HBox>
+
+                    <TableView fx:id="maintenanceTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+                        <columns>
+                            <TableColumn fx:id="salleColumn" prefWidth="150.0" text="Salle"/>
+                            <TableColumn fx:id="typeColumn" prefWidth="135.0" text="Type"/>
+                            <TableColumn fx:id="statutColumn" prefWidth="120.0" text="Statut"/>
+                            <TableColumn fx:id="origineColumn" prefWidth="160.0" text="Origine"/>
+                            <TableColumn fx:id="dateColumn" prefWidth="145.0" text="Date cle"/>
+                        </columns>
+                    </TableView>
+
+                    <BorderPane styleClass="backoffice-pagination-bar">
+                        <left>
+                            <Label fx:id="paginationSummaryLabel" text="Aucune maintenance a afficher" styleClass="backoffice-pagination-summary" BorderPane.alignment="CENTER_LEFT"/>
+                        </left>
+
+                        <center>
+                            <HBox alignment="CENTER" spacing="12.0" styleClass="backoffice-pagination-nav" BorderPane.alignment="CENTER">
+                                <Button fx:id="previousPageButton" onAction="#handlePreviousPage" text="Precedent" styleClass="backoffice-secondary-button"/>
+                                <HBox fx:id="pageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                                <Button fx:id="nextPageButton" onAction="#handleNextPage" text="Suivant" styleClass="backoffice-secondary-button"/>
+                            </HBox>
+                        </center>
+
+                        <right>
+                            <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="backoffice-pagination-controls" BorderPane.alignment="CENTER_RIGHT">
+                                <Label text="Par page" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="pageSizeComboBox" prefWidth="92.0" styleClass="backoffice-pagination-combo"/>
+                            </HBox>
+                        </right>
+                    </BorderPane>
+                </VBox>
+
+                <VBox spacing="12.0" styleClass="backoffice-panel" prefWidth="450.0" minWidth="450.0">
+                    <Label text="Suivi du dossier" styleClass="backoffice-section-title"/>
+
+                    <VBox spacing="10.0" styleClass="backoffice-mini-card">
+                        <Label text="Dossier selectionne" styleClass="backoffice-form-label"/>
+                        <Label fx:id="selectedMaintenanceTitleLabel" text="Aucun dossier selectionne" styleClass="backoffice-mini-title"/>
+                        <Label fx:id="selectedMaintenanceMetaLabel" text="Selectionnez une maintenance depuis la liste pour suivre l'intervention." wrapText="true" styleClass="backoffice-mini-copy"/>
+                        <Label fx:id="selectedMaintenanceContextLabel" text="Les informations de la salle, de l'origine et du pilotage apparaitront ici." wrapText="true" styleClass="backoffice-mini-copy"/>
+                    </VBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" styleClass="backoffice-mini-card" HBox.hgrow="ALWAYS">
+                            <Label text="Statut actuel" styleClass="backoffice-form-label"/>
+                            <Label fx:id="currentStatusValueLabel" text="Non defini" wrapText="true" styleClass="backoffice-stat-value"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" styleClass="backoffice-mini-card" HBox.hgrow="ALWAYS">
+                            <Label text="Origine" styleClass="backoffice-form-label"/>
+                            <Label fx:id="linkedClaimValueLabel" text="Aucune source reliee" wrapText="true" styleClass="backoffice-stat-value"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Type de maintenance" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="typeMaintenanceComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Responsable" styleClass="backoffice-form-label"/>
+                            <TextField fx:id="responsibleField" promptText="Ex: Service technique ou prestataire" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Statut du dossier" styleClass="backoffice-form-label"/>
+                            <ComboBox fx:id="maintenanceStatusComboBox" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Date planifiee" styleClass="backoffice-form-label"/>
+                            <DatePicker fx:id="plannedDatePicker" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Date de debut" styleClass="backoffice-form-label"/>
+                            <DatePicker fx:id="startDatePicker" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                            <Label text="Date de fin" styleClass="backoffice-form-label"/>
+                            <DatePicker fx:id="endDatePicker" styleClass="backoffice-form-input"/>
+                        </VBox>
+                    </HBox>
+
+                    <VBox spacing="6.0">
+                        <Label text="Details d'intervention" styleClass="backoffice-form-label"/>
+                        <TextArea fx:id="detailsArea" prefRowCount="4" wrapText="true" styleClass="backoffice-form-textarea"/>
+                    </VBox>
+
+                    <HBox spacing="12.0">
+                        <VBox spacing="6.0" styleClass="backoffice-mini-card" HBox.hgrow="ALWAYS">
+                            <Label text="Etat courant de la salle" styleClass="backoffice-form-label"/>
+                            <Label fx:id="roomStateValueLabel" text="Non defini" wrapText="true" styleClass="backoffice-stat-value"/>
+                        </VBox>
+
+                        <VBox spacing="6.0" styleClass="backoffice-mini-card" HBox.hgrow="ALWAYS">
+                            <Label text="Contexte salle" styleClass="backoffice-form-label"/>
+                            <Label fx:id="roomDescriptionValueLabel" text="La description de la salle apparaitra ici apres selection." wrapText="true" styleClass="backoffice-mini-copy"/>
+                        </VBox>
+                    </HBox>
+
+                    <HBox spacing="10.0">
+                        <Button fx:id="saveMaintenanceButton" maxWidth="Infinity" onAction="#handleSaveMaintenance" text="Enregistrer le dossier" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="startTodayButton" onAction="#handleUseToday" text="Demarrer aujourd'hui" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+
+                    <HBox spacing="10.0">
+                        <Button fx:id="markCompletedButton" maxWidth="Infinity" onAction="#handleMarkCompleted" text="Cloturer aujourd'hui" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="resetSelectionButton" maxWidth="Infinity" onAction="#handleResetSelection" text="Reinitialiser" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </content>
+</ScrollPane>

@@ -3,99 +3,251 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.Separator?>
 
-<ScrollPane fitToWidth="true" styleClass="reservation-scroll"
+<ScrollPane id="tutorDiscoveryRoot" fitToWidth="true" styleClass="reservation-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.ReservationController">
-    <VBox spacing="20.0" styleClass="reservation-content">
+    <VBox id="tutorDiscoveryContent" spacing="20.0" styleClass="reservation-content">
         <padding>
-            <Insets top="20" right="20" bottom="20" left="20"/>
+            <Insets top="8" right="20" bottom="20" left="20"/>
         </padding>
 
-        <VBox spacing="10.0" styleClass="reservation-header">
-            <Label text="My Reservations" styleClass="section-title"/>
-            <Label text="Manage your upcoming and past session bookings" styleClass="section-subtitle"/>
+        <VBox id="tutorDiscoveryHero" spacing="18.0" styleClass="reservation-workspace">
+            <HBox alignment="TOP_LEFT" spacing="24.0">
+                <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                    <Label text="FIND TUTORS WORKSPACE" styleClass="workspace-eyebrow"/>
+                    <Label text="Trouver un tuteur et publier une seance" styleClass="workspace-title" wrapText="true"/>
+                    <Label text="Compare les profils, puis publie une seance depuis le frontoffice avec un vrai enregistrement dans la base." styleClass="workspace-subtitle" wrapText="true"/>
+                </VBox>
+
+                <VBox alignment="TOP_RIGHT" spacing="10.0">
+                    <VBox alignment="CENTER_RIGHT" spacing="6.0">
+                        <Label text="MENU DE LA SECTION" styleClass="workspace-label"/>
+                        <ComboBox fx:id="sectionMenuComboBox" onAction="#handleChangeWorkspaceSection" styleClass="filter-combo workspace-menu-combo" prefWidth="210.0"/>
+                    </VBox>
+                </VBox>
+            </HBox>
+
+            <FlowPane hgap="12.0" vgap="12.0" prefWrapLength="1200.0">
+                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="workspace-stat-card" prefWidth="280.0">
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="AI" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="TUTEURS VERIFIES" styleClass="workspace-stat-title"/>
+                        <Label text="24" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="workspace-stat-card" prefWidth="280.0">
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="SE" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="SEANCES PUBLIEES" styleClass="workspace-stat-title"/>
+                        <Label fx:id="publishedSessionsCountLabel" text="0" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="workspace-stat-card" prefWidth="280.0">
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="DR" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="BROUILLONS" styleClass="workspace-stat-title"/>
+                        <Label fx:id="draftSessionsCountLabel" text="0" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="workspace-stat-card" prefWidth="280.0">
+                    <StackPane styleClass="workspace-stat-icon">
+                        <Label text="OK" styleClass="workspace-stat-icon-text"/>
+                    </StackPane>
+                    <VBox spacing="4.0">
+                        <Label text="MISES EN RELATION" styleClass="workspace-stat-title"/>
+                        <Label text="3" styleClass="workspace-stat-value"/>
+                    </VBox>
+                </HBox>
+            </FlowPane>
         </VBox>
 
-        <TabPane styleClass="reservation-tabs" tabClosingPolicy="UNAVAILABLE">
-            <tabs>
-                <Tab text="Upcoming">
-                    <content>
-                        <VBox spacing="15.0" styleClass="tab-content">
-                            <HBox styleClass="reservation-card" spacing="15.0">
-                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                                    <Label text="Mathematics - Algebra Fundamentals" styleClass="reservation-title"/>
-                                    <Label text="Tutor: Ahmed Ben Ali" styleClass="reservation-tutor"/>
-                                    <Label text="ðŸ“… Dec 15, 2024 - 10:00 AM" styleClass="reservation-info"/>
-                                    <Label text="ðŸ“ Online (Zoom)" styleClass="reservation-info"/>
-                                </VBox>
-                                <VBox spacing="10.0" alignment="CENTER">
-                                    <Label text="50 DT" styleClass="reservation-price"/>
-                                    <Label text="Status: Confirmed" styleClass="reservation-status confirmed"/>
-                                    <HBox spacing="10.0">
-                                        <Button text="Join Session" styleClass="action-button primary"/>
-                                        <Button text="Cancel" styleClass="action-button danger"/>
-                                    </HBox>
-                                </VBox>
-                            </HBox>
+        <VBox fx:id="sessionSearchPanel" spacing="12.0" styleClass="reservation-search-panel">
+            <Label text="Rechercher dans les seances en base" styleClass="reservation-search-title"/>
+            <Label text="Cette liste affiche les seances presentes dans la base de donnees. Tu peux filtrer par mot-cle, tuteur, date ou statut." styleClass="reservation-section-copy"/>
 
-                            <HBox styleClass="reservation-card" spacing="15.0">
-                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                                    <Label text="Physics - Mechanics" styleClass="reservation-title"/>
-                                    <Label text="Tutor: Sarah Mansour" styleClass="reservation-tutor"/>
-                                    <Label text="ðŸ“… Dec 16, 2024 - 2:00 PM" styleClass="reservation-info"/>
-                                    <Label text="ðŸ“ Online (Zoom)" styleClass="reservation-info"/>
-                                </VBox>
-                                <VBox spacing="10.0" alignment="CENTER">
-                                    <Label text="75 DT" styleClass="reservation-price"/>
-                                    <Label text="Status: Pending" styleClass="reservation-status pending"/>
-                                    <HBox spacing="10.0">
-                                        <Button text="Pay Now" styleClass="action-button primary"/>
-                                        <Button text="Cancel" styleClass="action-button danger"/>
-                                    </HBox>
-                                </VBox>
-                            </HBox>
+            <HBox spacing="10.0">
+                <TextField fx:id="sessionSearchField" onAction="#handleSearchSessions" promptText="Ex: analyse, Ahmed, 09/04/2026, brouillon..." styleClass="search-field reservation-search-field" HBox.hgrow="ALWAYS"/>
+                <ComboBox fx:id="sessionSearchModeComboBox" styleClass="filter-combo reservation-mode-combo" prefWidth="180.0"/>
+                <Button text="Filtrer" onAction="#handleSearchSessions" styleClass="backoffice-primary-button"/>
+                <Button text="Reinitialiser" onAction="#handleClearSessionSearch" styleClass="backoffice-secondary-button"/>
+            </HBox>
+        </VBox>
+
+        <VBox fx:id="sessionFormPanel" spacing="14.0" styleClass="reservation-section-panel">
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label fx:id="sessionFormTitleLabel" text="Publier une seance" styleClass="subsection-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="sessionFormModeChipLabel" text="Ajout direct" styleClass="workspace-chip workspace-chip-muted"/>
+            </HBox>
+
+            <Label text="Remplis les informations principales ci-dessous pour inserer une vraie seance dans la table SQL." styleClass="reservation-section-copy"/>
+            <Label fx:id="editingSessionLabel" managed="false" visible="false" wrapText="true" styleClass="workspace-chip"/>
+
+            <VBox spacing="12.0" styleClass="reservation-form-shell">
+                <HBox spacing="12.0">
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Matiere *" styleClass="form-label"/>
+                        <TextField fx:id="sessionSubjectField" promptText="Ex: algorithmique" styleClass="form-field"/>
+                    </VBox>
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Tuteur *" styleClass="form-label"/>
+                        <ComboBox fx:id="tutorComboBox" promptText="Choisir un tuteur" styleClass="filter-combo"/>
+                    </VBox>
+                </HBox>
+
+                <HBox spacing="12.0">
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Date et heure *" styleClass="form-label"/>
+                        <HBox spacing="10.0" styleClass="reservation-time-picker-row">
+                            <DatePicker fx:id="sessionDatePicker" promptText="Choisir une date" HBox.hgrow="ALWAYS"/>
+                            <ComboBox fx:id="sessionHourComboBox" promptText="Heure" prefWidth="110.0" styleClass="filter-combo reservation-time-combo"/>
+                            <Label text=":" styleClass="reservation-time-separator"/>
+                            <ComboBox fx:id="sessionMinuteComboBox" promptText="Minute" prefWidth="110.0" styleClass="filter-combo reservation-time-combo"/>
+                        </HBox>
+                    </VBox>
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Duree (min) *" styleClass="form-label"/>
+                        <TextField fx:id="sessionDurationField" promptText="Entre 15 et 480" styleClass="form-field"/>
+                    </VBox>
+                </HBox>
+
+                <HBox spacing="12.0">
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Participants max *" styleClass="form-label"/>
+                        <TextField fx:id="sessionCapacityField" promptText="Entre 1 et 50" styleClass="form-field"/>
+                    </VBox>
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                        <Label text="Statut de creation" styleClass="form-label"/>
+                        <Label text="Choisis Brouillon ou Publier via les boutons ci-dessous." styleClass="reservation-section-copy" wrapText="true"/>
+                    </VBox>
+                </HBox>
+
+                <VBox spacing="12.0">
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="reservation-infrastructure-toggle-row">
+                        <VBox spacing="3.0" HBox.hgrow="ALWAYS">
+                            <Label text="Format de la seance" styleClass="form-label"/>
+                            <Label fx:id="sessionModeDescriptionLabel" text="En ligne. Aucun espace physique n'est requis pour cette seance." wrapText="true" styleClass="reservation-section-copy"/>
                         </VBox>
-                    </content>
-                </Tab>
+                        <Label fx:id="sessionModeStateChipLabel" text="En ligne" styleClass="workspace-chip workspace-chip-muted"/>
+                        <CheckBox fx:id="sessionOnsiteCheckBox" text="Presentiel" onAction="#handleSessionModeChange" styleClass="session-mode-toggle"/>
+                    </HBox>
 
-                <Tab text="History">
-                    <content>
-                        <VBox spacing="15.0" styleClass="tab-content">
-                            <HBox styleClass="reservation-card completed" spacing="15.0">
-                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                                    <Label text="Chemistry - Organic Chemistry" styleClass="reservation-title"/>
-                                    <Label text="Tutor: Mohamed Trabelsi" styleClass="reservation-tutor"/>
-                                    <Label text="ðŸ“… Nov 20, 2024 - 4:00 PM" styleClass="reservation-info"/>
-                                    <Label text="â­ Rating: 5/5" styleClass="reservation-rating"/>
-                                </VBox>
-                                <VBox spacing="10.0" alignment="CENTER">
-                                    <Label text="60 DT" styleClass="reservation-price"/>
-                                    <Label text="Status: Completed" styleClass="reservation-status completed"/>
-                                    <Button text="Rate & Review" styleClass="action-button secondary"/>
-                                </VBox>
+                    <HBox fx:id="onsiteInfrastructureRow" alignment="TOP_LEFT" spacing="14.0" managed="false" visible="false">
+                        <VBox spacing="12.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label text="Salle" styleClass="infrastructure-detail-section-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="sessionRoomStatusChipLabel" text="En attente" styleClass="status-chip pending"/>
                             </HBox>
 
-                            <HBox styleClass="reservation-card completed" spacing="15.0">
-                                <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                                    <Label text="English - Grammar" styleClass="reservation-title"/>
-                                    <Label text="Tutor: Leila Khemiri" styleClass="reservation-tutor"/>
-                                    <Label text="ðŸ“… Nov 15, 2024 - 11:00 AM" styleClass="reservation-info"/>
-                                    <Label text="â­ Rating: 4/5" styleClass="reservation-rating"/>
-                                </VBox>
-                                <VBox spacing="10.0" alignment="CENTER">
-                                    <Label text="45 DT" styleClass="reservation-price"/>
-                                    <Label text="Status: Completed" styleClass="reservation-status completed"/>
-                                    <Button text="View Details" styleClass="action-button secondary"/>
-                                </VBox>
-                            </HBox>
+                            <Label fx:id="sessionRoomAvailabilityHintLabel" text="Selectionnez le creneau pour verifier les disponibilites." wrapText="true" styleClass="reservation-section-copy"/>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="178.0" maxHeight="210.0" styleClass="reservation-choice-scroll">
+                                <VBox fx:id="sessionRoomChoicesContainer" spacing="8.0"/>
+                            </ScrollPane>
+
+                            <VBox spacing="4.0">
+                                <Label fx:id="sessionRoomPreviewTitleLabel" text="Choisissez une salle" wrapText="true" styleClass="reservation-preview-title"/>
+                                <Label fx:id="sessionRoomPreviewSubtitleLabel" text="La salle choisie apparaitra ici avec ses details principaux." wrapText="true" styleClass="section-subtitle"/>
+                            </VBox>
+
+                            <FlowPane fx:id="sessionRoomFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="360.0"/>
+
+                            <VBox styleClass="infrastructure-detail-preview">
+                                <Label text="Description de la salle" styleClass="infrastructure-detail-section-title"/>
+                                <Label fx:id="sessionRoomPreviewDescriptionLabel" text="Aucune salle selectionnee." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
+                            </VBox>
                         </VBox>
-                    </content>
-                </Tab>
-            </tabs>
-        </TabPane>
+
+                        <Separator orientation="VERTICAL" HBox.hgrow="NEVER" styleClass="reservation-infrastructure-separator"/>
+
+                        <VBox spacing="12.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label text="Materiel" styleClass="infrastructure-detail-section-title"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="sessionEquipmentSelectionSummaryLabel" text="0 selection" styleClass="infrastructure-small-chip"/>
+                            </HBox>
+
+                            <Label text="Selectionnez uniquement les equipements deja disponibles pour cette seance." wrapText="true" styleClass="reservation-section-copy"/>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="178.0" maxHeight="210.0" styleClass="reservation-choice-scroll">
+                                <VBox fx:id="sessionEquipmentChoicesContainer" spacing="8.0"/>
+                            </ScrollPane>
+                            <VBox fx:id="sessionEquipmentPreviewContainer" spacing="8.0"/>
+                            <Label fx:id="infrastructureHintLabel" text="Choisis uniquement le materiel existant et disponible." wrapText="true" styleClass="reservation-section-copy"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+
+                <VBox spacing="6.0">
+                    <Label text="Description *" styleClass="form-label"/>
+                    <TextArea fx:id="sessionDescriptionArea" promptText="Minimum 15 caracteres. Decris le contenu, le niveau vise et l'objectif de la seance." prefRowCount="4" styleClass="text-area"/>
+                </VBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <Label fx:id="publishFeedbackLabel" managed="false" visible="false" wrapText="true" maxWidth="560.0" styleClass="frontoffice-feedback"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Reinitialiser" onAction="#handleClearSessionForm" styleClass="backoffice-secondary-button"/>
+                    <Button text="Enregistrer brouillon" onAction="#handleSaveDraftSession" styleClass="backoffice-secondary-button"/>
+                    <Button text="Publier la seance" onAction="#handlePublishSession" styleClass="backoffice-primary-button"/>
+                </HBox>
+            </VBox>
+        </VBox>
+
+        <VBox fx:id="sessionListPanel" spacing="14.0" styleClass="reservation-section-panel">
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Catalogue des seances disponibles" styleClass="subsection-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="Mise a jour auto" styleClass="workspace-chip workspace-chip-muted"/>
+            </HBox>
+
+            <Label fx:id="reservationActionFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
+
+            <VBox fx:id="recentSessionsContainer" spacing="12.0"/>
+
+            <HBox fx:id="sessionPaginationBar" alignment="CENTER_LEFT" spacing="12.0" styleClass="pagination-bar">
+                <Label fx:id="sessionPaginationSummaryLabel" text="0 seance affichee" styleClass="pagination-summary"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="sessionPreviousPageButton" text="Precedent" onAction="#handlePreviousSessionsPage" styleClass="backoffice-secondary-button"/>
+                <HBox fx:id="sessionPageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                <Button fx:id="sessionNextPageButton" text="Suivant" onAction="#handleNextSessionsPage" styleClass="backoffice-secondary-button"/>
+                <Label text="Par page" styleClass="pagination-per-page-label"/>
+                <ComboBox fx:id="sessionsPerPageComboBox" onAction="#handleChangeSessionsPageSize" prefWidth="92.0" styleClass="pagination-page-size-combo"/>
+            </HBox>
+        </VBox>
+
+        <VBox fx:id="studentReservationsPanel" managed="false" visible="false" spacing="14.0" styleClass="reservation-section-panel">
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Mes reservations" styleClass="subsection-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="studentReservationsSummaryLabel" text="0 reservation" styleClass="workspace-chip workspace-chip-muted"/>
+            </HBox>
+
+            <Label text="Suis ici l'etat de tes demandes: en attente, acceptees ou refusees par le tuteur." styleClass="reservation-section-copy" wrapText="true"/>
+            <Label fx:id="studentReservationsFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
+            <VBox fx:id="studentReservationsContainer" spacing="12.0"/>
+        </VBox>
+
+        <VBox fx:id="reservationRequestsPanel" managed="false" visible="false" spacing="14.0" styleClass="reservation-section-panel">
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Demandes de reservation recues" styleClass="subsection-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="tutorReservationRequestsSummaryLabel" text="0 demande" styleClass="workspace-chip workspace-chip-muted"/>
+            </HBox>
+
+            <Label text="Le tuteur peut accepter ici les reservations en attente pour ses propres seances." styleClass="reservation-section-copy" wrapText="true"/>
+            <Label fx:id="tutorReservationRequestsFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
+            <VBox fx:id="tutorReservationRequestsContainer" spacing="12.0"/>
+        </VBox>
     </VBox>
 </ScrollPane>
-

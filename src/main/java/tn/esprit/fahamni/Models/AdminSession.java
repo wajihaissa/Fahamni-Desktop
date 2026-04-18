@@ -1,19 +1,57 @@
 package tn.esprit.fahamni.Models;
 
+import java.time.LocalDate;
+
 public class AdminSession {
 
+    private int id;
     private String subject;
     private String tutor;
     private String schedule;
+    private LocalDate scheduleLocalDate;
     private int capacity;
     private String status;
+    private int tutorId;
+    private int durationMinutes;
+    private String description;
+    private int reservationCount;
 
-    public AdminSession(String subject, String tutor, String schedule, int capacity, String status) {
+    public AdminSession(int id, String subject, String tutor, String schedule, int capacity, String status,
+                        int tutorId, int durationMinutes, String description) {
+        this(id, subject, tutor, schedule, null, capacity, status, tutorId, durationMinutes, description, 0);
+    }
+
+    public AdminSession(int id, String subject, String tutor, String schedule, LocalDate scheduleLocalDate,
+                        int capacity, String status, int tutorId, int durationMinutes, String description) {
+        this(id, subject, tutor, schedule, scheduleLocalDate, capacity, status, tutorId, durationMinutes, description, 0);
+    }
+
+    public AdminSession(int id, String subject, String tutor, String schedule, LocalDate scheduleLocalDate,
+                        int capacity, String status, int tutorId, int durationMinutes, String description,
+                        int reservationCount) {
+        this.id = id;
         this.subject = subject;
         this.tutor = tutor;
         this.schedule = schedule;
+        this.scheduleLocalDate = scheduleLocalDate;
         this.capacity = capacity;
         this.status = status;
+        this.tutorId = tutorId;
+        this.durationMinutes = durationMinutes;
+        this.description = description;
+        this.reservationCount = reservationCount;
+    }
+
+    public AdminSession(String subject, String tutor, String schedule, int capacity, String status) {
+        this(0, subject, tutor, schedule, capacity, status, 0, 60, "");
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getSubject() {
@@ -40,6 +78,14 @@ public class AdminSession {
         this.schedule = schedule;
     }
 
+    public LocalDate getScheduleLocalDate() {
+        return scheduleLocalDate;
+    }
+
+    public void setScheduleLocalDate(LocalDate scheduleLocalDate) {
+        this.scheduleLocalDate = scheduleLocalDate;
+    }
+
     public int getCapacity() {
         return capacity;
     }
@@ -55,5 +101,36 @@ public class AdminSession {
     public void setStatus(String status) {
         this.status = status;
     }
-}
 
+    public int getTutorId() {
+        return tutorId;
+    }
+
+    public void setTutorId(int tutorId) {
+        this.tutorId = tutorId;
+    }
+
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(int durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public int getReservationCount() {
+        return reservationCount;
+    }
+
+    public void setReservationCount(int reservationCount) {
+        this.reservationCount = reservationCount;
+    }
+}
