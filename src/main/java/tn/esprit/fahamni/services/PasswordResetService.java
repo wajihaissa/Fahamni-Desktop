@@ -68,6 +68,64 @@ public class PasswordResetService {
         }
     }
 
+    public OperationResult resetPassword(String email, String resetCode, String newPassword, String confirmPassword) {
+        String emailError = UserInputValidator.validateEmail(email);
+        if (emailError != null) {
+            return OperationResult.failure(emailError);
+        }
+
+        if (resetCode == null || resetCode.trim().isEmpty()) {
+            return OperationResult.failure("Veuillez saisir le code de reinitialisation.");
+        }
+
+        String passwordError = UserInputValidator.validatePassword(newPassword, confirmPassword, true);
+        if (passwordError != null) {
+            return OperationResult.failure(passwordError);
+        }
+
+        if (connection == null) {
+            return OperationResult.failure("Connexion a la base indisponible.");
+        }
+
+        try {
+            ensureResetTable();
+
+            UserResetTarget target = findUser(UserInputValidator.normalizeEmail(email));
+            if (target == null) {
+                return OperationResult.failure("Le code ou l'adresse email est invalide.");
+            }
+
+            ResetTokenRecord tokenRecord = findActiveToken(target.userId(), resetCode.trim());
+            if (tokenRecord == null) {
+                return OperationResult.failure("Le code de reinitialisation est invalide ou deja utilise.");
+            }
+
+            if (tokenRecord.expiresAt().isBefore(LocalDateTime.now())) {
+                markTokenUsed(tokenRecord.id());
+                return OperationResult.failure("Le code de reinitialisation a expire. Veuillez refaire une demande.");
+            }
+
+            boolean previousAutoCommit = connection.getAutoCommit();
+            try {
+                connection.setAutoCommit(false);
+                updateUserPassword(target.userId(), newPassword);
+                markTokenUsed(tokenRecord.id());
+                invalidateActiveTokens(target.userId());
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(previousAutoCommit);
+            }
+
+            return OperationResult.success("Mot de passe reinitialise avec succes. Vous pouvez maintenant vous connecter.");
+        } catch (SQLException e) {
+            System.out.println("PasswordResetService reset SQL error: " + e.getMessage());
+            return OperationResult.failure("Erreur lors de la reinitialisation du mot de passe : " + e.getMessage());
+        }
+    }
+
     private void ensureResetTable() throws SQLException {
         String sql = """
             CREATE TABLE IF NOT EXISTS password_reset_token (
@@ -118,12 +176,55 @@ public class PasswordResetService {
         }
     }
 
+    private ResetTokenRecord findActiveToken(int userId, String resetCode) throws SQLException {
+        String query = """
+            SELECT id, expires_at
+            FROM password_reset_token
+            WHERE user_id = ?
+              AND token_hash = ?
+              AND used_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+            """;
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, userId);
+            statement.setString(2, hashToken(resetCode));
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return null;
+                }
+                return new ResetTokenRecord(
+                    resultSet.getInt("id"),
+                    resultSet.getTimestamp("expires_at").toLocalDateTime()
+                );
+            }
+        }
+    }
+
     private void storeResetCode(int userId, String resetCode) throws SQLException {
         String query = "INSERT INTO password_reset_token (user_id, token_hash, expires_at) VALUES (?, ?, ?)";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setInt(1, userId);
             statement.setString(2, hashToken(resetCode));
             statement.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now().plusMinutes(RESET_EXPIRY_MINUTES)));
+            statement.executeUpdate();
+        }
+    }
+
+    private void updateUserPassword(int userId, String newPassword) throws SQLException {
+        String query = "UPDATE user SET password = ? WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, newPassword);
+            statement.setInt(2, userId);
+            statement.executeUpdate();
+        }
+    }
+
+    private void markTokenUsed(int tokenId) throws SQLException {
+        String query = "UPDATE password_reset_token SET used_at = NOW() WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, tokenId);
             statement.executeUpdate();
         }
     }
@@ -151,5 +252,8 @@ public class PasswordResetService {
     }
 
     private record UserResetTarget(int userId, String email, String fullName) {
+    }
+
+    private record ResetTokenRecord(int id, LocalDateTime expiresAt) {
     }
 }

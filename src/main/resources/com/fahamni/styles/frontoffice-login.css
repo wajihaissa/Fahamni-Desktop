@@ -462,3 +462,7 @@
     -fx-font-size: 12px;
     -fx-font-weight: bold;
 }
+
+.login-dialog-readonly {
+    -fx-opacity: 0.88;
+}

@@ -177,20 +177,25 @@ public class LoginController {
     private void handleForgotPassword() {
         String initialEmail = emailField != null ? emailField.getText().trim() : "";
 
-        Dialog<String> dialog = createForgotPasswordDialog(initialEmail);
-        Optional<String> result = dialog.showAndWait();
-        if (result.isEmpty()) {
+        Dialog<String> requestDialog = createForgotPasswordDialog(initialEmail);
+        Optional<String> requestResult = requestDialog.showAndWait();
+        if (requestResult.isEmpty()) {
             return;
         }
 
-        String requestedEmail = result.get() == null ? "" : result.get().trim();
+        String requestedEmail = requestResult.get() == null ? "" : requestResult.get().trim();
         if (requestedEmail.isEmpty()) {
             showForgotPasswordFeedback(OperationResult.failure("Veuillez saisir une adresse email."));
             return;
         }
 
-        OperationResult requestResult = passwordResetService.requestReset(requestedEmail);
-        showForgotPasswordFeedback(requestResult);
+        OperationResult forgotPasswordResult = passwordResetService.requestReset(requestedEmail);
+        showForgotPasswordFeedback(forgotPasswordResult);
+        if (!forgotPasswordResult.isSuccess()) {
+            return;
+        }
+
+        openResetPasswordDialog(requestedEmail);
     }
 
     private void switchMode(boolean signInMode) {
@@ -303,6 +308,36 @@ public class LoginController {
         alert.showAndWait();
     }
 
+    private void openResetPasswordDialog(String email) {
+        Dialog<ResetPasswordPayload> dialog = createResetPasswordDialog(email);
+        Optional<ResetPasswordPayload> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+
+        ResetPasswordPayload payload = result.get();
+        OperationResult resetResult = passwordResetService.resetPassword(
+            payload.email(),
+            payload.resetCode(),
+            payload.newPassword(),
+            payload.confirmPassword()
+        );
+
+        Alert.AlertType alertType = resetResult.isSuccess() ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR;
+        Alert alert = new Alert(alertType, resetResult.getMessage(), ButtonType.OK);
+        alert.setTitle("Nouveau mot de passe");
+        alert.setHeaderText(resetResult.isSuccess() ? "Mot de passe mis a jour" : "Reinitialisation impossible");
+        styleDialog(alert.getDialogPane());
+        alert.showAndWait();
+
+        if (resetResult.isSuccess()) {
+            emailField.setText(payload.email());
+            passwordField.clear();
+            switchMode(true);
+            showMessage(loginMessageLabel, resetResult.getMessage(), true);
+        }
+    }
+
     private Dialog<String> createForgotPasswordDialog(String initialEmail) {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Mot de passe oublie");
@@ -342,6 +377,78 @@ public class LoginController {
         return dialog;
     }
 
+    private Dialog<ResetPasswordPayload> createResetPasswordDialog(String email) {
+        Dialog<ResetPasswordPayload> dialog = new Dialog<>();
+        dialog.setTitle("Nouveau mot de passe");
+        dialog.setHeaderText("Valider le code et choisir un nouveau mot de passe");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        styleDialog(dialogPane);
+
+        ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButtonType = new ButtonType("Mettre a jour", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().setAll(cancelButtonType, confirmButtonType);
+
+        Label leadCopy = new Label("Entrez le code recu par email puis choisissez un nouveau mot de passe.");
+        leadCopy.getStyleClass().add("login-dialog-copy");
+        leadCopy.setWrapText(true);
+
+        Label emailLabel = new Label("Adresse email");
+        emailLabel.getStyleClass().add("login-dialog-label");
+
+        TextField emailInput = new TextField(email);
+        emailInput.getStyleClass().addAll("login-input", "login-dialog-readonly");
+        emailInput.setEditable(false);
+
+        Label codeLabel = new Label("Code de reinitialisation");
+        codeLabel.getStyleClass().add("login-dialog-label");
+
+        TextField codeInput = new TextField();
+        codeInput.setPromptText("Entrer le code recu");
+        codeInput.getStyleClass().add("login-input");
+
+        Label passwordLabel = new Label("Nouveau mot de passe");
+        passwordLabel.getStyleClass().add("login-dialog-label");
+
+        PasswordField passwordInput = new PasswordField();
+        passwordInput.setPromptText("Choisir un nouveau mot de passe");
+        passwordInput.getStyleClass().add("login-input");
+
+        Label confirmLabel = new Label("Confirmer le mot de passe");
+        confirmLabel.getStyleClass().add("login-dialog-label");
+
+        PasswordField confirmInput = new PasswordField();
+        confirmInput.setPromptText("Confirmer le nouveau mot de passe");
+        confirmInput.getStyleClass().add("login-input");
+
+        VBox content = new VBox(
+            12.0,
+            leadCopy,
+            emailLabel,
+            emailInput,
+            codeLabel,
+            codeInput,
+            passwordLabel,
+            passwordInput,
+            confirmLabel,
+            confirmInput
+        );
+        content.getStyleClass().add("login-dialog-content");
+
+        dialogPane.setGraphic(null);
+        dialogPane.setContent(content);
+        dialog.setResultConverter(buttonType -> buttonType == confirmButtonType
+            ? new ResetPasswordPayload(emailInput.getText(), codeInput.getText(), passwordInput.getText(), confirmInput.getText())
+            : null);
+
+        Window owner = loginRoot != null && loginRoot.getScene() != null ? loginRoot.getScene().getWindow() : null;
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+
+        return dialog;
+    }
+
     private void styleDialog(DialogPane dialogPane) {
         if (dialogPane == null) {
             return;
@@ -358,5 +465,8 @@ public class LoginController {
                 dialogPane.getStylesheets().add(stylesheetUri);
             }
         }
+    }
+
+    private record ResetPasswordPayload(String email, String resetCode, String newPassword, String confirmPassword) {
     }
 }
