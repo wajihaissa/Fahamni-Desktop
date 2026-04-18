@@ -5,11 +5,14 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
@@ -18,12 +21,16 @@ import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
+import tn.esprit.fahamni.services.PasswordResetService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+
+import java.util.Optional;
 
 public class LoginController {
 
     private final AuthService authService = new AuthService();
+    private final PasswordResetService passwordResetService = new PasswordResetService();
 
     @FXML
     private TextField emailField;
@@ -160,6 +167,24 @@ public class LoginController {
         switchMode(false);
     }
 
+    @FXML
+    private void handleForgotPassword() {
+        String initialEmail = emailField != null ? emailField.getText().trim() : "";
+
+        TextInputDialog dialog = new TextInputDialog(initialEmail);
+        dialog.setTitle("Mot de passe oublie");
+        dialog.setHeaderText("Recevoir un code de reinitialisation");
+        dialog.setContentText("Adresse email :");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+
+        OperationResult requestResult = passwordResetService.requestReset(result.get());
+        showForgotPasswordFeedback(requestResult);
+    }
+
     private void switchMode(boolean signInMode) {
         VBox activePane = signInMode ? signInPane : signUpPane;
         VBox inactivePane = signInMode ? signUpPane : signInPane;
@@ -259,5 +284,13 @@ public class LoginController {
             floatTransition.setAutoReverse(true);
             floatTransition.play();
         }
+    }
+
+    private void showForgotPasswordFeedback(OperationResult result) {
+        Alert.AlertType alertType = result.isSuccess() ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR;
+        Alert alert = new Alert(alertType, result.getMessage(), ButtonType.OK);
+        alert.setTitle("Reinitialisation du mot de passe");
+        alert.setHeaderText(result.isSuccess() ? "Demande envoyee" : "Demande impossible");
+        alert.showAndWait();
     }
 }

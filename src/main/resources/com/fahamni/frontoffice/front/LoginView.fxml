@@ -131,7 +131,7 @@
                                                                     <children>
                                                                         <CheckBox mnemonicParsing="false" selected="true" styleClass="login-check" text="Se souvenir de moi"/>
                                                                         <Region HBox.hgrow="ALWAYS"/>
-                                                                        <Hyperlink focusTraversable="false" text="Mot de passe oublie ?" styleClass="login-link"/>
+                                                                        <Hyperlink focusTraversable="false" onAction="#handleForgotPassword" text="Mot de passe oublie ?" styleClass="login-link"/>
                                                                     </children>
                                                                 </HBox>
                                                             </children>
