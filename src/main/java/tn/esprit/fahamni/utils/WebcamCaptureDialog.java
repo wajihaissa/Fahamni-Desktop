@@ -5,17 +5,20 @@ import com.github.sarxos.webcam.WebcamResolution;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
-//aziz
-//test
+
 import javax.imageio.ImageIO;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
@@ -55,26 +58,60 @@ public final class WebcamCaptureDialog {
             preview.setFitHeight(320);
             preview.setPreserveRatio(true);
             preview.setSmooth(true);
+            preview.getStyleClass().add("webcam-preview-image");
+
+            Label eyebrowLabel = new Label("FACE ID LIVE CAPTURE");
+            eyebrowLabel.getStyleClass().add("webcam-dialog-eyebrow");
+
+            Label titleLabel = new Label(title);
+            titleLabel.getStyleClass().add("webcam-dialog-title");
+            titleLabel.setWrapText(true);
 
             Label subtitleLabel = new Label(subtitle);
             subtitleLabel.setWrapText(true);
-            subtitleLabel.getStyleClass().add("profile-inline-note");
+            subtitleLabel.getStyleClass().add("webcam-dialog-copy");
 
             Label statusLabel = new Label("Positionnez votre visage au centre du cadre, puis capturez.");
-            statusLabel.getStyleClass().add("profile-inline-note");
+            statusLabel.getStyleClass().add("webcam-dialog-status");
+
+            Label liveChip = new Label("LIVE");
+            liveChip.getStyleClass().add("webcam-dialog-chip");
+
+            Label oneFaceChip = new Label("ONE FACE ONLY");
+            oneFaceChip.getStyleClass().addAll("webcam-dialog-chip", "secondary");
 
             Button captureButton = new Button("Capturer");
             captureButton.getStyleClass().add("profile-accent-button");
             captureButton.setDefaultButton(true);
+            captureButton.setMaxWidth(Double.MAX_VALUE);
 
             Button cancelButton = new Button("Annuler");
             cancelButton.getStyleClass().add("profile-soft-button");
             cancelButton.setCancelButton(true);
+            cancelButton.setMaxWidth(Double.MAX_VALUE);
 
-            VBox root = new VBox(14.0, subtitleLabel, preview, statusLabel, captureButton, cancelButton);
-            root.setPadding(new Insets(18.0));
-            root.getStyleClass().add("profile-section-panel");
-            VBox.setVgrow(preview, Priority.ALWAYS);
+            HBox chipRow = new HBox(8.0, liveChip, oneFaceChip);
+            chipRow.setAlignment(Pos.CENTER_LEFT);
+
+            VBox headerBox = new VBox(8.0, eyebrowLabel, titleLabel, subtitleLabel, chipRow);
+            headerBox.getStyleClass().add("webcam-dialog-header");
+
+            StackPane previewFrame = new StackPane(preview);
+            previewFrame.getStyleClass().add("webcam-preview-frame");
+            previewFrame.setPrefHeight(340.0);
+            previewFrame.setMinHeight(340.0);
+            VBox.setVgrow(previewFrame, Priority.ALWAYS);
+
+            Region actionSpacer = new Region();
+            HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+            HBox actionRow = new HBox(12.0, cancelButton, actionSpacer, captureButton);
+            actionRow.setAlignment(Pos.CENTER_LEFT);
+            actionRow.getStyleClass().add("webcam-dialog-actions");
+
+            VBox root = new VBox(18.0, headerBox, previewFrame, statusLabel, actionRow);
+            root.setPadding(new Insets(22.0));
+            root.getStyleClass().add("webcam-dialog-root");
 
             Scene scene = new Scene(root);
             String frontTheme = WebcamCaptureDialog.class.getResource("/com/fahamni/styles/frontoffice-theme.css") != null

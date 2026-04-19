@@ -677,6 +677,87 @@
             -fx-background-color: #ffe5e8;
         }
 
+        .webcam-dialog-root {
+            -fx-background-color:
+                radial-gradient(center 18% 14%, radius 40%, rgba(95, 168, 255, 0.18) 0%, rgba(95, 168, 255, 0.0) 72%),
+                linear-gradient(to bottom right, #07142a 0%, #0a2144 52%, #0d2c59 100%);
+            -fx-border-color: rgba(132, 190, 255, 0.24);
+            -fx-border-width: 1px;
+            -fx-border-radius: 28px;
+            -fx-background-radius: 28px;
+            -fx-effect: dropshadow(gaussian, rgba(2, 8, 20, 0.42), 38, 0.26, 0, 14);
+        }
+
+        .webcam-dialog-header {
+            -fx-padding: 2px 0 0 0;
+        }
+
+        .webcam-dialog-eyebrow {
+            -fx-text-fill: #8ac8ff;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-letter-spacing: 0.8px;
+        }
+
+        .webcam-dialog-title {
+            -fx-text-fill: white;
+            -fx-font-size: 26px;
+            -fx-font-weight: bold;
+        }
+
+        .webcam-dialog-copy {
+            -fx-text-fill: rgba(216, 231, 255, 0.78);
+            -fx-font-size: 12px;
+            -fx-line-spacing: 2px;
+        }
+
+        .webcam-dialog-chip {
+            -fx-background-color: rgba(109, 201, 255, 0.16);
+            -fx-border-color: rgba(143, 221, 255, 0.28);
+            -fx-border-width: 1px;
+            -fx-background-radius: 999px;
+            -fx-border-radius: 999px;
+            -fx-padding: 6px 11px;
+            -fx-text-fill: #c9efff;
+            -fx-font-size: 10px;
+            -fx-font-weight: bold;
+        }
+
+        .webcam-dialog-chip.secondary {
+            -fx-background-color: rgba(255, 255, 255, 0.07);
+            -fx-border-color: rgba(179, 204, 255, 0.18);
+            -fx-text-fill: #e5efff;
+        }
+
+        .webcam-preview-frame {
+            -fx-padding: 12px;
+            -fx-background-color:
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+            -fx-border-color: rgba(132, 190, 255, 0.26);
+            -fx-border-width: 1px;
+            -fx-border-radius: 24px;
+            -fx-background-radius: 24px;
+        }
+
+        .webcam-preview-image {
+            -fx-effect: dropshadow(gaussian, rgba(87, 154, 255, 0.24), 20, 0.18, 0, 0);
+        }
+
+        .webcam-dialog-status {
+            -fx-background-color: rgba(255, 255, 255, 0.07);
+            -fx-border-color: rgba(136, 186, 255, 0.16);
+            -fx-border-width: 1px;
+            -fx-border-radius: 16px;
+            -fx-background-radius: 16px;
+            -fx-padding: 11px 14px;
+            -fx-text-fill: #e0efff;
+            -fx-font-size: 12px;
+        }
+
+        .webcam-dialog-actions {
+            -fx-padding: 4px 0 0 0;
+        }
+
         .profile-readonly-field {
             -fx-background-color: #f8fbff;
             -fx-control-inner-background: #f8fbff;
