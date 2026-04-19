@@ -92,23 +92,16 @@
                 <Label fx:id="sessionFormModeChipLabel" text="Ajout direct" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
-            <Label text="Remplis les informations principales ci-dessous pour inserer une vraie seance dans la table SQL." styleClass="reservation-section-copy"/>
             <Label fx:id="editingSessionLabel" managed="false" visible="false" wrapText="true" styleClass="workspace-chip"/>
 
             <VBox spacing="12.0" styleClass="reservation-form-shell">
-                <HBox spacing="12.0">
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label text="Matiere *" styleClass="form-label"/>
-                        <TextField fx:id="sessionSubjectField" promptText="Ex: algorithmique" styleClass="form-field"/>
-                    </VBox>
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label text="Tuteur *" styleClass="form-label"/>
-                        <ComboBox fx:id="tutorComboBox" promptText="Choisir un tuteur" styleClass="filter-combo"/>
-                    </VBox>
-                </HBox>
+                <VBox spacing="6.0">
+                    <Label text="Matiere *" styleClass="form-label"/>
+                    <TextField fx:id="sessionSubjectField" promptText="Ex: algorithmique" styleClass="form-field"/>
+                </VBox>
 
                 <HBox spacing="12.0">
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                    <VBox spacing="6.0" minWidth="0.0" HBox.hgrow="ALWAYS">
                         <Label text="Date et heure *" styleClass="form-label"/>
                         <HBox spacing="10.0" styleClass="reservation-time-picker-row">
                             <DatePicker fx:id="sessionDatePicker" promptText="Choisir une date" HBox.hgrow="ALWAYS"/>
@@ -117,22 +110,20 @@
                             <ComboBox fx:id="sessionMinuteComboBox" promptText="Minute" prefWidth="110.0" styleClass="filter-combo reservation-time-combo"/>
                         </HBox>
                     </VBox>
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                    <VBox spacing="6.0" prefWidth="180.0" HBox.hgrow="ALWAYS">
                         <Label text="Duree (min) *" styleClass="form-label"/>
                         <TextField fx:id="sessionDurationField" promptText="Entre 15 et 480" styleClass="form-field"/>
                     </VBox>
-                </HBox>
-
-                <HBox spacing="12.0">
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                    <VBox spacing="6.0" prefWidth="180.0" HBox.hgrow="ALWAYS">
                         <Label text="Participants max *" styleClass="form-label"/>
                         <TextField fx:id="sessionCapacityField" promptText="Entre 1 et 50" styleClass="form-field"/>
                     </VBox>
-                    <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                        <Label text="Statut de creation" styleClass="form-label"/>
-                        <Label text="Choisis Brouillon ou Publier via les boutons ci-dessous." styleClass="reservation-section-copy" wrapText="true"/>
-                    </VBox>
                 </HBox>
+
+                <VBox spacing="6.0">
+                    <Label text="Description *" styleClass="form-label"/>
+                    <TextArea fx:id="sessionDescriptionArea" promptText="Minimum 15 caracteres. Decris le contenu, le niveau vise et l'objectif de la seance." prefRowCount="4" styleClass="text-area"/>
+                </VBox>
 
                 <VBox spacing="12.0">
                     <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="reservation-infrastructure-toggle-row">
@@ -213,11 +204,6 @@
                     </HBox>
 
                     <Separator fx:id="sessionDescriptionDivider" orientation="HORIZONTAL" managed="false" visible="false" styleClass="reservation-section-divider"/>
-                </VBox>
-
-                <VBox spacing="6.0">
-                    <Label text="Description *" styleClass="form-label"/>
-                    <TextArea fx:id="sessionDescriptionArea" promptText="Minimum 15 caracteres. Decris le contenu, le niveau vise et l'objectif de la seance." prefRowCount="4" styleClass="text-area"/>
                 </VBox>
 
                 <HBox alignment="CENTER_LEFT" spacing="10.0">

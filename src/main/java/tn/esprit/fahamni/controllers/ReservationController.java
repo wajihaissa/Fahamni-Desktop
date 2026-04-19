@@ -102,9 +102,6 @@ public class ReservationController {
     private Label draftSessionsCountLabel;
 
     @FXML
-    private ComboBox<String> tutorComboBox;
-
-    @FXML
     private ComboBox<String> sectionMenuComboBox;
 
     @FXML
@@ -259,9 +256,6 @@ public class ReservationController {
 
     @FXML
     private void initialize() {
-        tutorComboBox.getItems().setAll(tutorDirectoryService.getTutorNames());
-        tutorComboBox.setEditable(true);
-        selectDefaultTutor();
         configureDateTimeInputs();
         configureInfrastructureChoices();
 
@@ -380,7 +374,6 @@ public class ReservationController {
 
     private Seance buildSeance(int status) {
         String subject = requireText(sessionSubjectField.getText(), "Renseignez la matiere de la seance.");
-        String tutorName = requireText(tutorComboBox.getValue(), "Choisissez un tuteur.");
         LocalDateTime startAt = parseStartAt();
         int duration = parseBoundedInt(
             sessionDurationField.getText(),
@@ -400,10 +393,10 @@ public class ReservationController {
             "Ajoute une description de la seance.",
             "La description doit contenir au moins " + SeanceService.MIN_DESCRIPTION_LENGTH + " caracteres."
         );
-        int tutorId = tutorDirectoryService.resolveTutorId(tutorName);
+        int tutorId = getCurrentTutorId();
 
         if (tutorId <= 0) {
-            throw new IllegalArgumentException("Le tuteur choisi est invalide pour le moment.");
+            throw new IllegalArgumentException("Connectez-vous avec le compte tuteur pour publier une seance.");
         }
 
         String mode = resolveSelectedMode();
@@ -432,7 +425,6 @@ public class ReservationController {
         sessionDurationField.setText(String.valueOf(duration));
         sessionCapacityField.setText(String.valueOf(capacity));
         sessionDescriptionArea.setText(description);
-        tutorComboBox.setValue(tutorName);
         sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(mode));
         updateModePresentation();
 
@@ -2147,9 +2139,6 @@ public class ReservationController {
         sessionDurationField.setText(String.valueOf(seance.getDurationMin()));
         sessionCapacityField.setText(String.valueOf(seance.getMaxParticipants()));
         sessionDescriptionArea.setText(seance.getDescription() != null ? seance.getDescription() : "");
-
-        String tutorValue = resolveTutorValueForEdit(seance.getTuteurId());
-        tutorComboBox.setValue(tutorValue);
         sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(seance.getMode()));
         updateOnsiteOptionsVisibility();
         selectSalleById(seance.getSalleId());
@@ -2556,7 +2545,6 @@ public class ReservationController {
         updateRoomSelectionStyles();
         clearEquipmentSelection();
         updateOnsiteOptionsVisibility();
-        selectDefaultTutor();
     }
 
     private void resetEditMode() {
@@ -2655,23 +2643,6 @@ public class ReservationController {
         sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_MY_RESERVATIONS);
     }
 
-    private void selectDefaultTutor() {
-        String temporaryTutorName = tutorDirectoryService.getTutorDisplayName(getCurrentTutorId());
-        if (tutorComboBox.getItems().contains(temporaryTutorName)) {
-            tutorComboBox.setValue(temporaryTutorName);
-            return;
-        }
-
-        String currentValue = tutorComboBox.getValue();
-        if (currentValue != null && tutorComboBox.getItems().contains(currentValue)) {
-            tutorComboBox.setValue(currentValue);
-        } else if (!tutorComboBox.getItems().isEmpty()) {
-            tutorComboBox.setValue(tutorComboBox.getItems().get(0));
-        } else {
-            tutorComboBox.setValue(null);
-        }
-    }
-
     private void setInfrastructureSectionVisible(HBox section, boolean visible) {
         if (section == null) {
             return;
@@ -2694,18 +2665,6 @@ public class ReservationController {
         }
         section.setManaged(visible);
         section.setVisible(visible);
-    }
-
-    private String resolveTutorValueForEdit(int tutorId) {
-        if (tutorId <= 0) {
-            return "";
-        }
-
-        String tutorDisplayName = tutorDirectoryService.getTutorDisplayName(tutorId);
-        if (tutorDisplayName.startsWith("Tuteur #")) {
-            return String.valueOf(tutorId);
-        }
-        return tutorDisplayName;
     }
 
     private void showFeedback(String message, boolean success) {
