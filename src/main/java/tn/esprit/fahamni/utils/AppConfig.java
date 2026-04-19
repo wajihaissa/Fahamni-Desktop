@@ -45,6 +45,24 @@ public final class AppConfig {
             && !getMailerFrom().isBlank();
     }
 
+    public static String getFaceApiKey() {
+        return getEnv("FACEPP_API_KEY", "");
+    }
+
+    public static String getFaceApiSecret() {
+        return getEnv("FACEPP_API_SECRET", "");
+    }
+
+    public static String getFaceApiBaseUrl() {
+        return getEnv("FACEPP_API_BASE_URL", "https://api-us.faceplusplus.com");
+    }
+
+    public static boolean isFaceConfigured() {
+        return !getFaceApiKey().isBlank()
+            && !getFaceApiSecret().isBlank()
+            && !getFaceApiBaseUrl().isBlank();
+    }
+
     private static String getEnv(String key, String fallback) {
         String value = System.getenv(key);
         if (value == null || value.isBlank()) {

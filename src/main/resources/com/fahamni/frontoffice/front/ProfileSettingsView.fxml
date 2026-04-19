@@ -162,12 +162,15 @@
                     <VBox fx:id="securitySection" managed="false" visible="false" spacing="18.0" styleClass="profile-section-panel">
                         <VBox spacing="6.0">
                             <Label text="Camera Face ID" styleClass="form-label"/>
-                            <Label text="Face engine: Connected" styleClass="profile-inline-note"/>
-                            <Label text="Status: Ready for UI hookup" styleClass="profile-inline-note"/>
+                            <Label fx:id="faceEngineStatusLabel" text="Face engine: Connected" styleClass="profile-inline-note"/>
+                            <Label fx:id="faceEnrollmentStatusLabel" text="Status: Not enrolled" styleClass="profile-inline-note"/>
+                            <Label fx:id="faceEnrolledAtLabel" text="Saved on: Never" styleClass="profile-inline-note"/>
                             <HBox spacing="12.0">
-                                <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Save My Face"/>
-                                <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-danger-inline-button" text="Remove Face ID"/>
+                                <Button onAction="#handleEnrollFaceId" styleClass="profile-accent-button" text="Capture My Face"/>
+                                <Button onAction="#handleRemoveFaceId" styleClass="profile-danger-inline-button" text="Remove Face ID"/>
                             </HBox>
+                            <Label text="Enrollment opens the webcam, captures a JPEG selfie, then stores only the returned Face++ token."
+                                   styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
                         <VBox spacing="6.0">

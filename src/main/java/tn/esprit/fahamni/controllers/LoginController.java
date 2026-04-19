@@ -26,9 +26,11 @@ import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
+import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.PasswordResetService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+import tn.esprit.fahamni.utils.WebcamCaptureDialog;
 
 import java.net.URL;
 import java.util.Optional;
@@ -37,6 +39,7 @@ public class LoginController {
 
     private final AuthService authService = new AuthService();
     private final PasswordResetService passwordResetService = new PasswordResetService();
+    private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
 
     @FXML
     private TextField emailField;
@@ -171,6 +174,53 @@ public class LoginController {
     @FXML
     private void showSignUpMode() {
         switchMode(false);
+    }
+
+    @FXML
+    private void handleFaceLogin() {
+        hideMessage(loginMessageLabel);
+
+        String email = emailField.getText().trim();
+        if (email.isEmpty()) {
+            showMessage(loginMessageLabel, "Saisissez d'abord votre email pour verifier Face ID.", false);
+            return;
+        }
+
+        WebcamCaptureDialog.CaptureResult captureResult = WebcamCaptureDialog.captureJpeg(
+            loginRoot != null && loginRoot.getScene() != null ? loginRoot.getScene().getWindow() : null,
+            "Connexion Face ID",
+            "Prenez un selfie net avec une seule personne visible. La verification compare le selfie du jour au face_token enregistre."
+        );
+        if (!captureResult.hasImage()) {
+            showMessage(loginMessageLabel, captureResult.message() != null ? captureResult.message() : "Capture annulee.", false);
+            return;
+        }
+
+        FaceRecognitionService.FaceLoginResult result = faceRecognitionService.authenticateWithFace(email, captureResult.imageBytes());
+        if (!result.success() || result.user() == null) {
+            showMessage(loginMessageLabel, result.message(), false);
+            return;
+        }
+
+        User authenticatedUser = result.user();
+        String jwtToken = authService.issueJwt(authenticatedUser);
+        if (jwtToken == null || !authService.isJwtValidForUser(jwtToken, authenticatedUser)) {
+            showMessage(loginMessageLabel, "Erreur lors de la creation du token de session.", false);
+            return;
+        }
+
+        UserSession.start(authenticatedUser, jwtToken);
+
+        try {
+            if (authenticatedUser.getRole() == UserRole.ADMIN) {
+                Main.showBackoffice();
+            } else {
+                Main.showMain();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showMessage(loginMessageLabel, "Erreur lors du chargement de l'application.", false);
+        }
     }
 
     @FXML

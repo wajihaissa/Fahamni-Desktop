@@ -140,6 +140,10 @@
                                                         <Button fx:id="loginButton" defaultButton="true" maxWidth="Infinity"
                                                                 onAction="#handleLogin" text="SE CONNECTER" styleClass="login-primary-button"/>
 
+                                                        <Button maxWidth="Infinity"
+                                                                onAction="#handleFaceLogin" text="SE CONNECTER AVEC FACE ID"
+                                                                styleClass="login-secondary-button"/>
+
                                                         <Separator styleClass="login-divider"/>
 
                                                         <HBox alignment="CENTER" spacing="5.0" styleClass="login-helper-row">

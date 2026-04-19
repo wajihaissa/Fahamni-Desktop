@@ -14,10 +14,12 @@ import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import tn.esprit.fahamni.Models.User;
+import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.UserAccountService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+import tn.esprit.fahamni.utils.WebcamCaptureDialog;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -111,7 +113,17 @@ public class ProfileSettingsController {
     @FXML
     private Label feedbackLabel;
 
+    @FXML
+    private Label faceEngineStatusLabel;
+
+    @FXML
+    private Label faceEnrollmentStatusLabel;
+
+    @FXML
+    private Label faceEnrolledAtLabel;
+
     private final UserAccountService accountService = new UserAccountService();
+    private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
     private Consumer<User> onProfileUpdated;
     private Runnable onAccountDeleted;
 
@@ -217,6 +229,35 @@ public class ProfileSettingsController {
     }
 
     @FXML
+    private void handleEnrollFaceId() {
+        hideFeedback();
+
+        WebcamCaptureDialog.CaptureResult captureResult = WebcamCaptureDialog.captureJpeg(
+            profileAvatarLabel.getScene().getWindow(),
+            "Enroler Face ID",
+            "Prenez un selfie net avec une seule personne visible. Nous enregistrerons uniquement le face_token retourne par Face++."
+        );
+        if (!captureResult.hasImage()) {
+            if (captureResult.message() != null) {
+                showFeedback(captureResult.message(), false);
+            }
+            return;
+        }
+
+        OperationResult result = faceRecognitionService.enrollCurrentUserFace(captureResult.imageBytes());
+        refreshFaceStatus();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
+    private void handleRemoveFaceId() {
+        hideFeedback();
+        OperationResult result = faceRecognitionService.removeCurrentUserFace();
+        refreshFaceStatus();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
     private void handleSecurityPlaceholderAction() {
         showFeedback("Les actions de securite sont affichees cote interface. Nous brancherons l'API plus tard.", true);
     }
@@ -260,6 +301,7 @@ public class ProfileSettingsController {
             bioArea.clear();
             roleField.clear();
             applyAccountOverview(new UserAccountService.AccountOverview("Inconnu", "Aucun role", "Non disponible", "Non disponible"));
+            refreshFaceStatus();
             return;
         }
 
@@ -275,6 +317,7 @@ public class ProfileSettingsController {
         profilePictureStatusLabel.setText(accountService.getCurrentAvatarStatus());
 
         applyAccountOverview(accountService.getCurrentAccountOverview());
+        refreshFaceStatus();
     }
 
     private void applyAccountOverview(UserAccountService.AccountOverview overview) {
@@ -380,6 +423,19 @@ public class ProfileSettingsController {
         feedbackLabel.getStyleClass().setAll("backoffice-feedback");
         feedbackLabel.setManaged(false);
         feedbackLabel.setVisible(false);
+    }
+
+    private void refreshFaceStatus() {
+        FaceRecognitionService.FaceStatus faceStatus = faceRecognitionService.getCurrentFaceStatus();
+        if (faceEngineStatusLabel != null) {
+            faceEngineStatusLabel.setText(faceStatus.engineStatus());
+        }
+        if (faceEnrollmentStatusLabel != null) {
+            faceEnrollmentStatusLabel.setText(faceStatus.faceStatus());
+        }
+        if (faceEnrolledAtLabel != null) {
+            faceEnrolledAtLabel.setText("Saved on: " + faceStatus.enrolledAt());
+        }
     }
 
     private void applyAvatar(Label label, Path avatarPath, double size) {
