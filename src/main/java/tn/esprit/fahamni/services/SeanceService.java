@@ -42,6 +42,7 @@ public class SeanceService implements IServices<Seance> {
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
+    private final SalleEquipementService salleEquipementService = new SalleEquipementService();
 
     public boolean hasDatabaseConnection() {
         return cnx != null;
@@ -480,6 +481,11 @@ public class SeanceService implements IServices<Seance> {
             return "Connexion a la base indisponible pour verifier le materiel.";
         }
 
+        Map<Integer, Integer> reservedQuantities = getReservedComplementaryQuantites(
+            seance.getStartAt(),
+            seance.getDurationMin(),
+            seance.getId() > 0 ? seance.getId() : null
+        );
         String sql = "SELECT nom, quantiteDisponible, etat FROM equipement WHERE idEquipement = ?";
         for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
             Integer equipementId = entry.getKey();
@@ -498,21 +504,63 @@ public class SeanceService implements IServices<Seance> {
                         return "Le materiel #" + equipementId + " est introuvable.";
                     }
                     String equipmentName = rs.getString("nom");
-                    int quantity = rs.getInt("quantiteDisponible");
                     String status = rs.getString("etat");
+                    int quantiteRestante = Math.max(
+                        0,
+                        salleEquipementService.getRemainingQuantiteForEquipement(equipementId)
+                            - reservedQuantities.getOrDefault(equipementId, 0)
+                    );
 
-                    if (!isAvailable(status) || quantity <= 0) {
+                    if (!isAvailable(status) || quantiteRestante <= 0) {
                         return "Le materiel \"" + equipmentName + "\" n'est pas disponible.";
                     }
-                    if (quantiteDemandee > quantity) {
-                        return "Le materiel \"" + equipmentName + "\" est disponible a hauteur de " + quantity + " unite(s).";
+                    if (quantiteDemandee > quantiteRestante) {
+                        return "Le materiel \"" + equipmentName + "\" est disponible a hauteur de " + quantiteRestante
+                            + " unite(s) libre(s) sur ce creneau apres affectation fixe aux salles et reservations existantes.";
                     }
                 }
-            } catch (SQLException e) {
+            } catch (SQLException | IllegalArgumentException | IllegalStateException e) {
                 return "Verification du materiel impossible: " + e.getMessage();
             }
         }
         return null;
+    }
+
+    public Map<Integer, Integer> getReservedComplementaryQuantites(LocalDateTime candidateStartAt,
+                                                                   int candidateDuration,
+                                                                   Integer excludedSeanceId) {
+        LinkedHashMap<Integer, Integer> reservedQuantities = new LinkedHashMap<>();
+        LocalDateTime candidateEndAt = calculateEndAt(candidateStartAt, candidateDuration);
+        if (candidateStartAt == null || candidateEndAt == null) {
+            return reservedQuantities;
+        }
+
+        int currentEditingId = excludedSeanceId == null ? 0 : excludedSeanceId;
+        for (Seance existing : getAll()) {
+            if (existing.getId() == currentEditingId
+                || !existing.isPresentiel()
+                || existing.getStatus() == 2
+                || existing.getStartAt() == null
+                || existing.getDurationMin() <= 0) {
+                continue;
+            }
+
+            LocalDateTime existingEndAt = calculateEndAt(existing.getStartAt(), existing.getDurationMin());
+            if (!hasOverlap(candidateStartAt, candidateEndAt, existing.getStartAt(), existingEndAt)) {
+                continue;
+            }
+
+            for (Map.Entry<Integer, Integer> entry : existing.getEquipementQuantites().entrySet()) {
+                Integer equipementId = entry.getKey();
+                if (equipementId == null || equipementId <= 0) {
+                    continue;
+                }
+
+                int quantiteReservee = Math.max(1, entry.getValue() == null ? 1 : entry.getValue());
+                reservedQuantities.merge(equipementId, quantiteReservee, Integer::sum);
+            }
+        }
+        return reservedQuantities;
     }
 
     private String validateScheduleConflict(Seance candidate) {

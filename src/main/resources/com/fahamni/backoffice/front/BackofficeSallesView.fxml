@@ -120,19 +120,19 @@
 
                     <HBox spacing="12.0">
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Nom" styleClass="backoffice-form-label"/>
+                            <Label text="Nom *" styleClass="backoffice-form-label"/>
                             <TextField fx:id="nomField" promptText="Ex: Salle Atlas" styleClass="backoffice-form-input"/>
                         </VBox>
 
                         <VBox spacing="6.0" prefWidth="150.0">
-                            <Label text="Capacite" styleClass="backoffice-form-label"/>
+                            <Label text="Capacite *" styleClass="backoffice-form-label"/>
                             <Spinner fx:id="capaciteSpinner" editable="true" styleClass="backoffice-form-spinner"/>
                         </VBox>
                     </HBox>
 
                     <HBox spacing="12.0">
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Localisation" styleClass="backoffice-form-label"/>
+                            <Label text="Localisation *" styleClass="backoffice-form-label"/>
                             <TextField fx:id="localisationField" promptText="Ex: Bloc B - Aile Est" styleClass="backoffice-form-input"/>
                         </VBox>
 
@@ -144,12 +144,12 @@
 
                     <HBox spacing="12.0">
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Type de salle" styleClass="backoffice-form-label"/>
+                            <Label text="Type de salle *" styleClass="backoffice-form-label"/>
                             <ComboBox fx:id="typeComboBox" styleClass="backoffice-form-input"/>
                         </VBox>
 
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Etat" styleClass="backoffice-form-label"/>
+                            <Label text="Etat *" styleClass="backoffice-form-label"/>
                             <ComboBox fx:id="etatComboBox" styleClass="backoffice-form-input"/>
                         </VBox>
                     </HBox>
@@ -179,6 +179,15 @@
                     <VBox spacing="6.0">
                         <Label text="Description" styleClass="backoffice-form-label"/>
                         <TextArea fx:id="descriptionArea" prefRowCount="4" wrapText="true" styleClass="backoffice-form-textarea"/>
+                    </VBox>
+
+                    <VBox spacing="10.0" styleClass="infrastructure-detail-preview">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="Equipements fixes de la salle" styleClass="backoffice-section-title"/>
+                        </HBox>
+
+                        <Label text="Cette section est dediee a la configuration des equipements fixes associes a la salle. Enregistrez d'abord la salle pour activer cette gestion." wrapText="true" styleClass="backoffice-panel-copy"/>
+                        <Button fx:id="manageFixedEquipementsButton" maxWidth="Infinity" disable="true" onAction="#handleManageFixedEquipements" text="Gerer les equipements fixes" styleClass="backoffice-config-button"/>
                     </VBox>
 
                     <HBox spacing="10.0">

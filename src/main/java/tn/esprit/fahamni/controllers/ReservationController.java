@@ -2,6 +2,7 @@ package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.Models.SalleEquipement;
 import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
@@ -10,6 +11,7 @@ import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
 import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
 import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
+import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.utils.OperationResult;
@@ -26,11 +28,14 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.Node;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -46,10 +51,12 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
 import javafx.util.StringConverter;
+import javafx.scene.input.MouseEvent;
 
 public class ReservationController {
 
@@ -77,8 +84,10 @@ public class ReservationController {
     private final ReservationService reservationService = new ReservationService();
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
+    private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
+    private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
     private final Map<Integer, EquipmentSelectionControls> equipmentSelectionControls = new LinkedHashMap<>();
     private final Map<Integer, RoomSelectionControls> roomSelectionControls = new LinkedHashMap<>();
     private final Map<Integer, String> roomScheduleConflicts = new LinkedHashMap<>();
@@ -144,6 +153,9 @@ public class ReservationController {
     private HBox onsiteInfrastructureRow;
 
     @FXML
+    private Separator sessionDescriptionDivider;
+
+    @FXML
     private Label sessionModeDescriptionLabel;
 
     @FXML
@@ -163,6 +175,12 @@ public class ReservationController {
 
     @FXML
     private FlowPane sessionRoomFactsContainer;
+
+    @FXML
+    private Label sessionRoomFixedEquipmentSummaryLabel;
+
+    @FXML
+    private VBox sessionRoomFixedEquipmentContainer;
 
     @FXML
     private VBox sessionEquipmentChoicesContainer;
@@ -454,23 +472,13 @@ public class ReservationController {
                     .filter(salle -> isAvailable(salle.getEtat()))
                     .toList()
             );
-
-            availableEquipements.clear();
-            availableEquipements.addAll(
-                equipementService.getAll().stream()
-                    .filter(equipement -> isAvailable(equipement.getEtat()))
-                    .filter(equipement -> equipement.getQuantiteDisponible() > 0)
-                    .toList()
-            );
+            roomFixedEquipementsBySalleId.clear();
 
             refreshRoomChoicesForSchedule();
-            renderEquipmentChoices();
-            updateInfrastructureHint();
-            updateRoomPreview();
-            updateEquipmentPreview();
         } catch (SQLException | IllegalStateException exception) {
             availableSalles.clear();
             availableEquipements.clear();
+            roomFixedEquipementsBySalleId.clear();
             selectedSalleId = null;
             roomSelectionControls.clear();
             roomScheduleConflicts.clear();
@@ -487,15 +495,33 @@ public class ReservationController {
         sessionEquipmentChoicesContainer.getChildren().clear();
         equipmentSelectionControls.clear();
 
-        if (availableEquipements.isEmpty()) {
-            Label emptyLabel = new Label("Aucun materiel disponible pour le moment.");
+        if (!Seance.MODE_ONSITE.equals(resolveSelectedMode())) {
+            Label emptyLabel = new Label("Passez en presentiel pour ajouter du materiel complementaire.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().add("reservation-section-copy");
             sessionEquipmentChoicesContainer.getChildren().add(emptyLabel);
             return;
         }
 
-        for (Equipement equipement : availableEquipements) {
+        Salle selectedSalle = resolveSelectedSalle();
+        if (selectedSalle == null) {
+            Label emptyLabel = new Label("Choisissez d'abord une salle pour voir le materiel complementaire disponible.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            sessionEquipmentChoicesContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        List<Equipement> complementaryEquipements = getComplementaryEquipementsForSalle(selectedSalle.getIdSalle());
+        if (complementaryEquipements.isEmpty()) {
+            Label emptyLabel = new Label("Aucun materiel complementaire n'est necessaire ou disponible pour cette salle.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            sessionEquipmentChoicesContainer.getChildren().add(emptyLabel);
+            return;
+        }
+
+        for (Equipement equipement : complementaryEquipements) {
             sessionEquipmentChoicesContainer.getChildren().add(createEquipmentChoiceCard(equipement));
         }
     }
@@ -503,21 +529,27 @@ public class ReservationController {
     private void updateOnsiteOptionsVisibility() {
         boolean onsite = Seance.MODE_ONSITE.equals(resolveSelectedMode());
         setInfrastructureSectionVisible(onsiteInfrastructureRow, onsite);
+        setSeparatorVisible(sessionDescriptionDivider, onsite);
         updateModePresentation();
 
         if (!onsite) {
             selectedSalleId = null;
             updateRoomSelectionStyles();
             clearEquipmentSelection();
+            renderEquipmentChoices();
             resetRoomPreview();
             updateEquipmentPreview();
+            updateInfrastructureHint();
         } else if (selectedSalleId == null && !availableSalles.isEmpty()) {
             selectFirstSelectableSalle();
             updateRoomPreview();
             updateEquipmentPreview();
+            updateInfrastructureHint();
         } else {
+            renderEquipmentChoices();
             updateRoomPreview();
             updateEquipmentPreview();
+            updateInfrastructureHint();
         }
     }
 
@@ -551,11 +583,82 @@ public class ReservationController {
         }
         renderRoomChoices();
         updateRoomAvailabilityHint();
+        refreshEquipmentChoicesForSchedule();
         if (preferredSalleId != null && roomScheduleConflicts.containsKey(preferredSalleId)) {
             showRoomUnavailablePreview(roomScheduleConflicts.get(preferredSalleId));
         } else {
             updateRoomPreview();
         }
+        updateInfrastructureHint();
+    }
+
+    private void refreshEquipmentChoicesForSchedule() {
+        Map<Integer, Integer> previousSelection = getSelectedEquipmentQuantites();
+
+        try {
+            availableEquipements.clear();
+            Map<Integer, Integer> reservedQuantities = resolveReservedComplementaryQuantitiesForSelectedSchedule();
+
+            for (Equipement equipement : equipementService.getAll()) {
+                if (!isAvailable(equipement.getEtat())) {
+                    continue;
+                }
+
+                int quantiteBase = salleEquipementService.getRemainingQuantiteForEquipement(equipement.getIdEquipement());
+                if (quantiteBase <= 0) {
+                    continue;
+                }
+
+                int quantiteRestante = Math.max(0, quantiteBase - reservedQuantities.getOrDefault(equipement.getIdEquipement(), 0));
+
+                availableEquipements.add(new Equipement(
+                    equipement.getIdEquipement(),
+                    equipement.getNom(),
+                    equipement.getTypeEquipement(),
+                    quantiteRestante,
+                    equipement.getEtat(),
+                    equipement.getDescription()
+                ));
+            }
+        } catch (SQLException | IllegalStateException exception) {
+            availableEquipements.clear();
+        }
+
+        renderEquipmentChoices();
+        reapplyEquipmentSelection(previousSelection);
+    }
+
+    private Map<Integer, Integer> resolveReservedComplementaryQuantitiesForSelectedSchedule() {
+        LocalDateTime candidateStartAt = resolveTentativeStartAt();
+        Integer candidateDuration = resolveTentativeDuration();
+        if (candidateStartAt == null || candidateDuration == null || candidateDuration <= 0) {
+            return Map.of();
+        }
+
+        return seanceService.getReservedComplementaryQuantites(
+            candidateStartAt,
+            candidateDuration,
+            editingSessionId
+        );
+    }
+
+    private void reapplyEquipmentSelection(Map<Integer, Integer> equipementQuantites) {
+        if (equipementQuantites == null || equipementQuantites.isEmpty()) {
+            updateEquipmentPreview();
+            return;
+        }
+
+        for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
+            EquipmentSelectionControls controls = equipmentSelectionControls.get(entry.getKey());
+            if (controls == null || !controls.selectable()) {
+                continue;
+            }
+
+            controls.checkBox().setSelected(true);
+            setEquipmentQuantity(controls, entry.getValue());
+            updateEquipmentSelectionState(controls);
+        }
+        updateEquipmentPreview();
     }
 
     private void renderRoomChoices() {
@@ -577,36 +680,44 @@ public class ReservationController {
     }
 
     private VBox createRoomChoiceCard(Salle salle) {
-        VBox card = new VBox(6.0);
+        VBox card = new VBox(10.0);
         card.getStyleClass().add("reservation-room-choice-card");
         card.setMaxWidth(Double.MAX_VALUE);
+        card.setMinHeight(136.0);
+        card.setPrefHeight(136.0);
 
         String conflictReason = roomScheduleConflicts.get(salle.getIdSalle());
         boolean unavailableForSlot = conflictReason != null;
 
-        HBox header = new HBox(8.0);
+        HBox header = new HBox(10.0);
         header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        VBox titleBlock = new VBox(4.0);
         Label title = new Label(formatOptionalText(salle.getNom()));
         title.setWrapText(true);
         title.getStyleClass().add("reservation-room-choice-title");
+        Label subtitle = new Label(formatLabel(salle.getTypeSalle()));
+        subtitle.setWrapText(true);
+        subtitle.getStyleClass().add("reservation-choice-subtitle");
+        titleBlock.getChildren().addAll(title, subtitle);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         Label statusChip = new Label(unavailableForSlot ? "Occupee" : "Libre");
-        statusChip.getStyleClass().addAll("reservation-status", unavailableForSlot ? "occupied" : "confirmed");
-        header.getChildren().addAll(title, spacer, statusChip);
+        statusChip.getStyleClass().setAll("status-chip", unavailableForSlot ? "unavailable" : "available");
+        header.getChildren().addAll(titleBlock, spacer, statusChip);
 
-        Label meta = new Label(
-            formatOptionalText(salle.getBatiment())
-                + " | "
-                + formatOptionalText(salle.getLocalisation())
-                + " | "
-                + salle.getCapacite()
-                + " places"
+        FlowPane facts = new FlowPane(8.0, 8.0);
+        facts.getStyleClass().add("reservation-choice-facts");
+        facts.getChildren().addAll(
+            buildChoiceChip(formatOptionalText(salle.getBatiment())),
+            buildChoiceChip(formatOptionalText(salle.getLocalisation())),
+            buildChoiceChip(salle.getCapacite() + " places")
         );
-        meta.setWrapText(true);
-        meta.getStyleClass().add("reservation-room-choice-meta");
 
-        card.getChildren().addAll(header, meta);
+        Region contentSpacer = new Region();
+        VBox.setVgrow(contentSpacer, Priority.ALWAYS);
+
+        card.getChildren().addAll(header, facts, contentSpacer);
         if (unavailableForSlot) {
             card.getStyleClass().add("unavailable");
             card.setOnMouseClicked(event -> {
@@ -627,9 +738,15 @@ public class ReservationController {
         if (salle == null || isSalleUnavailableForSelectedSchedule(salle)) {
             return;
         }
+        boolean roomChanged = !Objects.equals(selectedSalleId, salle.getIdSalle());
         selectedSalleId = salle.getIdSalle();
+        if (roomChanged) {
+            renderEquipmentChoices();
+        }
         updateRoomSelectionStyles();
         updateRoomPreview();
+        updateEquipmentPreview();
+        updateInfrastructureHint();
     }
 
     private void updateRoomSelectionStyles() {
@@ -758,22 +875,23 @@ public class ReservationController {
         }
 
         if (availableSalles.isEmpty()) {
-            sessionRoomAvailabilityHintLabel.setText("Aucune salle disponible administrativement pour le moment.");
+            updateOptionalHint(sessionRoomAvailabilityHintLabel, "Aucune salle disponible administrativement pour le moment.");
             return;
         }
 
         if (resolveTentativeStartAt() == null || resolveTentativeDuration() == null) {
-            sessionRoomAvailabilityHintLabel.setText("Selectionnez la date, l'heure et la duree pour verifier les disponibilites.");
+            updateOptionalHint(sessionRoomAvailabilityHintLabel, null);
             return;
         }
 
         int blockedCount = roomScheduleConflicts.size();
         if (blockedCount == 0) {
-            sessionRoomAvailabilityHintLabel.setText("Toutes les salles affichees sont libres sur ce creneau.");
+            updateOptionalHint(sessionRoomAvailabilityHintLabel, "Toutes les salles affichees sont libres sur ce creneau.");
             return;
         }
 
-        sessionRoomAvailabilityHintLabel.setText(
+        updateOptionalHint(
+            sessionRoomAvailabilityHintLabel,
             blockedCount == 1
                 ? "1 salle est grisee car elle est deja reservee sur ce creneau."
                 : blockedCount + " salles sont grisees car elles sont deja reservees sur ce creneau."
@@ -784,7 +902,7 @@ public class ReservationController {
         LinkedHashMap<Integer, Integer> selectedQuantities = new LinkedHashMap<>();
         for (Map.Entry<Integer, EquipmentSelectionControls> entry : equipmentSelectionControls.entrySet()) {
             EquipmentSelectionControls controls = entry.getValue();
-            if (!controls.checkBox().isSelected()) {
+            if (!controls.selectable() || !controls.checkBox().isSelected()) {
                 continue;
             }
             int quantite = controls.quantitySpinner().getValue() == null ? 1 : controls.quantitySpinner().getValue();
@@ -824,20 +942,36 @@ public class ReservationController {
 
         for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
             EquipmentSelectionControls controls = equipmentSelectionControls.get(entry.getKey());
-            if (controls == null) {
+            if (controls == null || !controls.selectable()) {
                 continue;
             }
             controls.checkBox().setSelected(true);
-            controls.quantitySpinner().getValueFactory().setValue(Math.max(1, entry.getValue() == null ? 1 : entry.getValue()));
+            setEquipmentQuantity(controls, entry.getValue());
             updateEquipmentSelectionState(controls);
         }
         updateEquipmentPreview();
     }
 
+    private void setEquipmentQuantity(EquipmentSelectionControls controls, Integer quantity) {
+        if (controls == null) {
+            return;
+        }
+
+        SpinnerValueFactory<Integer> valueFactory = controls.quantitySpinner().getValueFactory();
+        if (!(valueFactory instanceof SpinnerValueFactory.IntegerSpinnerValueFactory integerFactory)) {
+            valueFactory.setValue(quantity);
+            return;
+        }
+
+        int requestedQuantity = quantity == null ? integerFactory.getMin() : quantity;
+        int boundedQuantity = Math.max(integerFactory.getMin(), Math.min(integerFactory.getMax(), requestedQuantity));
+        integerFactory.setValue(boundedQuantity);
+    }
+
     private void clearEquipmentSelection() {
         equipmentSelectionControls.values().forEach(controls -> {
             controls.checkBox().setSelected(false);
-            controls.quantitySpinner().getValueFactory().setValue(1);
+            setEquipmentQuantity(controls, null);
             updateEquipmentSelectionState(controls);
         });
         updateEquipmentPreview();
@@ -889,36 +1023,30 @@ public class ReservationController {
     }
 
     private String formatEquipementChoice(Equipement equipement) {
-        return equipement.getNom()
-            + " ("
-            + equipement.getTypeEquipement()
-            + ", "
-            + equipement.getQuantiteDisponible()
-            + " dispo)";
+        return formatOptionalText(equipement == null ? null : equipement.getNom());
     }
 
     private VBox createEquipmentChoiceCard(Equipement equipement) {
-        VBox card = new VBox(6.0);
+        VBox card = new VBox(10.0);
         card.getStyleClass().add("reservation-equipment-choice-card");
         card.setMaxWidth(Double.MAX_VALUE);
+        card.setMinHeight(136.0);
+        card.setPrefHeight(136.0);
+        boolean unavailableForSlot = equipement.getQuantiteDisponible() <= 0;
 
-        CheckBox checkBox = new CheckBox(formatEquipementChoice(equipement));
-        checkBox.setWrapText(true);
-        checkBox.setMaxWidth(Double.MAX_VALUE);
-        checkBox.getStyleClass().add("reservation-equipment-check");
+        CheckBox checkBox = new CheckBox();
 
         Spinner<Integer> quantitySpinner = new Spinner<>();
-        quantitySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(
-            1,
-            Math.max(1, equipement.getQuantiteDisponible()),
-            1
-        ));
+        quantitySpinner.setValueFactory(unavailableForSlot
+            ? new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 0, 0)
+            : new SpinnerValueFactory.IntegerSpinnerValueFactory(1, Math.max(1, equipement.getQuantiteDisponible()), 1)
+        );
         quantitySpinner.setEditable(true);
-        quantitySpinner.setPrefWidth(92.0);
+        quantitySpinner.setPrefWidth(60.0);
         quantitySpinner.getStyleClass().add("reservation-equipment-quantity-spinner");
         quantitySpinner.setDisable(true);
 
-        EquipmentSelectionControls controls = new EquipmentSelectionControls(checkBox, quantitySpinner, card);
+        EquipmentSelectionControls controls = new EquipmentSelectionControls(checkBox, quantitySpinner, card, !unavailableForSlot);
         equipmentSelectionControls.put(equipement.getIdEquipement(), controls);
 
         checkBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
@@ -931,24 +1059,59 @@ public class ReservationController {
         quantityLabel.getStyleClass().add("reservation-equipment-quantity-label");
 
         VBox quantityBox = new VBox(4.0, quantityLabel, quantitySpinner);
-        quantityBox.setMinWidth(112.0);
-        quantityBox.setPrefWidth(112.0);
-        quantityBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+        quantityBox.getStyleClass().add("reservation-quantity-box");
+        quantityBox.setMinWidth(78.0);
+        quantityBox.setPrefWidth(78.0);
+        quantityBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
 
-        HBox header = new HBox(12.0, checkBox, quantityBox);
+        Label title = new Label(formatEquipementChoice(equipement));
+        title.setWrapText(false);
+        title.setTextOverrun(OverrunStyle.ELLIPSIS);
+        title.getStyleClass().add("reservation-room-choice-title");
+
+        Label subtitle = new Label(formatLabel(equipement.getTypeEquipement()));
+        subtitle.setWrapText(true);
+        subtitle.getStyleClass().add("reservation-choice-subtitle");
+
+        Label availabilityChip = unavailableForSlot
+            ? buildChoiceChip("0 dispo")
+            : buildChoiceChipHighlight(equipement.getQuantiteDisponible() + " dispo");
+        availabilityChip.setWrapText(false);
+
+        HBox titleRow = new HBox(title);
+        titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        HBox.setHgrow(title, Priority.ALWAYS);
+
+        VBox infoBox = new VBox(6.0, titleRow, subtitle);
+        HBox.setHgrow(infoBox, Priority.ALWAYS);
+
+        HBox header = new HBox(10.0, infoBox, quantityBox);
         header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        HBox.setHgrow(checkBox, Priority.ALWAYS);
+        FlowPane facts = new FlowPane(8.0, 8.0);
+        facts.getStyleClass().add("reservation-choice-facts");
+        Label typeChip = buildChoiceChip("Type " + formatLabel(equipement.getTypeEquipement()));
+        typeChip.setWrapText(false);
+        facts.getChildren().addAll(typeChip, availabilityChip);
 
-        Label description = new Label(formatDescription(equipement.getDescription()));
-        description.setWrapText(true);
-        description.getStyleClass().add("reservation-section-copy");
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        card.getChildren().addAll(header, description);
+        card.getChildren().addAll(header, facts, spacer);
+        if (unavailableForSlot) {
+            card.getStyleClass().add("unavailable");
+        }
+        card.setOnMouseClicked(event -> handleEquipmentCardClick(event, controls, quantityBox));
         updateEquipmentSelectionState(controls);
         return card;
     }
 
     private void updateEquipmentSelectionState(EquipmentSelectionControls controls) {
+        if (!controls.selectable()) {
+            controls.quantitySpinner().setDisable(true);
+            controls.card().getStyleClass().remove("selected");
+            return;
+        }
+
         boolean selected = controls.checkBox().isSelected();
         controls.quantitySpinner().setDisable(!selected);
         controls.card().getStyleClass().remove("selected");
@@ -966,7 +1129,7 @@ public class ReservationController {
         );
         sessionModeDescriptionLabel.setText(
             onsite
-                ? "Presentiel. Choisissez une salle adaptee puis le materiel disponible avec previsualisation detaillee."
+                ? "Presentiel. Choisissez une salle, consultez son materiel fixe inclus puis ajoutez uniquement le complementaire."
                 : "En ligne. Aucun espace physique n'est requis pour cette seance."
         );
     }
@@ -1006,6 +1169,7 @@ public class ReservationController {
             buildInfrastructureFactCard("Disposition", formatOptionalText(selectedSalle.getTypeDisposition())),
             buildInfrastructureFactCard("Acces", selectedSalle.isAccesHandicape() ? "Handicap" : "Standard")
         );
+        updateRoomFixedEquipmentPreview(selectedSalle.getIdSalle());
     }
 
     private void showRoomUnavailablePreview(String reason) {
@@ -1015,6 +1179,7 @@ public class ReservationController {
         sessionRoomPreviewSubtitleLabel.setText(reason == null ? "Choisissez une autre salle ou modifiez le creneau." : reason);
         sessionRoomPreviewDescriptionLabel.setText("Choisissez une autre salle ou changez la date, l'heure ou la duree.");
         sessionRoomFactsContainer.getChildren().clear();
+        resetRoomFixedEquipmentPreview();
     }
 
     private void resetRoomPreview() {
@@ -1024,15 +1189,16 @@ public class ReservationController {
         sessionRoomPreviewSubtitleLabel.setText("La salle choisie apparaitra ici avec ses details principaux.");
         sessionRoomPreviewDescriptionLabel.setText("Aucune salle selectionnee.");
         sessionRoomFactsContainer.getChildren().clear();
+        resetRoomFixedEquipmentPreview();
     }
 
     private void updateEquipmentPreview() {
         sessionEquipmentPreviewContainer.getChildren().clear();
 
         if (!Seance.MODE_ONSITE.equals(resolveSelectedMode())) {
-            sessionEquipmentSelectionSummaryLabel.setText("0 selection");
+            sessionEquipmentSelectionSummaryLabel.setText("0 ajout");
             sessionEquipmentPreviewContainer.getChildren().add(createEmptyEquipmentPreview(
-                "Le materiel n'est necessaire que pour une seance presentielle."
+                "Le materiel complementaire n'est propose que pour une seance presentielle."
             ));
             return;
         }
@@ -1042,13 +1208,13 @@ public class ReservationController {
         int totalUnits = selectedEquipementQuantites.values().stream().mapToInt(Integer::intValue).sum();
         sessionEquipmentSelectionSummaryLabel.setText(
             selectedCount == 0
-                ? "0 selection"
-                : selectedCount + " choix | " + totalUnits + " unite(s)"
+                ? "0 ajout"
+                : selectedCount + " ajout(s) | " + totalUnits + " unite(s)"
         );
 
         if (selectedEquipementQuantites.isEmpty()) {
             sessionEquipmentPreviewContainer.getChildren().add(createEmptyEquipmentPreview(
-                "Aucun materiel selectionne. Vous pouvez garder la seance presentielle sans materiel particulier."
+                "Aucun materiel complementaire selectionne. La seance peut utiliser uniquement l'equipement fixe de la salle."
             ));
             return;
         }
@@ -1063,7 +1229,7 @@ public class ReservationController {
         VBox card = new VBox(6.0);
         card.getStyleClass().addAll("infrastructure-detail-preview", "reservation-equipment-preview-card");
 
-        Label title = new Label("Apercu materiel");
+        Label title = new Label("Apercu materiel complementaire");
         title.getStyleClass().add("infrastructure-detail-section-title");
 
         Label copy = new Label(text);
@@ -1096,7 +1262,7 @@ public class ReservationController {
             formatLabel(equipement.getTypeEquipement())
                 + " | "
                 + quantiteChoisie
-                + " unite(s) choisie(s) sur "
+                + " unite(s) ajoutee(s) sur "
                 + equipement.getQuantiteDisponible()
                 + " disponible(s)"
         );
@@ -1118,6 +1284,83 @@ public class ReservationController {
         return card;
     }
 
+    private void updateRoomFixedEquipmentPreview(int salleId) {
+        if (sessionRoomFixedEquipmentContainer == null || sessionRoomFixedEquipmentSummaryLabel == null) {
+            return;
+        }
+
+        sessionRoomFixedEquipmentContainer.getChildren().clear();
+        List<SalleEquipement> fixedEquipements = getRoomFixedEquipements(salleId);
+        if (fixedEquipements.isEmpty()) {
+            sessionRoomFixedEquipmentSummaryLabel.setText("Aucun fixe");
+            sessionRoomFixedEquipmentContainer.getChildren().add(createEmptyFixedRoomEquipmentPreview(
+                "Cette salle n'a pas de materiel fixe enregistre. Vous pouvez ajouter uniquement du materiel complementaire si besoin."
+            ));
+            return;
+        }
+
+        int totalUnits = fixedEquipements.stream().mapToInt(SalleEquipement::getQuantite).sum();
+        sessionRoomFixedEquipmentSummaryLabel.setText(fixedEquipements.size() + " type(s) | " + totalUnits + " unite(s)");
+        fixedEquipements.stream()
+            .map(this::createFixedRoomEquipmentPreviewCard)
+            .forEach(sessionRoomFixedEquipmentContainer.getChildren()::add);
+    }
+
+    private void resetRoomFixedEquipmentPreview() {
+        if (sessionRoomFixedEquipmentSummaryLabel != null) {
+            sessionRoomFixedEquipmentSummaryLabel.setText("Aucun fixe");
+        }
+        if (sessionRoomFixedEquipmentContainer != null) {
+            sessionRoomFixedEquipmentContainer.getChildren().clear();
+        }
+    }
+
+    private VBox createEmptyFixedRoomEquipmentPreview(String text) {
+        VBox card = new VBox(6.0);
+        card.getStyleClass().addAll("infrastructure-detail-preview", "reservation-equipment-preview-card");
+
+        Label title = new Label("Equipements inclus");
+        title.getStyleClass().add("infrastructure-detail-section-title");
+
+        Label copy = new Label(text);
+        copy.setWrapText(true);
+        copy.getStyleClass().add("infrastructure-detail-section-copy");
+
+        card.getChildren().addAll(title, copy);
+        return card;
+    }
+
+    private VBox createFixedRoomEquipmentPreviewCard(SalleEquipement equipement) {
+        VBox card = new VBox(8.0);
+        card.getStyleClass().addAll("infrastructure-detail-preview", "reservation-equipment-preview-card");
+
+        HBox header = new HBox(8.0);
+        Label title = new Label(formatOptionalText(equipement.getNomEquipement()));
+        title.getStyleClass().add("infrastructure-detail-section-title");
+        title.setWrapText(true);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label status = new Label(formatLabel(equipement.getEtatEquipement()));
+        status.getStyleClass().setAll("status-chip", resolveStatusStyle(equipement.getEtatEquipement()));
+        header.getChildren().addAll(title, spacer, status);
+
+        Label subtitle = new Label(
+            formatOptionalText(equipement.getTypeEquipement())
+                + " | "
+                + equipement.getQuantite()
+                + " unite(s) fixes"
+        );
+        subtitle.setWrapText(true);
+        subtitle.getStyleClass().add("infrastructure-detail-section-copy");
+
+        Label description = new Label(formatDescription(equipement.getDescriptionEquipement()));
+        description.setWrapText(true);
+        description.getStyleClass().add("infrastructure-detail-section-copy");
+
+        card.getChildren().addAll(header, subtitle, description);
+        return card;
+    }
+
     private VBox buildInfrastructureFactCard(String label, String value) {
         VBox card = new VBox(5.0);
         card.getStyleClass().add("infrastructure-detail-fact-card");
@@ -1134,6 +1377,60 @@ public class ReservationController {
         return card;
     }
 
+    private void handleEquipmentCardClick(MouseEvent event, EquipmentSelectionControls controls, VBox quantityBox) {
+        if (event == null || controls == null || !controls.selectable()) {
+            return;
+        }
+        if (isEventInsideNode(event, controls.checkBox()) || isEventInsideNode(event, quantityBox)) {
+            return;
+        }
+
+        controls.checkBox().setSelected(!controls.checkBox().isSelected());
+    }
+
+    private boolean isEventInsideNode(MouseEvent event, Node container) {
+        if (event == null || container == null) {
+            return false;
+        }
+
+        Object target = event.getTarget();
+        if (!(target instanceof Node current)) {
+            return false;
+        }
+
+        while (current != null) {
+            if (current == container) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    private void updateOptionalHint(Label label, String text) {
+        if (label == null) {
+            return;
+        }
+
+        boolean visible = text != null && !text.isBlank();
+        label.setText(visible ? text : "");
+        label.setManaged(visible);
+        label.setVisible(visible);
+    }
+
+    private Label buildChoiceChip(String text) {
+        Label chip = new Label(text);
+        chip.setWrapText(true);
+        chip.getStyleClass().add("reservation-choice-chip");
+        return chip;
+    }
+
+    private Label buildChoiceChipHighlight(String text) {
+        Label chip = buildChoiceChip(text);
+        chip.getStyleClass().add("reservation-choice-chip-highlight");
+        return chip;
+    }
+
     private Equipement findEquipementById(Integer equipementId) {
         if (equipementId == null || equipementId <= 0) {
             return null;
@@ -1145,12 +1442,53 @@ public class ReservationController {
             .orElse(null);
     }
 
+    private List<Equipement> getComplementaryEquipementsForSalle(int salleId) {
+        return new ArrayList<>(availableEquipements);
+    }
+
+    private List<SalleEquipement> getRoomFixedEquipements(Integer salleId) {
+        if (salleId == null || salleId <= 0) {
+            return List.of();
+        }
+
+        List<SalleEquipement> cached = roomFixedEquipementsBySalleId.get(salleId);
+        if (cached != null) {
+            return cached;
+        }
+
+        try {
+            List<SalleEquipement> loaded = salleEquipementService.getEquipementsBySalleId(salleId);
+            roomFixedEquipementsBySalleId.put(salleId, loaded);
+            return loaded;
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            roomFixedEquipementsBySalleId.put(salleId, List.of());
+            return List.of();
+        }
+    }
+
     private void updateInfrastructureHint() {
+        if (!Seance.MODE_ONSITE.equals(resolveSelectedMode())) {
+            infrastructureHintLabel.setText("Passez en presentiel pour voir une salle, son equipement fixe et les ajouts possibles.");
+            return;
+        }
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (selectedSalle == null) {
+            infrastructureHintLabel.setText("Choisissez une salle pour distinguer le materiel deja inclus de celui a ajouter pour la seance.");
+            return;
+        }
+
+        List<SalleEquipement> fixedEquipements = getRoomFixedEquipements(selectedSalle.getIdSalle());
+        long complementaryCount = getComplementaryEquipementsForSalle(selectedSalle.getIdSalle()).stream()
+            .filter(equipement -> equipement.getQuantiteDisponible() > 0)
+            .count();
         infrastructureHintLabel.setText(
-            availableSalles.size()
-                + " salle(s) disponible(s), "
-                + availableEquipements.size()
-                + " type(s) de materiel disponible(s). Precisez la quantite voulue uniquement pour le materiel existant."
+            formatOptionalText(selectedSalle.getNom())
+                + " inclut "
+                + fixedEquipements.size()
+                + " type(s) de materiel fixe. "
+                + complementaryCount
+                + " type(s) de materiel complementaire restent ajoutables pour cette seance."
         );
     }
 
@@ -1643,9 +1981,16 @@ public class ReservationController {
         metrics.getChildren().addAll(
             buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId()),
             buildDetailMetric("Mode", mapModeLabel(seance.getMode()), "Format choisi"),
-            buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel"),
-            buildDetailMetric("Materiel", resolveEquipementNames(seance.getEquipementQuantites()), "Existant")
+            buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel")
         );
+        if (seance.isPresentiel()) {
+            metrics.getChildren().addAll(
+                buildDetailMetric("Materiel salle", resolveFixedEquipementNames(seance.getSalleId()), "Inclus"),
+                buildDetailMetric("Ajouts seance", resolveAddedEquipementNames(seance.getEquipementQuantites()), "Complementaire")
+            );
+        } else {
+            metrics.getChildren().add(buildDetailMetric("Materiel", "Aucun materiel", "Non requis"));
+        }
 
         VBox occupancyCard = new VBox(9.0);
         occupancyCard.getStyleClass().add("session-detail-occupancy-card");
@@ -2116,10 +2461,24 @@ public class ReservationController {
             return MODE_ONLINE_LABEL;
         }
 
-        String equipmentSummary = seance.getEquipementQuantites().isEmpty()
-            ? "sans materiel"
-            : resolveEquipementNames(seance.getEquipementQuantites());
-        return MODE_ONSITE_LABEL + " - " + resolveSalleName(seance.getSalleId()) + " - " + equipmentSummary;
+        String fixedEquipmentSummary = resolveFixedEquipementNames(seance.getSalleId());
+        String addedEquipmentSummary = resolveAddedEquipementNames(seance.getEquipementQuantites());
+        if ("Aucun materiel fixe".equals(fixedEquipmentSummary) && "Aucun ajout".equals(addedEquipmentSummary)) {
+            return MODE_ONSITE_LABEL + " - " + resolveSalleName(seance.getSalleId()) + " - sans materiel";
+        }
+        if ("Aucun ajout".equals(addedEquipmentSummary)) {
+            return MODE_ONSITE_LABEL + " - " + resolveSalleName(seance.getSalleId()) + " - inclus: " + fixedEquipmentSummary;
+        }
+        if ("Aucun materiel fixe".equals(fixedEquipmentSummary)) {
+            return MODE_ONSITE_LABEL + " - " + resolveSalleName(seance.getSalleId()) + " - ajouts: " + addedEquipmentSummary;
+        }
+        return MODE_ONSITE_LABEL
+            + " - "
+            + resolveSalleName(seance.getSalleId())
+            + " - inclus: "
+            + fixedEquipmentSummary
+            + " - ajouts: "
+            + addedEquipmentSummary;
     }
 
     private String resolveSalleName(Integer salleId) {
@@ -2153,6 +2512,25 @@ public class ReservationController {
             .map(entry -> resolveEquipementName(entry.getKey()) + " x" + Math.max(1, entry.getValue()))
             .toList();
         return String.join(", ", names);
+    }
+
+    private String resolveAddedEquipementNames(Map<Integer, Integer> equipementQuantites) {
+        if (equipementQuantites == null || equipementQuantites.isEmpty()) {
+            return "Aucun ajout";
+        }
+        return resolveEquipementNames(equipementQuantites);
+    }
+
+    private String resolveFixedEquipementNames(Integer salleId) {
+        List<SalleEquipement> fixedEquipements = getRoomFixedEquipements(salleId);
+        if (fixedEquipements.isEmpty()) {
+            return "Aucun materiel fixe";
+        }
+
+        return fixedEquipements.stream()
+            .map(equipement -> formatOptionalText(equipement.getNomEquipement()) + " x" + equipement.getQuantite())
+            .reduce((left, right) -> left + ", " + right)
+            .orElse("Aucun materiel fixe");
     }
 
     private String resolveEquipementName(Integer equipementId) {
@@ -2302,6 +2680,14 @@ public class ReservationController {
         section.setVisible(visible);
     }
 
+    private void setSeparatorVisible(Separator separator, boolean visible) {
+        if (separator == null) {
+            return;
+        }
+        separator.setManaged(visible);
+        separator.setVisible(visible);
+    }
+
     private void setSectionVisible(VBox section, boolean visible) {
         if (section == null) {
             return;
@@ -2385,7 +2771,7 @@ public class ReservationController {
         dialogPane.getStylesheets().setAll(recentSessionsContainer.getScene().getStylesheets());
     }
 
-    private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card) {
+    private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card, boolean selectable) {
     }
 
     private record RoomSelectionControls(VBox card, Label statusChip) {

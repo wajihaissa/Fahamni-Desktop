@@ -1,16 +1,22 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TableColumn;
@@ -19,16 +25,26 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.SalleEquipementService;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 public class BackofficeSallesController {
-    private static final int DEFAULT_ROWS_PER_PAGE = 5;
+    private static final int DEFAULT_ROWS_PER_PAGE = 20;
     private static final int MAX_VISIBLE_PAGE_BUTTONS = 7;
 
     @FXML
@@ -121,10 +137,17 @@ public class BackofficeSallesController {
     @FXML
     private Label feedbackLabel;
 
+    @FXML
+    private Button manageFixedEquipementsButton;
+
     private final AdminSalleService salleService = new AdminSalleService();
+    private final AdminEquipementService equipementService = new AdminEquipementService();
+    private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
+    private final ObservableList<Equipement> equipementCatalog = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final ObservableList<Salle> displayedSalles = FXCollections.observableArrayList();
+    private final Map<Integer, FixedEquipmentSelectionControls> fixedEquipmentSelectionControls = new LinkedHashMap<>();
     private int currentPageIndex;
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
 
@@ -163,7 +186,7 @@ public class BackofficeSallesController {
                 return;
             }
             selectSalleById(salle.getIdSalle());
-            showFeedback("La salle a ete ajoutee avec succes.", true);
+            showFeedback("La salle a ete ajoutee avec succes. Vous pouvez maintenant gerer ses equipements fixes.", true);
         } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
             showFeedback("Ajout impossible : " + resolveMessage(exception), false);
         }
@@ -181,6 +204,10 @@ public class BackofficeSallesController {
 
         try {
             Salle salle = buildSalle(selectedSalle.getIdSalle(), selectedSalle.getDateDerniereMaintenance());
+            if (!hasSalleDataChanged(selectedSalle, salle)) {
+                showFeedback("Aucune modification detectee pour cette salle.", true);
+                return;
+            }
             salleService.update(salle);
 
             if (!loadSalles()) {
@@ -231,6 +258,102 @@ public class BackofficeSallesController {
         sallesTable.getSelectionModel().clearSelection();
         clearForm();
         hideFeedback();
+    }
+
+    @FXML
+    private void handleManageFixedEquipements() {
+        hideFeedback();
+
+        Salle selectedSalle = sallesTable.getSelectionModel().getSelectedItem();
+        if (selectedSalle == null || selectedSalle.getIdSalle() <= 0) {
+            showFeedback("Enregistrez ou selectionnez une salle avant de gerer ses equipements fixes.", false);
+            return;
+        }
+
+        if (!loadEquipementCatalog()) {
+            return;
+        }
+
+        Dialog<Map<Integer, Integer>> dialog = new Dialog<>();
+        dialog.setTitle("Equipements fixes");
+        dialog.setHeaderText(null);
+        dialog.setResizable(false);
+
+        ButtonType saveButtonType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL, saveButtonType);
+        applyCurrentTheme(dialog.getDialogPane());
+        dialog.getDialogPane().getStyleClass().add("backoffice-room-equipment-dialog");
+
+        Label summaryLabel = new Label("Aucun fixe");
+        summaryLabel.getStyleClass().setAll("workspace-chip", "workspace-chip-muted");
+
+        VBox content = new VBox(12.0);
+        content.setFillWidth(true);
+        content.getStyleClass().add("backoffice-room-equipment-dialog-content");
+        Label dialogTitle = new Label("Gerer les equipements fixes de " + selectedSalle.getNom());
+        dialogTitle.getStyleClass().add("backoffice-room-equipment-dialog-title");
+        content.getChildren().addAll(
+            dialogTitle,
+            buildDialogIntro(
+                "Definissez ici uniquement le materiel present en permanence dans cette salle. "
+                    + "Le tuteur pourra ensuite ajouter du materiel complementaire a sa seance."
+            ),
+            buildDialogHeader(summaryLabel)
+        );
+
+        VBox choicesContainer = new VBox(8.0);
+        choicesContainer.setFillWidth(true);
+        ScrollPane scrollPane = new ScrollPane(choicesContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setPrefViewportHeight(300.0);
+        scrollPane.setPrefHeight(332.0);
+        scrollPane.setMaxHeight(332.0);
+        scrollPane.getStyleClass().addAll("reservation-choice-scroll", "backoffice-room-equipment-dialog-scroll");
+        content.getChildren().add(scrollPane);
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefWidth(760.0);
+        dialog.getDialogPane().setPrefHeight(Region.USE_COMPUTED_SIZE);
+        dialog.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
+        if (saveButton != null) {
+            saveButton.getStyleClass().addAll("backoffice-primary-button", "backoffice-dialog-save-button");
+            saveButton.setDefaultButton(true);
+            saveButton.setMinWidth(138.0);
+        }
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().addAll("backoffice-secondary-button", "backoffice-dialog-cancel-button");
+            cancelButton.setCancelButton(true);
+            cancelButton.setMinWidth(124.0);
+        }
+
+        renderFixedEquipmentChoices(choicesContainer, summaryLabel, selectedSalle.getIdSalle());
+        populateFixedEquipementSelection(selectedSalle.getIdSalle(), summaryLabel);
+
+        Platform.runLater(() -> {
+            Node buttonBar = dialog.getDialogPane().lookup(".button-bar");
+            if (buttonBar != null) {
+                buttonBar.toFront();
+            }
+        });
+
+        dialog.setResultConverter(buttonType -> buttonType == saveButtonType ? getSelectedFixedEquipementQuantites() : null);
+
+        Optional<Map<Integer, Integer>> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+
+        try {
+            salleEquipementService.replaceEquipementsForSalle(selectedSalle.getIdSalle(), result.get());
+            updateFixedEquipmentSummary(selectedSalle.getIdSalle());
+            showFeedback("Les equipements fixes de la salle ont ete mis a jour.", true);
+        } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
+            showFeedback("Mise a jour des equipements fixes impossible : " + resolveMessage(exception), false);
+        }
     }
 
     @FXML
@@ -322,6 +445,7 @@ public class BackofficeSallesController {
         accesHandicapeCheckBox.setSelected(salle.isAccesHandicape());
         statutDetailleField.setText(defaultString(salle.getStatutDetaille()));
         descriptionArea.setText(defaultString(salle.getDescription()));
+        updateFixedEquipmentSummary(salle.getIdSalle());
 
         updateSelectionBadge(salle);
     }
@@ -338,6 +462,7 @@ public class BackofficeSallesController {
         accesHandicapeCheckBox.setSelected(false);
         statutDetailleField.clear();
         descriptionArea.clear();
+        updateFixedEquipmentSummary(null);
 
         updateSelectionBadge(null);
     }
@@ -520,6 +645,293 @@ public class BackofficeSallesController {
         return normalizedBatiment;
     }
 
+    private boolean loadEquipementCatalog() {
+        try {
+            equipementCatalog.setAll(
+                equipementService.getAll().stream()
+                    .sorted(
+                        Comparator.comparingInt(this::resolveFixedEquipmentSortRank)
+                            .thenComparing(equipement -> normalize(equipement.getNom()))
+                    )
+                    .toList()
+            );
+            return true;
+        } catch (SQLException | IllegalStateException exception) {
+            equipementCatalog.clear();
+            showFeedback("Chargement des equipements impossible : " + resolveMessage(exception), false);
+            return false;
+        }
+    }
+
+    private void renderFixedEquipmentChoices(VBox container, Label summaryLabel, int salleId) {
+        fixedEquipmentSelectionControls.clear();
+        container.getChildren().clear();
+
+        if (equipementCatalog.isEmpty()) {
+            Label emptyLabel = buildDialogIntro("Aucun equipement n'est disponible pour une affectation fixe.");
+            container.getChildren().add(emptyLabel);
+            updateDialogFixedEquipmentSummary(summaryLabel);
+            return;
+        }
+
+        for (Equipement equipement : equipementCatalog) {
+            container.getChildren().add(createFixedEquipmentChoiceCard(equipement, summaryLabel, salleId));
+        }
+
+        updateDialogFixedEquipmentSummary(summaryLabel);
+    }
+
+    private VBox createFixedEquipmentChoiceCard(Equipement equipement, Label summaryLabel, int salleId) {
+        VBox card = new VBox(8.0);
+        card.getStyleClass().add("reservation-equipment-choice-card");
+        card.setMaxWidth(Double.MAX_VALUE);
+        int quantiteRestante = resolveRemainingFixedStock(equipement, salleId);
+        boolean selectable = isSelectableFixedEquipement(equipement) && quantiteRestante > 0;
+
+        CheckBox checkBox = new CheckBox(
+            formatOptionalText(equipement.getNom()) + " (" + formatOptionalText(equipement.getTypeEquipement()) + ")"
+        );
+        checkBox.setWrapText(true);
+        checkBox.setMaxWidth(Double.MAX_VALUE);
+        checkBox.getStyleClass().add("reservation-equipment-check");
+
+        Spinner<Integer> quantitySpinner = new Spinner<>();
+        quantitySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(
+            1,
+            Math.max(1, quantiteRestante),
+            1
+        ));
+        quantitySpinner.setEditable(true);
+        quantitySpinner.setPrefWidth(96.0);
+        quantitySpinner.getStyleClass().add("reservation-equipment-quantity-spinner");
+        quantitySpinner.setDisable(true);
+
+        Label quantityLabel = new Label("Quantite fixe");
+        quantityLabel.getStyleClass().add("backoffice-form-label");
+        VBox quantityBox = new VBox(4.0, quantityLabel, quantitySpinner);
+        quantityBox.setMinWidth(112.0);
+        quantityBox.setPrefWidth(112.0);
+        quantityBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+
+        Label statusChip = new Label(formatEtat(equipement.getEtat()));
+        statusChip.getStyleClass().setAll("status-chip", resolveStatusStyle(equipement.getEtat()));
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox topRow = new HBox(10.0, checkBox, spacer, statusChip, quantityBox);
+        topRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        HBox.setHgrow(checkBox, Priority.ALWAYS);
+
+        Label stockLabel = new Label(
+            formatOptionalText(equipement.getTypeEquipement())
+                + " | Stock global: "
+                + equipement.getQuantiteDisponible()
+                + " | Libre: "
+                + quantiteRestante
+                + " unite(s)"
+        );
+        stockLabel.setWrapText(true);
+        stockLabel.getStyleClass().add("backoffice-panel-copy");
+
+        FixedEquipmentSelectionControls controls = new FixedEquipmentSelectionControls(checkBox, quantitySpinner, card, selectable);
+        fixedEquipmentSelectionControls.put(equipement.getIdEquipement(), controls);
+
+        checkBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
+            updateFixedEquipmentSelectionState(controls);
+            updateDialogFixedEquipmentSummary(summaryLabel);
+        });
+        quantitySpinner.valueProperty().addListener((obs, oldValue, newValue) -> updateDialogFixedEquipmentSummary(summaryLabel));
+
+        card.getChildren().addAll(topRow, stockLabel);
+        if (!selectable) {
+            Label noteLabel = new Label(
+                quantiteRestante <= 0
+                    ? "Aucune unite libre pour cette salle avec le stock actuel."
+                    : "Non modifiable tant que cet equipement est en maintenance ou indisponible."
+            );
+            noteLabel.setWrapText(true);
+            noteLabel.getStyleClass().add("fixed-equipment-status-note");
+            card.getChildren().add(noteLabel);
+        }
+        updateFixedEquipmentSelectionState(controls);
+        return card;
+    }
+
+    private void populateFixedEquipementSelection(int salleId, Label summaryLabel) {
+        clearFixedEquipmentSelection(summaryLabel);
+        if (salleId <= 0 || fixedEquipmentSelectionControls.isEmpty()) {
+            return;
+        }
+
+        try {
+            Map<Integer, Integer> equipementQuantites = salleEquipementService.getEquipementQuantitesBySalleId(salleId);
+            for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
+                FixedEquipmentSelectionControls controls = fixedEquipmentSelectionControls.get(entry.getKey());
+                if (controls == null) {
+                    continue;
+                }
+                controls.checkBox().setSelected(true);
+                if (controls.quantitySpinner().getValueFactory() instanceof SpinnerValueFactory.IntegerSpinnerValueFactory valueFactory) {
+                    valueFactory.setMax(Math.max(valueFactory.getMax(), Math.max(1, entry.getValue())));
+                }
+                controls.quantitySpinner().getValueFactory().setValue(Math.max(1, entry.getValue()));
+                updateFixedEquipmentSelectionState(controls);
+            }
+            updateDialogFixedEquipmentSummary(summaryLabel);
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            clearFixedEquipmentSelection(summaryLabel);
+            showFeedback("Chargement des equipements fixes impossible : " + resolveMessage(exception), false);
+        }
+    }
+
+    private void clearFixedEquipmentSelection(Label summaryLabel) {
+        fixedEquipmentSelectionControls.values().forEach(controls -> {
+            controls.checkBox().setSelected(false);
+            controls.quantitySpinner().getValueFactory().setValue(1);
+            updateFixedEquipmentSelectionState(controls);
+        });
+        updateDialogFixedEquipmentSummary(summaryLabel);
+    }
+
+    private Map<Integer, Integer> getSelectedFixedEquipementQuantites() {
+        LinkedHashMap<Integer, Integer> equipementQuantites = new LinkedHashMap<>();
+        for (Map.Entry<Integer, FixedEquipmentSelectionControls> entry : fixedEquipmentSelectionControls.entrySet()) {
+            FixedEquipmentSelectionControls controls = entry.getValue();
+            if (!controls.checkBox().isSelected()) {
+                continue;
+            }
+            Integer quantite = controls.quantitySpinner().getValue();
+            equipementQuantites.put(entry.getKey(), quantite == null ? 1 : Math.max(1, quantite));
+        }
+        return equipementQuantites;
+    }
+
+    private void updateFixedEquipmentSelectionState(FixedEquipmentSelectionControls controls) {
+        boolean selected = controls.checkBox().isSelected();
+        controls.checkBox().setDisable(!controls.selectable());
+        controls.quantitySpinner().setDisable(!controls.selectable() || !selected);
+        controls.card().getStyleClass().removeAll("selected", "unavailable");
+        if (!controls.selectable()) {
+            controls.card().getStyleClass().add("unavailable");
+        }
+        if (selected) {
+            controls.card().getStyleClass().add("selected");
+        }
+    }
+
+    private void updateDialogFixedEquipmentSummary(Label summaryLabel) {
+        Map<Integer, Integer> selectedQuantities = getSelectedFixedEquipementQuantites();
+        int selectedCount = selectedQuantities.size();
+        int totalUnits = selectedQuantities.values().stream().mapToInt(Integer::intValue).sum();
+        summaryLabel.setText(
+            selectedCount == 0
+                ? "Aucun fixe"
+                : selectedCount + " type(s) | " + totalUnits + " unite(s)"
+        );
+        summaryLabel.getStyleClass().setAll(
+            "workspace-chip",
+            selectedCount == 0 ? "workspace-chip-muted" : "reservation-mode-chip-onsite"
+        );
+    }
+
+    private void updateFixedEquipmentSummary(Integer salleId) {
+        if (manageFixedEquipementsButton != null) {
+            manageFixedEquipementsButton.setDisable(salleId == null || salleId <= 0);
+        }
+    }
+
+    private Label buildDialogIntro(String text) {
+        Label label = new Label(text);
+        label.setWrapText(true);
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.getStyleClass().add("backoffice-panel-copy");
+        return label;
+    }
+
+    private HBox buildDialogHeader(Label summaryLabel) {
+        Label titleLabel = new Label("Resume actuel");
+        titleLabel.getStyleClass().add("backoffice-section-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox header = new HBox(10.0, titleLabel, spacer, summaryLabel);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        return header;
+    }
+
+    private void applyCurrentTheme(DialogPane dialogPane) {
+        if (dialogPane == null || feedbackLabel == null || feedbackLabel.getScene() == null) {
+            return;
+        }
+        dialogPane.getStylesheets().setAll(feedbackLabel.getScene().getStylesheets());
+    }
+
+    private String resolveStatusStyle(String status) {
+        if (status == null || status.isBlank()) {
+            return "pending";
+        }
+
+        String normalizedStatus = status.trim().toLowerCase(Locale.ROOT);
+        if ("disponible".equals(normalizedStatus)) {
+            return "available";
+        }
+        if (normalizedStatus.contains("maintenance")) {
+            return "maintenance";
+        }
+        return "unavailable";
+    }
+
+    private boolean isSelectableFixedEquipement(Equipement equipement) {
+        return equipement != null && "available".equals(resolveStatusStyle(equipement.getEtat()));
+    }
+
+    private int resolveRemainingFixedStock(Equipement equipement, int salleId) {
+        if (equipement == null || equipement.getIdEquipement() <= 0) {
+            return 0;
+        }
+
+        try {
+            return salleEquipementService.getRemainingQuantiteForEquipement(equipement.getIdEquipement(), salleId);
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            return Math.max(0, equipement.getQuantiteDisponible());
+        }
+    }
+
+    private boolean hasSalleDataChanged(Salle originalSalle, Salle updatedSalle) {
+        if (originalSalle == null || updatedSalle == null) {
+            return true;
+        }
+
+        return !Objects.equals(normalizeComparableText(originalSalle.getNom()), normalizeComparableText(updatedSalle.getNom()))
+            || originalSalle.getCapacite() != updatedSalle.getCapacite()
+            || !Objects.equals(normalizeComparableText(originalSalle.getLocalisation()), normalizeComparableText(updatedSalle.getLocalisation()))
+            || !Objects.equals(normalizeComparableText(originalSalle.getBatiment()), normalizeComparableText(updatedSalle.getBatiment()))
+            || !Objects.equals(normalizeComparableText(originalSalle.getTypeSalle()), normalizeComparableText(updatedSalle.getTypeSalle()))
+            || !Objects.equals(normalizeComparableText(originalSalle.getEtat()), normalizeComparableText(updatedSalle.getEtat()))
+            || !Objects.equals(normalizeComparableText(originalSalle.getDescription()), normalizeComparableText(updatedSalle.getDescription()))
+            || !Objects.equals(originalSalle.getEtage(), updatedSalle.getEtage())
+            || !Objects.equals(normalizeComparableText(originalSalle.getTypeDisposition()), normalizeComparableText(updatedSalle.getTypeDisposition()))
+            || originalSalle.isAccesHandicape() != updatedSalle.isAccesHandicape()
+            || !Objects.equals(normalizeComparableText(originalSalle.getStatutDetaille()), normalizeComparableText(updatedSalle.getStatutDetaille()))
+            || !Objects.equals(originalSalle.getDateDerniereMaintenance(), updatedSalle.getDateDerniereMaintenance());
+    }
+
+    private String normalizeComparableText(String value) {
+        return trimToNull(value);
+    }
+
+    private int resolveFixedEquipmentSortRank(Equipement equipement) {
+        String statusStyle = resolveStatusStyle(equipement == null ? null : equipement.getEtat());
+        if ("available".equals(statusStyle)) {
+            return 0;
+        }
+        if ("maintenance".equals(statusStyle)) {
+            return 1;
+        }
+        return 2;
+    }
+
     private String resolveMessage(Exception exception) {
         String message = exception.getMessage();
         return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
@@ -665,5 +1077,9 @@ public class BackofficeSallesController {
         feedbackLabel.getStyleClass().setAll("backoffice-feedback");
         feedbackLabel.setManaged(false);
         feedbackLabel.setVisible(false);
+    }
+
+    private record FixedEquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card,
+                                                  boolean selectable) {
     }
 }

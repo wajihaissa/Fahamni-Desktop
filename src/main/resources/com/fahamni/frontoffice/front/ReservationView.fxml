@@ -144,49 +144,75 @@
                         <CheckBox fx:id="sessionOnsiteCheckBox" text="Presentiel" onAction="#handleSessionModeChange" styleClass="session-mode-toggle"/>
                     </HBox>
 
-                    <HBox fx:id="onsiteInfrastructureRow" alignment="TOP_LEFT" spacing="14.0" managed="false" visible="false">
-                        <VBox spacing="12.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
+                    <HBox fx:id="onsiteInfrastructureRow" alignment="TOP_LEFT" spacing="14.0" managed="false" visible="false" styleClass="reservation-infrastructure-shell">
+                        <VBox spacing="12.0" minWidth="0.0" prefWidth="0.0" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
                             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                                <Label text="Salle" styleClass="infrastructure-detail-section-title"/>
+                                <Label text="Salle de seance" styleClass="infrastructure-detail-section-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <Label fx:id="sessionRoomStatusChipLabel" text="En attente" styleClass="status-chip pending"/>
                             </HBox>
 
-                            <Label fx:id="sessionRoomAvailabilityHintLabel" text="Selectionnez le creneau pour verifier les disponibilites." wrapText="true" styleClass="reservation-section-copy"/>
-                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="178.0" maxHeight="210.0" styleClass="reservation-choice-scroll">
-                                <VBox fx:id="sessionRoomChoicesContainer" spacing="8.0"/>
+                            <VBox spacing="4.0" styleClass="reservation-infrastructure-intro">
+                                <Label text="ETAPE 1" styleClass="reservation-infrastructure-kicker"/>
+                                <Label text="Selectionnez une salle compatible avec le creneau, la capacite et le format de votre seance." wrapText="true" styleClass="reservation-infrastructure-copy"/>
+                            </VBox>
+
+                            <Label fx:id="sessionRoomAvailabilityHintLabel" text="" managed="false" visible="false" wrapText="true" styleClass="reservation-section-copy"/>
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="268.0" maxHeight="308.0" styleClass="reservation-choice-scroll">
+                                <VBox fx:id="sessionRoomChoicesContainer" spacing="8.0" styleClass="reservation-choice-list"/>
                             </ScrollPane>
 
-                            <VBox spacing="4.0">
+                            <VBox spacing="4.0" styleClass="reservation-preview-hero">
+                                <Label text="Selection active" styleClass="reservation-infrastructure-kicker"/>
                                 <Label fx:id="sessionRoomPreviewTitleLabel" text="Choisissez une salle" wrapText="true" styleClass="reservation-preview-title"/>
                                 <Label fx:id="sessionRoomPreviewSubtitleLabel" text="La salle choisie apparaitra ici avec ses details principaux." wrapText="true" styleClass="section-subtitle"/>
                             </VBox>
 
-                            <FlowPane fx:id="sessionRoomFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="360.0"/>
+                            <FlowPane fx:id="sessionRoomFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="360.0" styleClass="reservation-room-facts-grid"/>
 
-                            <VBox styleClass="infrastructure-detail-preview">
+                            <VBox styleClass="infrastructure-detail-preview reservation-preview-block">
+                                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                    <Label text="Materiel deja inclus" styleClass="infrastructure-detail-section-title"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Label fx:id="sessionRoomFixedEquipmentSummaryLabel" text="Aucun fixe" styleClass="infrastructure-small-chip"/>
+                                </HBox>
+                                <VBox fx:id="sessionRoomFixedEquipmentContainer" spacing="8.0"/>
+                            </VBox>
+
+                            <VBox styleClass="infrastructure-detail-preview reservation-preview-block">
                                 <Label text="Description de la salle" styleClass="infrastructure-detail-section-title"/>
                                 <Label fx:id="sessionRoomPreviewDescriptionLabel" text="Aucune salle selectionnee." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
                             </VBox>
                         </VBox>
 
-                        <Separator orientation="VERTICAL" HBox.hgrow="NEVER" styleClass="reservation-infrastructure-separator"/>
+                        <Separator orientation="VERTICAL" prefWidth="10.0" HBox.hgrow="NEVER" styleClass="reservation-infrastructure-separator"/>
 
-                        <VBox spacing="12.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
+                        <VBox spacing="12.0" minWidth="0.0" prefWidth="0.0" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="infrastructure-detail-panel reservation-infrastructure-card">
                             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                                <Label text="Materiel" styleClass="infrastructure-detail-section-title"/>
+                                <Label text="Materiel complementaire" styleClass="infrastructure-detail-section-title"/>
                                 <Region HBox.hgrow="ALWAYS"/>
-                                <Label fx:id="sessionEquipmentSelectionSummaryLabel" text="0 selection" styleClass="infrastructure-small-chip"/>
+                                <Label fx:id="sessionEquipmentSelectionSummaryLabel" text="0 ajout" styleClass="infrastructure-small-chip"/>
                             </HBox>
 
-                            <Label text="Selectionnez uniquement les equipements deja disponibles pour cette seance." wrapText="true" styleClass="reservation-section-copy"/>
-                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="178.0" maxHeight="210.0" styleClass="reservation-choice-scroll">
-                                <VBox fx:id="sessionEquipmentChoicesContainer" spacing="8.0"/>
+                            <VBox spacing="4.0" styleClass="reservation-infrastructure-intro">
+                                <Label text="ETAPE 2" styleClass="reservation-infrastructure-kicker"/>
+                                <Label text="Ajoutez seulement le materiel utile en plus de ce qui est deja fixe dans la salle selectionnee." wrapText="true" styleClass="reservation-infrastructure-copy"/>
+                            </VBox>
+
+                            <ScrollPane fitToWidth="true" hbarPolicy="NEVER" prefHeight="268.0" maxHeight="308.0" styleClass="reservation-choice-scroll">
+                                <VBox fx:id="sessionEquipmentChoicesContainer" spacing="8.0" styleClass="reservation-choice-list"/>
                             </ScrollPane>
-                            <VBox fx:id="sessionEquipmentPreviewContainer" spacing="8.0"/>
-                            <Label fx:id="infrastructureHintLabel" text="Choisis uniquement le materiel existant et disponible." wrapText="true" styleClass="reservation-section-copy"/>
+                            <VBox spacing="4.0" styleClass="reservation-preview-hero">
+                                <Label text="Selection active" styleClass="reservation-infrastructure-kicker"/>
+                                <Label text="Ajouts retenus" styleClass="reservation-preview-title"/>
+                                <Label text="Le recapitulatif se met a jour a chaque selection et changement de quantite." wrapText="true" styleClass="section-subtitle"/>
+                            </VBox>
+                            <VBox fx:id="sessionEquipmentPreviewContainer" spacing="8.0" styleClass="reservation-preview-stack"/>
+                            <Label fx:id="infrastructureHintLabel" text="Choisis une salle pour separer le materiel inclus du materiel a ajouter." wrapText="true" styleClass="reservation-section-copy reservation-infrastructure-hint"/>
                         </VBox>
                     </HBox>
+
+                    <Separator fx:id="sessionDescriptionDivider" orientation="HORIZONTAL" managed="false" visible="false" styleClass="reservation-section-divider"/>
                 </VBox>
 
                 <VBox spacing="6.0">
