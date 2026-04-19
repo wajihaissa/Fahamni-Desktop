@@ -1756,7 +1756,7 @@ public class ReservationController {
             if (cancelDialogButton != null) {
                 cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
             }
-            controller.configure(seance, seatOptions, confirmButton);
+            controller.configure(seance, seatOptions, confirmButton, resolveSalleDisposition(seance.getSalleId()));
 
             seatDialog.setResultConverter(buttonType ->
                 buttonType == confirmButtonType ? controller.getSelectedPlaceId() : null
@@ -2604,21 +2604,39 @@ public class ReservationController {
             return "Non requis";
         }
 
-        return availableSalles.stream()
+        Salle salle = resolveSalleById(salleId);
+        if (salle != null && salle.getNom() != null && !salle.getNom().isBlank()) {
+            return salle.getNom();
+        }
+        return "Salle #" + salleId;
+    }
+
+    private String resolveSalleDisposition(Integer salleId) {
+        Salle salle = resolveSalleById(salleId);
+        if (salle == null || salle.getTypeDisposition() == null || salle.getTypeDisposition().isBlank()) {
+            return null;
+        }
+        return salle.getTypeDisposition();
+    }
+
+    private Salle resolveSalleById(Integer salleId) {
+        if (salleId == null || salleId <= 0) {
+            return null;
+        }
+
+        Salle cachedSalle = availableSalles.stream()
             .filter(salle -> salle.getIdSalle() == salleId)
-            .map(Salle::getNom)
             .findFirst()
-            .orElseGet(() -> {
-                try {
-                    Salle salle = salleService.recupererParId(salleId);
-                    if (salle != null && salle.getNom() != null && !salle.getNom().isBlank()) {
-                        return salle.getNom();
-                    }
-                } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
-                    return "Salle #" + salleId;
-                }
-                return "Salle #" + salleId;
-            });
+            .orElse(null);
+        if (cachedSalle != null) {
+            return cachedSalle;
+        }
+
+        try {
+            return salleService.recupererParId(salleId);
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            return null;
+        }
     }
 
     private int resolveDisplayedPlaceCountValue(Seance seance) {

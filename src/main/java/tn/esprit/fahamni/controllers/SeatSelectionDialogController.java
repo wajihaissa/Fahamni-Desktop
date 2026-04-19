@@ -12,15 +12,19 @@ import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.services.ReservationService.SeatSelectionOption;
 
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class SeatSelectionDialogController {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private static final int TARGET_SEAT_COLUMNS = 6;
+    private static final int CLASSROOM_MAX_COLUMNS = 6;
+    private static final int CONFERENCE_MAX_COLUMNS = 8;
+    private static final int U_SHAPE_MAX_COLUMNS = 7;
     private static final SeatColumnLayout EMPTY_LAYOUT = new SeatColumnLayout(0, 0, -1, 0, new int[0]);
 
     @FXML
@@ -54,12 +58,16 @@ public class SeatSelectionDialogController {
     private Button selectedSeatButton;
     private Integer selectedPlaceId;
     private SeatColumnLayout currentSeatLayout = EMPTY_LAYOUT;
+    private SeatDisplayProfile currentDisplayProfile = SeatDisplayProfile.CLASSROOM;
+    private String currentDispositionLabel = "cours";
     private final Map<Integer, SeatVisualPlacement> visualPlacements = new LinkedHashMap<>();
 
-    public void configure(Seance seance, List<SeatSelectionOption> seatOptions, Button confirmButton) {
+    public void configure(Seance seance, List<SeatSelectionOption> seatOptions, Button confirmButton, String typeDisposition) {
         this.confirmButton = confirmButton;
         this.selectedPlaceId = null;
         this.selectedSeatButton = null;
+        this.currentDisplayProfile = resolveDisplayProfile(typeDisposition);
+        this.currentDispositionLabel = resolveDispositionLabel(typeDisposition, currentDisplayProfile);
 
         if (this.confirmButton != null) {
             this.confirmButton.setDisable(true);
@@ -72,11 +80,9 @@ public class SeatSelectionDialogController {
         long availableSeats = seatOptions == null ? 0 : seatOptions.stream().filter(SeatSelectionOption::selectable).count();
         seatSelectionCapacityChipLabel.setText(totalSeats + " place(s)");
         seatSelectionAvailabilityChipLabel.setText(availableSeats + " libre(s)");
-        seatSelectionLayoutChipLabel.setText("Plan de salle");
+        seatSelectionLayoutChipLabel.setText(buildLayoutChipText());
         selectedSeatLabel.setText("Aucune place selectionnee");
-        seatSelectionHintLabel.setText(
-            "Cliquez sur un carre disponible pour afficher sa position."
-        );
+        seatSelectionHintLabel.setText("Cliquez sur un carre disponible pour afficher sa position.");
 
         renderSeatGrid(seatOptions == null ? List.of() : seatOptions);
     }
@@ -93,7 +99,7 @@ public class SeatSelectionDialogController {
         visualPlacements.clear();
 
         if (seatOptions.isEmpty()) {
-            Label emptyLabel = new Label("Aucune place configur\u00E9e pour cette salle.");
+            Label emptyLabel = new Label("Aucune place configuree pour cette salle.");
             emptyLabel.setWrapText(true);
             emptyLabel.getStyleClass().addAll("reservation-section-copy", "seat-grid-empty-state");
             seatMapGrid.add(emptyLabel, 0, 0);
@@ -102,9 +108,7 @@ public class SeatSelectionDialogController {
 
         currentSeatLayout = buildSeatColumnLayout(seatOptions.size());
         int maxRow = buildVisualPlacements(seatOptions);
-        if (seatSelectionLayoutChipLabel != null) {
-            seatSelectionLayoutChipLabel.setText(buildLayoutChipText(currentSeatLayout));
-        }
+        seatSelectionLayoutChipLabel.setText(buildLayoutChipText());
 
         if (seatMapScroll != null) {
             double viewportHeight = 56.0 + (maxRow * 42.0);
@@ -161,6 +165,7 @@ public class SeatSelectionDialogController {
             if (placement == null) {
                 continue;
             }
+
             Button seatButton = createSeatButton(option);
             seatMapGrid.add(
                 seatButton,
@@ -243,17 +248,55 @@ public class SeatSelectionDialogController {
         return normalized.isEmpty() ? "la seance" : normalized;
     }
 
+    private SeatDisplayProfile resolveDisplayProfile(String typeDisposition) {
+        String normalizedDisposition = normalizeDisposition(typeDisposition);
+        return switch (normalizedDisposition) {
+            case "u" -> SeatDisplayProfile.U_SHAPE;
+            case "conference", "cinema", "reunion" -> SeatDisplayProfile.CONFERENCE;
+            case "atelier", "informatique", "classe", "cours" -> SeatDisplayProfile.CLASSROOM;
+            default -> SeatDisplayProfile.CLASSROOM;
+        };
+    }
+
+    private String resolveDispositionLabel(String typeDisposition, SeatDisplayProfile profile) {
+        String normalizedDisposition = normalizeDisposition(typeDisposition);
+        return switch (normalizedDisposition) {
+            case "classe", "cours" -> "cours";
+            case "u" -> "en U";
+            case "conference" -> "conference";
+            case "cinema" -> "cinema";
+            case "reunion" -> "reunion";
+            case "atelier" -> "atelier";
+            case "informatique" -> "informatique";
+            default -> profile == SeatDisplayProfile.U_SHAPE ? "en U"
+                : profile == SeatDisplayProfile.CONFERENCE ? "conference"
+                : "cours";
+        };
+    }
+
+    private String normalizeDisposition(String typeDisposition) {
+        if (typeDisposition == null) {
+            return "";
+        }
+        return typeDisposition.trim().toLowerCase(Locale.ROOT);
+    }
+
     private SeatColumnLayout buildSeatColumnLayout(int seatCount) {
         if (seatCount <= 0) {
             return EMPTY_LAYOUT;
         }
-        int logicalColumns = Math.min(TARGET_SEAT_COLUMNS, Math.max(1, seatCount));
+
+        return switch (currentDisplayProfile) {
+            case CONFERENCE -> buildCompactColumnLayout(determineConferenceColumns(seatCount));
+            case U_SHAPE -> buildCompactColumnLayout(determineUShapeColumns(seatCount));
+            case CLASSROOM -> buildClassroomColumnLayout(seatCount);
+        };
+    }
+
+    private SeatColumnLayout buildClassroomColumnLayout(int seatCount) {
+        int logicalColumns = Math.min(CLASSROOM_MAX_COLUMNS, Math.max(1, seatCount));
         if (logicalColumns <= 3) {
-            int[] mapping = new int[logicalColumns + 1];
-            for (int column = 1; column <= logicalColumns; column++) {
-                mapping[column] = column;
-            }
-            return new SeatColumnLayout(logicalColumns, logicalColumns, -1, logicalColumns, mapping);
+            return buildCompactColumnLayout(logicalColumns);
         }
 
         int leftGroup = (int) Math.ceil(logicalColumns / 2.0);
@@ -270,53 +313,34 @@ public class SeatSelectionDialogController {
         return new SeatColumnLayout(logicalColumns, logicalColumns + 1, aisleColumn, leftGroup, mapping);
     }
 
-    private String buildSelectedSeatBadgeText(SeatSelectionOption option) {
-        if (option == null) {
-            return "Aucune place selectionnee";
+    private SeatColumnLayout buildCompactColumnLayout(int logicalColumns) {
+        int[] mapping = new int[logicalColumns + 1];
+        for (int column = 1; column <= logicalColumns; column++) {
+            mapping[column] = column;
         }
-        SeatVisualPlacement placement = resolvePlacement(option);
-        int logicalColumn = placement == null ? option.column() : placement.logicalColumn();
-        return option.buttonLabel()
-            + " | "
-            + resolveSeatBlock(logicalColumn)
-            + " | "
-            + formatRowLabel(resolveDisplayRow(option))
-            + logicalColumn;
+        return new SeatColumnLayout(logicalColumns, logicalColumns, -1, logicalColumns, mapping);
     }
 
-    private String buildSeatDisposition(SeatSelectionOption option) {
-        if (option == null) {
-            return "Disposition indisponible";
-        }
-        SeatVisualPlacement placement = resolvePlacement(option);
-        int logicalColumn = placement == null ? option.column() : placement.logicalColumn();
-        return resolveSeatBlock(logicalColumn)
-            + " | Rangee "
-            + formatRowLabel(resolveDisplayRow(option))
-            + " | Colonne "
-            + logicalColumn;
+    private int determineConferenceColumns(int seatCount) {
+        return Math.min(CONFERENCE_MAX_COLUMNS, Math.max(4, (int) Math.ceil(Math.sqrt(seatCount)) + 1));
     }
 
-    private String resolveSeatBlock(int column) {
-        if (!currentSeatLayout.hasAisle()) {
-            return "Zone centrale";
+    private int determineUShapeColumns(int seatCount) {
+        if (seatCount <= 4) {
+            return Math.max(2, seatCount);
         }
-        return column <= currentSeatLayout.leftBlockColumns() ? "Bloc gauche" : "Bloc droit";
-    }
-
-    private String buildLayoutChipText(SeatColumnLayout layout) {
-        if (layout == null || layout.logicalColumns() <= 0) {
-            return "Plan de salle";
-        }
-        if (layout.logicalColumns() == TARGET_SEAT_COLUMNS) {
-            return "Disposition 3 + couloir + 3";
-        }
-        return layout.logicalColumns() <= 1
-            ? "1 colonne"
-            : layout.logicalColumns() + " colonnes";
+        return Math.min(U_SHAPE_MAX_COLUMNS, Math.max(4, (int) Math.ceil(Math.sqrt(seatCount)) + 1));
     }
 
     private int buildVisualPlacements(List<SeatSelectionOption> seatOptions) {
+        return switch (currentDisplayProfile) {
+            case CONFERENCE -> buildConferencePlacements(seatOptions);
+            case U_SHAPE -> buildUShapePlacements(seatOptions);
+            case CLASSROOM -> buildClassroomPlacements(seatOptions);
+        };
+    }
+
+    private int buildClassroomPlacements(List<SeatSelectionOption> seatOptions) {
         List<SeatSelectionOption> orderedSeats = sortSeatOptions(seatOptions);
         int columns = Math.max(1, currentSeatLayout.logicalColumns());
 
@@ -324,10 +348,63 @@ public class SeatSelectionDialogController {
             SeatSelectionOption option = orderedSeats.get(index);
             int logicalColumn = (index % columns) + 1;
             int rowIndex = index / columns;
-            visualPlacements.put(option.placeId(), new SeatVisualPlacement(logicalColumn, rowIndex));
+            visualPlacements.put(option.placeId(), new SeatVisualPlacement(logicalColumn, rowIndex, resolveClassroomZone(logicalColumn)));
         }
 
         return Math.max(1, (int) Math.ceil(orderedSeats.size() / (double) columns));
+    }
+
+    private int buildConferencePlacements(List<SeatSelectionOption> seatOptions) {
+        List<SeatSelectionOption> orderedSeats = sortSeatOptions(seatOptions);
+        int columns = Math.max(1, currentSeatLayout.logicalColumns());
+        int totalRows = Math.max(1, (int) Math.ceil(orderedSeats.size() / (double) columns));
+
+        for (int rowIndex = 0; rowIndex < totalRows; rowIndex++) {
+            int rowStart = rowIndex * columns;
+            int rowSeatCount = Math.min(columns, orderedSeats.size() - rowStart);
+            int leftOffset = Math.max(0, (columns - rowSeatCount) / 2);
+
+            for (int offset = 0; offset < rowSeatCount; offset++) {
+                SeatSelectionOption option = orderedSeats.get(rowStart + offset);
+                int logicalColumn = leftOffset + offset + 1;
+                visualPlacements.put(option.placeId(), new SeatVisualPlacement(logicalColumn, rowIndex, "Bloc central"));
+            }
+        }
+
+        return totalRows;
+    }
+
+    private int buildUShapePlacements(List<SeatSelectionOption> seatOptions) {
+        List<SeatSelectionOption> orderedSeats = sortSeatOptions(seatOptions);
+        int columns = Math.max(2, currentSeatLayout.logicalColumns());
+
+        if (orderedSeats.size() <= columns) {
+            int leftOffset = Math.max(0, (columns - orderedSeats.size()) / 2);
+            for (int index = 0; index < orderedSeats.size(); index++) {
+                SeatSelectionOption option = orderedSeats.get(index);
+                visualPlacements.put(option.placeId(), new SeatVisualPlacement(leftOffset + index + 1, 0, "Base"));
+            }
+            return 1;
+        }
+
+        int rows = Math.max(3, (int) Math.ceil(Math.max(0, orderedSeats.size() - columns) / 2.0) + 1);
+        List<SeatVisualPlacement> perimeterPlacements = new ArrayList<>();
+
+        for (int column = 1; column <= columns; column++) {
+            perimeterPlacements.add(new SeatVisualPlacement(column, rows - 1, "Base"));
+        }
+
+        for (int step = 1; step < rows; step++) {
+            int rowIndex = rows - 1 - step;
+            perimeterPlacements.add(new SeatVisualPlacement(1, rowIndex, "Aile gauche"));
+            perimeterPlacements.add(new SeatVisualPlacement(columns, rowIndex, "Aile droite"));
+        }
+
+        for (int index = 0; index < orderedSeats.size() && index < perimeterPlacements.size(); index++) {
+            visualPlacements.put(orderedSeats.get(index).placeId(), perimeterPlacements.get(index));
+        }
+
+        return rows;
     }
 
     private List<SeatSelectionOption> sortSeatOptions(List<SeatSelectionOption> seatOptions) {
@@ -338,6 +415,35 @@ public class SeatSelectionDialogController {
             .toList();
     }
 
+    private String buildSelectedSeatBadgeText(SeatSelectionOption option) {
+        if (option == null) {
+            return "Aucune place selectionnee";
+        }
+
+        SeatVisualPlacement placement = resolvePlacement(option);
+        int logicalColumn = resolveDisplayColumn(option, placement);
+        return option.buttonLabel()
+            + " | "
+            + resolveSeatZone(option, placement)
+            + " | "
+            + formatRowLabel(resolveDisplayRow(option, placement))
+            + logicalColumn;
+    }
+
+    private String buildSeatDisposition(SeatSelectionOption option) {
+        if (option == null) {
+            return "Disposition indisponible";
+        }
+
+        SeatVisualPlacement placement = resolvePlacement(option);
+        int logicalColumn = resolveDisplayColumn(option, placement);
+        return resolveSeatZone(option, placement)
+            + " | Rangee "
+            + formatRowLabel(resolveDisplayRow(option, placement))
+            + " | Colonne "
+            + logicalColumn;
+    }
+
     private SeatVisualPlacement resolvePlacement(SeatSelectionOption option) {
         if (option == null) {
             return null;
@@ -345,9 +451,34 @@ public class SeatSelectionDialogController {
         return visualPlacements.get(option.placeId());
     }
 
-    private int resolveDisplayRow(SeatSelectionOption option) {
-        SeatVisualPlacement placement = resolvePlacement(option);
+    private int resolveDisplayRow(SeatSelectionOption option, SeatVisualPlacement placement) {
         return placement == null ? option.row() : placement.rowIndex() + 1;
+    }
+
+    private int resolveDisplayColumn(SeatSelectionOption option, SeatVisualPlacement placement) {
+        return placement == null ? option.column() : placement.logicalColumn();
+    }
+
+    private String resolveSeatZone(SeatSelectionOption option, SeatVisualPlacement placement) {
+        if (placement != null && placement.zoneLabel() != null && !placement.zoneLabel().isBlank()) {
+            return placement.zoneLabel();
+        }
+        return switch (currentDisplayProfile) {
+            case CONFERENCE -> "Bloc central";
+            case U_SHAPE -> "Base";
+            case CLASSROOM -> resolveClassroomZone(option.column());
+        };
+    }
+
+    private String resolveClassroomZone(int logicalColumn) {
+        if (!currentSeatLayout.hasAisle()) {
+            return "Zone centrale";
+        }
+        return logicalColumn <= currentSeatLayout.leftBlockColumns() ? "Bloc gauche" : "Bloc droit";
+    }
+
+    private String buildLayoutChipText() {
+        return "Disposition " + currentDispositionLabel;
     }
 
     private String formatRowLabel(int row) {
@@ -365,6 +496,12 @@ public class SeatSelectionDialogController {
         return label.toString();
     }
 
+    private enum SeatDisplayProfile {
+        CLASSROOM,
+        CONFERENCE,
+        U_SHAPE
+    }
+
     private record SeatColumnLayout(int logicalColumns, int visualColumns, int aisleColumn, int leftBlockColumns, int[] mapping) {
         private int visualColumnForLogical(int logicalColumn) {
             return logicalColumn >= 0 && logicalColumn < mapping.length ? mapping[logicalColumn] : logicalColumn;
@@ -379,6 +516,6 @@ public class SeatSelectionDialogController {
         }
     }
 
-    private record SeatVisualPlacement(int logicalColumn, int rowIndex) {
+    private record SeatVisualPlacement(int logicalColumn, int rowIndex, String zoneLabel) {
     }
 }
