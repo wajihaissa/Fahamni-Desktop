@@ -14,7 +14,8 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
-
+//aziz
+//test
 import javax.imageio.ImageIO;
 import java.awt.Dimension;
 import java.awt.image.BufferedImage;
