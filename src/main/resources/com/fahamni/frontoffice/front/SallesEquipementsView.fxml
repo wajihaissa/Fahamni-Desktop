@@ -187,6 +187,15 @@
                     <Label fx:id="detailDescriptionLabel" text="Aucun element selectionne." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
                 </VBox>
 
+                <VBox spacing="8.0" styleClass="infrastructure-detail-section">
+                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                        <Label text="Equipements fixes" styleClass="infrastructure-detail-section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="detailFixedEquipmentSummaryLabel" text="Aucun fixe" styleClass="infrastructure-small-chip"/>
+                    </HBox>
+                    <VBox fx:id="detailFixedEquipementsContainer" spacing="6.0"/>
+                </VBox>
+
                 <VBox fx:id="sessionPreviewContainer" spacing="8.0" managed="false" visible="false" styleClass="infrastructure-detail-preview">
                     <Label text="Apercu creation seance" styleClass="infrastructure-detail-section-title"/>
                     <Label fx:id="sessionPreviewLabel" text="" wrapText="true" styleClass="infrastructure-detail-section-copy"/>

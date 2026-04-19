@@ -21,15 +21,19 @@ import javafx.scene.layout.VBox;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Place;
 import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.Models.SalleEquipement;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminPlaceService;
 import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class SallesEquipementsController {
 
@@ -104,6 +108,12 @@ public class SallesEquipementsController {
     private Label detailDescriptionLabel;
 
     @FXML
+    private Label detailFixedEquipmentSummaryLabel;
+
+    @FXML
+    private VBox detailFixedEquipementsContainer;
+
+    @FXML
     private VBox sessionPreviewContainer;
 
     @FXML
@@ -121,11 +131,13 @@ public class SallesEquipementsController {
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final AdminPlaceService placeService = new AdminPlaceService();
+    private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipements = FXCollections.observableArrayList();
     private final ObservableList<Place> places = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final FilteredList<Equipement> filteredEquipements = new FilteredList<>(equipements, equipement -> true);
+    private final Map<Integer, List<SalleEquipement>> fixedEquipementsBySalleId = new LinkedHashMap<>();
     private Object selectedElement;
     private Node selectedCard;
 
@@ -212,6 +224,7 @@ public class SallesEquipementsController {
             salles.setAll(salleService.getAll());
             equipements.setAll(equipementService.getAll());
             places.setAll(placeService.getAll());
+            fixedEquipementsBySalleId.clear();
             updateStats();
             applyRoomFilters();
             applyEquipmentFilters();
@@ -223,6 +236,7 @@ public class SallesEquipementsController {
             salles.clear();
             equipements.clear();
             places.clear();
+            fixedEquipementsBySalleId.clear();
             updateStats();
             applyRoomFilters();
             applyEquipmentFilters();
@@ -496,6 +510,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText(formatDescription(salle.getDescription()));
         detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+        updateFixedEquipmentDetails(salle.getIdSalle());
 
         detailFactsContainer.getChildren().setAll(
             createDetailInfoCard("Identifiant", String.valueOf(salle.getIdSalle())),
@@ -529,6 +544,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText(formatDescription(equipement.getDescription()));
         detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(equipement.getEtat(), "ce materiel"));
+        resetFixedEquipmentDetails();
 
         detailFactsContainer.getChildren().setAll(
             createDetailInfoCard("Identifiant", String.valueOf(equipement.getIdEquipement())),
@@ -586,6 +602,8 @@ public class SallesEquipementsController {
                 + availability.totalPlaces()
                 + "\nLocalisation: "
                 + formatOptionalText(salle.getLocalisation())
+                + "\nEquipements inclus: "
+                + buildFixedEquipmentSummary(salle.getIdSalle())
         );
         sessionPreviewContainer.setManaged(true);
         sessionPreviewContainer.setVisible(true);
@@ -674,7 +692,92 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText("Aucun element selectionne.");
         detailUseButton.setDisable(true);
         detailHintLabel.setText("Choisissez une salle ou un materiel pour preparer l'integration future.");
+        resetFixedEquipmentDetails();
         hideSessionPreview();
+    }
+
+    private void updateFixedEquipmentDetails(int salleId) {
+        if (detailFixedEquipementsContainer == null || detailFixedEquipmentSummaryLabel == null) {
+            return;
+        }
+
+        detailFixedEquipementsContainer.getChildren().clear();
+        List<SalleEquipement> fixedEquipements = getFixedEquipementsBySalleId(salleId);
+        if (fixedEquipements.isEmpty()) {
+            detailFixedEquipmentSummaryLabel.setText("Aucun fixe");
+            detailFixedEquipementsContainer.getChildren().add(createFixedEquipmentInfoLabel(
+                "Aucun equipement fixe n'est rattache a cette salle."
+            ));
+            return;
+        }
+
+        int totalUnits = fixedEquipements.stream().mapToInt(SalleEquipement::getQuantite).sum();
+        detailFixedEquipmentSummaryLabel.setText(fixedEquipements.size() + " type(s) | " + totalUnits + " unite(s)");
+        fixedEquipements.stream()
+            .map(this::createFixedEquipmentInfoLabel)
+            .forEach(detailFixedEquipementsContainer.getChildren()::add);
+    }
+
+    private void resetFixedEquipmentDetails() {
+        if (detailFixedEquipmentSummaryLabel != null) {
+            detailFixedEquipmentSummaryLabel.setText("Aucun fixe");
+        }
+        if (detailFixedEquipementsContainer != null) {
+            detailFixedEquipementsContainer.getChildren().setAll(createFixedEquipmentInfoLabel(
+                "Selectionnez une salle pour voir les equipements fixes qui lui sont rattaches."
+            ));
+        }
+    }
+
+    private Label createFixedEquipmentInfoLabel(SalleEquipement equipement) {
+        return createFixedEquipmentInfoLabel(
+            formatOptionalText(equipement.getNomEquipement())
+                + " x"
+                + equipement.getQuantite()
+                + " | "
+                + formatLabel(equipement.getTypeEquipement())
+                + " | "
+                + formatLabel(equipement.getEtatEquipement())
+        );
+    }
+
+    private Label createFixedEquipmentInfoLabel(String text) {
+        Label label = new Label(text);
+        label.setWrapText(true);
+        label.getStyleClass().add("infrastructure-detail-section-copy");
+        return label;
+    }
+
+    private List<SalleEquipement> getFixedEquipementsBySalleId(int salleId) {
+        if (salleId <= 0) {
+            return List.of();
+        }
+
+        List<SalleEquipement> cached = fixedEquipementsBySalleId.get(salleId);
+        if (cached != null) {
+            return cached;
+        }
+
+        try {
+            List<SalleEquipement> loaded = salleEquipementService.getEquipementsBySalleId(salleId);
+            fixedEquipementsBySalleId.put(salleId, loaded);
+            return loaded;
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            fixedEquipementsBySalleId.put(salleId, List.of());
+            return List.of();
+        }
+    }
+
+    private String buildFixedEquipmentSummary(int salleId) {
+        List<SalleEquipement> fixedEquipements = getFixedEquipementsBySalleId(salleId);
+        if (fixedEquipements.isEmpty()) {
+            return "aucun";
+        }
+
+        return fixedEquipements.stream()
+            .map(equipement -> formatOptionalText(equipement.getNomEquipement()) + " x" + equipement.getQuantite())
+            .reduce((left, right) -> left + ", " + right)
+            .orElse("aucun");
     }
 
     private boolean matchesRoomSearch(Salle salle, String normalizedSearch) {

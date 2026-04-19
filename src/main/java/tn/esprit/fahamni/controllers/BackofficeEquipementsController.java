@@ -29,7 +29,7 @@ import java.util.Optional;
 
 public class BackofficeEquipementsController {
 
-    private static final int DEFAULT_ROWS_PER_PAGE = 5;
+    private static final int DEFAULT_ROWS_PER_PAGE = 20;
     private static final int MAX_VISIBLE_PAGE_BUTTONS = 7;
     private static final String FILTER_ALL = "Tous les etats";
     private static final String DEFAULT_CREATION_STATUS = "disponible";
