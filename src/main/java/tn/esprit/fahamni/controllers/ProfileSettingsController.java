@@ -9,12 +9,14 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.services.UserAccountService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 
+import java.io.File;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -35,6 +37,9 @@ public class ProfileSettingsController {
 
     @FXML
     private Label sidebarProfileEmailLabel;
+
+    @FXML
+    private Label profilePictureStatusLabel;
 
     @FXML
     private Label contentTitleLabel;
@@ -147,7 +152,27 @@ public class ProfileSettingsController {
 
     @FXML
     private void handleChooseProfilePicture() {
-        showFeedback("Le televersement de photo sera branche dans une prochaine etape.", true);
+        hideFeedback();
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choisir une photo de profil");
+        fileChooser.getExtensionFilters().setAll(
+            new FileChooser.ExtensionFilter("Images", "*.jpg", "*.jpeg", "*.png", "*.webp")
+        );
+
+        File selectedFile = fileChooser.showOpenDialog(profileAvatarLabel.getScene().getWindow());
+        if (selectedFile == null) {
+            return;
+        }
+
+        OperationResult result = accountService.updateCurrentAvatar(selectedFile);
+        if (!result.isSuccess()) {
+            showFeedback(result.getMessage(), false);
+            return;
+        }
+
+        refreshViewFromSession();
+        showFeedback(result.getMessage(), true);
     }
 
     @FXML
@@ -223,6 +248,7 @@ public class ProfileSettingsController {
             profileAvatarLabel.setText("FS");
             sidebarProfileNameLabel.setText("Etudiant Fahamni");
             sidebarProfileEmailLabel.setText("Aucun compte connecte");
+            profilePictureStatusLabel.setText("Aucun fichier choisi");
             firstNameField.clear();
             lastNameField.clear();
             emailField.clear();
@@ -242,6 +268,7 @@ public class ProfileSettingsController {
         lastNameField.setText(nameParts[1]);
         emailField.setText(currentUser.getEmail());
         roleField.setText(UserSession.getRoleLabel());
+        profilePictureStatusLabel.setText(accountService.getCurrentAvatarStatus());
 
         applyAccountOverview(accountService.getCurrentAccountOverview());
     }

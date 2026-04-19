@@ -73,7 +73,7 @@
                             <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="profile-upload-row">
                                 <Button onAction="#handleChooseProfilePicture" styleClass="profile-inline-button"
                                         text="Choisir un fichier"/>
-                                <Label text="Aucun fichier choisi" styleClass="section-subtitle"/>
+                                <Label fx:id="profilePictureStatusLabel" text="Aucun fichier choisi" styleClass="section-subtitle"/>
                             </HBox>
                             <Label text="Accepted: JPG, PNG, WEBP. Max size: 5MB." styleClass="profile-inline-note"/>
                         </VBox>
@@ -105,7 +105,7 @@
                             <Label text="Bio / About You" styleClass="form-label"/>
                             <TextArea fx:id="bioArea" prefRowCount="5" promptText="Tell us about yourself, your expertise, and your learning goals..."
                                       styleClass="text-area"/>
-                            <Label text="Phone, bio and photo are visual fields for now. We can wire them later when you want."
+                            <Label text="Phone and bio stay ready for later. Avatar upload is now connected with stable file storage."
                                    styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
