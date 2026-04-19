@@ -10,7 +10,7 @@ public final class UserInputValidator {
     private static final Pattern FULL_NAME_PATTERN = Pattern.compile("^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{3,79}$");
     private static final Pattern PASSWORD_LETTER_PATTERN = Pattern.compile(".*[A-Za-z].*");
     private static final Pattern PASSWORD_DIGIT_PATTERN = Pattern.compile(".*\\d.*");
-    private static final Set<String> ALLOWED_FRONT_ROLES = Set.of("Etudiant", "Tuteur");
+    private static final Set<String> ALLOWED_FRONT_ROLES = Set.of("Etudiant", "Tuteur", "Student", "Tutor");
     private static final Set<String> ALLOWED_BACKOFFICE_ROLES = Set.of("Student", "Tutor", "Administrator");
     private static final Set<String> ALLOWED_STATUSES = Set.of("Active", "Suspended");
 
