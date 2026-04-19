@@ -394,6 +394,7 @@ public class BackofficeSallesController {
         etatComboBox.getItems().setAll(salleService.getAvailableEtats());
         dispositionComboBox.getItems().setAll(salleService.getAvailableDispositions());
         etageComboBox.getItems().setAll(0, 1, 2, 3, 4);
+        typeComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applySuggestedDisposition(newValue));
     }
 
     private void configurePagination() {
@@ -465,6 +466,23 @@ public class BackofficeSallesController {
         updateFixedEquipmentSummary(null);
 
         updateSelectionBadge(null);
+    }
+
+    private void applySuggestedDisposition(String typeSalle) {
+        if (dispositionComboBox == null) {
+            return;
+        }
+
+        String suggestedDisposition = salleService.getSuggestedDispositionForType(typeSalle);
+        if (suggestedDisposition == null || suggestedDisposition.isBlank()) {
+            return;
+        }
+
+        if (!dispositionComboBox.getItems().contains(suggestedDisposition)) {
+            return;
+        }
+
+        dispositionComboBox.setValue(suggestedDisposition);
     }
 
     private void applyFilter(String filterText) {

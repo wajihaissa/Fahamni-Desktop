@@ -204,7 +204,21 @@ public class AdminSalleService implements IServices<Salle> {
     }
 
     public List<String> getAvailableDispositions() {
-        return List.of("cinema", "classe", "u", "reunion", "conference", "atelier", "informatique");
+        return List.of("classe", "u", "reunion", "conference", "atelier", "informatique");
+    }
+
+    public String getSuggestedDispositionForType(String typeSalle) {
+        if (typeSalle == null || typeSalle.isBlank()) {
+            return null;
+        }
+
+        return switch (typeSalle.trim().toLowerCase()) {
+            case "cours" -> "classe";
+            case "conference" -> "conference";
+            case "laboratoire" -> "informatique";
+            case "amphitheatre" -> "conference";
+            default -> null;
+        };
     }
 
     private void fillStatement(PreparedStatement statement, Salle salle) throws SQLException {
