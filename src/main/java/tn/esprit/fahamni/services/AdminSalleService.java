@@ -30,6 +30,10 @@ public class AdminSalleService implements IServices<Salle> {
     private static final String UPDATE_SQL =
         "UPDATE salle SET nom = ?, capacite = ?, localisation = ?, typeSalle = ?, etat = ?, description = ?, batiment = ?, etage = ?, typeDisposition = ?, accesHandicape = ?, statutDetaille = ?, dateDerniereMaintenance = ? WHERE idSalle = ?";
     private static final String DELETE_SQL = "DELETE FROM salle WHERE idSalle = ?";
+    private static final String INSERT_PLACE_SQL =
+        "INSERT INTO place (numero, rang, colonne, etat, idSalle) VALUES (?, ?, ?, ?, ?)";
+    private static final String SELECT_PLACES_BY_SALLE_SQL =
+        "SELECT numero, rang, colonne FROM place WHERE idSalle = ? ORDER BY numero ASC";
     private static final String COUNT_DUPLICATE_SALLE_SQL = """
         SELECT COUNT(*) AS total
         FROM salle
@@ -62,15 +66,18 @@ public class AdminSalleService implements IServices<Salle> {
         validateSalle(salle, false);
         ensureNoDuplicateSalleForLocationAndBuilding(salle);
 
-        try (PreparedStatement statement = requireConnection().prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
-            fillStatement(statement, salle);
-            statement.executeUpdate();
-
-            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    salle.setIdSalle(generatedKeys.getInt(1));
-                }
-            }
+        Connection connection = requireConnection();
+        boolean initialAutoCommit = connection.getAutoCommit();
+        try {
+            connection.setAutoCommit(false);
+            salle.setIdSalle(insertSalle(connection, salle));
+            synchronizePlacesWithCapacity(connection, salle);
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(initialAutoCommit);
         }
     }
 
@@ -109,13 +116,18 @@ public class AdminSalleService implements IServices<Salle> {
         validateSalle(salle, true);
         ensureNoUpcomingSeanceUsesSalle(salle.getIdSalle());
 
-        try (PreparedStatement statement = requireConnection().prepareStatement(UPDATE_SQL)) {
-            fillStatement(statement, salle);
-            statement.setInt(13, salle.getIdSalle());
-
-            if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune salle trouvee avec l'id " + salle.getIdSalle() + ".");
-            }
+        Connection connection = requireConnection();
+        boolean initialAutoCommit = connection.getAutoCommit();
+        try {
+            connection.setAutoCommit(false);
+            updateSalle(connection, salle);
+            synchronizePlacesWithCapacity(connection, salle);
+            connection.commit();
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(initialAutoCommit);
         }
     }
 
@@ -230,6 +242,109 @@ public class AdminSalleService implements IServices<Salle> {
         );
     }
 
+    private int insertSalle(Connection connection, Salle salle) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
+            fillStatement(statement, salle);
+            statement.executeUpdate();
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1);
+                }
+            }
+        }
+
+        throw new SQLException("Creation de la salle impossible: identifiant non genere.");
+    }
+
+    private void updateSalle(Connection connection, Salle salle) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
+            fillStatement(statement, salle);
+            statement.setInt(13, salle.getIdSalle());
+
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Aucune salle trouvee avec l'id " + salle.getIdSalle() + ".");
+            }
+        }
+    }
+
+    private void synchronizePlacesWithCapacity(Connection connection, Salle salle) throws SQLException {
+        if (salle == null || salle.getIdSalle() <= 0 || salle.getCapacite() <= 0) {
+            return;
+        }
+
+        List<PlaceSnapshot> existingPlaces = getPlaceSnapshots(connection, salle.getIdSalle());
+        int missingPlaces = salle.getCapacite() - existingPlaces.size();
+        if (missingPlaces <= 0) {
+            return;
+        }
+
+        int preferredColumns = resolvePreferredColumnCount(salle.getTypeDisposition(), salle.getCapacite());
+        int nextPlaceNumber = existingPlaces.stream()
+            .mapToInt(PlaceSnapshot::numero)
+            .max()
+            .orElse(0) + 1;
+
+        java.util.Set<String> occupiedPositions = existingPlaces.stream()
+            .map(place -> positionKey(place.rang(), place.colonne()))
+            .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+
+        int cursor = 1;
+        while (missingPlaces > 0) {
+            int row = ((cursor - 1) / preferredColumns) + 1;
+            int column = ((cursor - 1) % preferredColumns) + 1;
+            cursor++;
+
+            String positionKey = positionKey(row, column);
+            if (occupiedPositions.contains(positionKey)) {
+                continue;
+            }
+
+            insertPlace(connection, nextPlaceNumber++, row, column, salle.getIdSalle());
+            occupiedPositions.add(positionKey);
+            missingPlaces--;
+        }
+    }
+
+    private List<PlaceSnapshot> getPlaceSnapshots(Connection connection, int salleId) throws SQLException {
+        List<PlaceSnapshot> places = new ArrayList<>();
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_PLACES_BY_SALLE_SQL)) {
+            statement.setInt(1, salleId);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    places.add(new PlaceSnapshot(
+                        resultSet.getInt("numero"),
+                        resultSet.getInt("rang"),
+                        resultSet.getInt("colonne")
+                    ));
+                }
+            }
+        }
+        return places;
+    }
+
+    private void insertPlace(Connection connection, int numero, int rang, int colonne, int salleId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_PLACE_SQL)) {
+            statement.setInt(1, numero);
+            statement.setInt(2, rang);
+            statement.setInt(3, colonne);
+            statement.setString(4, "disponible");
+            statement.setInt(5, salleId);
+            statement.executeUpdate();
+        }
+    }
+
+    private int resolvePreferredColumnCount(String typeDisposition, int capacity) {
+        if (capacity <= 1) {
+            return 1;
+        }
+        return Math.max(1, Math.min(capacity, 6));
+    }
+
+    private String positionKey(int rang, int colonne) {
+        return rang + ":" + colonne;
+    }
+
     private void validateSalle(Salle salle, boolean requireId) {
         if (salle == null) {
             throw new IllegalArgumentException("La salle est obligatoire.");
@@ -306,5 +421,8 @@ public class AdminSalleService implements IServices<Salle> {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private record PlaceSnapshot(int numero, int rang, int colonne) {
     }
 }

@@ -482,3 +482,411 @@
     -fx-background-color: #fff0f1;
     -fx-text-fill: #b9495a;
 }
+
+#tutorDiscoveryRoot.seat-selection-root,
+#tutorDiscoveryRoot .seat-selection-root {
+    -fx-background-color: transparent;
+}
+
+.seat-selection-dialog {
+    -fx-background-color:
+        radial-gradient(center 12% 10%, radius 38%, rgba(125, 108, 224, 0.14) 0%, rgba(125, 108, 224, 0.00) 70%),
+        radial-gradient(center 88% 18%, radius 34%, rgba(76, 103, 203, 0.14) 0%, rgba(76, 103, 203, 0.00) 72%),
+        linear-gradient(to bottom, #f9f8ff 0%, #f2f5ff 52%, #eef4fb 100%);
+    -fx-background-radius: 32px;
+    -fx-border-color: #d9def5;
+    -fx-border-width: 1px;
+    -fx-border-radius: 32px;
+    -fx-padding: 0;
+}
+
+.seat-selection-dialog > .content.label {
+    -fx-padding: 0;
+}
+
+.seat-selection-dialog:header .header-panel {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.seat-selection-dialog-scroll-shell {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-color: transparent;
+    -fx-padding: 16px 18px 12px 18px;
+}
+
+.seat-selection-dialog-scroll-shell > .viewport {
+    -fx-background-color: transparent;
+}
+
+.seat-selection-dialog .button-bar {
+    -fx-background-color: rgba(255, 255, 255, 0.98);
+    -fx-border-color: #dbe2f3 transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 14px 20px 18px 20px;
+}
+
+.seat-selection-dialog .button-bar .container {
+    -fx-spacing: 12px;
+}
+
+.seat-selection-dialog .button-bar .button {
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 11px 22px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-cursor: hand;
+}
+
+.seat-selection-dialog .button-bar .button.backoffice-primary-button {
+    -fx-background-color: linear-gradient(to right, #6d5bd1 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(93, 76, 199, 0.24), 18, 0.16, 0, 5);
+}
+
+.seat-selection-dialog .button-bar .button.backoffice-secondary-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7f8ff 100%);
+    -fx-text-fill: #4d5d85;
+    -fx-border-color: #d8def2;
+}
+
+#tutorDiscoveryRoot .seat-selection-hero {
+    -fx-alignment: center-left;
+    -fx-background-color:
+        linear-gradient(to right, rgba(109, 91, 209, 0.10) 0%, rgba(76, 103, 203, 0.10) 38%, rgba(255, 255, 255, 0.94) 100%),
+        linear-gradient(to right, #ffffff 0%, #fbfbff 100%);
+    -fx-background-radius: 24px;
+    -fx-border-color: #d7def1;
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-padding: 16px 18px;
+    -fx-effect: dropshadow(gaussian, rgba(91, 84, 161, 0.10), 16, 0.12, 0, 4);
+}
+
+#tutorDiscoveryRoot .seat-selection-title {
+    -fx-font-size: 24px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #2a2854;
+}
+
+#tutorDiscoveryRoot .seat-selection-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #66729a;
+    -fx-max-width: 600px;
+}
+
+#tutorDiscoveryRoot .seat-selection-chip-row {
+    -fx-padding: 2px 0 0 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-chip {
+    -fx-background-color: linear-gradient(to bottom, #f5f3ff 0%, #eef1ff 100%);
+    -fx-text-fill: #5d51bb;
+    -fx-border-color: #d7cff9;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 12px;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+#tutorDiscoveryRoot .seat-selection-stat-chip {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #47506f;
+    -fx-border-color: #d6ddf0;
+}
+
+#tutorDiscoveryRoot .seat-selection-stat-chip-strong {
+    -fx-background-color: linear-gradient(to right, #6d5bd1 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-disposition-panel {
+    -fx-alignment: top-right;
+    -fx-min-width: 255px;
+    -fx-pref-width: 255px;
+}
+
+#tutorDiscoveryRoot .seat-selection-selected-chip {
+    -fx-background-color: linear-gradient(to bottom, #f2f4f7 0%, #e7ebf0 100%);
+    -fx-border-color: #d4dbe3;
+    -fx-border-width: 1px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 10px 14px;
+    -fx-text-fill: #425363;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-max-width: 250px;
+    -fx-alignment: center;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-card {
+    -fx-background-color:
+        radial-gradient(center 10% 0%, radius 42%, rgba(109, 91, 209, 0.08) 0%, rgba(109, 91, 209, 0.00) 72%),
+        radial-gradient(center 92% 8%, radius 34%, rgba(76, 103, 203, 0.07) 0%, rgba(76, 103, 203, 0.00) 74%),
+        linear-gradient(to bottom, #ffffff 0%, #fbfbff 100%);
+    -fx-background-radius: 28px;
+    -fx-border-color: #dbe1f2;
+    -fx-border-width: 1px;
+    -fx-border-radius: 28px;
+    -fx-padding: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(81, 72, 153, 0.10), 20, 0.14, 0, 4);
+}
+
+#tutorDiscoveryRoot .seat-selection-map-header {
+    -fx-padding: 0 0 2px 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-title {
+    -fx-font-size: 20px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #27255d;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-subtitle {
+    -fx-text-fill: #6f78a0;
+    -fx-font-size: 11px;
+}
+
+#tutorDiscoveryRoot .seat-selection-layout-chip {
+    -fx-background-color: linear-gradient(to bottom, #f4f2ff 0%, #ecefff 100%);
+    -fx-text-fill: #5c52ba;
+    -fx-border-color: #d9d1fa;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 12px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 11px;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll .scroll-bar:horizontal,
+#tutorDiscoveryRoot .seat-selection-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll .track {
+    -fx-background-color: #e6e8f7;
+    -fx-background-radius: 999px;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll .thumb {
+    -fx-background-color: #afb8ec;
+    -fx-background-radius: 999px;
+}
+
+#tutorDiscoveryRoot .seat-selection-grid-shell {
+    -fx-background-color:
+        linear-gradient(to bottom, #fcfbff 0%, #f8f9ff 100%);
+    -fx-background-radius: 24px;
+    -fx-border-color: #dde3f3;
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-padding: 12px 10px;
+}
+
+#tutorDiscoveryRoot .seat-selection-grid {
+    -fx-alignment: center;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-grid-axis-label {
+    -fx-text-fill: #7f86ba;
+    -fx-font-size: 9px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-alignment: center;
+    -fx-max-width: Infinity;
+}
+
+#tutorDiscoveryRoot .seat-grid-empty-state {
+    -fx-text-fill: #687786;
+    -fx-background-color: rgba(255, 255, 255, 0.96);
+    -fx-background-radius: 18px;
+    -fx-border-color: #dbe3ea;
+    -fx-border-width: 1px;
+    -fx-border-radius: 18px;
+    -fx-padding: 20px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage-shell {
+    -fx-padding: 0 42px 2px 42px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage-line {
+    -fx-min-height: 3px;
+    -fx-pref-height: 3px;
+    -fx-max-height: 3px;
+    -fx-background-color: linear-gradient(to right, rgba(109, 91, 209, 0.04) 0%, #a8b3f2 50%, rgba(109, 91, 209, 0.04) 100%);
+    -fx-background-radius: 999px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f2f4ff 100%);
+    -fx-background-radius: 999px;
+    -fx-border-color: #d7ddf2;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 18px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage-label {
+    -fx-text-fill: #636cb1;
+    -fx-font-size: 9px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+#tutorDiscoveryRoot .seat-map-button {
+    -fx-min-width: 28px;
+    -fx-pref-width: 28px;
+    -fx-max-width: 28px;
+    -fx-min-height: 28px;
+    -fx-pref-height: 28px;
+    -fx-max-height: 28px;
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 9px;
+    -fx-border-radius: 9px;
+    -fx-border-width: 1px;
+    -fx-font-size: 0px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+    -fx-text-fill: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(59, 72, 84, 0.04), 7, 0.14, 0, 1);
+}
+
+#tutorDiscoveryRoot .seat-map-button:disabled {
+    -fx-opacity: 1;
+}
+
+#tutorDiscoveryRoot .seat-map-button.available {
+    -fx-background-color: linear-gradient(to bottom, #f3f5ff 0%, #e7edff 100%);
+    -fx-border-color: #c6d0ff;
+}
+
+#tutorDiscoveryRoot .seat-map-button.available:hover {
+    -fx-background-color: linear-gradient(to bottom, #ecefff 0%, #dde5ff 100%);
+    -fx-border-color: #8fa0f2;
+    -fx-effect: dropshadow(gaussian, rgba(93, 96, 214, 0.18), 10, 0.22, 0, 2);
+}
+
+#tutorDiscoveryRoot .seat-map-button.occupied {
+    -fx-background-color: linear-gradient(to bottom, #ffe7ea 0%, #ffc7d0 100%);
+    -fx-border-color: #ec96a6;
+}
+
+#tutorDiscoveryRoot .seat-map-button.blocked {
+    -fx-background-color: linear-gradient(to bottom, #ffe7e7 0%, #ffcaca 100%);
+    -fx-border-color: #ef9f9f;
+}
+
+#tutorDiscoveryRoot .seat-map-button.selected,
+#tutorDiscoveryRoot .seat-map-button.selected:hover,
+#tutorDiscoveryRoot .seat-map-button.selected:armed {
+    -fx-background-color: linear-gradient(to bottom, #7a67e0 0%, #526bdb 100%);
+    -fx-border-color: #5b62d4;
+    -fx-effect: dropshadow(gaussian, rgba(93, 76, 199, 0.28), 12, 0.24, 0, 2);
+}
+
+#tutorDiscoveryRoot .seat-selection-color-legend {
+    -fx-padding: 2px 0 0 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-label {
+    -fx-text-fill: #5d63a8;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-padding: 4px 6px 0 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge,
+#tutorDiscoveryRoot .seat-selection-legend-badge-available,
+#tutorDiscoveryRoot .seat-selection-legend-badge-occupied,
+#tutorDiscoveryRoot .seat-selection-legend-badge-selected {
+    -fx-alignment: center-left;
+    -fx-padding: 8px 12px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge.available,
+#tutorDiscoveryRoot .seat-selection-legend-badge-available {
+    -fx-background-color: linear-gradient(to bottom, #eff2ff 0%, #e6ecff 100%);
+    -fx-border-color: #c9d3ff;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge.occupied,
+#tutorDiscoveryRoot .seat-selection-legend-badge-occupied {
+    -fx-background-color: linear-gradient(to bottom, #ffecef 0%, #ffd4db 100%);
+    -fx-border-color: #efadb9;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge.selected,
+#tutorDiscoveryRoot .seat-selection-legend-badge-selected {
+    -fx-background-color: linear-gradient(to bottom, #f0ecff 0%, #e6e0ff 100%);
+    -fx-border-color: #d0c4ff;
+}
+
+#tutorDiscoveryRoot .seat-selection-color-text {
+    -fx-text-fill: #49537d;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+#tutorDiscoveryRoot .seat-legend-dot,
+#tutorDiscoveryRoot .seat-legend-dot-available,
+#tutorDiscoveryRoot .seat-legend-dot-occupied,
+#tutorDiscoveryRoot .seat-legend-dot-selected {
+    -fx-min-width: 10px;
+    -fx-pref-width: 10px;
+    -fx-max-width: 10px;
+    -fx-min-height: 10px;
+    -fx-pref-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+}
+
+#tutorDiscoveryRoot .seat-legend-dot.available,
+#tutorDiscoveryRoot .seat-legend-dot-available {
+    -fx-background-color: #8295f3;
+    -fx-border-color: #7285e1;
+}
+
+#tutorDiscoveryRoot .seat-legend-dot.occupied,
+#tutorDiscoveryRoot .seat-legend-dot-occupied {
+    -fx-background-color: #e8889a;
+    -fx-border-color: #d77286;
+}
+
+#tutorDiscoveryRoot .seat-legend-dot.selected,
+#tutorDiscoveryRoot .seat-legend-dot-selected {
+    -fx-background-color: #6d5bd1;
+    -fx-border-color: #5b48bd;
+}
+
+#tutorDiscoveryRoot .seat-selection-hint {
+    -fx-background-color: linear-gradient(to right, #f5f4ff 0%, #edf2ff 100%);
+    -fx-border-color: #d8def4;
+    -fx-border-width: 1px;
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 10px 14px;
+    -fx-text-fill: #5f6ca2;
+    -fx-font-size: 11px;
+}

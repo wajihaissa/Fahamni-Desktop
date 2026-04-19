@@ -1,5 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.fxml.FXMLLoader;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.SalleEquipement;
@@ -9,14 +10,17 @@ import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
+import tn.esprit.fahamni.services.ReservationService.SeatSelectionOption;
 import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
 import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.Button;
@@ -41,7 +45,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.stage.Screen;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -72,6 +78,7 @@ public class ReservationController {
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final String SEAT_SELECTION_DIALOG_FXML = SceneManager.frontofficeView("SeatSelectionDialogView.fxml");
     private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
         .mapToObj(value -> String.format("%02d", value))
         .toList();
@@ -88,6 +95,7 @@ public class ReservationController {
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
+    private final Map<Integer, Integer> roomSeatCountsBySalleId = new LinkedHashMap<>();
     private final Map<Integer, EquipmentSelectionControls> equipmentSelectionControls = new LinkedHashMap<>();
     private final Map<Integer, RoomSelectionControls> roomSelectionControls = new LinkedHashMap<>();
     private final Map<Integer, String> roomScheduleConflicts = new LinkedHashMap<>();
@@ -465,12 +473,14 @@ public class ReservationController {
                     .toList()
             );
             roomFixedEquipementsBySalleId.clear();
+            roomSeatCountsBySalleId.clear();
 
             refreshRoomChoicesForSchedule();
         } catch (SQLException | IllegalStateException exception) {
             availableSalles.clear();
             availableEquipements.clear();
             roomFixedEquipementsBySalleId.clear();
+            roomSeatCountsBySalleId.clear();
             selectedSalleId = null;
             roomSelectionControls.clear();
             roomScheduleConflicts.clear();
@@ -1485,6 +1495,7 @@ public class ReservationController {
     }
 
     private void loadSessionDashboard() {
+        roomSeatCountsBySalleId.clear();
         List<Seance> allSessions = seanceService.getAll();
         long publishedCount = allSessions.stream().filter(seance -> seance.getStatus() == 1).count();
         long draftCount = allSessions.stream().filter(seance -> seance.getStatus() == 0).count();
@@ -1556,7 +1567,7 @@ public class ReservationController {
             "Tuteur: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())
                 + " | " + formatDateTime(seance.getStartAt())
                 + " | " + seance.getDurationMin() + " min"
-                + " | " + seance.getMaxParticipants() + " places"
+                + " | " + formatDisplayedPlaceCount(seance)
                 + " | " + buildInfrastructureSummary(seance)
                 + " | " + formatReservationCount(reservationStats.total())
         );
@@ -1629,7 +1640,7 @@ public class ReservationController {
     }
 
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
-        Button reserveButton = new Button("Reserver");
+        Button reserveButton = new Button("Réserver");
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
         if (!canReserveAsParticipant(seance)) {
@@ -1662,10 +1673,103 @@ public class ReservationController {
     }
 
     private void reserveSession(Seance seance) {
-        OperationResult result = reservationService.reserveSeance(seance, getCurrentReservationParticipantId());
+        hideReservationActionFeedback();
+
+        Integer selectedPlaceId = null;
+        if (seance != null && seance.isPresentiel()) {
+            Optional<Integer> selectedPlace = showSeatSelectionDialog(seance);
+            if (selectedPlace.isEmpty()) {
+                return;
+            }
+            selectedPlaceId = selectedPlace.get();
+        }
+
+        OperationResult result = reservationService.reserveSeance(
+            seance,
+            getCurrentReservationParticipantId(),
+            selectedPlaceId
+        );
         loadSessionDashboard();
         showAvailableSessionsSection();
         showReservationActionFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    private Optional<Integer> showSeatSelectionDialog(Seance seance) {
+        List<SeatSelectionOption> seatOptions;
+        try {
+            seatOptions = reservationService.getSeatSelectionOptions(seance);
+        } catch (RuntimeException exception) {
+            showReservationActionFeedback(resolveMessage(exception), false);
+            return Optional.empty();
+        }
+
+        if (seatOptions.isEmpty()) {
+            showReservationActionFeedback(
+                "Aucune place n'est configuree pour la salle de cette seance. Contactez l'administration.",
+                false
+            );
+            return Optional.empty();
+        }
+
+        long selectableSeats = seatOptions.stream().filter(SeatSelectionOption::selectable).count();
+        if (selectableSeats <= 0) {
+            showReservationActionFeedback(
+                "Toutes les places de cette seance sont deja occupees ou indisponibles.",
+                false
+            );
+            return Optional.empty();
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(SEAT_SELECTION_DIALOG_FXML));
+            Node content = loader.load();
+            SeatSelectionDialogController controller = loader.getController();
+
+            Dialog<Integer> seatDialog = new Dialog<>();
+            DialogPane dialogPane = seatDialog.getDialogPane();
+            ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType confirmButtonType = new ButtonType("Confirmer la place", ButtonBar.ButtonData.OK_DONE);
+
+            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+            double dialogWidth = Math.min(980.0, Math.max(640.0, screenBounds.getWidth() - 56.0));
+            double dialogHeight = Math.min(820.0, Math.max(560.0, screenBounds.getHeight() - 72.0));
+
+            seatDialog.setTitle("Réserver");
+            seatDialog.setResizable(true);
+            seatDialog.setTitle("Choix de place");
+            dialogPane.getButtonTypes().setAll(cancelButton, confirmButtonType);
+            dialogPane.setContent(content);
+            dialogPane.setPrefWidth(dialogWidth);
+            dialogPane.setMinWidth(Math.min(740.0, dialogWidth));
+            dialogPane.setMaxWidth(dialogWidth);
+            dialogPane.setPrefHeight(dialogHeight);
+            dialogPane.setMinHeight(Math.min(620.0, dialogHeight));
+            dialogPane.setMaxHeight(dialogHeight);
+            applyCurrentTheme(dialogPane);
+            dialogPane.getStyleClass().add("seat-selection-dialog");
+
+            Button confirmButton = (Button) dialogPane.lookupButton(confirmButtonType);
+            if (confirmButton != null) {
+                confirmButton.getStyleClass().add("backoffice-primary-button");
+            }
+            Button cancelDialogButton = (Button) dialogPane.lookupButton(cancelButton);
+            if (cancelDialogButton != null) {
+                cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
+            }
+            controller.configure(seance, seatOptions, confirmButton);
+
+            seatDialog.setResultConverter(buttonType ->
+                buttonType == confirmButtonType ? controller.getSelectedPlaceId() : null
+            );
+
+            return seatDialog.showAndWait();
+        } catch (IOException exception) {
+            showReservationActionFeedback(
+                "Chargement de l'interface de plan de salle impossible: " + resolveMessage(exception),
+                false
+            );
+            return Optional.empty();
+        }
     }
 
     private void loadStudentReservations() {
@@ -1714,6 +1818,7 @@ public class ReservationController {
                 + " | Seance: " + formatDateTimeOrPlaceholder(reservation.seanceStartAt())
                 + " | " + reservation.durationMin() + " min"
                 + " | " + reservation.maxParticipants() + " places"
+                + buildPlaceSegment(reservation.placeLabel())
         );
         sessionLabel.setWrapText(true);
         sessionLabel.getStyleClass().add("reservation-section-copy");
@@ -1823,6 +1928,7 @@ public class ReservationController {
                 + " | " + request.durationMin() + " min"
                 + " | " + request.acceptedReservations() + "/" + request.maxParticipants() + " acceptee(s)"
                 + " | " + formatAvailableSeats(request.availableAcceptedSeats())
+                + buildPlaceSegment(request.placeLabel())
                 + " | ID reservation #" + request.id()
         );
         sessionLabel.setWrapText(true);
@@ -1922,6 +2028,7 @@ public class ReservationController {
     private VBox buildSessionDetailsContent(Seance seance, ReservationStats reservationStats, Dialog<ButtonType> detailsDialog) {
         boolean canManageCurrentSession = canManageSession(seance);
         int reservationTotal = reservationStats != null ? reservationStats.total() : 0;
+        int configuredSeatCount = resolveDisplayedPlaceCountValue(seance);
         LocalDateTime endAt = seance.getStartAt() != null
             ? seance.getStartAt().plusMinutes(seance.getDurationMin())
             : null;
@@ -1962,13 +2069,28 @@ public class ReservationController {
             buildDetailMetric("Fin", formatDateTimeOrPlaceholder(endAt), "Fin calculee"),
             buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance")
         );
+        if (seance.isPresentiel()) {
+            metrics.getChildren().add(
+                buildDetailMetric("Places salle", String.valueOf(configuredSeatCount), "Configurees")
+            );
+        }
         if (canManageCurrentSession) {
             metrics.getChildren().addAll(
-                buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
+                buildDetailMetric(
+                    seance.isPresentiel() ? "Capacite seance" : "Places",
+                    availableSeats + " / " + seance.getMaxParticipants(),
+                    seance.isPresentiel() ? "Disponibles a la reservation" : "Disponibles"
+                ),
                 buildDetailMetric("Reservations", String.valueOf(reservationTotal), "Total lie a la seance")
             );
         } else {
-            metrics.getChildren().add(buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"));
+            metrics.getChildren().add(
+                buildDetailMetric(
+                    seance.isPresentiel() ? "Capacite seance" : "Places",
+                    availableSeats + " / " + seance.getMaxParticipants(),
+                    seance.isPresentiel() ? "Disponibles a la reservation" : "Disponibles"
+                )
+            );
         }
         metrics.getChildren().addAll(
             buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId()),
@@ -2328,6 +2450,13 @@ public class ReservationController {
         return availableSeats == 1 ? "1 place disponible" : availableSeats + " places disponibles";
     }
 
+    private String buildPlaceSegment(String placeLabel) {
+        if (placeLabel == null || placeLabel.isBlank()) {
+            return "";
+        }
+        return " | Place: " + placeLabel;
+    }
+
     private double calculateOccupancyRate(int reservationCount, int capacity) {
         if (reservationCount <= 0 || capacity <= 0) {
             return 0.0;
@@ -2490,6 +2619,34 @@ public class ReservationController {
                 }
                 return "Salle #" + salleId;
             });
+    }
+
+    private int resolveDisplayedPlaceCountValue(Seance seance) {
+        if (seance == null) {
+            return 0;
+        }
+        if (!seance.isPresentiel()) {
+            return seance.getMaxParticipants();
+        }
+        Integer salleId = seance.getSalleId();
+        if (salleId == null || salleId <= 0) {
+            return 0;
+        }
+        if (roomSeatCountsBySalleId.containsKey(salleId)) {
+            return roomSeatCountsBySalleId.get(salleId);
+        }
+
+        try {
+            int configuredSeatCount = reservationService.countConfiguredSeatsBySalle(salleId);
+            roomSeatCountsBySalleId.put(salleId, configuredSeatCount);
+            return configuredSeatCount;
+        } catch (RuntimeException exception) {
+            return seance.getMaxParticipants();
+        }
+    }
+
+    private String formatDisplayedPlaceCount(Seance seance) {
+        return resolveDisplayedPlaceCountValue(seance) + " places";
     }
 
     private String resolveEquipementNames(Map<Integer, Integer> equipementQuantites) {
@@ -2727,7 +2884,16 @@ public class ReservationController {
         if (dialogPane == null || recentSessionsContainer == null || recentSessionsContainer.getScene() == null) {
             return;
         }
-        dialogPane.getStylesheets().setAll(recentSessionsContainer.getScene().getStylesheets());
+        java.util.LinkedHashSet<String> stylesheets = new java.util.LinkedHashSet<>();
+        stylesheets.addAll(recentSessionsContainer.getScene().getStylesheets());
+
+        javafx.scene.Parent current = recentSessionsContainer;
+        while (current != null) {
+            stylesheets.addAll(current.getStylesheets());
+            current = current.getParent();
+        }
+
+        dialogPane.getStylesheets().setAll(stylesheets);
     }
 
     private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card, boolean selectable) {

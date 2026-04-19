@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true"
+            fitToHeight="false"
+            hbarPolicy="NEVER"
+            vbarPolicy="AS_NEEDED"
+            pannable="true"
+            styleClass="seat-selection-dialog-scroll-shell"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.SeatSelectionDialogController">
+    <content>
+        <VBox id="tutorDiscoveryRoot"
+              spacing="14.0"
+              styleClass="reservation-content seat-selection-root">
+            <padding>
+                <Insets top="8.0" right="10.0" bottom="10.0" left="10.0"/>
+            </padding>
+
+            <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="seat-selection-hero">
+                <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                    <Label fx:id="seatSelectionTitleLabel"
+                           text="Finalisez votre r&#233;servation"
+                           styleClass="subsection-title seat-selection-title"
+                           wrapText="true"/>
+                    <Label fx:id="seatSelectionSubtitleLabel"
+                           text="Choisissez une place disponible pour confirmer cette s&#233;ance."
+                           styleClass="reservation-section-copy seat-selection-subtitle"
+                           wrapText="true"/>
+                    <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="seat-selection-chip-row">
+                        <Label fx:id="seatSelectionCapacityChipLabel" text="0 place(s)" styleClass="seat-selection-map-chip seat-selection-stat-chip"/>
+                        <Label fx:id="seatSelectionAvailabilityChipLabel" text="0 libre(s)" styleClass="seat-selection-map-chip seat-selection-stat-chip seat-selection-stat-chip-strong"/>
+                    </HBox>
+                </VBox>
+
+                <VBox alignment="TOP_RIGHT" spacing="0.0" styleClass="seat-selection-disposition-panel">
+                    <Label fx:id="selectedSeatLabel"
+                           text="Aucune place selectionnee"
+                           styleClass="seat-selection-selected-chip"
+                           wrapText="true"/>
+                </VBox>
+            </HBox>
+
+            <VBox spacing="14.0"
+                  styleClass="seat-selection-map-card"
+                  prefWidth="880.0"
+                  minWidth="640.0">
+                <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="seat-selection-map-header">
+                    <VBox spacing="2.0" HBox.hgrow="ALWAYS">
+                        <Label text="Plan de salle" styleClass="seat-selection-map-title"/>
+                        <Label text="S&#233;lectionnez une place pour voir sa position."
+                               styleClass="seat-selection-map-subtitle"
+                               wrapText="true"/>
+                    </VBox>
+
+                    <Label fx:id="seatSelectionLayoutChipLabel" text="Disposition 3 + couloir + 3" styleClass="seat-selection-layout-chip"/>
+                </HBox>
+
+                <HBox alignment="CENTER" spacing="12.0" styleClass="seat-selection-stage-shell">
+                    <Region styleClass="seat-selection-stage-line" HBox.hgrow="ALWAYS"/>
+                    <StackPane styleClass="seat-selection-stage">
+                        <Label text="DEVANT DE LA SALLE" styleClass="seat-selection-stage-label"/>
+                    </StackPane>
+                    <Region styleClass="seat-selection-stage-line" HBox.hgrow="ALWAYS"/>
+                </HBox>
+
+                <ScrollPane fx:id="seatMapScroll"
+                            fitToWidth="true"
+                            fitToHeight="false"
+                            hbarPolicy="AS_NEEDED"
+                            vbarPolicy="NEVER"
+                            prefViewportHeight="340.0"
+                            prefViewportWidth="760.0"
+                            styleClass="reservation-choice-scroll seat-selection-scroll">
+                    <content>
+                        <StackPane alignment="CENTER" styleClass="seat-selection-grid-shell">
+                            <GridPane fx:id="seatMapGrid" hgap="8.0" vgap="8.0" styleClass="seat-selection-grid">
+                                <padding>
+                                    <Insets top="16.0" right="20.0" bottom="16.0" left="20.0"/>
+                                </padding>
+                            </GridPane>
+                        </StackPane>
+                    </content>
+                </ScrollPane>
+
+                <FlowPane alignment="CENTER_LEFT"
+                          hgap="10.0"
+                          vgap="10.0"
+                          styleClass="seat-selection-color-legend">
+                    <Label text="L&#233;gende" styleClass="seat-selection-legend-label"/>
+
+                    <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="seat-selection-legend-badge-available">
+                        <StackPane minWidth="12.0" prefWidth="12.0" maxWidth="12.0"
+                                   minHeight="12.0" prefHeight="12.0" maxHeight="12.0"
+                                   styleClass="seat-legend-dot-available"/>
+                        <Label text="Disponible" styleClass="seat-selection-color-text"/>
+                    </HBox>
+
+                    <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="seat-selection-legend-badge-occupied">
+                        <StackPane minWidth="12.0" prefWidth="12.0" maxWidth="12.0"
+                                   minHeight="12.0" prefHeight="12.0" maxHeight="12.0"
+                                   styleClass="seat-legend-dot-occupied"/>
+                        <Label text="R&#233;serv&#233;e" styleClass="seat-selection-color-text"/>
+                    </HBox>
+
+                    <HBox alignment="CENTER_LEFT" spacing="8.0" styleClass="seat-selection-legend-badge-selected">
+                        <StackPane minWidth="12.0" prefWidth="12.0" maxWidth="12.0"
+                                   minHeight="12.0" prefHeight="12.0" maxHeight="12.0"
+                                   styleClass="seat-legend-dot-selected"/>
+                        <Label text="Votre choix" styleClass="seat-selection-color-text"/>
+                    </HBox>
+                </FlowPane>
+
+                <Label fx:id="seatSelectionHintLabel"
+                       text="Choisissez une place disponible pour activer la confirmation."
+                       styleClass="reservation-section-copy seat-selection-hint"
+                       wrapText="true"/>
+            </VBox>
+        </VBox>
+    </content>
+</ScrollPane>
