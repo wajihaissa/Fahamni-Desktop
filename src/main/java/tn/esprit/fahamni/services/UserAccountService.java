@@ -234,6 +234,30 @@ public class UserAccountService {
         }
     }
 
+    public Path getCurrentAvatarPath() {
+        User currentUser = UserSession.getCurrentUser();
+        if (currentUser == null || currentUser.getId() <= 0 || connection == null) {
+            return null;
+        }
+
+        try {
+            ensureAvatarColumn();
+            String avatarPath = loadCurrentAvatarPath(currentUser.getId());
+            if (isBlank(avatarPath)) {
+                return null;
+            }
+
+            Path candidate = Paths.get(avatarPath).normalize();
+            if (!Files.exists(candidate)) {
+                return null;
+            }
+            return candidate;
+        } catch (SQLException e) {
+            System.out.println("Error loading current avatar path: " + e.getMessage());
+            return null;
+        }
+    }
+
     private boolean emailAlreadyUsedByAnotherUser(String email, int currentUserId) {
         if (connection == null) {
             return false;

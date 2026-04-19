@@ -15,6 +15,8 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -23,17 +25,21 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.shape.Circle;
 import javafx.stage.Popup;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import tn.esprit.fahamni.Models.Notification;
+import tn.esprit.fahamni.services.UserAccountService;
 
 public class MainController {
 
     private final NotificationService notifService = new NotificationService();
+    private final UserAccountService userAccountService = new UserAccountService();
 
     @FXML private BorderPane rootPane;
     @FXML private AnchorPane contentPane;
@@ -366,7 +372,7 @@ public class MainController {
 
     private void refreshCurrentUserSummary() {
         try {
-            profileAvatarLabel.setText(UserSession.getInitials());
+            applyAvatar(profileAvatarLabel, userAccountService.getCurrentAvatarPath(), 34);
             profileNameLabel.setText(UserSession.getDisplayName());
             profileRoleLabel.setText(UserSession.getRoleLabel());
         } catch (Exception e) {
@@ -422,5 +428,38 @@ public class MainController {
         if (button != null) {
             button.getStyleClass().remove("active");
         }
+    }
+
+    private void applyAvatar(Label label, Path avatarPath, double size) {
+        if (label == null) {
+            return;
+        }
+
+        if (avatarPath == null) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        Image image = new Image(avatarPath.toUri().toString(), size, size, false, true);
+        if (image.isError()) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(size);
+        imageView.setFitHeight(size);
+        imageView.setPreserveRatio(false);
+        imageView.setSmooth(true);
+
+        Circle clip = new Circle(size / 2);
+        clip.setCenterX(size / 2);
+        clip.setCenterY(size / 2);
+        imageView.setClip(clip);
+
+        label.setText("");
+        label.setGraphic(imageView);
     }
 }

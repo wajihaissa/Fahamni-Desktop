@@ -8,7 +8,10 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.services.UserAccountService;
@@ -17,6 +20,7 @@ import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -245,7 +249,7 @@ public class ProfileSettingsController {
     private void refreshViewFromSession() {
         User currentUser = UserSession.getCurrentUser();
         if (currentUser == null) {
-            profileAvatarLabel.setText("FS");
+            applyAvatar(profileAvatarLabel, null, 56);
             sidebarProfileNameLabel.setText("Etudiant Fahamni");
             sidebarProfileEmailLabel.setText("Aucun compte connecte");
             profilePictureStatusLabel.setText("Aucun fichier choisi");
@@ -259,7 +263,7 @@ public class ProfileSettingsController {
             return;
         }
 
-        profileAvatarLabel.setText(UserSession.getInitials());
+        applyAvatar(profileAvatarLabel, accountService.getCurrentAvatarPath(), 56);
         sidebarProfileNameLabel.setText(currentUser.getFullName());
         sidebarProfileEmailLabel.setText(currentUser.getEmail());
 
@@ -376,5 +380,38 @@ public class ProfileSettingsController {
         feedbackLabel.getStyleClass().setAll("backoffice-feedback");
         feedbackLabel.setManaged(false);
         feedbackLabel.setVisible(false);
+    }
+
+    private void applyAvatar(Label label, Path avatarPath, double size) {
+        if (label == null) {
+            return;
+        }
+
+        if (avatarPath == null) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        Image image = new Image(avatarPath.toUri().toString(), size, size, false, true);
+        if (image.isError()) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(size);
+        imageView.setFitHeight(size);
+        imageView.setPreserveRatio(false);
+        imageView.setSmooth(true);
+
+        Circle clip = new Circle(size / 2);
+        clip.setCenterX(size / 2);
+        clip.setCenterY(size / 2);
+        imageView.setClip(clip);
+
+        label.setText("");
+        label.setGraphic(imageView);
     }
 }
