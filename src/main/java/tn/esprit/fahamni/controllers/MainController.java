@@ -45,7 +45,6 @@ public class MainController {
     @FXML private Button seancesButton;
     @FXML private Button sallesEquipementsButton;
     @FXML private Button plannerButton;
-    @FXML private Button messengerButton;
     @FXML private Button quizButton;
     @FXML private Button blogButton;
     @FXML private Button accountButton;
@@ -120,12 +119,6 @@ public class MainController {
     private void showPlanner() {
         loadView("PlannerView.fxml", "Planner de revision");
         setActiveButton(plannerButton);
-    }
-
-    @FXML
-    private void showMessenger() {
-        loadView("MessengerView.fxml", "Messagerie");
-        setActiveButton(messengerButton);
     }
 
     @FXML
@@ -405,7 +398,6 @@ public class MainController {
         removeActiveClass(seancesButton);
         removeActiveClass(sallesEquipementsButton);
         removeActiveClass(plannerButton);
-        removeActiveClass(messengerButton);
         removeActiveClass(quizButton);
         removeActiveClass(blogButton);
 

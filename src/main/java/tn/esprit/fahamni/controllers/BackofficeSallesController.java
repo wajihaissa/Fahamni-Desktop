@@ -30,6 +30,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.SalleEquipementService;
@@ -143,6 +145,7 @@ public class BackofficeSallesController {
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipementCatalog = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
@@ -353,6 +356,25 @@ public class BackofficeSallesController {
             showFeedback("Les equipements fixes de la salle ont ete mis a jour.", true);
         } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
             showFeedback("Mise a jour des equipements fixes impossible : " + resolveMessage(exception), false);
+        }
+    }
+
+    @FXML
+    private void handlePreviewSalle3D() {
+        hideFeedback();
+
+        try {
+            Salle selectedSalle = sallesTable == null ? null : sallesTable.getSelectionModel().getSelectedItem();
+            Salle previewSalle = buildSalle(
+                selectedSalle == null ? 0 : selectedSalle.getIdSalle(),
+                selectedSalle == null ? null : selectedSalle.getDateDerniereMaintenance()
+            );
+            boolean preferGeneratedLayout = selectedSalle == null || hasSalleDataChanged(selectedSalle, previewSalle);
+
+            Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(previewSalle, preferGeneratedLayout));
+            showFeedback("L'apercu 3D a ete ouvert ou actualise dans une fenetre dediee.", true);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            showFeedback("Apercu 3D impossible : " + resolveMessage(exception), false);
         }
     }
 

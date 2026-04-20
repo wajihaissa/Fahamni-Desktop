@@ -72,7 +72,6 @@
                     <Button fx:id="seancesButton" text="Calendrier" styleClass="front-navbar-link" onAction="#showSeances"/>
                     <Button fx:id="sallesEquipementsButton" text="Salles &amp; Materiel" styleClass="front-navbar-link" onAction="#showSallesEquipements"/>
                     <Button fx:id="plannerButton" text="Planner" styleClass="front-navbar-link" onAction="#showPlanner"/>
-                    <Button fx:id="messengerButton" text="Messagerie" styleClass="front-navbar-link" onAction="#showMessenger"/>
                     <Button fx:id="quizButton" text="Quiz" styleClass="front-navbar-link" onAction="#showQuiz"/>
 
                     <Button fx:id="blogButton" text="Blog" styleClass="front-navbar-link" onAction="#showBlog"/>
