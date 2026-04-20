@@ -63,6 +63,14 @@ public final class AppConfig {
             && !getFaceApiBaseUrl().isBlank();
     }
 
+    public static String getAppSecret() {
+        return getEnv("APP_SECRET", "");
+    }
+
+    public static boolean isAppSecretConfigured() {
+        return !getAppSecret().isBlank();
+    }
+
     private static String getEnv(String key, String fallback) {
         String value = System.getenv(key);
         if (value == null || value.isBlank()) {

@@ -28,6 +28,7 @@ import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
 import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.PasswordResetService;
+import tn.esprit.fahamni.services.TwoFactorAuthService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 import tn.esprit.fahamni.utils.WebcamCaptureDialog;
@@ -40,6 +41,7 @@ public class LoginController {
     private final AuthService authService = new AuthService();
     private final PasswordResetService passwordResetService = new PasswordResetService();
     private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
+    private final TwoFactorAuthService twoFactorAuthService = new TwoFactorAuthService();
 
     @FXML
     private TextField emailField;
@@ -129,18 +131,7 @@ public class LoginController {
             return;
         }
 
-        UserSession.start(authenticatedUser, jwtToken);
-
-        try {
-            if (authenticatedUser.getRole() == UserRole.ADMIN) {
-                Main.showBackoffice();
-            } else {
-                Main.showMain();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            showMessage(loginMessageLabel, "Erreur lors du chargement de l'application.", false);
-        }
+        completeLoginWithPossibleTwoFactor(authenticatedUser, jwtToken);
     }
 
     @FXML
@@ -209,18 +200,7 @@ public class LoginController {
             return;
         }
 
-        UserSession.start(authenticatedUser, jwtToken);
-
-        try {
-            if (authenticatedUser.getRole() == UserRole.ADMIN) {
-                Main.showBackoffice();
-            } else {
-                Main.showMain();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            showMessage(loginMessageLabel, "Erreur lors du chargement de l'application.", false);
-        }
+        completeLoginWithPossibleTwoFactor(authenticatedUser, jwtToken);
     }
 
     @FXML
@@ -346,6 +326,51 @@ public class LoginController {
             floatTransition.setCycleCount(TranslateTransition.INDEFINITE);
             floatTransition.setAutoReverse(true);
             floatTransition.play();
+        }
+    }
+
+    private boolean completeLoginWithPossibleTwoFactor(User authenticatedUser, String jwtToken) {
+        if (twoFactorAuthService.requiresTwoFactor(authenticatedUser)) {
+            TwoFactorAuthService.ChallengeStartResult challengeStartResult = twoFactorAuthService.startLoginChallenge(authenticatedUser);
+            if (!challengeStartResult.success()) {
+                showMessage(loginMessageLabel, challengeStartResult.message(), false);
+                return false;
+            }
+
+            while (challengeStartResult.requiresTwoFactor()) {
+                Optional<String> codeResult = createTwoFactorDialog(authenticatedUser.getEmail()).showAndWait();
+                if (codeResult.isEmpty()) {
+                    showMessage(loginMessageLabel, "Connexion 2FA annulee.", false);
+                    return false;
+                }
+
+                TwoFactorAuthService.ChallengeVerifyResult verifyResult =
+                    twoFactorAuthService.verifyLoginChallenge(authenticatedUser, codeResult.get());
+                if (verifyResult.success()) {
+                    break;
+                }
+
+                showTwoFactorFeedback(verifyResult.message());
+                if (verifyResult.terminal()) {
+                    showMessage(loginMessageLabel, verifyResult.message(), false);
+                    return false;
+                }
+            }
+        }
+
+        UserSession.start(authenticatedUser, jwtToken);
+
+        try {
+            if (authenticatedUser.getRole() == UserRole.ADMIN) {
+                Main.showBackoffice();
+            } else {
+                Main.showMain();
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            showMessage(loginMessageLabel, "Erreur lors du chargement de l'application.", false);
+            return false;
         }
     }
 
@@ -499,6 +524,52 @@ public class LoginController {
         return dialog;
     }
 
+    private Dialog<String> createTwoFactorDialog(String email) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Verification 2FA");
+        dialog.setHeaderText("Entrez votre code 2FA ou un recovery code");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        styleDialog(dialogPane);
+
+        ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButtonType = new ButtonType("Verifier", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().setAll(cancelButtonType, confirmButtonType);
+
+        Label leadCopy = new Label("Compte: " + email + "\nUtilisez votre code TOTP 6 chiffres ou un recovery code inutilise.");
+        leadCopy.getStyleClass().add("login-dialog-copy");
+        leadCopy.setWrapText(true);
+
+        Label codeLabel = new Label("Code 2FA");
+        codeLabel.getStyleClass().add("login-dialog-label");
+
+        TextField codeInput = new TextField();
+        codeInput.setPromptText("123456 ou ABCD-EFGH-IJKL");
+        codeInput.getStyleClass().add("login-input");
+
+        VBox content = new VBox(12.0, leadCopy, codeLabel, codeInput);
+        content.getStyleClass().add("login-dialog-content");
+
+        dialogPane.setGraphic(null);
+        dialogPane.setContent(content);
+        dialog.setResultConverter(buttonType -> buttonType == confirmButtonType ? codeInput.getText() : null);
+
+        Window owner = loginRoot != null && loginRoot.getScene() != null ? loginRoot.getScene().getWindow() : null;
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+
+        return dialog;
+    }
+
+    private void showTwoFactorFeedback(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, message, ButtonType.OK);
+        alert.setTitle("Verification 2FA");
+        alert.setHeaderText("Code invalide");
+        styleDialog(alert.getDialogPane());
+        alert.showAndWait();
+    }
+
     private void styleDialog(DialogPane dialogPane) {
         if (dialogPane == null) {
             return;
@@ -520,3 +591,4 @@ public class LoginController {
     private record ResetPasswordPayload(String email, String resetCode, String newPassword, String confirmPassword) {
     }
 }
+

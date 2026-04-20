@@ -15,6 +15,7 @@ import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.services.FaceRecognitionService;
+import tn.esprit.fahamni.services.TwoFactorAuthService;
 import tn.esprit.fahamni.services.UserAccountService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.OperationResult;
@@ -122,8 +123,36 @@ public class ProfileSettingsController {
     @FXML
     private Label faceEnrolledAtLabel;
 
+    @FXML
+    private Label twoFactorStatusLabel;
+
+    @FXML
+    private Label twoFactorConfirmedAtLabel;
+
+    @FXML
+    private ImageView twoFactorQrImageView;
+
+    @FXML
+    private VBox twoFactorSetupBox;
+
+    @FXML
+    private Label twoFactorSecretLabel;
+
+    @FXML
+    private TextField twoFactorCodeField;
+
+    @FXML
+    private TextArea recoveryCodesArea;
+
+    @FXML
+    private VBox recoveryCodesBox;
+
+    @FXML
+    private TextField disableTwoFactorCodeField;
+
     private final UserAccountService accountService = new UserAccountService();
     private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
+    private final TwoFactorAuthService twoFactorAuthService = new TwoFactorAuthService();
     private Consumer<User> onProfileUpdated;
     private Runnable onAccountDeleted;
 
@@ -263,6 +292,55 @@ public class ProfileSettingsController {
     }
 
     @FXML
+    private void handleStartTwoFactorSetup() {
+        hideFeedback();
+        TwoFactorAuthService.SetupStartResult result = twoFactorAuthService.startSetupForCurrentUser();
+        if (!result.success()) {
+            showFeedback(result.message(), false);
+            refreshTwoFactorStatus();
+            return;
+        }
+
+        applyTwoFactorPendingPayload(result.payload());
+        showFeedback(result.message(), true);
+        refreshTwoFactorStatus();
+    }
+
+    @FXML
+    private void handleConfirmTwoFactor() {
+        hideFeedback();
+        TwoFactorAuthService.SetupConfirmResult result = twoFactorAuthService.confirmSetupForCurrentUser(twoFactorCodeField.getText());
+        if (!result.success()) {
+            showFeedback(result.message(), false);
+            refreshTwoFactorStatus();
+            return;
+        }
+
+        recoveryCodesArea.setText(String.join(System.lineSeparator(), result.recoveryCodes()));
+        recoveryCodesBox.setManaged(true);
+        recoveryCodesBox.setVisible(true);
+        twoFactorCodeField.clear();
+        clearTwoFactorPendingUi();
+        refreshTwoFactorStatus();
+        showFeedback(result.message(), true);
+    }
+
+    @FXML
+    private void handleDisableTwoFactor() {
+        hideFeedback();
+        OperationResult result = twoFactorAuthService.disableCurrentUser(disableTwoFactorCodeField.getText());
+        if (result.isSuccess()) {
+            disableTwoFactorCodeField.clear();
+            clearTwoFactorPendingUi();
+            recoveryCodesArea.clear();
+            recoveryCodesBox.setManaged(false);
+            recoveryCodesBox.setVisible(false);
+        }
+        refreshTwoFactorStatus();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
     private void handleDeleteAccount() {
         hideFeedback();
 
@@ -302,6 +380,7 @@ public class ProfileSettingsController {
             roleField.clear();
             applyAccountOverview(new UserAccountService.AccountOverview("Inconnu", "Aucun role", "Non disponible", "Non disponible"));
             refreshFaceStatus();
+            refreshTwoFactorStatus();
             return;
         }
 
@@ -318,6 +397,7 @@ public class ProfileSettingsController {
 
         applyAccountOverview(accountService.getCurrentAccountOverview());
         refreshFaceStatus();
+        refreshTwoFactorStatus();
     }
 
     private void applyAccountOverview(UserAccountService.AccountOverview overview) {
@@ -435,6 +515,53 @@ public class ProfileSettingsController {
         }
         if (faceEnrolledAtLabel != null) {
             faceEnrolledAtLabel.setText("Saved on: " + faceStatus.enrolledAt());
+        }
+    }
+
+    private void refreshTwoFactorStatus() {
+        TwoFactorAuthService.TwoFactorStatus status = twoFactorAuthService.getCurrentStatus();
+        if (twoFactorStatusLabel != null) {
+            twoFactorStatusLabel.setText(status.enabled() ? "Status: Enabled" : "Status: Disabled");
+        }
+        if (twoFactorConfirmedAtLabel != null) {
+            twoFactorConfirmedAtLabel.setText("Confirmed on: " + status.confirmedAt());
+        }
+
+        if (status.setupPending() && status.pendingPayload() != null) {
+            applyTwoFactorPendingPayload(status.pendingPayload());
+        } else {
+            clearTwoFactorPendingUi();
+        }
+    }
+
+    private void applyTwoFactorPendingPayload(TwoFactorAuthService.SetupPayload payload) {
+        if (payload == null) {
+            clearTwoFactorPendingUi();
+            return;
+        }
+
+        if (twoFactorQrImageView != null) {
+            twoFactorQrImageView.setImage(payload.qrCodeImage());
+        }
+        if (twoFactorSecretLabel != null) {
+            twoFactorSecretLabel.setText(payload.secret());
+        }
+        if (twoFactorSetupBox != null) {
+            twoFactorSetupBox.setManaged(true);
+            twoFactorSetupBox.setVisible(true);
+        }
+    }
+
+    private void clearTwoFactorPendingUi() {
+        if (twoFactorQrImageView != null) {
+            twoFactorQrImageView.setImage(null);
+        }
+        if (twoFactorSecretLabel != null) {
+            twoFactorSecretLabel.setText("No secret generated yet.");
+        }
+        if (twoFactorSetupBox != null) {
+            twoFactorSetupBox.setManaged(false);
+            twoFactorSetupBox.setVisible(false);
         }
     }
 

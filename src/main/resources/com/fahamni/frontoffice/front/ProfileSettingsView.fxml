@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
@@ -187,8 +188,28 @@
 
                         <VBox spacing="6.0">
                             <Label text="Authenticator 2FA (TOTP)" styleClass="form-label"/>
-                            <Label text="Status: Disabled" styleClass="profile-inline-note"/>
-                            <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Start 2FA Setup"/>
+                            <Label fx:id="twoFactorStatusLabel" text="Status: Disabled" styleClass="profile-inline-note"/>
+                            <Label fx:id="twoFactorConfirmedAtLabel" text="Confirmed on: Never" styleClass="profile-inline-note"/>
+                            <Button onAction="#handleStartTwoFactorSetup" styleClass="profile-accent-button" text="Start 2FA Setup"/>
+                            <VBox fx:id="twoFactorSetupBox" managed="false" spacing="10.0" styleClass="profile-upload-row" visible="false">
+                                <Label text="Scan this QR code with Google Authenticator or Microsoft Authenticator." styleClass="profile-inline-note" wrapText="true"/>
+                                <ImageView fx:id="twoFactorQrImageView" fitHeight="220.0" fitWidth="220.0" pickOnBounds="true" preserveRatio="true"/>
+                                <Label text="Manual secret" styleClass="form-label"/>
+                                <Label fx:id="twoFactorSecretLabel" text="No secret generated yet." styleClass="profile-inline-note"/>
+                                <Label text="Enter the 6-digit code from your authenticator app." styleClass="profile-inline-note"/>
+                                <TextField fx:id="twoFactorCodeField" promptText="123456" styleClass="form-field"/>
+                                <Button onAction="#handleConfirmTwoFactor" styleClass="profile-accent-button" text="Confirm &amp; Enable"/>
+                            </VBox>
+                            <VBox fx:id="recoveryCodesBox" managed="false" spacing="8.0" visible="false">
+                                <Label text="Recovery Codes" styleClass="form-label"/>
+                                <TextArea fx:id="recoveryCodesArea" editable="false" prefRowCount="8" styleClass="text-area"/>
+                                <Label text="Copy these codes now. They are shown only once." styleClass="profile-inline-note" wrapText="true"/>
+                            </VBox>
+                            <VBox spacing="8.0">
+                                <Label text="Disable with current TOTP code or a recovery code" styleClass="profile-inline-note"/>
+                                <TextField fx:id="disableTwoFactorCodeField" promptText="Code to disable 2FA" styleClass="form-field"/>
+                                <Button onAction="#handleDisableTwoFactor" styleClass="profile-danger-inline-button" text="Disable 2FA"/>
+                            </VBox>
                         </VBox>
                     </VBox>
                 </StackPane>
