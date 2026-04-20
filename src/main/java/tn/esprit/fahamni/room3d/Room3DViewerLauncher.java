@@ -29,10 +29,39 @@ public final class Room3DViewerLauncher {
             Room3DApplication application = new Room3DApplication(previewData);
             activeApplication = application;
 
-            Thread renderThread = new Thread(() -> startApplication(application), "fahamni-room-3d");
+            Thread renderThread = new Thread(() -> startApplication(application, previewData), "fahamni-room-3d");
             renderThread.setDaemon(true);
             renderThread.setUncaughtExceptionHandler((thread, throwable) -> onApplicationClosed(application));
             renderThread.start();
+        }
+    }
+
+    public static Integer getActiveSelectedSeatId() {
+        synchronized (LOCK) {
+            return activeApplication == null ? null : activeApplication.getSelectedSeatId();
+        }
+    }
+
+    public static String getActiveSelectedSeatLabel() {
+        synchronized (LOCK) {
+            return activeApplication == null ? null : activeApplication.getSelectedSeatLabel();
+        }
+    }
+
+    public static boolean isActiveSelectionMode() {
+        synchronized (LOCK) {
+            return activeApplication != null && activeApplication.isSelectionMode();
+        }
+    }
+
+    public static void closeActiveViewer() {
+        Room3DApplication application;
+        synchronized (LOCK) {
+            application = activeApplication;
+        }
+
+        if (application != null) {
+            application.stop();
         }
     }
 
@@ -44,10 +73,10 @@ public final class Room3DViewerLauncher {
         }
     }
 
-    private static void startApplication(Room3DApplication application) {
+    private static void startApplication(Room3DApplication application, Room3DPreviewData previewData) {
         try {
             AppSettings settings = new AppSettings(true);
-            settings.setTitle("Fahamni - Apercu 3D de salle");
+            settings.setTitle(buildWindowTitle(previewData));
             settings.setResizable(true);
             settings.setResolution(1280, 720);
 
@@ -58,5 +87,12 @@ public final class Room3DViewerLauncher {
             onApplicationClosed(application);
             throw exception;
         }
+    }
+
+    private static String buildWindowTitle(Room3DPreviewData previewData) {
+        if (previewData != null && previewData.supportsSeatSelection()) {
+            return "Fahamni - Selection 3D de place";
+        }
+        return "Fahamni - Apercu 3D de salle";
     }
 }

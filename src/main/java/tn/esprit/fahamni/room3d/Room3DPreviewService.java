@@ -14,6 +14,10 @@ public class Room3DPreviewService {
     private final AdminPlaceService placeService = new AdminPlaceService();
 
     public Room3DPreviewData buildPreview(Salle salle, boolean preferGeneratedLayout) {
+        return buildPreview(salle, preferGeneratedLayout, Room3DViewMode.PREVIEW);
+    }
+
+    public Room3DPreviewData buildPreview(Salle salle, boolean preferGeneratedLayout, Room3DViewMode viewMode) {
         validateSalle(salle);
 
         List<Room3DPreviewData.SeatPreview> seats = preferGeneratedLayout
@@ -24,6 +28,28 @@ public class Room3DPreviewService {
             seats = generateVirtualSeats(salle);
         }
 
+        return createPreviewData(salle, viewMode, seats);
+    }
+
+    public Room3DPreviewData buildPreviewFromSeats(
+        Salle salle,
+        Room3DViewMode viewMode,
+        List<Room3DPreviewData.SeatPreview> seats
+    ) {
+        validateSalle(salle);
+
+        List<Room3DPreviewData.SeatPreview> effectiveSeats = seats == null || seats.isEmpty()
+            ? generateVirtualSeats(salle)
+            : List.copyOf(seats);
+
+        return createPreviewData(salle, viewMode, effectiveSeats);
+    }
+
+    private Room3DPreviewData createPreviewData(
+        Salle salle,
+        Room3DViewMode viewMode,
+        List<Room3DPreviewData.SeatPreview> seats
+    ) {
         return new Room3DPreviewData(
             salle.getNom(),
             salle.getBatiment(),
@@ -33,6 +59,7 @@ public class Room3DPreviewService {
             salle.getEtat(),
             salle.getCapacite(),
             salle.isAccesHandicape(),
+            viewMode,
             seats
         );
     }
@@ -50,10 +77,12 @@ public class Room3DPreviewService {
 
             return places.stream()
                 .map(place -> new Room3DPreviewData.SeatPreview(
+                    place.getIdPlace(),
                     place.getNumero(),
                     place.getRang(),
                     place.getColonne(),
-                    RoomSeatVisualState.fromPlaceStatus(place.getEtat())
+                    RoomSeatVisualState.fromPlaceStatus(place.getEtat()),
+                    false
                 ))
                 .toList();
         } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
@@ -80,10 +109,12 @@ public class Room3DPreviewService {
             int row = (index / columns) + 1;
             int column = (index % columns) + 1;
             seats.add(new Room3DPreviewData.SeatPreview(
+                0,
                 index + 1,
                 row,
                 column,
-                RoomSeatVisualState.AVAILABLE
+                RoomSeatVisualState.AVAILABLE,
+                false
             ));
         }
 
@@ -150,10 +181,12 @@ public class Room3DPreviewService {
         for (int index = 0; index < maxSeats; index++) {
             int[] position = positions.get(index);
             seats.add(new Room3DPreviewData.SeatPreview(
+                0,
                 index + 1,
                 position[0],
                 position[1],
-                RoomSeatVisualState.AVAILABLE
+                RoomSeatVisualState.AVAILABLE,
+                false
             ));
         }
 

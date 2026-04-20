@@ -1,5 +1,7 @@
 package tn.esprit.fahamni.room3d;
 
+import java.util.Locale;
+
 public enum RoomSeatVisualState {
     AVAILABLE("Disponible"),
     RESERVED("Reservee"),
@@ -21,12 +23,18 @@ public enum RoomSeatVisualState {
             return UNAVAILABLE;
         }
 
-        String normalizedStatus = status.trim().toLowerCase();
-        if ("disponible".equals(normalizedStatus)) {
+        String normalizedStatus = status.trim().toLowerCase(Locale.ROOT);
+        if ("disponible".equals(normalizedStatus) || normalizedStatus.contains("libre")) {
             return AVAILABLE;
+        }
+        if (normalizedStatus.contains("reserv")) {
+            return RESERVED;
         }
         if (normalizedStatus.contains("maintenance")) {
             return MAINTENANCE;
+        }
+        if (normalizedStatus.contains("indispon")) {
+            return UNAVAILABLE;
         }
         return UNAVAILABLE;
     }

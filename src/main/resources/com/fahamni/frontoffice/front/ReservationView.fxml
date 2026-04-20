@@ -157,6 +157,7 @@
                                 <Label text="Selection active" styleClass="reservation-infrastructure-kicker"/>
                                 <Label fx:id="sessionRoomPreviewTitleLabel" text="Choisissez une salle" wrapText="true" styleClass="reservation-preview-title"/>
                                 <Label fx:id="sessionRoomPreviewSubtitleLabel" text="La salle choisie apparaitra ici avec ses details principaux." wrapText="true" styleClass="section-subtitle"/>
+                                <Button fx:id="sessionRoomPreview3DButton" text="Voir la salle en 3D" disable="true" onAction="#handlePreviewSelectedRoom3D" styleClass="backoffice-secondary-button"/>
                             </VBox>
 
                             <FlowPane fx:id="sessionRoomFactsContainer" hgap="10.0" vgap="10.0" prefWrapLength="360.0" styleClass="reservation-room-facts-grid"/>

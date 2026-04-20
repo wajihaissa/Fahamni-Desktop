@@ -1,10 +1,17 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXMLLoader;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.SalleEquipement;
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.room3d.Room3DPreviewData;
+import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DViewMode;
+import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
+import tn.esprit.fahamni.room3d.RoomSeatVisualState;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
@@ -63,6 +70,7 @@ import java.util.stream.IntStream;
 
 import javafx.util.StringConverter;
 import javafx.scene.input.MouseEvent;
+import javafx.util.Duration;
 
 public class ReservationController {
 
@@ -79,6 +87,7 @@ public class ReservationController {
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final String SEAT_SELECTION_DIALOG_FXML = SceneManager.frontofficeView("SeatSelectionDialogView.fxml");
+    private static final int ROOM3D_SELECTION_REFRESH_MILLIS = 220;
     private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
         .mapToObj(value -> String.format("%02d", value))
         .toList();
@@ -92,6 +101,7 @@ public class ReservationController {
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
@@ -174,6 +184,9 @@ public class ReservationController {
 
     @FXML
     private Label sessionRoomPreviewSubtitleLabel;
+
+    @FXML
+    private Button sessionRoomPreview3DButton;
 
     @FXML
     private Label sessionRoomPreviewDescriptionLabel;
@@ -344,6 +357,20 @@ public class ReservationController {
     @FXML
     private void handleSessionModeChange() {
         updateOnsiteOptionsVisibility();
+    }
+
+    @FXML
+    private void handlePreviewSelectedRoom3D() {
+        hideFeedback();
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (selectedSalle == null) {
+            showFeedback("Choisissez une salle avant d'ouvrir l'apercu 3D.", false);
+            return;
+        }
+
+        Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(selectedSalle, false, Room3DViewMode.PREVIEW));
+        showFeedback("L'apercu 3D de la salle a ete ouvert dans une fenetre dediee.", true);
     }
 
     @FXML
@@ -1163,6 +1190,9 @@ public class ReservationController {
                 + " places | "
                 + formatOptionalText(selectedSalle.getLocalisation())
         );
+        if (sessionRoomPreview3DButton != null) {
+            sessionRoomPreview3DButton.setDisable(false);
+        }
         sessionRoomPreviewDescriptionLabel.setText(formatDescription(selectedSalle.getDescription()));
 
         sessionRoomFactsContainer.getChildren().setAll(
@@ -1180,6 +1210,9 @@ public class ReservationController {
         sessionRoomPreviewTitleLabel.setText("Salle indisponible sur ce creneau");
         sessionRoomPreviewSubtitleLabel.setText(reason == null ? "Choisissez une autre salle ou modifiez le creneau." : reason);
         sessionRoomPreviewDescriptionLabel.setText("Choisissez une autre salle ou changez la date, l'heure ou la duree.");
+        if (sessionRoomPreview3DButton != null) {
+            sessionRoomPreview3DButton.setDisable(true);
+        }
         sessionRoomFactsContainer.getChildren().clear();
         resetRoomFixedEquipmentPreview();
     }
@@ -1190,6 +1223,9 @@ public class ReservationController {
         sessionRoomPreviewTitleLabel.setText("Choisissez une salle");
         sessionRoomPreviewSubtitleLabel.setText("La salle choisie apparaitra ici avec ses details principaux.");
         sessionRoomPreviewDescriptionLabel.setText("Aucune salle selectionnee.");
+        if (sessionRoomPreview3DButton != null) {
+            sessionRoomPreview3DButton.setDisable(true);
+        }
         sessionRoomFactsContainer.getChildren().clear();
         resetRoomFixedEquipmentPreview();
     }
@@ -1720,6 +1756,20 @@ public class ReservationController {
             return Optional.empty();
         }
 
+        if (UserSession.isCurrentStudent()) {
+            Optional<SeatSelectionMode> seatSelectionMode = showSeatSelectionModeDialog();
+            if (seatSelectionMode.isEmpty()) {
+                return Optional.empty();
+            }
+            if (seatSelectionMode.get() == SeatSelectionMode.THREE_D) {
+                return showSeatSelection3DDialog(seance, seatOptions);
+            }
+        }
+
+        return showSeatSelection2DDialog(seance, seatOptions);
+    }
+
+    private Optional<Integer> showSeatSelection2DDialog(Seance seance, List<SeatSelectionOption> seatOptions) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(SEAT_SELECTION_DIALOG_FXML));
             Node content = loader.load();
@@ -1770,6 +1820,169 @@ public class ReservationController {
             );
             return Optional.empty();
         }
+    }
+
+    private Optional<SeatSelectionMode> showSeatSelectionModeDialog() {
+        Dialog<SeatSelectionMode> modeDialog = new Dialog<>();
+        DialogPane dialogPane = modeDialog.getDialogPane();
+        ButtonType twoDButton = new ButtonType("Plan 2D", ButtonBar.ButtonData.LEFT);
+        ButtonType threeDButton = new ButtonType("Vue 3D", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        modeDialog.setTitle("Mode de reservation");
+        dialogPane.getButtonTypes().setAll(twoDButton, threeDButton, cancelButton);
+
+        VBox content = new VBox(10.0);
+        Label title = new Label("Choisissez votre mode de selection de place");
+        title.getStyleClass().add("subsection-title");
+
+        Label copy = new Label(
+            "Plan 2D pour aller vite, ou vue 3D pour explorer la salle avant de choisir votre place."
+        );
+        copy.setWrapText(true);
+        copy.getStyleClass().add("reservation-section-copy");
+
+        Label detail = new Label(
+            "Le mode 3D ouvre une fenetre dediee avec la meme logique de disponibilite que le plan 2D."
+        );
+        detail.setWrapText(true);
+        detail.getStyleClass().add("reservation-section-copy");
+
+        content.getChildren().addAll(title, copy, detail);
+        dialogPane.setContent(content);
+        dialogPane.setPrefWidth(520.0);
+        applyCurrentTheme(dialogPane);
+
+        Button twoDDialogButton = (Button) dialogPane.lookupButton(twoDButton);
+        if (twoDDialogButton != null) {
+            twoDDialogButton.getStyleClass().add("backoffice-secondary-button");
+        }
+        Button threeDDialogButton = (Button) dialogPane.lookupButton(threeDButton);
+        if (threeDDialogButton != null) {
+            threeDDialogButton.getStyleClass().add("backoffice-primary-button");
+        }
+        Button cancelDialogButton = (Button) dialogPane.lookupButton(cancelButton);
+        if (cancelDialogButton != null) {
+            cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
+        }
+
+        modeDialog.setResultConverter(buttonType -> {
+            if (buttonType == threeDButton) {
+                return SeatSelectionMode.THREE_D;
+            }
+            if (buttonType == twoDButton) {
+                return SeatSelectionMode.TWO_D;
+            }
+            return null;
+        });
+
+        return modeDialog.showAndWait();
+    }
+
+    private Optional<Integer> showSeatSelection3DDialog(Seance seance, List<SeatSelectionOption> seatOptions) {
+        Salle salle = resolveSalleById(seance == null ? null : seance.getSalleId());
+        if (salle == null) {
+            showReservationActionFeedback("Impossible de charger la salle liee a cette seance pour la selection 3D.", false);
+            return Optional.empty();
+        }
+
+        Room3DPreviewData previewData = buildSeatSelection3DPreview(salle, seatOptions);
+        Room3DViewerLauncher.showPreview(previewData);
+
+        Dialog<Integer> selectionDialog = new Dialog<>();
+        DialogPane dialogPane = selectionDialog.getDialogPane();
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButtonType = new ButtonType("Confirmer la place 3D", ButtonBar.ButtonData.OK_DONE);
+
+        selectionDialog.setTitle("Choix de place en 3D");
+        dialogPane.getButtonTypes().setAll(cancelButton, confirmButtonType);
+
+        VBox content = new VBox(12.0);
+        Label title = new Label("Vue 3D ouverte pour " + formatOptionalText(salle.getNom()));
+        title.getStyleClass().add("subsection-title");
+
+        Label intro = new Label(
+            "Cliquez dans la fenetre 3D sur une place libre, puis revenez ici pour confirmer la reservation."
+        );
+        intro.setWrapText(true);
+        intro.getStyleClass().add("reservation-section-copy");
+
+        Label statusLabel = new Label("Fenetre 3D active. Navigation libre disponible.");
+        statusLabel.getStyleClass().add("workspace-chip");
+
+        Label selectedSeatLabel = new Label("Aucune place selectionnee dans la vue 3D.");
+        selectedSeatLabel.setWrapText(true);
+        selectedSeatLabel.getStyleClass().add("reservation-section-copy");
+
+        Label helpLabel = new Label(
+            "La vue 3D reutilise les places configurees de la salle et grise celles qui sont deja occupees ou indisponibles."
+        );
+        helpLabel.setWrapText(true);
+        helpLabel.getStyleClass().add("reservation-section-copy");
+
+        content.getChildren().addAll(title, intro, statusLabel, selectedSeatLabel, helpLabel);
+        dialogPane.setContent(content);
+        dialogPane.setPrefWidth(560.0);
+        applyCurrentTheme(dialogPane);
+
+        Button confirmButton = (Button) dialogPane.lookupButton(confirmButtonType);
+        if (confirmButton != null) {
+            confirmButton.getStyleClass().add("backoffice-primary-button");
+            confirmButton.setDisable(true);
+        }
+        Button cancelDialogButton = (Button) dialogPane.lookupButton(cancelButton);
+        if (cancelDialogButton != null) {
+            cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
+        }
+
+        Timeline refreshTimeline = new Timeline(new KeyFrame(Duration.millis(ROOM3D_SELECTION_REFRESH_MILLIS), event -> {
+            Integer selectedSeatId = Room3DViewerLauncher.getActiveSelectedSeatId();
+            String selectedSeat = Room3DViewerLauncher.getActiveSelectedSeatLabel();
+            boolean selectionViewerActive = Room3DViewerLauncher.isActiveSelectionMode();
+
+            if (confirmButton != null) {
+                confirmButton.setDisable(selectedSeatId == null);
+            }
+            selectedSeatLabel.setText(
+                selectedSeat == null || selectedSeat.isBlank()
+                    ? "Aucune place selectionnee dans la vue 3D."
+                    : "Selection 3D active: " + selectedSeat
+            );
+            statusLabel.setText(
+                selectionViewerActive
+                    ? "Fenetre 3D active. Cliquez sur une place libre puis confirmez ici."
+                    : "La fenetre 3D a ete fermee. Vous pouvez annuler puis relancer la selection si besoin."
+            );
+        }));
+        refreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        refreshTimeline.play();
+
+        selectionDialog.setOnHidden(event -> {
+            refreshTimeline.stop();
+            Room3DViewerLauncher.closeActiveViewer();
+        });
+        selectionDialog.setResultConverter(buttonType ->
+            buttonType == confirmButtonType ? Room3DViewerLauncher.getActiveSelectedSeatId() : null
+        );
+
+        return selectionDialog.showAndWait();
+    }
+
+    private Room3DPreviewData buildSeatSelection3DPreview(Salle salle, List<SeatSelectionOption> seatOptions) {
+        List<Room3DPreviewData.SeatPreview> seats = seatOptions.stream()
+            .map(option -> new Room3DPreviewData.SeatPreview(
+                option.placeId(),
+                option.place() == null ? Math.max(1, option.placeId()) : option.place().getNumero(),
+                option.row(),
+                option.column(),
+                option.reserved()
+                    ? RoomSeatVisualState.RESERVED
+                    : RoomSeatVisualState.fromPlaceStatus(option.place() == null ? null : option.place().getEtat()),
+                option.selectable()
+            ))
+            .toList();
+
+        return room3DPreviewService.buildPreviewFromSeats(salle, Room3DViewMode.SELECTION, seats);
     }
 
     private void loadStudentReservations() {
@@ -2915,6 +3128,11 @@ public class ReservationController {
     }
 
     private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card, boolean selectable) {
+    }
+
+    private enum SeatSelectionMode {
+        TWO_D,
+        THREE_D
     }
 
     private record RoomSelectionControls(VBox card, Label statusChip) {

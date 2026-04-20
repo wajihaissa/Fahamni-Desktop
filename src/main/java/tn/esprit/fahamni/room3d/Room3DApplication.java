@@ -21,14 +21,24 @@ import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.collision.CollisionResults;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 public class Room3DApplication extends SimpleApplication {
 
     private static final String SELECT_SEAT_MAPPING = "select-room-seat";
+    private static final String QUICK_SELECT_SEAT_MAPPING = "quick-select-room-seat";
     private static final String SEAT_LABEL_KEY = "seatLabel";
     private static final String SEAT_STATUS_KEY = "seatStatus";
+    private static final float CLICK_DRAG_THRESHOLD = 8f;
+    private static final float HOVERED_SEAT_SCALE = 1.03f;
+    private static final float SELECTED_SEAT_SCALE = 1.08f;
+    private static final float HUD_SIDE_MARGIN = 26f;
+    private static final float HUD_TOP_MARGIN = 22f;
+    private static final float HUD_BOTTOM_MARGIN = 26f;
+    private static final float HUD_BLOCK_GAP = 10f;
 
     private static final float WALL_HEIGHT = 3.8f;
     private static final float CEILING_THICKNESS = 0.05f;
@@ -40,7 +50,10 @@ public class Room3DApplication extends SimpleApplication {
     private BitmapFont hudFont;
     private BitmapText titleText;
     private BitmapText summaryText;
+    private BitmapText selectionText;
+    private BitmapText legendText;
     private BitmapText interactionHintText;
+    private BitmapText hoverText;
     private boolean initialized;
 
     private Material floorMaterial;
@@ -57,33 +70,30 @@ public class Room3DApplication extends SimpleApplication {
     private Material reservedSeatMaterial;
     private Material maintenanceSeatMaterial;
     private Material unavailableSeatMaterial;
+    private Material hoverIndicatorMaterial;
+    private Material selectedIndicatorMaterial;
+
+    private final Map<Node, SeatVisual> seatVisuals = new HashMap<>();
+    private Node hoveredSeatNode;
+    private Node selectedSeatNode;
+    private Vector2f primaryClickStart;
+    private boolean primarySelectionArmed;
+    private volatile Integer selectedSeatIdSnapshot;
+    private volatile String selectedSeatLabelSnapshot;
 
     private final ActionListener selectionListener = (name, isPressed, tpf) -> {
-        if (!SELECT_SEAT_MAPPING.equals(name) || !isPressed || sceneRoot == null) {
+        if (sceneRoot == null) {
             return;
         }
 
-        CollisionResults collisions = new CollisionResults();
-        Vector2f cursorPosition = inputManager.getCursorPosition().clone();
-        Vector3f rayOrigin = cam.getWorldCoordinates(cursorPosition, 0f);
-        Vector3f rayDirection = cam.getWorldCoordinates(cursorPosition, 1f).subtractLocal(rayOrigin).normalizeLocal();
-        sceneRoot.collideWith(new Ray(rayOrigin, rayDirection), collisions);
-
-        for (int index = 0; index < collisions.size(); index++) {
-            Spatial spatial = collisions.getCollision(index).getGeometry();
-            String seatLabel = resolveUserData(spatial, SEAT_LABEL_KEY);
-            if (seatLabel == null) {
-                continue;
-            }
-
-            String seatStatus = resolveUserData(spatial, SEAT_STATUS_KEY);
-            summaryText.setText(seatLabel + " | Etat: " + (seatStatus == null ? "inconnu" : seatStatus));
-            updateHudPositions();
+        if (SELECT_SEAT_MAPPING.equals(name)) {
+            handlePrimarySeatInteraction(isPressed);
             return;
         }
 
-        summaryText.setText(buildDefaultSummary());
-        updateHudPositions();
+        if (QUICK_SELECT_SEAT_MAPPING.equals(name) && isPressed) {
+            selectSeat(findSeatNodeAtCursor());
+        }
     };
 
     public Room3DApplication(Room3DPreviewData previewData) {
@@ -100,12 +110,18 @@ public class Room3DApplication extends SimpleApplication {
         flyCam.setMoveSpeed(14f);
         flyCam.setDragToRotate(true);
 
-        inputManager.addMapping(SELECT_SEAT_MAPPING, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
-        inputManager.addListener(selectionListener, SELECT_SEAT_MAPPING);
+        inputManager.addMapping(SELECT_SEAT_MAPPING, new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
+        inputManager.addMapping(QUICK_SELECT_SEAT_MAPPING, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
+        inputManager.addListener(selectionListener, SELECT_SEAT_MAPPING, QUICK_SELECT_SEAT_MAPPING);
 
         hudFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         initialiseMaterials();
         rebuildScene();
+    }
+
+    @Override
+    public void simpleUpdate(float tpf) {
+        updateHoveredSeat();
     }
 
     @Override
@@ -127,11 +143,30 @@ public class Room3DApplication extends SimpleApplication {
         }
     }
 
+    public boolean isSelectionMode() {
+        return previewData != null && previewData.supportsSeatSelection();
+    }
+
+    public Integer getSelectedSeatId() {
+        return selectedSeatIdSnapshot;
+    }
+
+    public String getSelectedSeatLabel() {
+        return selectedSeatLabelSnapshot;
+    }
+
     private void rebuildScene() {
         if (sceneRoot != null) {
             rootNode.detachChild(sceneRoot);
         }
         guiNode.detachAllChildren();
+        seatVisuals.clear();
+        hoveredSeatNode = null;
+        selectedSeatNode = null;
+        primaryClickStart = null;
+        primarySelectionArmed = false;
+        selectedSeatIdSnapshot = null;
+        selectedSeatLabelSnapshot = null;
 
         initialiseHud();
 
@@ -152,9 +187,11 @@ public class Room3DApplication extends SimpleApplication {
 
         titleText.setText(previewData.roomName());
         summaryText.setText(buildDefaultSummary());
-        interactionHintText.setText(
-            "Clic droit sur une place pour ses details | Maintenez clic gauche pour orienter la camera | ZQSD/WASD pour vous deplacer"
-        );
+        selectionText.setText(buildDefaultSelectionText());
+        selectionText.setColor(createHudNeutralColor());
+        legendText.setText(buildLegendText());
+        interactionHintText.setText(buildInteractionHintText());
+        hideHoverText();
         updateHudPositions();
     }
 
@@ -167,24 +204,81 @@ public class Room3DApplication extends SimpleApplication {
         summaryText.setSize(hudFont.getCharSet().getRenderedSize());
         summaryText.setColor(new ColorRGBA(0.12f, 0.18f, 0.28f, 1f));
 
+        selectionText = new BitmapText(hudFont);
+        selectionText.setSize(hudFont.getCharSet().getRenderedSize() * 0.98f);
+        selectionText.setColor(createHudNeutralColor());
+
+        legendText = new BitmapText(hudFont);
+        legendText.setSize(hudFont.getCharSet().getRenderedSize() * 0.86f);
+        legendText.setColor(new ColorRGBA(0.23f, 0.29f, 0.38f, 1f));
+
         interactionHintText = new BitmapText(hudFont);
         interactionHintText.setSize(hudFont.getCharSet().getRenderedSize() * 0.9f);
         interactionHintText.setColor(new ColorRGBA(0.28f, 0.34f, 0.44f, 1f));
 
+        hoverText = new BitmapText(hudFont);
+        hoverText.setSize(hudFont.getCharSet().getRenderedSize() * 0.92f);
+        hoverText.setColor(ColorRGBA.White);
+        hoverText.setCullHint(Spatial.CullHint.Always);
+
         guiNode.attachChild(titleText);
         guiNode.attachChild(summaryText);
+        guiNode.attachChild(selectionText);
+        guiNode.attachChild(legendText);
         guiNode.attachChild(interactionHintText);
+        guiNode.attachChild(hoverText);
     }
 
     private void updateHudPositions() {
-        if (titleText == null || summaryText == null || interactionHintText == null) {
+        if (titleText == null || summaryText == null || selectionText == null
+            || legendText == null || interactionHintText == null || hoverText == null) {
             return;
         }
 
-        float topMargin = cam.getHeight() - 18f;
-        titleText.setLocalTranslation(18f, topMargin, 0f);
-        summaryText.setLocalTranslation(18f, topMargin - titleText.getLineHeight() - 8f, 0f);
-        interactionHintText.setLocalTranslation(18f, 24f + interactionHintText.getLineHeight(), 0f);
+        float topBaseline = cam.getHeight() - HUD_TOP_MARGIN;
+        positionHudTopRight(titleText, topBaseline);
+        positionHudTopRight(
+            summaryText,
+            titleText.getLocalTranslation().y
+                - estimateTextBlockHeight(titleText.getText(), titleText.getLineHeight())
+                - HUD_BLOCK_GAP
+        );
+
+        interactionHintText.setLocalTranslation(
+            HUD_SIDE_MARGIN,
+            HUD_BOTTOM_MARGIN + estimateTextBlockHeight(interactionHintText.getText(), interactionHintText.getLineHeight()),
+            0f
+        );
+        selectionText.setLocalTranslation(
+            HUD_SIDE_MARGIN,
+            interactionHintText.getLocalTranslation().y
+                + estimateTextBlockHeight(selectionText.getText(), selectionText.getLineHeight())
+                + HUD_BLOCK_GAP,
+            0f
+        );
+        positionHudBottomRight(
+            legendText,
+            HUD_BOTTOM_MARGIN + estimateTextBlockHeight(legendText.getText(), legendText.getLineHeight())
+        );
+        updateHoverTextPosition();
+    }
+
+    private void positionHudTopRight(BitmapText text, float baselineY) {
+        if (text == null) {
+            return;
+        }
+
+        float textX = Math.max(HUD_SIDE_MARGIN, cam.getWidth() - text.getLineWidth() - HUD_SIDE_MARGIN);
+        text.setLocalTranslation(textX, baselineY, 0f);
+    }
+
+    private void positionHudBottomRight(BitmapText text, float baselineY) {
+        if (text == null) {
+            return;
+        }
+
+        float textX = Math.max(HUD_SIDE_MARGIN, cam.getWidth() - text.getLineWidth() - HUD_SIDE_MARGIN);
+        text.setLocalTranslation(textX, baselineY, 0f);
     }
 
     private void initialiseMaterials() {
@@ -202,6 +296,8 @@ public class Room3DApplication extends SimpleApplication {
         reservedSeatMaterial = createLitMaterial(new ColorRGBA(0.88f, 0.47f, 0.25f, 1f));
         maintenanceSeatMaterial = createLitMaterial(new ColorRGBA(0.83f, 0.68f, 0.23f, 1f));
         unavailableSeatMaterial = createLitMaterial(new ColorRGBA(0.53f, 0.56f, 0.62f, 1f));
+        hoverIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.18f, 0.63f, 0.92f, 1f));
+        selectedIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.07f, 0.41f, 0.92f, 1f));
     }
 
     private Material createLitMaterial(ColorRGBA baseColor) {
@@ -477,11 +573,24 @@ public class Room3DApplication extends SimpleApplication {
             seatNode.attachChild(deskNode);
         }
 
+        Geometry interactionIndicator = createSeatIndicator(seat.number());
+        seatNode.attachChild(interactionIndicator);
+        seatVisuals.put(seatNode, new SeatVisual(seat, interactionIndicator));
+
         return seatNode;
     }
 
     private Geometry createChairLeg(String name, float x, float z) {
         return createSimpleBox(name, 0.03f, 0.18f, 0.03f, metalMaterial, new Vector3f(x, 0.17f, z));
+    }
+
+    private Geometry createSeatIndicator(int seatNumber) {
+        Geometry indicator = new Geometry("seat-indicator-" + seatNumber, new Box(0.52f, 0.012f, 0.52f));
+        indicator.setMaterial(hoverIndicatorMaterial);
+        indicator.setShadowMode(RenderQueue.ShadowMode.Off);
+        indicator.setLocalTranslation(0f, 0.015f, 0f);
+        indicator.setCullHint(Spatial.CullHint.Always);
+        return indicator;
     }
 
     private Node createSeatDeskNode(int seatNumber, String disposition) {
@@ -705,6 +814,21 @@ public class Room3DApplication extends SimpleApplication {
         flyCam.setMoveSpeed(Math.max(10f, maxDimension * 1.2f));
     }
 
+    private void updateHoveredSeat() {
+        if (sceneRoot == null) {
+            return;
+        }
+
+        if (primarySelectionArmed) {
+            setHoveredSeat(null);
+            return;
+        }
+
+        Node hoveredSeat = findSeatNodeAtCursor();
+        setHoveredSeat(hoveredSeat);
+        updateHoverTextPosition();
+    }
+
     private LayoutMetrics buildLayoutMetrics(Room3DPreviewData previewData) {
         String disposition = normalize(previewData.disposition());
 
@@ -734,10 +858,48 @@ public class Room3DApplication extends SimpleApplication {
         return previewData.summaryLine()
             + " | Disposition: "
             + previewData.disposition()
-            + " | Etat: "
+            + "\nEtat: "
             + previewData.roomStatus()
             + " | Acces PMR: "
             + (previewData.accessible() ? "oui" : "non");
+    }
+
+    private String buildDefaultSelectionText() {
+        if (previewData.supportsSeatSelection()) {
+            return "Selection: aucune | Choisissez une place libre pour preparer la reservation 3D.";
+        }
+        return "Selection: aucune | Cliquez sur une place pour l'epingler dans le panneau d'information.";
+    }
+
+    private String buildLegendText() {
+        return "Legende places"
+            + "\nVert: "
+            + countSeats(RoomSeatVisualState.AVAILABLE)
+            + " disponibles | Orange: "
+            + countSeats(RoomSeatVisualState.RESERVED)
+            + " reservees"
+            + "\nJaune: "
+            + countSeats(RoomSeatVisualState.MAINTENANCE)
+            + " maintenance | Gris: "
+            + countSeats(RoomSeatVisualState.UNAVAILABLE)
+            + " indisponibles";
+    }
+
+    private String buildInteractionHintText() {
+        if (previewData.supportsSeatSelection()) {
+            return "Survol: apercu | Clic: choisir une place libre | Clic vide: reinitialiser | Glisser: camera | ZQSD/WASD: deplacement";
+        }
+        return "Survol: apercu | Clic: selection d'information | Clic vide: reinitialiser | Glisser: camera | ZQSD/WASD: deplacement";
+    }
+
+    private int countSeats(RoomSeatVisualState state) {
+        int count = 0;
+        for (Room3DPreviewData.SeatPreview seat : previewData.seats()) {
+            if (seat.state() == state) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private Geometry createSimpleBox(String name, float halfWidth, float halfHeight, float halfDepth,
@@ -749,20 +911,274 @@ public class Room3DApplication extends SimpleApplication {
         return geometry;
     }
 
-    private String resolveUserData(Spatial spatial, String key) {
+    private void handlePrimarySeatInteraction(boolean isPressed) {
+        if (isPressed) {
+            primarySelectionArmed = true;
+            primaryClickStart = inputManager.getCursorPosition().clone();
+            return;
+        }
+
+        Vector2f clickStart = primaryClickStart;
+        primarySelectionArmed = false;
+        primaryClickStart = null;
+        if (clickStart == null) {
+            return;
+        }
+
+        float dragDistance = clickStart.distance(inputManager.getCursorPosition());
+        if (dragDistance > CLICK_DRAG_THRESHOLD) {
+            return;
+        }
+
+        selectSeat(findSeatNodeAtCursor());
+    }
+
+    private Node findSeatNodeAtCursor() {
+        if (sceneRoot == null) {
+            return null;
+        }
+
+        CollisionResults collisions = new CollisionResults();
+        Vector2f cursorPosition = inputManager.getCursorPosition().clone();
+        Vector3f rayOrigin = cam.getWorldCoordinates(cursorPosition, 0f);
+        Vector3f rayDirection = cam.getWorldCoordinates(cursorPosition, 1f).subtractLocal(rayOrigin).normalizeLocal();
+        sceneRoot.collideWith(new Ray(rayOrigin, rayDirection), collisions);
+
+        for (int index = 0; index < collisions.size(); index++) {
+            Node seatNode = resolveSeatNode(collisions.getCollision(index).getGeometry());
+            if (seatNode != null) {
+                return seatNode;
+            }
+        }
+
+        return null;
+    }
+
+    private Node resolveSeatNode(Spatial spatial) {
         Spatial current = spatial;
         while (current != null) {
-            String value = current.getUserData(key);
-            if (value != null) {
-                return value;
+            if (current instanceof Node node && seatVisuals.containsKey(node)) {
+                return node;
             }
             current = current.getParent();
         }
         return null;
     }
 
+    private void setHoveredSeat(Node seatNode) {
+        if (hoveredSeatNode == seatNode) {
+            updateHoverText(seatNode);
+            return;
+        }
+
+        Node previousHoveredSeat = hoveredSeatNode;
+        hoveredSeatNode = seatNode;
+        refreshSeatVisual(previousHoveredSeat);
+        refreshSeatVisual(hoveredSeatNode);
+        updateHoverText(hoveredSeatNode);
+    }
+
+    private void selectSeat(Node seatNode) {
+        if (seatNode != null && previewData.supportsSeatSelection() && !isSeatSelectable(seatNode)) {
+            Room3DPreviewData.SeatPreview seat = resolveSeatPreview(seatNode);
+            Node previousSelectedSeat = selectedSeatNode;
+            selectedSeatNode = null;
+            refreshSeatVisual(previousSelectedSeat);
+            refreshSeatVisual(hoveredSeatNode);
+            selectedSeatIdSnapshot = null;
+            selectedSeatLabelSnapshot = null;
+            selectionText.setText(buildUnavailableSelectionText(seat));
+            selectionText.setColor(resolveSeatHudColor(seat == null ? RoomSeatVisualState.UNAVAILABLE : seat.state()));
+            updateHudPositions();
+            return;
+        }
+
+        Node previousSelectedSeat = selectedSeatNode;
+        selectedSeatNode = seatNode != null && seatNode == selectedSeatNode ? null : seatNode;
+        refreshSeatVisual(previousSelectedSeat);
+        refreshSeatVisual(selectedSeatNode);
+        refreshSeatVisual(hoveredSeatNode);
+        updateSelectionText();
+    }
+
+    private void refreshSeatVisual(Node seatNode) {
+        if (seatNode == null) {
+            return;
+        }
+
+        SeatVisual seatVisual = seatVisuals.get(seatNode);
+        if (seatVisual == null) {
+            return;
+        }
+
+        boolean selected = seatNode == selectedSeatNode;
+        boolean hovered = seatNode == hoveredSeatNode;
+
+        if (!selected && !hovered) {
+            seatNode.setLocalScale(1f);
+            seatVisual.indicator().setCullHint(Spatial.CullHint.Always);
+            return;
+        }
+
+        seatVisual.indicator().setCullHint(Spatial.CullHint.Inherit);
+        if (selected) {
+            seatNode.setLocalScale(SELECTED_SEAT_SCALE);
+            seatVisual.indicator().setMaterial(selectedIndicatorMaterial);
+            return;
+        }
+
+        seatNode.setLocalScale(HOVERED_SEAT_SCALE);
+        seatVisual.indicator().setMaterial(hoverIndicatorMaterial);
+    }
+
+    private void updateSelectionText() {
+        if (selectionText == null) {
+            return;
+        }
+
+        if (selectedSeatNode == null) {
+            selectionText.setText(buildDefaultSelectionText());
+            selectionText.setColor(createHudNeutralColor());
+            selectedSeatIdSnapshot = null;
+            selectedSeatLabelSnapshot = null;
+            updateHudPositions();
+            return;
+        }
+
+        SeatVisual seatVisual = seatVisuals.get(selectedSeatNode);
+        if (seatVisual == null) {
+            selectionText.setText(buildDefaultSelectionText());
+            selectionText.setColor(createHudNeutralColor());
+            selectedSeatIdSnapshot = null;
+            selectedSeatLabelSnapshot = null;
+            updateHudPositions();
+            return;
+        }
+
+        Room3DPreviewData.SeatPreview seat = seatVisual.seat();
+        if (previewData.supportsSeatSelection() && seat.selectable()) {
+            selectionText.setText("Choix 3D: " + seat.label() + " | Etat: " + seat.state().displayLabel());
+        } else {
+            selectionText.setText("Selection: " + seat.label() + " | Etat: " + seat.state().displayLabel());
+        }
+        selectionText.setColor(resolveSeatHudColor(seat.state()));
+        updateSelectionSnapshot(seat);
+        updateHudPositions();
+    }
+
+    private void updateHoverText(Node seatNode) {
+        if (hoverText == null) {
+            return;
+        }
+
+        if (seatNode == null) {
+            hideHoverText();
+            return;
+        }
+
+        SeatVisual seatVisual = seatVisuals.get(seatNode);
+        if (seatVisual == null) {
+            hideHoverText();
+            return;
+        }
+
+        Room3DPreviewData.SeatPreview seat = seatVisual.seat();
+        hoverText.setText(seat.label() + "\nEtat: " + seat.state().displayLabel());
+        hoverText.setColor(resolveSeatHudColor(seat.state()));
+        hoverText.setCullHint(Spatial.CullHint.Inherit);
+        updateHoverTextPosition();
+    }
+
+    private void hideHoverText() {
+        if (hoverText == null) {
+            return;
+        }
+
+        hoverText.setText("");
+        hoverText.setCullHint(Spatial.CullHint.Always);
+    }
+
+    private void updateHoverTextPosition() {
+        if (hoverText == null || hoverText.getCullHint() == Spatial.CullHint.Always || inputManager == null) {
+            return;
+        }
+
+        Vector2f cursorPosition = inputManager.getCursorPosition();
+        float tooltipWidth = hoverText.getLineWidth();
+        float tooltipHeight = estimateTextBlockHeight(hoverText.getText(), hoverText.getLineHeight());
+        float tooltipX = Math.max(18f, Math.min(cam.getWidth() - tooltipWidth - 18f, cursorPosition.x + 18f));
+        float tooltipY = cursorPosition.y + tooltipHeight + 14f;
+        if (tooltipY > cam.getHeight() - 18f) {
+            tooltipY = cursorPosition.y - 12f;
+        }
+        tooltipY = Math.max(tooltipHeight + 18f, Math.min(cam.getHeight() - 18f, tooltipY));
+        hoverText.setLocalTranslation(tooltipX, tooltipY, 0f);
+    }
+
+    private float estimateTextBlockHeight(String text, float lineHeight) {
+        if (text == null || text.isEmpty()) {
+            return lineHeight;
+        }
+
+        int lineCount = 1;
+        for (int index = 0; index < text.length(); index++) {
+            if (text.charAt(index) == '\n') {
+                lineCount++;
+            }
+        }
+        return lineCount * lineHeight;
+    }
+
+    private ColorRGBA resolveSeatHudColor(RoomSeatVisualState state) {
+        if (state == null) {
+            return new ColorRGBA(0.5f, 0.54f, 0.62f, 1f);
+        }
+
+        return switch (state) {
+            case AVAILABLE -> new ColorRGBA(0.16f, 0.58f, 0.34f, 1f);
+            case RESERVED -> new ColorRGBA(0.86f, 0.43f, 0.18f, 1f);
+            case MAINTENANCE -> new ColorRGBA(0.78f, 0.63f, 0.16f, 1f);
+            case UNAVAILABLE -> new ColorRGBA(0.47f, 0.5f, 0.57f, 1f);
+        };
+    }
+
+    private ColorRGBA createHudNeutralColor() {
+        return new ColorRGBA(0.12f, 0.18f, 0.28f, 1f);
+    }
+
+    private Room3DPreviewData.SeatPreview resolveSeatPreview(Node seatNode) {
+        SeatVisual seatVisual = seatVisuals.get(seatNode);
+        return seatVisual == null ? null : seatVisual.seat();
+    }
+
+    private boolean isSeatSelectable(Node seatNode) {
+        Room3DPreviewData.SeatPreview seat = resolveSeatPreview(seatNode);
+        return seat != null && seat.selectable();
+    }
+
+    private String buildUnavailableSelectionText(Room3DPreviewData.SeatPreview seat) {
+        if (seat == null) {
+            return "Selection impossible | Cette place ne peut pas etre reservee dans la vue 3D actuelle.";
+        }
+        return seat.label() + " | Etat: " + seat.state().displayLabel() + " | Selection impossible";
+    }
+
+    private void updateSelectionSnapshot(Room3DPreviewData.SeatPreview seat) {
+        if (seat == null || !previewData.supportsSeatSelection() || !seat.selectable() || !seat.hasPersistentId()) {
+            selectedSeatIdSnapshot = null;
+            selectedSeatLabelSnapshot = null;
+            return;
+        }
+
+        selectedSeatIdSnapshot = seat.seatId();
+        selectedSeatLabelSnapshot = seat.label();
+    }
+
     private String normalize(String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private record SeatVisual(Room3DPreviewData.SeatPreview seat, Geometry indicator) {
     }
 
     private record LayoutMetrics(
