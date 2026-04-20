@@ -3,6 +3,7 @@ package tn.esprit.fahamni.services;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import tn.esprit.fahamni.Models.AdminUser;
+import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserInputValidator;
@@ -17,7 +18,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AdminUserService {
+public class AdminUserService implements IServices<AdminUser> {
 
     private final ObservableList<AdminUser> users = FXCollections.observableArrayList();
     private final Connection connection;
@@ -136,6 +137,26 @@ public class AdminUserService {
         return OperationResult.success("Utilisateur ajoute avec succes.");
     }
 
+    @Override
+    public void add(AdminUser entity) throws SQLException {
+        if (entity == null) {
+            throw new SQLException("Utilisateur invalide.");
+        }
+
+        OperationResult result = createUser(
+            entity.getFullName(),
+            entity.getEmail(),
+            "Temp1234",
+            "Temp1234",
+            entity.getRole(),
+            entity.getStatus()
+        );
+
+        if (!result.isSuccess()) {
+            throw new SQLException(result.getMessage());
+        }
+    }
+
     public OperationResult updateUser(AdminUser user, String fullName, String email, String role, String status) {
         if (user == null) {
             return OperationResult.failure("Selectionnez un utilisateur a mettre a jour.");
@@ -193,6 +214,25 @@ public class AdminUserService {
         return OperationResult.success("Utilisateur mis a jour (nom, email, role et statut).");
     }
 
+    @Override
+    public void update(AdminUser entity) throws SQLException {
+        if (entity == null) {
+            throw new SQLException("Utilisateur invalide.");
+        }
+
+        OperationResult result = updateUser(
+            entity,
+            entity.getFullName(),
+            entity.getEmail(),
+            entity.getRole(),
+            entity.getStatus()
+        );
+
+        if (!result.isSuccess()) {
+            throw new SQLException(result.getMessage());
+        }
+    }
+
     public OperationResult deleteUser(AdminUser user) {
         if (user == null) {
             return OperationResult.failure("Selectionnez un utilisateur a supprimer.");
@@ -218,6 +258,18 @@ public class AdminUserService {
 
         user.setStatus("Suspended");
         return OperationResult.success("Utilisateur suspendu.");
+    }
+
+    @Override
+    public void delete(AdminUser entity) throws SQLException {
+        if (entity == null) {
+            throw new SQLException("Utilisateur invalide.");
+        }
+
+        OperationResult result = deleteUser(entity);
+        if (!result.isSuccess()) {
+            throw new SQLException(result.getMessage());
+        }
     }
 
     public OperationResult activateUser(AdminUser user) {
@@ -260,6 +312,15 @@ public class AdminUserService {
             }
         }
         return pendingUsers;
+    }
+
+    @Override
+    public List<AdminUser> getAll() throws SQLException {
+        OperationResult result = refreshUsers();
+        if (!result.isSuccess()) {
+            throw new SQLException(result.getMessage());
+        }
+        return new ArrayList<>(users);
     }
 
     private String inferRole(String roles) {
