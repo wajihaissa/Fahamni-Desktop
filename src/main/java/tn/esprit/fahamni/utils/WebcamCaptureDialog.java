@@ -50,10 +50,6 @@ public final class WebcamCaptureDialog {
                 return new CaptureResult(null, "Aucune webcam detectee sur cette machine.");
             }
 
-            Dimension preferredSize = WebcamResolution.VGA.getSize();
-            webcam.setViewSize(preferredSize);
-            webcam.open(true);
-
             ImageView preview = new ImageView();
             preview.setFitWidth(460);
             preview.setFitHeight(320);
@@ -85,6 +81,7 @@ public final class WebcamCaptureDialog {
             captureButton.getStyleClass().add("profile-accent-button");
             captureButton.setDefaultButton(true);
             captureButton.setMaxWidth(Double.MAX_VALUE);
+            captureButton.setDisable(true);
 
             Button cancelButton = new Button("Annuler");
             cancelButton.getStyleClass().add("profile-soft-button");
@@ -135,6 +132,7 @@ public final class WebcamCaptureDialog {
 
             BufferedImage[] latestFrame = new BufferedImage[1];
             byte[][] resultHolder = new byte[1][];
+            boolean[] dialogClosed = new boolean[1];
 
             executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
                 Thread thread = new Thread(runnable, "fahamni-webcam-preview");
@@ -143,19 +141,37 @@ public final class WebcamCaptureDialog {
             });
 
             Webcam activeWebcam = webcam;
-            executor.scheduleAtFixedRate(() -> {
-                if (!activeWebcam.isOpen()) {
-                    return;
-                }
+            ScheduledExecutorService activeExecutor = executor;
+            activeExecutor.execute(() -> {
+                try {
+                    Dimension preferredSize = choosePreferredSize(activeWebcam);
+                    activeWebcam.setViewSize(preferredSize);
+                    activeWebcam.open(false);
 
-                BufferedImage image = activeWebcam.getImage();
-                if (image == null) {
-                    return;
-                }
+                    Platform.runLater(() -> {
+                        if (!dialogClosed[0]) {
+                            statusLabel.setText("Camera prete. Gardez une seule personne dans le cadre, puis capturez.");
+                            captureButton.setDisable(false);
+                        }
+                    });
 
-                latestFrame[0] = image;
-                Platform.runLater(() -> preview.setImage(SwingFXUtils.toFXImage(image, null)));
-            }, 0L, 120L, TimeUnit.MILLISECONDS);
+                    activeExecutor.scheduleAtFixedRate(() -> {
+                        if (!activeWebcam.isOpen()) {
+                            return;
+                        }
+
+                        BufferedImage image = activeWebcam.getImage();
+                        if (image == null) {
+                            return;
+                        }
+
+                        latestFrame[0] = image;
+                        Platform.runLater(() -> preview.setImage(SwingFXUtils.toFXImage(image, null)));
+                    }, 0L, 120L, TimeUnit.MILLISECONDS);
+                } catch (Exception exception) {
+                    Platform.runLater(() -> statusLabel.setText("Impossible d'initialiser la camera. Essayez une autre webcam ou fermez les applis qui l'utilisent."));
+                }
+            });
 
             captureButton.setOnAction(event -> {
                 BufferedImage image = latestFrame[0];
@@ -176,6 +192,7 @@ public final class WebcamCaptureDialog {
             final ScheduledExecutorService[] executorRef = {executor};
             final Webcam[] webcamRef = {webcam};
             stage.setOnHidden(event -> {
+                dialogClosed[0] = true;
                 if (executorRef[0] != null) {
                     executorRef[0].shutdownNow();
                 }
@@ -205,5 +222,28 @@ public final class WebcamCaptureDialog {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ImageIO.write(image, "jpg", outputStream);
         return outputStream.toByteArray();
+    }
+
+    private static Dimension choosePreferredSize(Webcam webcam) {
+        Dimension[] supported = webcam.getViewSizes();
+        if (supported == null || supported.length == 0) {
+            return WebcamResolution.VGA.getSize();
+        }
+
+        Dimension[] preferredOrder = new Dimension[]{
+            WebcamResolution.VGA.getSize(),
+            WebcamResolution.HD.getSize(),
+            WebcamResolution.QVGA.getSize()
+        };
+
+        for (Dimension preferred : preferredOrder) {
+            for (Dimension candidate : supported) {
+                if (candidate.width == preferred.width && candidate.height == preferred.height) {
+                    return candidate;
+                }
+            }
+        }
+
+        return supported[0];
     }
 }
