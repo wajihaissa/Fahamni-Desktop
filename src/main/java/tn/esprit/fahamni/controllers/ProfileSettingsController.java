@@ -311,6 +311,7 @@ public class ProfileSettingsController {
         hideFeedback();
         TwoFactorAuthService.SetupConfirmResult result = twoFactorAuthService.confirmSetupForCurrentUser(twoFactorCodeField.getText());
         if (!result.success()) {
+            showTwoFactorAlert("Activation 2FA impossible", result.message(), false);
             showFeedback(result.message(), false);
             refreshTwoFactorStatus();
             return;
@@ -322,6 +323,7 @@ public class ProfileSettingsController {
         twoFactorCodeField.clear();
         clearTwoFactorPendingUi();
         refreshTwoFactorStatus();
+        showTwoFactorAlert("2FA activee", result.message(), true);
         showFeedback(result.message(), true);
     }
 
@@ -337,6 +339,7 @@ public class ProfileSettingsController {
             recoveryCodesBox.setVisible(false);
         }
         refreshTwoFactorStatus();
+        showTwoFactorAlert(result.isSuccess() ? "2FA desactivee" : "Desactivation 2FA impossible", result.getMessage(), result.isSuccess());
         showFeedback(result.getMessage(), result.isSuccess());
     }
 
@@ -503,6 +506,14 @@ public class ProfileSettingsController {
         feedbackLabel.getStyleClass().setAll("backoffice-feedback");
         feedbackLabel.setManaged(false);
         feedbackLabel.setVisible(false);
+    }
+
+    private void showTwoFactorAlert(String header, String message, boolean success) {
+        Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR);
+        alert.setTitle("Authenticator 2FA");
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void refreshFaceStatus() {
