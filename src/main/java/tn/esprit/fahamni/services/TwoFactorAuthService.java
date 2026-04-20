@@ -107,10 +107,6 @@ public class TwoFactorAuthService {
         if (connection == null) {
             return new SetupStartResult(false, "Connexion a la base indisponible.", null);
         }
-        if (!AppConfig.isAppSecretConfigured()) {
-            return new SetupStartResult(false, "APP_SECRET est requis pour securiser la 2FA.", null);
-        }
-
         try {
             ensureTwoFactorColumns();
             byte[] rawSecret = new byte[SECRET_BYTES];
@@ -141,6 +137,9 @@ public class TwoFactorAuthService {
         PendingTwoFactorSetup pendingSetup = PENDING_SETUPS.get(currentUser.getId());
         if (pendingSetup == null) {
             return new SetupConfirmResult(false, "Aucune configuration 2FA en attente. Cliquez d'abord sur Start 2FA Setup.", Collections.emptyList());
+        }
+        if (!AppConfig.isAppSecretConfigured()) {
+            return new SetupConfirmResult(false, "APP_SECRET est requis pour finaliser et enregistrer la 2FA.", Collections.emptyList());
         }
 
         if (!isValidTotpCode(pendingSetup.secret(), code)) {
