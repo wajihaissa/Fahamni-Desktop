@@ -106,6 +106,9 @@
     -fx-pref-width: 160px;
     -fx-min-height: 44px;
     -fx-pref-height: 44px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 10px 24px;
     -fx-font-size: 13px;
     -fx-font-weight: bold;
 }
