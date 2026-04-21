@@ -21,6 +21,9 @@ public class ReservationService {
     public static final int STATUS_ACCEPTED = 1;
     public static final int STATUS_REFUSED = 3;
     private static final int LEGACY_ACCEPTED_STATUS = 2;
+    public static final int MIN_STUDENT_RATING = 1;
+    public static final int MAX_STUDENT_RATING = 5;
+    private static final int MAX_STUDENT_REVIEW_LENGTH = 1000;
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
 
@@ -175,7 +178,11 @@ public class ReservationService {
                 s.duration_min,
                 s.max_participants,
                 s.status AS seance_status,
-                s.tuteur_id
+                s.tuteur_id,
+                s.mode_seance,
+                r.student_rating,
+                r.student_review,
+                r.rated_at
             FROM reservation r
             INNER JOIN seance s ON s.id = r.seance_id
             WHERE r.participant_id = ? AND r.cancell_at IS NULL
@@ -204,7 +211,11 @@ public class ReservationService {
                         rs.getInt("duration_min"),
                         rs.getInt("max_participants"),
                         rs.getInt("seance_status"),
-                        rs.getInt("tuteur_id")
+                        rs.getInt("tuteur_id"),
+                        rs.getString("mode_seance"),
+                        getNullableInteger(rs, "student_rating"),
+                        rs.getString("student_review"),
+                        readDateTime(rs, "rated_at")
                     ));
                 }
             }
@@ -212,6 +223,97 @@ public class ReservationService {
             System.out.println("Erreur chargement reservations etudiant: " + e.getMessage());
         }
         return reservations;
+    }
+
+    public OperationResult rateCompletedReservation(int reservationId, int participantId, int rating, String review) {
+        if (cnx == null) {
+            return OperationResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0) {
+            return OperationResult.failure("Selectionnez une reservation valide.");
+        }
+        if (participantId <= 0) {
+            return OperationResult.failure("Etudiant invalide pour cette action.");
+        }
+        if (rating < MIN_STUDENT_RATING || rating > MAX_STUDENT_RATING) {
+            return OperationResult.failure(
+                "La note doit etre comprise entre " + MIN_STUDENT_RATING + " et " + MAX_STUDENT_RATING + "."
+            );
+        }
+
+        String normalizedReview;
+        try {
+            normalizedReview = normalizeOptionalReview(review);
+        } catch (IllegalArgumentException exception) {
+            return OperationResult.failure(exception.getMessage());
+        }
+
+        String selectSql = """
+            SELECT
+                r.status,
+                r.cancell_at,
+                r.student_rating,
+                s.start_at,
+                s.duration_min
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            WHERE r.id = ? AND r.participant_id = ?
+            """;
+
+        boolean ratingAlreadyExists;
+        try (PreparedStatement pst = cnx.prepareStatement(selectSql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, participantId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return OperationResult.failure("Reservation introuvable pour cet etudiant.");
+                }
+
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return OperationResult.failure("Cette reservation est annulee.");
+                }
+
+                int currentStatus = normalizeStoredStatus(rs.getInt("status"));
+                if (currentStatus != STATUS_ACCEPTED) {
+                    return OperationResult.failure("Seules les reservations acceptees peuvent etre notees.");
+                }
+
+                LocalDateTime startAt = readDateTime(rs, "start_at");
+                int durationMin = rs.getInt("duration_min");
+                LocalDateTime endAt = startAt != null && durationMin > 0 ? startAt.plusMinutes(durationMin) : null;
+                if (endAt == null || endAt.isAfter(LocalDateTime.now())) {
+                    return OperationResult.failure("La note sera disponible apres la fin effective de la seance.");
+                }
+
+                ratingAlreadyExists = getNullableInteger(rs, "student_rating") != null;
+                if (ratingAlreadyExists) {
+                    return OperationResult.failure("Cette reservation est deja notee.");
+                }
+            }
+        } catch (SQLException e) {
+            return OperationResult.failure("Verification de la note impossible: " + e.getMessage());
+        }
+
+        String updateSql = """
+            UPDATE reservation
+            SET student_rating = ?, student_review = ?, rated_at = ?
+            WHERE id = ? AND participant_id = ? AND cancell_at IS NULL
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
+            pst.setInt(1, rating);
+            pst.setString(2, normalizedReview);
+            pst.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            pst.setInt(4, reservationId);
+            pst.setInt(5, participantId);
+
+            int updatedRows = pst.executeUpdate();
+            if (updatedRows == 0) {
+                return OperationResult.failure("Aucune note enregistree.");
+            }
+            return OperationResult.success("Votre note a ete enregistree avec succes.");
+        } catch (SQLException e) {
+            return OperationResult.failure("Enregistrement de la note impossible: " + e.getMessage());
+        }
     }
 
     public OperationResult acceptReservation(int reservationId, int tutorId) {
@@ -529,7 +631,11 @@ public class ReservationService {
         int durationMin,
         int maxParticipants,
         int seanceStatus,
-        int tutorId
+        int tutorId,
+        String sessionMode,
+        Integer studentRating,
+        String studentReview,
+        LocalDateTime ratedAt
     ) {
         public boolean isPending() {
             return status == STATUS_PENDING;
@@ -541,6 +647,23 @@ public class ReservationService {
 
         public boolean isRefused() {
             return status == STATUS_REFUSED;
+        }
+
+        public boolean isCompleted() {
+            if (seanceStartAt == null || durationMin <= 0) {
+                return false;
+            }
+            return !seanceStartAt.plusMinutes(durationMin).isAfter(LocalDateTime.now());
+        }
+
+        public boolean canBeRated() {
+            return isAccepted() && isCompleted();
+        }
+
+        public boolean hasRating() {
+            return studentRating != null
+                && studentRating >= MIN_STUDENT_RATING
+                && studentRating <= MAX_STUDENT_RATING;
         }
     }
 
@@ -606,7 +729,29 @@ public class ReservationService {
         return timestamp != null ? timestamp.toLocalDateTime() : null;
     }
 
+    private Integer getNullableInteger(ResultSet rs, String columnName) throws SQLException {
+        int value = rs.getInt(columnName);
+        return rs.wasNull() ? null : value;
+    }
+
     private static int normalizeStoredStatus(int status) {
         return status == LEGACY_ACCEPTED_STATUS ? STATUS_ACCEPTED : status;
+    }
+
+    private String normalizeOptionalReview(String review) {
+        if (review == null) {
+            return null;
+        }
+
+        String normalized = review.trim().replaceAll("\\s+", " ");
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (normalized.length() > MAX_STUDENT_REVIEW_LENGTH) {
+            throw new IllegalArgumentException(
+                "Le commentaire ne doit pas depasser " + MAX_STUDENT_REVIEW_LENGTH + " caracteres."
+            );
+        }
+        return normalized;
     }
 }

@@ -74,8 +74,12 @@
         </VBox>
 
         <VBox fx:id="sessionSearchPanel" spacing="12.0" styleClass="reservation-search-panel">
-            <Label text="Rechercher dans les seances en base" styleClass="reservation-search-title"/>
-            <Label text="Cette liste affiche les seances presentes dans la base de donnees. Tu peux filtrer par mot-cle, tuteur, date ou statut." styleClass="reservation-section-copy"/>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="Rechercher dans les seances en base" styleClass="reservation-search-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="recommendationBriefingButton" text="Analyse personnalisee" onAction="#handleOpenRecommendationBriefing" styleClass="backoffice-secondary-button"/>
+            </HBox>
+            <Label text="Le catalogue reste neutre. Ouvrez l analyse personnalisee pour consulter des seances recommandees selon plusieurs orientations: priorite generale, disponibilite immediate, continuite ou diversification." styleClass="reservation-section-copy"/>
 
             <HBox spacing="10.0">
                 <TextField fx:id="sessionSearchField" onAction="#handleSearchSessions" promptText="Ex: analyse, Ahmed, 09/04/2026, brouillon..." styleClass="search-field reservation-search-field" HBox.hgrow="ALWAYS"/>
@@ -245,7 +249,7 @@
                 <Label fx:id="studentReservationsSummaryLabel" text="0 reservation" styleClass="workspace-chip workspace-chip-muted"/>
             </HBox>
 
-            <Label text="Suis ici l'etat de tes demandes: en attente, acceptees ou refusees par le tuteur." styleClass="reservation-section-copy" wrapText="true"/>
+            <Label text="Suis ici l'etat de tes demandes: en attente, acceptees ou refusees par le tuteur. Une fois la seance acceptee et terminee, tu peux aussi la noter." styleClass="reservation-section-copy" wrapText="true"/>
             <Label fx:id="studentReservationsFeedbackLabel" managed="false" visible="false" wrapText="true" styleClass="frontoffice-feedback"/>
             <VBox fx:id="studentReservationsContainer" spacing="12.0"/>
         </VBox>

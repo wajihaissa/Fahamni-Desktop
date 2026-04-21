@@ -14,6 +14,9 @@ import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.SeanceService;
+import tn.esprit.fahamni.services.TutorRecommendationService.RecommendationObjective;
+import tn.esprit.fahamni.services.TutorRecommendationService;
+import tn.esprit.fahamni.services.TutorRecommendationService.RecommendedSession;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
@@ -30,19 +33,29 @@ import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.Node;
+import javafx.geometry.Pos;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcType;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 
 import java.sql.SQLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.time.LocalDate;
@@ -61,6 +74,7 @@ import javafx.scene.input.MouseEvent;
 public class ReservationController {
 
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private static final String RATING_DIALOG_STYLESHEET = "/com/fahamni/styles/frontoffice-rating-dialog.css";
     private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
     private static final String SECTION_ADD_SESSION = "Ajouter une seance";
     private static final String SECTION_MY_RESERVATIONS = "Mes reservations";
@@ -71,6 +85,8 @@ public class ReservationController {
     private static final String STATUS_PENDING = "attente";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
+    private static final int STUDENT_REVIEW_MAX_LENGTH = 1000;
+    private static final int STUDENT_REVIEW_SOFT_LIMIT = 850;
     private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
         .mapToObj(value -> String.format("%02d", value))
@@ -85,6 +101,7 @@ public class ReservationController {
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private final TutorRecommendationService tutorRecommendationService = new TutorRecommendationService();
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
@@ -118,6 +135,9 @@ public class ReservationController {
 
     @FXML
     private ComboBox<String> sessionSearchModeComboBox;
+
+    @FXML
+    private Button recommendationBriefingButton;
 
     @FXML
     private TextField sessionSubjectField;
@@ -265,6 +285,7 @@ public class ReservationController {
         sessionSearchModeComboBox.setValue("Toutes les seances");
         sessionsPerPageComboBox.getItems().setAll(SESSION_PAGE_SIZE_OPTIONS);
         sessionsPerPageComboBox.setValue(DEFAULT_SESSION_PAGE_SIZE);
+        updateRecommendationBriefingAvailability();
 
         resetEditMode();
         hideFeedback();
@@ -301,6 +322,11 @@ public class ReservationController {
         sessionSearchModeComboBox.setValue("Toutes les seances");
         currentSessionPage = 1;
         applySessionFilters();
+    }
+
+    @FXML
+    private void handleOpenRecommendationBriefing() {
+        openRecommendationBriefing();
     }
 
     @FXML
@@ -1544,13 +1570,14 @@ public class ReservationController {
         HBox headerRow = new HBox(10.0);
         Label titleLabel = new Label(seance.getMatiere());
         titleLabel.getStyleClass().add("subsection-title");
+        headerRow.getChildren().add(titleLabel);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Label statusChip = new Label(mapStatusLabel(seance.getStatus()));
         statusChip.getStyleClass().addAll("reservation-status", mapStatusStyle(seance.getStatus()));
-        headerRow.getChildren().addAll(titleLabel, spacer, statusChip);
+        headerRow.getChildren().addAll(spacer, statusChip);
 
         Label metaLabel = new Label(
             "Tuteur: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())
@@ -1601,8 +1628,380 @@ public class ReservationController {
             actionRow.getChildren().addAll(editButton, deleteButton);
         }
 
-        card.getChildren().addAll(headerRow, metaLabel, descriptionLabel, actionRow);
+        card.getChildren().addAll(headerRow, metaLabel, descriptionLabel);
+        card.getChildren().add(actionRow);
         return card;
+    }
+
+    private void openRecommendationBriefing() {
+        if (!UserSession.isCurrentStudent()) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback(
+                "Connectez-vous avec un compte etudiant pour ouvrir l'analyse personnalisee.",
+                false
+            );
+            return;
+        }
+
+        List<Seance> candidateSessions = buildRecommendationCandidateSessions();
+        if (candidateSessions.isEmpty()) {
+            showAvailableSessionsSection();
+            showReservationActionFeedback(
+                "Aucune recommandation exploitable n'est disponible avec les filtres actuels.",
+                false
+            );
+            return;
+        }
+
+        Dialog<ButtonType> briefingDialog = new Dialog<>();
+        DialogPane dialogPane = briefingDialog.getDialogPane();
+        ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        briefingDialog.setTitle("Analyse personnalisee");
+        dialogPane.getButtonTypes().setAll(closeButton);
+        dialogPane.setPrefWidth(900);
+        dialogPane.setPrefHeight(760);
+        dialogPane.setContent(
+            buildRecommendationBriefingContent(candidateSessions, briefingDialog)
+        );
+        applyCurrentTheme(dialogPane);
+        briefingDialog.showAndWait();
+    }
+
+    private List<Seance> buildRecommendationCandidateSessions() {
+        return seanceService.search(
+            sessionSearchField.getText(),
+            sessionSearchModeComboBox.getValue(),
+            0
+        ).stream()
+            .filter(Objects::nonNull)
+            .filter(seance -> seance.getStatus() == 1)
+            .filter(seance -> seance.getStartAt() != null && !seance.getStartAt().isBefore(LocalDateTime.now()))
+            .toList();
+    }
+
+    private List<RecommendedSession> buildRecommendationBriefingRecommendations(List<Seance> candidateSessions,
+                                                                                RecommendationObjective objective) {
+        List<RecommendedSession> ranked = tutorRecommendationService.rankSessionsForStudent(
+            getCurrentReservationParticipantId(),
+            candidateSessions,
+            objective
+        );
+
+        List<RecommendedSession> selectedRecommendations = new ArrayList<>();
+
+        for (RecommendedSession recommendation : ranked) {
+            if (recommendation == null || recommendation.seance() == null || recommendation.score() < 55.0) {
+                continue;
+            }
+            selectedRecommendations.add(recommendation);
+            if (selectedRecommendations.size() >= 5) {
+                return selectedRecommendations;
+            }
+        }
+
+        for (RecommendedSession recommendation : ranked) {
+            if (recommendation == null || recommendation.seance() == null || recommendation.score() < 40.0) {
+                continue;
+            }
+            boolean alreadySelected = selectedRecommendations.stream()
+                .anyMatch(selected -> selected.seance().getId() == recommendation.seance().getId());
+            if (alreadySelected) {
+                continue;
+            }
+            selectedRecommendations.add(recommendation);
+            if (selectedRecommendations.size() >= 5) {
+                return selectedRecommendations;
+            }
+        }
+
+        for (RecommendedSession recommendation : ranked) {
+            if (recommendation == null || recommendation.seance() == null) {
+                continue;
+            }
+            boolean alreadySelected = selectedRecommendations.stream()
+                .anyMatch(selected -> selected.seance().getId() == recommendation.seance().getId());
+            if (alreadySelected) {
+                continue;
+            }
+            selectedRecommendations.add(recommendation);
+            if (selectedRecommendations.size() >= 5) {
+                break;
+            }
+        }
+
+        return selectedRecommendations;
+    }
+
+    private ScrollPane buildRecommendationBriefingContent(List<Seance> candidateSessions,
+                                                          Dialog<ButtonType> briefingDialog) {
+        VBox root = new VBox(12.0);
+        Label introLabel = new Label(
+            "Choisissez une orientation de recommandation. Les seances ci-dessous sont classees selon "
+                + "votre historique accepte, la disponibilite, le format prefere et l'experience du tuteur."
+        );
+        introLabel.setWrapText(true);
+        introLabel.getStyleClass().add("reservation-section-copy");
+
+        FlowPane objectiveBar = new FlowPane(10.0, 10.0);
+        Label summaryLabel = new Label();
+        summaryLabel.setWrapText(true);
+        summaryLabel.getStyleClass().add("reservation-section-copy");
+
+        VBox recommendationList = new VBox(12.0);
+        Map<RecommendationObjective, Button> objectiveButtons = new LinkedHashMap<>();
+
+        for (RecommendationObjective objective : RecommendationObjective.values()) {
+            Button objectiveButton = new Button(objective.label());
+            objectiveButton.getStyleClass().add("backoffice-secondary-button");
+            objectiveButton.setOnAction(event ->
+                refreshRecommendationBriefing(
+                    candidateSessions,
+                    objective,
+                    objectiveButtons,
+                    recommendationList,
+                    summaryLabel,
+                    briefingDialog
+                )
+            );
+            objectiveButtons.put(objective, objectiveButton);
+            objectiveBar.getChildren().add(objectiveButton);
+        }
+
+        refreshRecommendationBriefing(
+            candidateSessions,
+            RecommendationObjective.GENERAL,
+            objectiveButtons,
+            recommendationList,
+            summaryLabel,
+            briefingDialog
+        );
+
+        root.getChildren().addAll(introLabel, objectiveBar, summaryLabel, recommendationList);
+
+        ScrollPane scrollPane = new ScrollPane(root);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setPrefViewportHeight(620);
+        scrollPane.getStyleClass().add("reservation-choice-scroll");
+        return scrollPane;
+    }
+
+    private void refreshRecommendationBriefing(List<Seance> candidateSessions,
+                                               RecommendationObjective objective,
+                                               Map<RecommendationObjective, Button> objectiveButtons,
+                                               VBox recommendationList,
+                                               Label summaryLabel,
+                                               Dialog<ButtonType> briefingDialog) {
+        updateRecommendationObjectiveButtons(objectiveButtons, objective);
+        List<RecommendedSession> recommendations = buildRecommendationBriefingRecommendations(candidateSessions, objective);
+        summaryLabel.setText(buildRecommendationObjectiveSummary(objective, recommendations));
+        renderRecommendationBriefingCards(recommendationList, recommendations, briefingDialog);
+    }
+
+    private void updateRecommendationObjectiveButtons(Map<RecommendationObjective, Button> objectiveButtons,
+                                                      RecommendationObjective activeObjective) {
+        objectiveButtons.forEach((objective, button) -> {
+            button.getStyleClass().removeAll("backoffice-primary-button", "backoffice-secondary-button");
+            button.getStyleClass().add(
+                objective == activeObjective ? "backoffice-primary-button" : "backoffice-secondary-button"
+            );
+        });
+    }
+
+    private String buildRecommendationObjectiveSummary(RecommendationObjective objective,
+                                                       List<RecommendedSession> recommendations) {
+        if (recommendations.isEmpty()) {
+            return objective.description() + " Aucune seance n'est exploitable avec les filtres actuels.";
+        }
+
+        RecommendedSession leadRecommendation = recommendations.get(0);
+        StringBuilder summary = new StringBuilder(objective.description())
+            .append(" Meilleure proposition actuelle: ")
+            .append(safeText(leadRecommendation.seance().getMatiere()))
+            .append(" avec ")
+            .append(Math.round(leadRecommendation.score()))
+            .append("/100");
+
+        if (leadRecommendation.fallback()) {
+            summary.append(". Aucun score fort n'a domine, la meilleure option disponible a ete retenue.");
+        } else {
+            summary.append(" en ").append(leadRecommendation.confidenceLabel().toLowerCase()).append(".");
+        }
+        return summary.toString();
+    }
+
+    private void renderRecommendationBriefingCards(VBox recommendationList,
+                                                   List<RecommendedSession> recommendations,
+                                                   Dialog<ButtonType> briefingDialog) {
+        recommendationList.getChildren().clear();
+        if (recommendations.isEmpty()) {
+            Label emptyLabel = new Label(
+                "Aucune seance recommandee n'est disponible pour cette orientation avec les filtres actuels."
+            );
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            recommendationList.getChildren().add(emptyLabel);
+            return;
+        }
+
+        recommendationList.getChildren().addAll(
+            recommendations.stream()
+                .map(recommendation -> buildRecommendationBriefingCard(recommendation, briefingDialog))
+                .toList()
+        );
+    }
+
+    private VBox buildRecommendationBriefingCard(RecommendedSession recommendation,
+                                                 Dialog<ButtonType> briefingDialog) {
+        Seance seance = recommendation.seance();
+        ReservationStats reservationStats = reservationService.getStatsBySeanceId(seance.getId());
+        int availableSeats = Math.max(0, seance.getMaxParticipants() - reservationStats.total());
+
+        VBox card = new VBox(12.0);
+        card.getStyleClass().add("reservation-form-shell");
+
+        HBox titleRow = new HBox(10.0);
+        Label titleLabel = new Label(safeText(seance.getMatiere()));
+        titleLabel.getStyleClass().add("subsection-title");
+
+        Region titleSpacer = new Region();
+        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
+
+        titleRow.getChildren().addAll(
+            titleLabel,
+            titleSpacer,
+            recommendation.highlighted()
+                ? buildChoiceChipHighlight("Top recommande")
+                : buildChoiceChip("Rang #" + recommendation.rank()),
+            buildChoiceChipHighlight(Math.round(recommendation.score()) + "/100"),
+            buildRecommendationConfidenceChip(recommendation)
+        );
+
+        Label metaLabel = new Label(
+            "Tuteur: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())
+                + " | " + formatDateTimeOrPlaceholder(seance.getStartAt())
+                + " | " + seance.getDurationMin() + " min"
+                + " | " + mapModeLabel(seance.getMode())
+                + " | " + formatAvailableSeats(availableSeats)
+                + " | " + formatReservationCount(reservationStats.total())
+        );
+        metaLabel.setWrapText(true);
+        metaLabel.getStyleClass().add("reservation-section-copy");
+
+        FlowPane signalRow = new FlowPane(10.0, 10.0);
+        signalRow.getChildren().add(buildChoiceChip(recommendation.objective().chipLabel()));
+        signalRow.getChildren().add(buildChoiceChip(recommendation.tutorTierLabel()));
+        signalRow.getChildren().add(buildChoiceChip(buildRecommendationStrengthLabel(recommendation.score())));
+        if (recommendation.fallback()) {
+            signalRow.getChildren().add(buildChoiceChip("Selection de secours"));
+        }
+        recommendation.signals().stream()
+            .limit(4)
+            .map(this::buildChoiceChip)
+            .forEach(signalRow.getChildren()::add);
+
+        Label reasonKicker = new Label("Motif principal");
+        reasonKicker.getStyleClass().add("reservation-infrastructure-kicker");
+
+        Label reasonLabel = new Label(recommendation.reason());
+        reasonLabel.setWrapText(true);
+        reasonLabel.getStyleClass().add("reservation-section-copy");
+
+        HBox actionRow = new HBox(10.0);
+
+        Button detailButton = new Button("Voir detail");
+        detailButton.getStyleClass().add("backoffice-secondary-button");
+        detailButton.setOnAction(event -> showSessionDetails(seance, reservationStats));
+
+        Button catalogButton = new Button("Afficher dans le catalogue");
+        catalogButton.getStyleClass().add("backoffice-secondary-button");
+        catalogButton.setOnAction(event -> focusRecommendedSessionInCatalogue(recommendation, briefingDialog));
+
+        Button reserveButton = buildRecommendationReserveButton(seance, reservationStats, briefingDialog);
+
+        actionRow.getChildren().addAll(detailButton, catalogButton);
+        if (canReserveAsParticipant(seance)) {
+            actionRow.getChildren().add(reserveButton);
+        }
+
+        card.getChildren().addAll(titleRow, metaLabel, signalRow, reasonKicker, reasonLabel, actionRow);
+        return card;
+    }
+
+    private String buildRecommendationStrengthLabel(double score) {
+        if (score >= 85.0) {
+            return "Priorite forte";
+        }
+        if (score >= 70.0) {
+            return "Pertinence elevee";
+        }
+        if (score >= 55.0) {
+            return "Pertinence solide";
+        }
+        return "Option complementaire";
+    }
+
+    private Label buildRecommendationConfidenceChip(RecommendedSession recommendation) {
+        if (recommendation.confidenceProgress() >= 0.58) {
+            return buildChoiceChipHighlight(recommendation.confidenceLabel());
+        }
+        return buildChoiceChip(recommendation.confidenceLabel());
+    }
+
+    private void focusRecommendedSessionInCatalogue(RecommendedSession recommendation, Dialog<ButtonType> briefingDialog) {
+        if (recommendation == null || recommendation.seance() == null) {
+            return;
+        }
+
+        briefingDialog.close();
+        showAvailableSessionsSection();
+        sessionSearchField.setText(safeText(recommendation.seance().getMatiere()));
+        sessionSearchModeComboBox.setValue("Toutes les seances");
+        currentSessionPage = 1;
+        applySessionFilters();
+        showReservationActionFeedback(
+            "Le catalogue est centre sur la recommandation \"" + safeText(recommendation.seance().getMatiere()) + "\".",
+            true
+        );
+    }
+
+    private Button buildRecommendationReserveButton(Seance seance,
+                                                    ReservationStats reservationStats,
+                                                    Dialog<ButtonType> briefingDialog) {
+        Button reserveButton = new Button("Reserver cette seance");
+        reserveButton.getStyleClass().add("backoffice-primary-button");
+
+        if (!canReserveAsParticipant(seance)) {
+            reserveButton.setText(UserSession.isCurrentTutor() ? "Votre seance" : "Compte requis");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        if (seance.getStatus() != 1) {
+            reserveButton.setText("Indisponible");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        if (reservationStats.total() >= seance.getMaxParticipants()) {
+            reserveButton.setText("Complet");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        int participantId = getCurrentReservationParticipantId();
+        if (reservationService.hasActiveReservation(seance.getId(), participantId)) {
+            reserveButton.setText("Deja reserve");
+            reserveButton.setDisable(true);
+            return reserveButton;
+        }
+
+        reserveButton.setOnAction(event -> {
+            briefingDialog.close();
+            reserveSession(seance);
+        });
+        return reserveButton;
     }
 
     private boolean canManageSession(Seance seance) {
@@ -1726,12 +2125,23 @@ public class ReservationController {
         requestLabel.setWrapText(true);
         requestLabel.getStyleClass().add("reservation-section-copy");
 
+        Label ratingLabel = new Label(buildStudentRatingSummary(reservation));
+        ratingLabel.setWrapText(true);
+        ratingLabel.getStyleClass().add("reservation-section-copy");
+
         HBox actionRow = new HBox(10.0);
         Label idChip = new Label("Reservation #" + reservation.id());
         idChip.getStyleClass().add("workspace-chip");
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
         actionRow.getChildren().addAll(idChip, actionSpacer);
+
+        if (canCurrentUserRateReservation(reservation)) {
+            Button ratingButton = new Button("Noter la seance");
+            ratingButton.getStyleClass().add("backoffice-primary-button");
+            ratingButton.setOnAction(event -> openStudentRatingDialog(reservation));
+            actionRow.getChildren().add(ratingButton);
+        }
 
         if (reservation.isPending()) {
             Button cancelButton = new Button("Annuler ma reservation");
@@ -1740,8 +2150,542 @@ public class ReservationController {
             actionRow.getChildren().add(cancelButton);
         }
 
-        card.getChildren().addAll(headerRow, sessionLabel, requestLabel, actionRow);
+        card.getChildren().addAll(headerRow, sessionLabel, requestLabel, ratingLabel, actionRow);
         return card;
+    }
+
+    private boolean canCurrentUserRateReservation(StudentReservationItem reservation) {
+        return UserSession.isCurrentStudent()
+            && reservation != null
+            && reservation.canBeRated()
+            && !reservation.hasRating();
+    }
+
+    private String buildStudentRatingSummary(StudentReservationItem reservation) {
+        if (reservation == null) {
+            return "Evaluation: indisponible.";
+        }
+        if (reservation.hasRating()) {
+            StringBuilder summary = new StringBuilder("Evaluation: " + reservation.studentRating() + "/5");
+            if (reservation.ratedAt() != null) {
+                summary.append(" | Notee le ").append(formatDateTimeOrPlaceholder(reservation.ratedAt()));
+            }
+            if (reservation.studentReview() != null && !reservation.studentReview().isBlank()) {
+                summary.append(" | Avis: ").append(reservation.studentReview());
+            }
+            return summary.toString();
+        }
+        if (reservation.canBeRated()) {
+            return "Evaluation: cette seance est terminee, vous pouvez maintenant la noter.";
+        }
+        if (reservation.isAccepted()) {
+            return "Evaluation: disponible apres la fin de la seance.";
+        }
+        return "Evaluation: la note sera ouverte apres acceptation puis apres la fin de la seance.";
+    }
+
+    private void openStudentRatingDialog(StudentReservationItem reservation) {
+        if (!canCurrentUserRateReservation(reservation)) {
+            showStudentReservationsFeedback(
+                reservation != null && reservation.hasRating()
+                    ? "Cette reservation a deja ete notee."
+                    : "Cette reservation ne peut pas etre notee pour le moment.",
+                false
+            );
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        DialogPane dialogPane = dialog.getDialogPane();
+        ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType saveButtonType = new ButtonType("Enregistrer", ButtonBar.ButtonData.OK_DONE);
+
+        dialog.setTitle("Noter la seance");
+        dialogPane.getButtonTypes().setAll(cancelButtonType, saveButtonType);
+        dialogPane.getStyleClass().add("rating-dialog-pane");
+        dialogPane.setContent(buildStudentRatingDialogContent(reservation));
+        dialogPane.setPrefWidth(560);
+        applyCurrentTheme(dialogPane);
+        appendDialogStylesheet(dialogPane, RATING_DIALOG_STYLESHEET);
+
+        @SuppressWarnings("unchecked")
+        ComboBox<Integer> ratingComboBox = (ComboBox<Integer>) dialogPane.lookup("#studentRatingComboBox");
+        TextArea reviewArea = (TextArea) dialogPane.lookup("#studentRatingReviewArea");
+        Button saveButton = (Button) dialogPane.lookupButton(saveButtonType);
+        Button cancelButton = (Button) dialogPane.lookupButton(cancelButtonType);
+
+        if (saveButton != null) {
+            saveButton.setText("Envoyer mon avis");
+            saveButton.getStyleClass().addAll("backoffice-primary-button", "rating-dialog-action-button");
+            if (ratingComboBox != null) {
+                saveButton.disableProperty().bind(ratingComboBox.valueProperty().isNull());
+                updateStudentRatingActionButton(saveButton, ratingComboBox.getValue());
+                ratingComboBox.valueProperty().addListener((observable, previous, rating) ->
+                    updateStudentRatingActionButton(saveButton, rating)
+                );
+            }
+        }
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().addAll("backoffice-secondary-button", "rating-dialog-action-button");
+        }
+
+        Optional<ButtonType> choice = dialog.showAndWait();
+        if (choice.isPresent() && choice.get() == saveButtonType && ratingComboBox != null) {
+            saveStudentRating(reservation, ratingComboBox.getValue(), reviewArea == null ? null : reviewArea.getText());
+        }
+    }
+
+    private StackPane buildStudentRatingDialogContent(StudentReservationItem reservation) {
+        StackPane root = new StackPane();
+        root.setAlignment(Pos.CENTER);
+        root.getStyleClass().add("rating-dialog-root");
+
+        VBox card = new VBox(16.0);
+        card.setAlignment(Pos.TOP_CENTER);
+        card.setMaxWidth(420.0);
+        card.getStyleClass().add("rating-dialog-card");
+
+        Label titleLabel = new Label("Please rate your experience");
+        titleLabel.getStyleClass().add("rating-dialog-main-title");
+
+        Label subtitleLabel = new Label("Votre retour compte vraiment.");
+        subtitleLabel.getStyleClass().add("rating-dialog-main-subtitle");
+
+        Label contextLabel = new Label(
+            safeText(reservation.seanceTitle())
+                + " | "
+                + formatDateTimeOrPlaceholder(reservation.seanceStartAt())
+                + " | Tuteur: "
+                + tutorDirectoryService.getTutorDisplayName(reservation.tutorId())
+        );
+        contextLabel.setWrapText(true);
+        contextLabel.setAlignment(Pos.CENTER);
+        contextLabel.getStyleClass().add("rating-dialog-context");
+
+        StudentRatingMascotParts mascot = buildStudentRatingMascot();
+
+        ComboBox<Integer> ratingComboBox = new ComboBox<>();
+        ratingComboBox.setId("studentRatingComboBox");
+        ratingComboBox.getItems().setAll(
+            ReservationService.MIN_STUDENT_RATING,
+            2,
+            3,
+            4,
+            ReservationService.MAX_STUDENT_RATING
+        );
+        ratingComboBox.setManaged(false);
+        ratingComboBox.setVisible(false);
+
+        HBox starsRow = new HBox(10.0);
+        starsRow.setAlignment(Pos.CENTER);
+        List<Button> starButtons = new ArrayList<>();
+        for (int value = 1; value <= ReservationService.MAX_STUDENT_RATING; value++) {
+            final int ratingValue = value;
+            Button starButton = new Button("★");
+            starButton.getStyleClass().add("rating-dialog-star");
+            starButton.setText("★");
+            starButton.setOnAction(event -> ratingComboBox.setValue(ratingValue));
+            starButtons.add(starButton);
+            starsRow.getChildren().add(starButton);
+        }
+
+        Label scoreLabel = new Label("Choisissez une note");
+        scoreLabel.getStyleClass().add("rating-dialog-score-title");
+
+        Label ratingSummaryCopy = new Label("Une note rapide suffit. Le commentaire reste optionnel.");
+        ratingSummaryCopy.setWrapText(true);
+        ratingSummaryCopy.setAlignment(Pos.CENTER);
+        ratingSummaryCopy.getStyleClass().add("rating-dialog-summary-copy");
+
+        ratingComboBox.valueProperty().addListener((observable, previous, rating) -> {
+            updateStudentRatingStars(starButtons, rating);
+            updateStudentRatingSelection(rating, scoreLabel, ratingSummaryCopy);
+            updateStudentRatingMascot(mascot, rating);
+        });
+
+        TextArea reviewArea = new TextArea();
+        reviewArea.setId("studentRatingReviewArea");
+        reviewArea.setPromptText("Ajoutez un commentaire si vous voulez preciser votre ressenti.");
+        reviewArea.setWrapText(true);
+        reviewArea.setPrefRowCount(4);
+        reviewArea.getStyleClass().addAll("text-area", "rating-dialog-text-area");
+
+        Label reviewTitle = new Label("Commentaire optionnel");
+        reviewTitle.getStyleClass().add("rating-dialog-review-title");
+
+        Label reviewCounter = new Label("0 / " + STUDENT_REVIEW_MAX_LENGTH);
+        reviewCounter.getStyleClass().add("rating-dialog-counter");
+
+        reviewArea.textProperty().addListener((observable, previous, current) -> {
+            int length = current == null ? 0 : current.length();
+            reviewCounter.setText(length + " / " + STUDENT_REVIEW_MAX_LENGTH);
+            reviewCounter.getStyleClass().remove("rating-dialog-counter-warning");
+            if (length >= STUDENT_REVIEW_SOFT_LIMIT) {
+                reviewCounter.getStyleClass().add("rating-dialog-counter-warning");
+            }
+        });
+
+        VBox reviewBox = new VBox(8.0);
+        reviewBox.setAlignment(Pos.CENTER_LEFT);
+        reviewBox.getStyleClass().add("rating-dialog-review-box");
+        reviewBox.getChildren().addAll(reviewTitle, reviewArea, reviewCounter);
+
+        card.getChildren().addAll(
+            titleLabel,
+            subtitleLabel,
+            mascot.root(),
+            starsRow,
+            scoreLabel,
+            ratingSummaryCopy,
+            contextLabel,
+            reviewBox,
+            ratingComboBox
+        );
+
+        root.getChildren().add(card);
+        updateStudentRatingStars(starButtons, ratingComboBox.getValue());
+        updateStudentRatingSelection(ratingComboBox.getValue(), scoreLabel, ratingSummaryCopy);
+        updateStudentRatingMascot(mascot, ratingComboBox.getValue());
+        return root;
+    }
+
+    private StudentRatingMascotParts buildStudentRatingMascot() {
+        StackPane mascot = new StackPane();
+        mascot.getStyleClass().add("rating-dialog-mascot");
+        mascot.setMinSize(110.0, 110.0);
+        mascot.setPrefSize(110.0, 110.0);
+        mascot.setMaxSize(110.0, 110.0);
+
+        Pane face = new Pane();
+        face.setPrefSize(110.0, 110.0);
+
+        Circle leftEyeWhite = new Circle(36.0, 42.0, 14.0, Color.WHITE);
+        Circle rightEyeWhite = new Circle(74.0, 42.0, 14.0, Color.WHITE);
+        Circle leftEyePupil = new Circle(32.0, 38.0, 6.0, Color.web("#101828"));
+        Circle rightEyePupil = new Circle(70.0, 38.0, 6.0, Color.web("#101828"));
+        Circle leftCheek = new Circle(33.0, 66.0, 5.0, Color.web("#ffc2b4"));
+        Circle rightCheek = new Circle(77.0, 66.0, 5.0, Color.web("#ffc2b4"));
+        leftCheek.setOpacity(0.0);
+        rightCheek.setOpacity(0.0);
+
+        Line leftLid = new Line(25.0, 40.0, 47.0, 40.0);
+        Line rightLid = new Line(63.0, 40.0, 85.0, 40.0);
+        leftLid.setStrokeWidth(4.0);
+        rightLid.setStrokeWidth(4.0);
+        leftLid.setStroke(Color.web("#7b7772"));
+        rightLid.setStroke(Color.web("#7b7772"));
+
+        Line leftBrow = new Line(24.0, 26.0, 44.0, 22.0);
+        Line rightBrow = new Line(66.0, 22.0, 86.0, 26.0);
+        leftBrow.setStrokeWidth(4.0);
+        rightBrow.setStrokeWidth(4.0);
+        leftBrow.setStroke(Color.web("#101828"));
+        rightBrow.setStroke(Color.web("#101828"));
+
+        Line mouthNeutral = new Line(44.0, 68.0, 66.0, 68.0);
+        mouthNeutral.setStrokeWidth(4.0);
+        mouthNeutral.setStroke(Color.web("#101828"));
+
+        Arc smile = new Arc(55.0, 67.0, 16.0, 12.0, 200.0, 140.0);
+        smile.setType(ArcType.OPEN);
+        smile.setStroke(Color.web("#101828"));
+        smile.setStrokeWidth(4.0);
+        smile.setFill(Color.TRANSPARENT);
+
+        face.getChildren().addAll(
+            leftCheek,
+            rightCheek,
+            leftEyeWhite,
+            rightEyeWhite,
+            leftEyePupil,
+            rightEyePupil,
+            leftLid,
+            rightLid,
+            leftBrow,
+            rightBrow,
+            mouthNeutral,
+            smile
+        );
+        mascot.getChildren().add(face);
+
+        StudentRatingMascotParts parts = new StudentRatingMascotParts(
+            mascot,
+            leftEyeWhite,
+            rightEyeWhite,
+            leftEyePupil,
+            rightEyePupil,
+            leftLid,
+            rightLid,
+            leftBrow,
+            rightBrow,
+            mouthNeutral,
+            smile,
+            leftCheek,
+            rightCheek
+        );
+        updateStudentRatingMascot(parts, null);
+        return parts;
+    }
+
+    private void updateStudentRatingStars(List<Button> starButtons, Integer rating) {
+        String accentColor = resolveStudentRatingAccent(rating);
+        for (int index = 0; index < starButtons.size(); index++) {
+            Button starButton = starButtons.get(index);
+            starButton.getStyleClass().remove("rating-dialog-star-active");
+            starButton.setStyle(null);
+            if (rating != null && index < rating) {
+                starButton.getStyleClass().add("rating-dialog-star-active");
+                starButton.setStyle("-fx-text-fill: " + accentColor + ";");
+            }
+        }
+    }
+
+    private void updateStudentRatingMascot(StudentRatingMascotParts mascot, Integer rating) {
+        if (mascot == null) {
+            return;
+        }
+
+        mascot.root().setStyle(resolveStudentRatingMascotStyle(rating));
+        mascot.leftEyeWhite().setVisible(rating != null);
+        mascot.rightEyeWhite().setVisible(rating != null);
+        mascot.leftEyePupil().setVisible(rating != null);
+        mascot.rightEyePupil().setVisible(rating != null);
+        mascot.leftLid().setVisible(rating == null);
+        mascot.rightLid().setVisible(rating == null);
+        mascot.leftBrow().setVisible(false);
+        mascot.rightBrow().setVisible(false);
+        mascot.mouthNeutral().setVisible(false);
+        mascot.smile().setVisible(false);
+        mascot.leftCheek().setOpacity(0.0);
+        mascot.rightCheek().setOpacity(0.0);
+
+        if (rating == null) {
+            mascot.mouthNeutral().setVisible(true);
+            mascot.mouthNeutral().setStroke(Color.web("#908a84"));
+            mascot.mouthNeutral().setStartX(45.0);
+            mascot.mouthNeutral().setEndX(65.0);
+            mascot.mouthNeutral().setStartY(69.0);
+            mascot.mouthNeutral().setEndY(69.0);
+            return;
+        }
+
+        Color accentColor = Color.web(resolveStudentRatingAccent(rating));
+        mascot.leftEyePupil().setCenterY(39.0);
+        mascot.rightEyePupil().setCenterY(39.0);
+        mascot.smile().setStartAngle(200.0);
+        mascot.smile().setLength(140.0);
+        mascot.smile().setCenterX(55.0);
+        mascot.smile().setStroke(Color.web("#101828"));
+
+        switch (rating) {
+            case 1 -> {
+                configureStudentRatingBrows(mascot.leftBrow(), mascot.rightBrow(), 24.0, 31.0, 44.0, 24.0, 66.0, 24.0, 86.0, 31.0);
+                mascot.leftBrow().setVisible(true);
+                mascot.rightBrow().setVisible(true);
+                mascot.smile().setVisible(true);
+                mascot.smile().setCenterY(73.0);
+                mascot.smile().setRadiusX(13.0);
+                mascot.smile().setRadiusY(9.0);
+                mascot.smile().setScaleY(-1.0);
+            }
+            case 2 -> {
+                configureStudentRatingBrows(mascot.leftBrow(), mascot.rightBrow(), 24.0, 27.0, 44.0, 24.0, 66.0, 24.0, 86.0, 27.0);
+                mascot.leftBrow().setVisible(true);
+                mascot.rightBrow().setVisible(true);
+                mascot.smile().setVisible(true);
+                mascot.smile().setCenterY(72.0);
+                mascot.smile().setRadiusX(14.0);
+                mascot.smile().setRadiusY(10.0);
+                mascot.smile().setScaleY(-0.85);
+            }
+            case 3 -> {
+                mascot.mouthNeutral().setVisible(true);
+                mascot.mouthNeutral().setStroke(Color.web("#101828"));
+                mascot.mouthNeutral().setStartX(44.0);
+                mascot.mouthNeutral().setEndX(66.0);
+                mascot.mouthNeutral().setStartY(68.0);
+                mascot.mouthNeutral().setEndY(68.0);
+            }
+            case 4 -> {
+                mascot.smile().setVisible(true);
+                mascot.smile().setCenterY(69.0);
+                mascot.smile().setRadiusX(15.0);
+                mascot.smile().setRadiusY(10.0);
+                mascot.smile().setScaleY(0.7);
+                mascot.leftCheek().setFill(accentColor.deriveColor(0, 1, 1, 0.28));
+                mascot.rightCheek().setFill(accentColor.deriveColor(0, 1, 1, 0.28));
+                mascot.leftCheek().setOpacity(1.0);
+                mascot.rightCheek().setOpacity(1.0);
+            }
+            case 5 -> {
+                mascot.smile().setVisible(true);
+                mascot.smile().setCenterY(67.0);
+                mascot.smile().setRadiusX(17.0);
+                mascot.smile().setRadiusY(12.0);
+                mascot.smile().setScaleY(1.0);
+                mascot.leftCheek().setFill(accentColor.deriveColor(0, 1, 1, 0.34));
+                mascot.rightCheek().setFill(accentColor.deriveColor(0, 1, 1, 0.34));
+                mascot.leftCheek().setOpacity(1.0);
+                mascot.rightCheek().setOpacity(1.0);
+            }
+            default -> {
+                mascot.mouthNeutral().setVisible(true);
+                mascot.mouthNeutral().setStroke(Color.web("#101828"));
+            }
+        }
+    }
+
+    private void configureStudentRatingBrows(Line leftBrow,
+                                             Line rightBrow,
+                                             double leftStartX,
+                                             double leftStartY,
+                                             double leftEndX,
+                                             double leftEndY,
+                                             double rightStartX,
+                                             double rightStartY,
+                                             double rightEndX,
+                                             double rightEndY) {
+        leftBrow.setStartX(leftStartX);
+        leftBrow.setStartY(leftStartY);
+        leftBrow.setEndX(leftEndX);
+        leftBrow.setEndY(leftEndY);
+        rightBrow.setStartX(rightStartX);
+        rightBrow.setStartY(rightStartY);
+        rightBrow.setEndX(rightEndX);
+        rightBrow.setEndY(rightEndY);
+    }
+
+    private void updateStudentRatingActionButton(Button saveButton, Integer rating) {
+        if (saveButton == null) {
+            return;
+        }
+
+        String background = resolveStudentRatingActionBackground(rating);
+        String shadow = resolveStudentRatingActionShadow(rating);
+        saveButton.setStyle(
+            "-fx-background-color: " + background + ";"
+                + "-fx-background-radius: 999px;"
+                + "-fx-border-radius: 999px;"
+                + "-fx-text-fill: white;"
+                + "-fx-font-weight: bold;"
+                + "-fx-padding: 10px 24px;"
+                + "-fx-effect: dropshadow(gaussian, " + shadow + ", 12, 0.18, 0, 4);"
+        );
+    }
+
+    private String resolveStudentRatingAccent(Integer rating) {
+        if (rating == null) {
+            return "#b8b4af";
+        }
+
+        return switch (rating) {
+            case 1 -> "#ff4d4f";
+            case 2 -> "#ff6b57";
+            case 3 -> "#ff8a3d";
+            case 4 -> "#ffa63d";
+            case 5 -> "#ffb23f";
+            default -> "#ff8a3d";
+        };
+    }
+
+    private String resolveStudentRatingMascotStyle(Integer rating) {
+        String background = switch (rating == null ? 0 : rating) {
+            case 1 -> "linear-gradient(to bottom, #ff5c57 0%, #ff3d4d 100%)";
+            case 2 -> "linear-gradient(to bottom, #ff7d5a 0%, #ff654f 100%)";
+            case 3 -> "linear-gradient(to bottom, #ff9851 0%, #ff8244 100%)";
+            case 4 -> "linear-gradient(to bottom, #ffb14a 0%, #ff9d39 100%)";
+            case 5 -> "linear-gradient(to bottom, #ffbb49 0%, #ffa53b 100%)";
+            default -> "linear-gradient(to bottom, #f1efec 0%, #dedad6 100%)";
+        };
+
+        String shadow = switch (rating == null ? 0 : rating) {
+            case 1 -> "rgba(255, 77, 79, 0.25)";
+            case 2 -> "rgba(255, 107, 87, 0.24)";
+            case 3 -> "rgba(255, 138, 61, 0.22)";
+            case 4 -> "rgba(255, 166, 61, 0.24)";
+            case 5 -> "rgba(255, 178, 63, 0.26)";
+            default -> "rgba(140, 136, 131, 0.18)";
+        };
+
+        return "-fx-background-color: " + background + ";"
+            + "-fx-background-radius: 30px;"
+            + "-fx-border-radius: 30px;"
+            + "-fx-effect: dropshadow(gaussian, " + shadow + ", 20, 0.24, 0, 5);";
+    }
+
+    private String resolveStudentRatingActionBackground(Integer rating) {
+        return "linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%)";
+    }
+
+    private String resolveStudentRatingActionShadow(Integer rating) {
+        return "rgba(94, 77, 199, 0.20)";
+    }
+
+    private void updateStudentRatingSelection(Integer rating,
+                                              Label scoreLabel,
+                                              Label summaryCopy) {
+        if (rating == null) {
+            scoreLabel.setText("Choisissez une note");
+            summaryCopy.setText("Une note rapide suffit. Le commentaire reste optionnel.");
+            return;
+        }
+
+        scoreLabel.setText(rating + " / 5  " + resolveStudentRatingHeadline(rating));
+        summaryCopy.setText(resolveStudentRatingCopy(rating));
+    }
+
+    private String resolveStudentRatingHeadline(int rating) {
+        return switch (rating) {
+            case 1 -> "A revoir";
+            case 2 -> "Peut mieux faire";
+            case 3 -> "Correct";
+            case 4 -> "Tres satisfaisant";
+            case 5 -> "Excellent";
+            default -> "Evaluation de la seance";
+        };
+    }
+
+    private String resolveStudentRatingCopy(int rating) {
+        return switch (rating) {
+            case 1 -> "Le ressenti semble insuffisant. Un commentaire court peut aider a contextualiser le point faible.";
+            case 2 -> "La seance reste perfectible. Un exemple rapide sur le rythme ou la clarte peut etre utile.";
+            case 3 -> "La base est correcte. Vous pouvez ajouter ce qui a fonctionne et ce qui pourrait etre renforce.";
+            case 4 -> "La seance a bien repondu au besoin. Vous pouvez mentionner le point fort principal si vous le souhaitez.";
+            case 5 -> "La seance a produit une tres bonne impression. Vous pouvez souligner ce qui a fait la difference.";
+            default -> "Decrivez librement votre ressenti.";
+        };
+    }
+
+    private record StudentRatingMascotParts(StackPane root,
+                                            Circle leftEyeWhite,
+                                            Circle rightEyeWhite,
+                                            Circle leftEyePupil,
+                                            Circle rightEyePupil,
+                                            Line leftLid,
+                                            Line rightLid,
+                                            Line leftBrow,
+                                            Line rightBrow,
+                                            Line mouthNeutral,
+                                            Arc smile,
+                                            Circle leftCheek,
+                                            Circle rightCheek) {
+    }
+
+    private void saveStudentRating(StudentReservationItem reservation, Integer rating, String review) {
+        hideStudentReservationsFeedback();
+        if (rating == null) {
+            showStudentReservationsFeedback("Choisissez une note avant de valider.", false);
+            return;
+        }
+
+        OperationResult result = reservationService.rateCompletedReservation(
+            reservation.id(),
+            getCurrentReservationParticipantId(),
+            rating,
+            review
+        );
+        loadStudentReservations();
+        showStudentReservationsFeedback(result.getMessage(), result.isSuccess());
     }
 
     private void confirmCancelStudentReservation(StudentReservationItem reservation) {
@@ -2560,6 +3504,7 @@ public class ReservationController {
         if (sectionMenuComboBox != null && !SECTION_AVAILABLE_SESSIONS.equals(sectionMenuComboBox.getValue())) {
             sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
         }
+        updateRecommendationBriefingAvailability();
         setSectionVisible(sessionSearchPanel, true);
         setSectionVisible(sessionListPanel, true);
         setSectionVisible(sessionFormPanel, false);
@@ -2643,12 +3588,24 @@ public class ReservationController {
         sectionMenuComboBox.getItems().setAll(SECTION_AVAILABLE_SESSIONS, SECTION_MY_RESERVATIONS);
     }
 
+    private void updateRecommendationBriefingAvailability() {
+        setNodeVisible(recommendationBriefingButton, UserSession.isCurrentStudent());
+    }
+
     private void setInfrastructureSectionVisible(HBox section, boolean visible) {
         if (section == null) {
             return;
         }
         section.setManaged(visible);
         section.setVisible(visible);
+    }
+
+    private void setNodeVisible(Node node, boolean visible) {
+        if (node == null) {
+            return;
+        }
+        node.setManaged(visible);
+        node.setVisible(visible);
     }
 
     private void setSeparatorVisible(Separator separator, boolean visible) {
@@ -2728,6 +3685,22 @@ public class ReservationController {
             return;
         }
         dialogPane.getStylesheets().setAll(recentSessionsContainer.getScene().getStylesheets());
+    }
+
+    private void appendDialogStylesheet(DialogPane dialogPane, String stylesheetPath) {
+        if (dialogPane == null || stylesheetPath == null || stylesheetPath.isBlank()) {
+            return;
+        }
+
+        URL resource = getClass().getResource(stylesheetPath);
+        if (resource == null) {
+            return;
+        }
+
+        String stylesheet = resource.toExternalForm();
+        if (!dialogPane.getStylesheets().contains(stylesheet)) {
+            dialogPane.getStylesheets().add(stylesheet);
+        }
     }
 
     private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card, boolean selectable) {
