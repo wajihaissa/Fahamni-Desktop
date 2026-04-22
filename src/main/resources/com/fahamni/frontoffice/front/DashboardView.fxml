@@ -1,149 +1,386 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<ScrollPane id="dashboardHomeRoot" fitToWidth="true" styleClass="dashboard-scroll"
+<ScrollPane id="dashboardHomeRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="dashboard-premium-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.DashboardController">
-    <VBox id="dashboardHomeContent" spacing="20.0" styleClass="dashboard-content">
+    <VBox alignment="TOP_CENTER" styleClass="dashboard-premium-shell-wrap">
         <padding>
-            <Insets top="8" right="20" bottom="20" left="20"/>
+            <Insets top="12" right="22" bottom="26" left="22"/>
         </padding>
 
-        <VBox spacing="10.0" styleClass="welcome-section">
-            <Label fx:id="welcomeTitleLabel" text="Bon retour !" styleClass="welcome-title"/>
-            <Label fx:id="welcomeSubtitleLabel" text="Continue your learning journey" styleClass="welcome-subtitle"/>
-        </VBox>
-
-        <HBox spacing="20.0">
-            <VBox spacing="10.0" styleClass="stat-card" HBox.hgrow="ALWAYS">
-                <Label text="Mon espace" styleClass="section-title"/>
-                <Label fx:id="accountNameLabel" text="Etudiant Fahamni" styleClass="session-subject"/>
-                <Label fx:id="accountEmailLabel" text="etudiant@fahamni.tn" styleClass="welcome-subtitle"/>
-                <Label fx:id="accountRoleLabel" text="Espace Etudiant" styleClass="profile-role-badge"/>
-            </VBox>
-
-            <VBox spacing="10.0" styleClass="stat-card" HBox.hgrow="ALWAYS">
-                <Label fx:id="focusTitleLabel" text="Priorite du jour" styleClass="section-title"/>
-                <Label fx:id="focusCopyLabel"
-                       text="Concentrez-vous sur une seance a venir, puis verifiez votre planner pour garder un rythme regulier."
-                       styleClass="section-subtitle" wrapText="true"/>
-                <Label text="Petit pas, grande progression." styleClass="session-time"/>
-            </VBox>
-        </HBox>
-
-        <HBox spacing="20.0" styleClass="stats-row">
-            <VBox styleClass="stat-card">
-                <Label text="12" styleClass="stat-value"/>
-                <Label text="Elements du calendrier" styleClass="stat-label"/>
-            </VBox>
-            <VBox styleClass="stat-card">
-                <Label text="5" styleClass="stat-value"/>
-                <Label text="Active Tutors" styleClass="stat-label"/>
-            </VBox>
-            <VBox styleClass="stat-card">
-                <Label text="85%" styleClass="stat-value"/>
-                <Label text="Progress Score" styleClass="stat-label"/>
-            </VBox>
-            <VBox styleClass="stat-card">
-                <Label text="3" styleClass="stat-value"/>
-                <Label text="Calendrier a venir" styleClass="stat-label"/>
-            </VBox>
-        </HBox>
-
-        <VBox spacing="15.0" styleClass="upcoming-sessions">
-            <Label text="Calendrier a venir" styleClass="section-title"/>
-            <VBox spacing="10.0">
-                <HBox styleClass="session-card" spacing="15.0">
-                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                        <Label text="Mathematics - Algebra" styleClass="session-subject"/>
-                        <Label text="Tutor: Ahmed Ben Ali" styleClass="session-tutor"/>
-                        <Label text="Tomorrow, 10:00 AM" styleClass="session-time"/>
-                    </VBox>
-                    <VBox spacing="5.0" alignment="CENTER">
-                        <Label text="50 DT" styleClass="session-price"/>
-                        <Button text="Voir le calendrier" styleClass="session-button"/>
-                    </VBox>
-                </HBox>
-                <HBox styleClass="session-card" spacing="15.0">
-                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                        <Label text="Physics - Mechanics" styleClass="session-subject"/>
-                        <Label text="Tutor: Sarah Mansour" styleClass="session-tutor"/>
-                        <Label text="Friday, 2:00 PM" styleClass="session-time"/>
-                    </VBox>
-                    <VBox spacing="5.0" alignment="CENTER">
-                        <Label text="45 DT" styleClass="session-price"/>
-                        <Button text="Voir le calendrier" styleClass="session-button"/>
-                    </VBox>
-                </HBox>
-            </VBox>
-        </VBox>
-
-        <VBox spacing="15.0" styleClass="learning-progress">
-            <Label text="Learning Progress" styleClass="section-title"/>
-            <VBox spacing="10.0">
-                <VBox spacing="5.0">
-                    <HBox spacing="10.0" alignment="CENTER_LEFT">
-                        <Label text="Mathematics" styleClass="progress-subject"/>
-                        <Label text="75%" styleClass="progress-percentage"/>
-                    </HBox>
-                    <ProgressBar progress="0.75" styleClass="progress-bar"/>
+        <VBox fx:id="dashboardHomeContent" id="dashboardHomeContent" maxWidth="1280.0" spacing="24.0" styleClass="dashboard-premium-content">
+            <FlowPane fx:id="heroSection" hgap="24.0" prefWrapLength="1080.0" styleClass="dashboard-premium-hero" vgap="24.0">
+                <VBox maxWidth="650.0" minWidth="320.0" spacing="18.0" styleClass="dashboard-premium-hero-copy">
+                    <Label text="SMART LEARNING PLATFORM" styleClass="dashboard-premium-eyebrow"/>
+                    <Label fx:id="welcomeTitleLabel" text="Learn better with the right tutor, tools, and study flow"
+                           styleClass="dashboard-premium-hero-title" wrapText="true"/>
+                    <Label fx:id="welcomeSubtitleLabel"
+                           text="Book tutoring sessions, manage your calendar, access study tools, and stay focused from one clean workspace."
+                           styleClass="dashboard-premium-hero-subtitle" wrapText="true"/>
+                    <FlowPane hgap="12.0" prefWrapLength="420.0" styleClass="dashboard-premium-hero-actions" vgap="12.0">
+                        <Button text="Find a Tutor" styleClass="dashboard-premium-primary-button"/>
+                        <Button text="Open Planner" styleClass="dashboard-premium-secondary-button"/>
+                    </FlowPane>
                 </VBox>
-                <VBox spacing="5.0">
-                    <HBox spacing="10.0" alignment="CENTER_LEFT">
-                        <Label text="Physics" styleClass="progress-subject"/>
-                        <Label text="60%" styleClass="progress-percentage"/>
-                    </HBox>
-                    <ProgressBar progress="0.60" styleClass="progress-bar"/>
-                </VBox>
-                <VBox spacing="5.0">
-                    <HBox spacing="10.0" alignment="CENTER_LEFT">
-                        <Label text="Chemistry" styleClass="progress-subject"/>
-                        <Label text="40%" styleClass="progress-percentage"/>
-                    </HBox>
-                    <ProgressBar progress="0.40" styleClass="progress-bar"/>
-                </VBox>
-            </VBox>
-        </VBox>
 
-        <VBox spacing="15.0" styleClass="recommended-tutors">
-            <Label text="Recommended Tutors" styleClass="section-title"/>
-            <HBox spacing="15.0">
-                <VBox styleClass="tutor-card" spacing="10.0">
-                    <Label text="Tutor" styleClass="tutor-avatar"/>
-                    <VBox spacing="5.0" alignment="CENTER">
-                        <Label text="Ahmed Ben Ali" styleClass="tutor-name"/>
-                        <Label text="Mathematics" styleClass="tutor-subject"/>
-                        <Label text="4.8" styleClass="tutor-rating"/>
-                        <Button text="Contact" styleClass="contact-button"/>
+                <VBox fx:id="floatingStack" maxWidth="360.0" minWidth="280.0" spacing="16.0" styleClass="dashboard-premium-floating-stack">
+                    <VBox spacing="10.0">
+                        <styleClass>
+                            <String fx:value="dashboard-premium-floating-card"/>
+                            <String fx:value="dashboard-premium-floating-card-primary"/>
+                        </styleClass>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="NEXT SESSION" styleClass="dashboard-premium-card-kicker"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="TODAY" styleClass="dashboard-premium-inline-chip"/>
+                        </HBox>
+                        <Label text="Linear Algebra with Ahmed Ben Ali" styleClass="dashboard-premium-floating-title" wrapText="true"/>
+                        <Label text="18:00 / Online / 45 min" styleClass="dashboard-premium-floating-copy"/>
+                    </VBox>
+
+                    <VBox spacing="10.0">
+                        <styleClass>
+                            <String fx:value="dashboard-premium-floating-card"/>
+                            <String fx:value="dashboard-premium-floating-card-secondary"/>
+                        </styleClass>
+                        <Label text="STUDY STREAK" styleClass="dashboard-premium-card-kicker"/>
+                        <Label text="7 focused days this week" styleClass="dashboard-premium-floating-title"/>
+                        <Label fx:id="focusTitleLabel" text="Priority for today" styleClass="dashboard-premium-floating-copy-strong"/>
+                        <Label fx:id="focusCopyLabel"
+                               text="Start with your next session, then keep the week steady with planner blocks and resource check-ins."
+                               styleClass="dashboard-premium-floating-copy" wrapText="true"/>
+                    </VBox>
+
+                    <VBox spacing="10.0">
+                        <styleClass>
+                            <String fx:value="dashboard-premium-floating-card"/>
+                            <String fx:value="dashboard-premium-floating-card-tertiary"/>
+                        </styleClass>
+                        <Label text="CAMPUS SNAPSHOT" styleClass="dashboard-premium-card-kicker"/>
+                        <Label text="3 rooms ready for onsite tutoring" styleClass="dashboard-premium-floating-title" wrapText="true"/>
+                        <Label text="Equipment prepared / projector / whiteboard" styleClass="dashboard-premium-floating-copy"/>
                     </VBox>
                 </VBox>
-                <VBox styleClass="tutor-card" spacing="10.0">
-                    <Label text="Tutor" styleClass="tutor-avatar"/>
-                    <VBox spacing="5.0" alignment="CENTER">
-                        <Label text="Sarah Mansour" styleClass="tutor-name"/>
-                        <Label text="Physics" styleClass="tutor-subject"/>
-                        <Label text="4.9" styleClass="tutor-rating"/>
-                        <Button text="Contact" styleClass="contact-button"/>
+            </FlowPane>
+
+            <FlowPane fx:id="statStrip" hgap="16.0" prefWrapLength="1180.0" styleClass="dashboard-premium-stat-strip" vgap="16.0">
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="dashboard-premium-stat-card">
+                    <Label text="24" styleClass="dashboard-premium-stat-value"/>
+                    <Label text="Tutors Available" styleClass="dashboard-premium-stat-label"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="dashboard-premium-stat-card">
+                    <Label text="08" styleClass="dashboard-premium-stat-value"/>
+                    <Label text="Upcoming Sessions" styleClass="dashboard-premium-stat-label"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="dashboard-premium-stat-card">
+                    <Label text="03" styleClass="dashboard-premium-stat-value"/>
+                    <Label text="Rooms Ready" styleClass="dashboard-premium-stat-label"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="dashboard-premium-stat-card">
+                    <Label text="12" styleClass="dashboard-premium-stat-value"/>
+                    <Label text="New Resources" styleClass="dashboard-premium-stat-label"/>
+                </VBox>
+            </FlowPane>
+
+            <FlowPane fx:id="mainGrid" hgap="20.0" prefWrapLength="1180.0" styleClass="dashboard-premium-main-grid" vgap="20.0">
+                <VBox minWidth="420.0" prefWidth="780.0" spacing="20.0">
+                    <VBox spacing="18.0">
+                        <styleClass>
+                            <String fx:value="dashboard-premium-section-card"/>
+                            <String fx:value="dashboard-premium-section-card-large"/>
+                        </styleClass>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <VBox spacing="4.0">
+                                <Label text="Upcoming Sessions" styleClass="dashboard-premium-section-title"/>
+                                <Label text="A clear timeline of your next learning blocks." styleClass="dashboard-premium-section-copy"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="View Calendar" styleClass="dashboard-premium-tertiary-button"/>
+                        </HBox>
+
+                        <VBox spacing="14.0">
+                            <HBox spacing="14.0" styleClass="dashboard-premium-session-card">
+                                <VBox alignment="CENTER" minWidth="88.0" prefWidth="88.0" spacing="4.0" styleClass="dashboard-premium-date-panel">
+                                    <Label text="22" styleClass="dashboard-premium-date-day"/>
+                                    <Label text="APR" styleClass="dashboard-premium-date-month"/>
+                                </VBox>
+                                <VBox spacing="8.0">
+                                    <Label text="Linear Algebra / Problem Solving" styleClass="dashboard-premium-session-title"/>
+                                    <Label text="Tutor: Ahmed Ben Ali" styleClass="dashboard-premium-session-copy"/>
+                                    <FlowPane hgap="8.0" prefWrapLength="360.0" vgap="8.0">
+                                        <Label text="Online" styleClass="dashboard-premium-chip"/>
+                                        <Label text="18:00" styleClass="dashboard-premium-chip"/>
+                                        <Label text="45 min" styleClass="dashboard-premium-chip"/>
+                                    </FlowPane>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="8.0">
+                                    <Label text="Confirmed" styleClass="dashboard-premium-session-status"/>
+                                    <Button text="View Session">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-secondary-button"/>
+                                            <String fx:value="dashboard-premium-inline-action"/>
+                                        </styleClass>
+                                    </Button>
+                                </VBox>
+                            </HBox>
+
+                            <HBox spacing="14.0" styleClass="dashboard-premium-session-card">
+                                <VBox alignment="CENTER" minWidth="88.0" prefWidth="88.0" spacing="4.0" styleClass="dashboard-premium-date-panel">
+                                    <Label text="24" styleClass="dashboard-premium-date-day"/>
+                                    <Label text="APR" styleClass="dashboard-premium-date-month"/>
+                                </VBox>
+                                <VBox spacing="8.0">
+                                    <Label text="Physics Revision / Mechanics" styleClass="dashboard-premium-session-title"/>
+                                    <Label text="Tutor: Sarah Mansour" styleClass="dashboard-premium-session-copy"/>
+                                    <FlowPane hgap="8.0" prefWrapLength="360.0" vgap="8.0">
+                                        <Label text="Onsite" styleClass="dashboard-premium-chip"/>
+                                        <Label text="Room A-204" styleClass="dashboard-premium-chip"/>
+                                        <Label text="Projector Ready" styleClass="dashboard-premium-chip"/>
+                                    </FlowPane>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="8.0">
+                                    <Label text="In Review">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-session-status"/>
+                                            <String fx:value="dashboard-premium-session-status-pending"/>
+                                        </styleClass>
+                                    </Label>
+                                    <Button text="Open Details">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-secondary-button"/>
+                                            <String fx:value="dashboard-premium-inline-action"/>
+                                        </styleClass>
+                                    </Button>
+                                </VBox>
+                            </HBox>
+
+                            <HBox spacing="14.0" styleClass="dashboard-premium-session-card">
+                                <VBox alignment="CENTER" minWidth="88.0" prefWidth="88.0" spacing="4.0" styleClass="dashboard-premium-date-panel">
+                                    <Label text="26" styleClass="dashboard-premium-date-day"/>
+                                    <Label text="APR" styleClass="dashboard-premium-date-month"/>
+                                </VBox>
+                                <VBox spacing="8.0">
+                                    <Label text="Chemistry Lab Prep / Study Sprint" styleClass="dashboard-premium-session-title"/>
+                                    <Label text="Tutor: Mohamed Trabelsi" styleClass="dashboard-premium-session-copy"/>
+                                    <FlowPane hgap="8.0" prefWrapLength="360.0" vgap="8.0">
+                                        <Label text="Online" styleClass="dashboard-premium-chip"/>
+                                        <Label text="19:30" styleClass="dashboard-premium-chip"/>
+                                        <Label text="Shared Notes" styleClass="dashboard-premium-chip"/>
+                                    </FlowPane>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="8.0">
+                                    <Label text="Scheduled" styleClass="dashboard-premium-session-status"/>
+                                    <Button text="View Session">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-secondary-button"/>
+                                            <String fx:value="dashboard-premium-inline-action"/>
+                                        </styleClass>
+                                    </Button>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+
+                    <VBox spacing="18.0">
+                        <styleClass>
+                            <String fx:value="dashboard-premium-section-card"/>
+                            <String fx:value="dashboard-premium-section-card-large"/>
+                        </styleClass>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <VBox spacing="4.0">
+                                <Label text="Recommended Tutors" styleClass="dashboard-premium-section-title"/>
+                                <Label text="Profiles selected for your recent study patterns." styleClass="dashboard-premium-section-copy"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="Explore All" styleClass="dashboard-premium-tertiary-button"/>
+                        </HBox>
+
+                        <VBox spacing="14.0">
+                            <HBox spacing="14.0" styleClass="dashboard-premium-tutor-card">
+                                <StackPane minHeight="58.0" minWidth="58.0" prefHeight="58.0" prefWidth="58.0" styleClass="dashboard-premium-avatar-dot">
+                                    <Label text="AB" styleClass="dashboard-premium-avatar-text"/>
+                                </StackPane>
+                                <VBox spacing="5.0">
+                                    <Label text="Ahmed Ben Ali" styleClass="dashboard-premium-tutor-name"/>
+                                    <Label text="Algebra / Exam strategy / Remote tutoring" styleClass="dashboard-premium-tutor-copy"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="6.0">
+                                    <Label text="4.9 rating" styleClass="dashboard-premium-rating"/>
+                                    <Button text="View Profile">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-secondary-button"/>
+                                            <String fx:value="dashboard-premium-inline-action"/>
+                                        </styleClass>
+                                    </Button>
+                                </VBox>
+                            </HBox>
+
+                            <HBox spacing="14.0" styleClass="dashboard-premium-tutor-card">
+                                <StackPane minHeight="58.0" minWidth="58.0" prefHeight="58.0" prefWidth="58.0" styleClass="dashboard-premium-avatar-dot">
+                                    <Label text="SM" styleClass="dashboard-premium-avatar-text"/>
+                                </StackPane>
+                                <VBox spacing="5.0">
+                                    <Label text="Sarah Mansour" styleClass="dashboard-premium-tutor-name"/>
+                                    <Label text="Physics / Guided exercises / Onsite sessions" styleClass="dashboard-premium-tutor-copy"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="6.0">
+                                    <Label text="4.8 rating" styleClass="dashboard-premium-rating"/>
+                                    <Button text="View Profile">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-secondary-button"/>
+                                            <String fx:value="dashboard-premium-inline-action"/>
+                                        </styleClass>
+                                    </Button>
+                                </VBox>
+                            </HBox>
+
+                            <HBox spacing="14.0" styleClass="dashboard-premium-tutor-card">
+                                <StackPane minHeight="58.0" minWidth="58.0" prefHeight="58.0" prefWidth="58.0" styleClass="dashboard-premium-avatar-dot">
+                                    <Label text="MT" styleClass="dashboard-premium-avatar-text"/>
+                                </StackPane>
+                                <VBox spacing="5.0">
+                                    <Label text="Mohamed Trabelsi" styleClass="dashboard-premium-tutor-name"/>
+                                    <Label text="Chemistry / Practical review / Lab preparation" styleClass="dashboard-premium-tutor-copy"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <VBox alignment="CENTER_RIGHT" spacing="6.0">
+                                    <Label text="4.7 rating" styleClass="dashboard-premium-rating"/>
+                                    <Button text="View Profile">
+                                        <styleClass>
+                                            <String fx:value="dashboard-premium-secondary-button"/>
+                                            <String fx:value="dashboard-premium-inline-action"/>
+                                        </styleClass>
+                                    </Button>
+                                </VBox>
+                            </HBox>
+                        </VBox>
                     </VBox>
                 </VBox>
-                <VBox styleClass="tutor-card" spacing="10.0">
-                    <Label text="Tutor" styleClass="tutor-avatar"/>
-                    <VBox spacing="5.0" alignment="CENTER">
-                        <Label text="Mohamed Trabelsi" styleClass="tutor-name"/>
-                        <Label text="Chemistry" styleClass="tutor-subject"/>
-                        <Label text="4.7" styleClass="tutor-rating"/>
-                        <Button text="Contact" styleClass="contact-button"/>
+
+                <VBox minWidth="280.0" prefWidth="420.0" spacing="20.0">
+                    <VBox spacing="16.0" styleClass="dashboard-premium-section-card">
+                        <Label text="Quick Actions" styleClass="dashboard-premium-section-title"/>
+                        <VBox spacing="10.0">
+                            <Button text="Book a Session" styleClass="dashboard-premium-action-rail-button"/>
+                            <Button text="Open Calendar" styleClass="dashboard-premium-action-rail-button"/>
+                            <Button text="Browse Resources" styleClass="dashboard-premium-action-rail-button"/>
+                            <Button text="Check Rooms" styleClass="dashboard-premium-action-rail-button"/>
+                        </VBox>
+                    </VBox>
+
+                    <VBox spacing="14.0" styleClass="dashboard-premium-section-card">
+                        <Label text="Your Account" styleClass="dashboard-premium-section-title"/>
+                        <VBox spacing="6.0">
+                            <Label fx:id="accountNameLabel" text="Fahamni Student" styleClass="dashboard-premium-account-name"/>
+                            <Label fx:id="accountEmailLabel" text="student@fahamni.tn" styleClass="dashboard-premium-account-copy"/>
+                            <Label fx:id="accountRoleLabel" text="Espace Etudiant" styleClass="dashboard-premium-account-chip"/>
+                        </VBox>
+                    </VBox>
+
+                    <VBox spacing="14.0" styleClass="dashboard-premium-section-card">
+                        <Label text="Recent Activity" styleClass="dashboard-premium-section-title"/>
+                        <VBox spacing="10.0">
+                            <HBox spacing="10.0" styleClass="dashboard-premium-activity-item">
+                                <StackPane minWidth="34.0" prefWidth="34.0" styleClass="dashboard-premium-activity-dot">
+                                    <Label text="1" styleClass="dashboard-premium-activity-dot-text"/>
+                                </StackPane>
+                                <VBox spacing="4.0">
+                                    <Label text="Reservation approved" styleClass="dashboard-premium-activity-title"/>
+                                    <Label text="Your algebra session was confirmed for tonight." styleClass="dashboard-premium-activity-copy"/>
+                                </VBox>
+                            </HBox>
+                            <HBox spacing="10.0" styleClass="dashboard-premium-activity-item">
+                                <StackPane minWidth="34.0" prefWidth="34.0" styleClass="dashboard-premium-activity-dot">
+                                    <Label text="2" styleClass="dashboard-premium-activity-dot-text"/>
+                                </StackPane>
+                                <VBox spacing="4.0">
+                                    <Label text="Planner updated" styleClass="dashboard-premium-activity-title"/>
+                                    <Label text="Two new focus blocks were added for this week." styleClass="dashboard-premium-activity-copy"/>
+                                </VBox>
+                            </HBox>
+                            <HBox spacing="10.0" styleClass="dashboard-premium-activity-item">
+                                <StackPane minWidth="34.0" prefWidth="34.0" styleClass="dashboard-premium-activity-dot">
+                                    <Label text="3" styleClass="dashboard-premium-activity-dot-text"/>
+                                </StackPane>
+                                <VBox spacing="4.0">
+                                    <Label text="New article available" styleClass="dashboard-premium-activity-title"/>
+                                    <Label text="A fresh chemistry revision guide is now in resources." styleClass="dashboard-premium-activity-copy"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
                     </VBox>
                 </VBox>
-            </HBox>
+            </FlowPane>
+
+            <FlowPane fx:id="bottomGrid" hgap="20.0" prefWrapLength="1180.0" styleClass="dashboard-premium-bottom-grid" vgap="20.0">
+                <VBox minWidth="320.0" prefWidth="620.0" spacing="16.0" styleClass="dashboard-premium-section-card">
+                    <Label text="Study Resources" styleClass="dashboard-premium-section-title"/>
+                    <Label text="Jump back into curated material without digging through long menus." styleClass="dashboard-premium-section-copy" wrapText="true"/>
+                    <VBox spacing="12.0">
+                        <HBox spacing="12.0" styleClass="dashboard-premium-resource-row">
+                            <VBox spacing="4.0">
+                                <Label text="Linear Algebra Review Pack" styleClass="dashboard-premium-resource-title"/>
+                                <Label text="Worked examples, exercises, and quick recap sheets." styleClass="dashboard-premium-resource-copy"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="Open" styleClass="dashboard-premium-tertiary-button"/>
+                        </HBox>
+                        <HBox spacing="12.0" styleClass="dashboard-premium-resource-row">
+                            <VBox spacing="4.0">
+                                <Label text="Physics Formula Board" styleClass="dashboard-premium-resource-title"/>
+                                <Label text="A compact reference for mechanics and motion topics." styleClass="dashboard-premium-resource-copy"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button text="Open" styleClass="dashboard-premium-tertiary-button"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+
+                <VBox minWidth="320.0" prefWidth="620.0" spacing="16.0" styleClass="dashboard-premium-section-card">
+                    <Label text="Campus and Equipment" styleClass="dashboard-premium-section-title"/>
+                    <Label text="Quick visibility into rooms and gear before you book onsite sessions." styleClass="dashboard-premium-section-copy" wrapText="true"/>
+                    <VBox spacing="12.0">
+                        <HBox spacing="12.0" styleClass="dashboard-premium-resource-row">
+                            <VBox spacing="4.0">
+                                <Label text="Room A-204" styleClass="dashboard-premium-resource-title"/>
+                                <Label text="Available / Projector / Whiteboard / 6 seats" styleClass="dashboard-premium-resource-copy"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="Ready">
+                                <styleClass>
+                                    <String fx:value="dashboard-premium-chip"/>
+                                    <String fx:value="dashboard-premium-chip-positive"/>
+                                </styleClass>
+                            </Label>
+                        </HBox>
+                        <HBox spacing="12.0" styleClass="dashboard-premium-resource-row">
+                            <VBox spacing="4.0">
+                                <Label text="Laptop Cart / Shared Devices" styleClass="dashboard-premium-resource-title"/>
+                                <Label text="2 units available for tutoring support this afternoon." styleClass="dashboard-premium-resource-copy"/>
+                            </VBox>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="2 Left" styleClass="dashboard-premium-chip"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </FlowPane>
         </VBox>
     </VBox>
 </ScrollPane>

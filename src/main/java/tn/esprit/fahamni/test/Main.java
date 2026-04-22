@@ -2,7 +2,9 @@ package tn.esprit.fahamni.test;
 
 import tn.esprit.fahamni.utils.SceneManager;
 import javafx.application.Application;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 public class Main extends Application {
@@ -18,20 +20,31 @@ public class Main extends Application {
     }
 
     public static void showLogin() throws Exception {
-        Scene scene = SceneManager.loadScene(Main.class, SceneManager.LOGIN_VIEW, 900, 600);
-        primaryStage.setScene(scene);
+        showResponsiveView(SceneManager.LOGIN_VIEW, 900, 600);
     }
 
     public static void showMain() throws Exception {
-        Scene scene = SceneManager.loadScene(Main.class, SceneManager.MAIN_VIEW, 1200, 800);
-        primaryStage.setScene(scene);
-        primaryStage.setMaximized(true);
+        showResponsiveView(SceneManager.MAIN_VIEW, 1440, 860);
     }
 
     public static void showBackoffice() throws Exception {
-        Scene scene = SceneManager.loadScene(Main.class, SceneManager.BACKOFFICE_MAIN_VIEW, 1280, 820);
+        showResponsiveView(SceneManager.BACKOFFICE_MAIN_VIEW, 1360, 840);
+    }
+
+    private static void showResponsiveView(String fxmlPath, double designWidth, double designHeight) throws Exception {
+        Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+        double availableWidth = Math.max(640, bounds.getWidth() - 48);
+        double availableHeight = Math.max(520, bounds.getHeight() - 56);
+        double sceneWidth = Math.min(designWidth, availableWidth);
+        double sceneHeight = Math.min(designHeight, availableHeight);
+
+        Scene scene = SceneManager.loadScene(Main.class, fxmlPath, sceneWidth, sceneHeight);
+        primaryStage.setMaximized(false);
         primaryStage.setScene(scene);
-        primaryStage.setMaximized(true);
+        primaryStage.setResizable(true);
+        primaryStage.setWidth(sceneWidth);
+        primaryStage.setHeight(sceneHeight);
+        primaryStage.centerOnScreen();
     }
 
     public static void main(String[] args) {

@@ -1,4 +1,4 @@
-/* Dashboard page */
+/* Premium dashboard home */
 
 #dashboardHomeRoot,
 #dashboardHomeRoot > .viewport {
@@ -6,138 +6,510 @@
     -fx-border-color: transparent;
 }
 
+#dashboardHomeRoot .scroll-bar:vertical,
+#dashboardHomeRoot .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+#dashboardHomeRoot .scroll-bar:vertical .track,
+#dashboardHomeRoot .scroll-bar:horizontal .track {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 999px;
+}
+
+#dashboardHomeRoot .scroll-bar:vertical .thumb,
+#dashboardHomeRoot .scroll-bar:horizontal .thumb {
+    -fx-background-color: rgba(96, 224, 255, 0.32);
+    -fx-background-radius: 999px;
+}
+
+#dashboardHomeRoot .increment-button,
+#dashboardHomeRoot .decrement-button,
+#dashboardHomeRoot .increment-arrow,
+#dashboardHomeRoot .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: "";
+}
+
+#dashboardHomeRoot .dashboard-premium-shell-wrap {
+    -fx-background-color: transparent;
+}
+
 #dashboardHomeContent {
     -fx-background-color: transparent;
-    -fx-spacing: 22px;
 }
 
-#dashboardHomeRoot .welcome-section {
+#dashboardHomeRoot .dashboard-premium-content {
+    -fx-background-color: transparent;
+    -fx-spacing: 24px;
+}
+
+#dashboardHomeRoot .dashboard-premium-hero {
     -fx-background-color:
-        radial-gradient(center 15% 10%, radius 38%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.00) 72%),
-        radial-gradient(center 86% 14%, radius 34%, rgba(196, 208, 255, 0.16) 0%, rgba(196, 208, 255, 0.00) 76%),
-        linear-gradient(to right, #6d5bd1 0%, #7d6ce0 46%, #95a2f2 100%);
-    -fx-border-color: rgba(232, 227, 255, 0.22);
+        radial-gradient(center 16% 14%, radius 42%, rgba(83, 214, 255, 0.24) 0%, rgba(83, 214, 255, 0.00) 72%),
+        radial-gradient(center 92% 8%, radius 28%, rgba(74, 125, 255, 0.22) 0%, rgba(74, 125, 255, 0.00) 78%),
+        linear-gradient(to bottom right, rgba(11, 20, 33, 0.94) 0%, rgba(10, 18, 29, 0.92) 100%);
+    -fx-border-color: rgba(148, 198, 255, 0.15);
     -fx-border-width: 1px;
-    -fx-background-radius: 28px;
-    -fx-border-radius: 28px;
-    -fx-padding: 26px 28px;
-    -fx-effect: dropshadow(gaussian, rgba(93, 79, 170, 0.20), 20, 0.16, 0, 6);
+    -fx-background-radius: 32px;
+    -fx-border-radius: 32px;
+    -fx-padding: 32px;
+    -fx-effect: dropshadow(gaussian, rgba(4, 9, 18, 0.44), 42, 0.20, 0, 16);
 }
 
-#dashboardHomeRoot .welcome-title {
-    -fx-text-fill: white;
-    -fx-font-size: 31px;
+#dashboardHomeRoot .dashboard-premium-hero-copy {
+    -fx-padding: 2px 18px 2px 2px;
 }
 
-#dashboardHomeRoot .welcome-subtitle {
-    -fx-text-fill: rgba(244, 241, 255, 0.82);
-    -fx-font-size: 14px;
+#dashboardHomeRoot .dashboard-premium-eyebrow,
+#dashboardHomeRoot .dashboard-premium-card-kicker {
+    -fx-text-fill: #62dfff;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 0.6px;
 }
 
-#dashboardHomeRoot .stat-card,
-#dashboardHomeRoot .upcoming-sessions,
-#dashboardHomeRoot .learning-progress,
-#dashboardHomeRoot .recommended-tutors {
-    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fc 100%);
-    -fx-border-color: #dde1ea;
+#dashboardHomeRoot .dashboard-premium-hero-title {
+    -fx-text-fill: #f6fbff;
+    -fx-font-size: 38px;
+    -fx-font-weight: 800;
+    -fx-line-spacing: 4px;
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-subtitle {
+    -fx-text-fill: #9db2ca;
+    -fx-font-size: 15px;
+    -fx-line-spacing: 3px;
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-actions {
+    -fx-padding: 10px 0 0 0;
+}
+
+#dashboardHomeRoot .dashboard-premium-primary-button,
+#dashboardHomeRoot .dashboard-premium-secondary-button,
+#dashboardHomeRoot .dashboard-premium-tertiary-button,
+#dashboardHomeRoot .dashboard-premium-action-rail-button {
+    -fx-cursor: hand;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+#dashboardHomeRoot .dashboard-premium-primary-button {
+    -fx-background-color: linear-gradient(to right, #51d5ff 0%, #4a7dff 100%);
+    -fx-text-fill: #03121e;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 12px 22px;
+    -fx-effect: dropshadow(gaussian, rgba(79, 216, 255, 0.34), 18, 0.24, 0, 6);
+}
+
+#dashboardHomeRoot .dashboard-premium-primary-button:hover {
+    -fx-background-color: linear-gradient(to right, #71e0ff 0%, #6595ff 100%);
+}
+
+#dashboardHomeRoot .dashboard-premium-secondary-button {
+    -fx-background-color: rgba(18, 31, 49, 0.92);
+    -fx-border-color: rgba(144, 190, 246, 0.18);
     -fx-border-width: 1px;
-    -fx-background-radius: 24px;
-    -fx-border-radius: 24px;
-    -fx-padding: 20px;
-    -fx-effect: dropshadow(gaussian, rgba(31, 34, 43, 0.06), 16, 0.14, 0, 4);
+    -fx-text-fill: #eef6ff;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 11px 20px;
 }
 
-#dashboardHomeRoot .stats-row {
-    -fx-spacing: 16px;
+#dashboardHomeRoot .dashboard-premium-secondary-button:hover {
+    -fx-background-color: rgba(24, 39, 61, 0.96);
+    -fx-border-color: rgba(100, 216, 255, 0.34);
 }
 
-#dashboardHomeRoot .stats-row .stat-card {
-    -fx-background-color: linear-gradient(to bottom, #fbfbfd 0%, #f2f0ff 100%);
-    -fx-border-color: #dfdaf0;
+#dashboardHomeRoot .dashboard-premium-tertiary-button {
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(255, 255, 255, 0.09);
+    -fx-border-width: 1px;
+    -fx-text-fill: #cad8e8;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 10px 16px;
+}
+
+#dashboardHomeRoot .dashboard-premium-tertiary-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.07);
+    -fx-border-color: rgba(96, 224, 255, 0.22);
+    -fx-text-fill: #eef7ff;
+}
+
+#dashboardHomeRoot .dashboard-premium-inline-action {
+    -fx-padding: 9px 16px;
+    -fx-font-size: 12px;
+}
+
+#dashboardHomeRoot .dashboard-premium-floating-stack {
+    -fx-padding: 8px 0 0 0;
+}
+
+#dashboardHomeRoot .dashboard-premium-floating-card {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(16, 28, 45, 0.94) 0%, rgba(11, 20, 33, 0.92) 100%);
+    -fx-border-color: rgba(149, 192, 255, 0.14);
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
     -fx-padding: 18px 20px;
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.42), 26, 0.18, 0, 10);
 }
 
-#dashboardHomeRoot .section-title,
-#dashboardHomeRoot .session-subject,
-#dashboardHomeRoot .tutor-name {
-    -fx-text-fill: #202532;
+#dashboardHomeRoot .dashboard-premium-floating-card-primary {
+    -fx-translate-x: -18px;
 }
 
-#dashboardHomeRoot .section-subtitle,
-#dashboardHomeRoot .stat-label,
-#dashboardHomeRoot .session-time,
-#dashboardHomeRoot .session-tutor,
-#dashboardHomeRoot .tutor-subject,
-#dashboardHomeRoot .tutor-rating {
-    -fx-text-fill: #6f778a;
+#dashboardHomeRoot .dashboard-premium-floating-card-secondary {
+    -fx-translate-x: 8px;
 }
 
-#dashboardHomeRoot .stat-value,
-#dashboardHomeRoot .session-price,
-#dashboardHomeRoot .progress-percentage {
-    -fx-text-fill: #5f49bf;
-    -fx-font-weight: bold;
+#dashboardHomeRoot .dashboard-premium-floating-card-tertiary {
+    -fx-translate-x: -10px;
 }
 
-#dashboardHomeRoot .profile-role-badge {
-    -fx-background-color: #f2efff;
-    -fx-border-color: #ded7fe;
+#dashboardHomeRoot .dashboard-premium-inline-chip,
+#dashboardHomeRoot .dashboard-premium-chip {
+    -fx-background-color: rgba(82, 215, 255, 0.12);
+    -fx-border-color: rgba(96, 224, 255, 0.22);
     -fx-border-width: 1px;
-    -fx-text-fill: #5f49bf;
+    -fx-text-fill: #9fe7ff;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-padding: 5px 10px;
+}
+
+#dashboardHomeRoot .dashboard-premium-chip-positive {
+    -fx-background-color: rgba(90, 205, 151, 0.14);
+    -fx-border-color: rgba(122, 226, 177, 0.28);
+    -fx-text-fill: #aaf3c9;
+}
+
+#dashboardHomeRoot .dashboard-premium-floating-title {
+    -fx-text-fill: #f4f8ff;
+    -fx-font-size: 20px;
+    -fx-font-weight: 750;
+}
+
+#dashboardHomeRoot .dashboard-premium-floating-copy,
+#dashboardHomeRoot .dashboard-premium-section-copy,
+#dashboardHomeRoot .dashboard-premium-session-copy,
+#dashboardHomeRoot .dashboard-premium-account-copy,
+#dashboardHomeRoot .dashboard-premium-activity-copy,
+#dashboardHomeRoot .dashboard-premium-resource-copy,
+#dashboardHomeRoot .dashboard-premium-tutor-copy {
+    -fx-text-fill: #90a4bd;
+    -fx-font-size: 13px;
+}
+
+#dashboardHomeRoot .dashboard-premium-floating-copy-strong {
+    -fx-text-fill: #e6f5ff;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+#dashboardHomeRoot .dashboard-premium-stat-strip {
+    -fx-background-color: transparent;
+}
+
+#dashboardHomeRoot .dashboard-premium-stat-card,
+#dashboardHomeRoot .dashboard-premium-section-card {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(14, 24, 38, 0.92) 0%, rgba(10, 18, 29, 0.90) 100%);
+    -fx-border-color: rgba(144, 190, 246, 0.12);
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.32), 22, 0.18, 0, 8);
+}
+
+#dashboardHomeRoot .dashboard-premium-section-card-large {
+    -fx-padding: 24px;
+}
+
+#dashboardHomeRoot .dashboard-premium-stat-card:hover,
+#dashboardHomeRoot .dashboard-premium-section-card:hover,
+#dashboardHomeRoot .dashboard-premium-session-card:hover,
+#dashboardHomeRoot .dashboard-premium-tutor-card:hover,
+#dashboardHomeRoot .dashboard-premium-resource-row:hover,
+#dashboardHomeRoot .dashboard-premium-activity-item:hover {
+    -fx-border-color: rgba(96, 224, 255, 0.24);
+}
+
+#dashboardHomeRoot .dashboard-premium-stat-value {
+    -fx-text-fill: #f6fbff;
+    -fx-font-size: 29px;
+    -fx-font-weight: 800;
+}
+
+#dashboardHomeRoot .dashboard-premium-stat-label,
+#dashboardHomeRoot .dashboard-premium-date-month {
+    -fx-text-fill: #87a0bd;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+#dashboardHomeRoot .dashboard-premium-section-title,
+#dashboardHomeRoot .dashboard-premium-session-title,
+#dashboardHomeRoot .dashboard-premium-tutor-name,
+#dashboardHomeRoot .dashboard-premium-activity-title,
+#dashboardHomeRoot .dashboard-premium-resource-title,
+#dashboardHomeRoot .dashboard-premium-account-name {
+    -fx-text-fill: #f2f8ff;
+    -fx-font-size: 18px;
+    -fx-font-weight: 760;
+}
+
+#dashboardHomeRoot .dashboard-premium-session-card,
+#dashboardHomeRoot .dashboard-premium-tutor-card,
+#dashboardHomeRoot .dashboard-premium-resource-row,
+#dashboardHomeRoot .dashboard-premium-activity-item {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-border-color: rgba(255, 255, 255, 0.07);
+    -fx-border-width: 1px;
+    -fx-background-radius: 22px;
+    -fx-border-radius: 22px;
+    -fx-padding: 14px;
+}
+
+#dashboardHomeRoot .dashboard-premium-date-panel {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(81, 213, 255, 0.16) 0%, rgba(74, 125, 255, 0.13) 100%);
+    -fx-border-color: rgba(96, 224, 255, 0.24);
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 10px 8px;
+}
+
+#dashboardHomeRoot .dashboard-premium-date-day {
+    -fx-text-fill: #f8fcff;
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+}
+
+#dashboardHomeRoot .dashboard-premium-session-status {
+    -fx-text-fill: #9fe7ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+#dashboardHomeRoot .dashboard-premium-session-status-pending {
+    -fx-text-fill: #ffdb91;
+}
+
+#dashboardHomeRoot .dashboard-premium-avatar-dot,
+#dashboardHomeRoot .dashboard-premium-activity-dot {
+    -fx-background-color: linear-gradient(to bottom right, rgba(81, 213, 255, 0.24) 0%, rgba(74, 125, 255, 0.22) 100%);
+    -fx-border-color: rgba(114, 195, 255, 0.22);
+    -fx-border-width: 1px;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
 }
 
-#dashboardHomeRoot .session-card,
-#dashboardHomeRoot .tutor-card {
-    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f9f9fc 100%);
-    -fx-border-color: #e3e6ee;
+#dashboardHomeRoot .dashboard-premium-avatar-text,
+#dashboardHomeRoot .dashboard-premium-activity-dot-text {
+    -fx-text-fill: #eff8ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+#dashboardHomeRoot .dashboard-premium-rating {
+    -fx-text-fill: #9fe7ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+#dashboardHomeRoot .dashboard-premium-account-chip {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-border-color: rgba(255, 255, 255, 0.10);
     -fx-border-width: 1px;
-    -fx-background-radius: 20px;
-    -fx-border-radius: 20px;
-    -fx-padding: 16px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-text-fill: #d7e7f8;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-padding: 7px 12px;
 }
 
-#dashboardHomeRoot .session-card:hover,
-#dashboardHomeRoot .tutor-card:hover {
-    -fx-border-color: #ccc5eb;
-    -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.08), 14, 0.14, 0, 4);
+#dashboardHomeRoot .dashboard-premium-action-rail-button {
+    -fx-alignment: center-left;
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-text-fill: #eef6ff;
+    -fx-padding: 13px 16px;
 }
 
-#dashboardHomeRoot .session-button,
-#dashboardHomeRoot .contact-button {
-    -fx-background-color: linear-gradient(to right, #7967df 0%, #5f49bf 100%);
-    -fx-border-color: transparent;
+#dashboardHomeRoot .dashboard-premium-action-rail-button:hover {
+    -fx-background-color: rgba(96, 224, 255, 0.10);
+    -fx-border-color: rgba(96, 224, 255, 0.24);
+}
+
+#dashboardHomeRoot .dashboard-premium-main-grid,
+#dashboardHomeRoot .dashboard-premium-bottom-grid {
+    -fx-background-color: transparent;
+}
+
+.theme-light #dashboardHomeRoot .scroll-bar:vertical .track,
+.theme-light #dashboardHomeRoot .scroll-bar:horizontal .track {
+    -fx-background-color: rgba(22, 49, 74, 0.08);
+}
+
+.theme-light #dashboardHomeRoot .scroll-bar:vertical .thumb,
+.theme-light #dashboardHomeRoot .scroll-bar:horizontal .thumb {
+    -fx-background-color: rgba(83, 165, 255, 0.34);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-hero {
+    -fx-background-color:
+        radial-gradient(center 16% 14%, radius 40%, rgba(79, 216, 255, 0.20) 0%, rgba(79, 216, 255, 0.00) 74%),
+        radial-gradient(center 92% 10%, radius 28%, rgba(110, 129, 255, 0.14) 0%, rgba(110, 129, 255, 0.00) 76%),
+        radial-gradient(center 76% 84%, radius 22%, rgba(255, 214, 188, 0.14) 0%, rgba(255, 214, 188, 0.00) 72%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 254, 0.96) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
+    -fx-effect: dropshadow(gaussian, rgba(32, 56, 84, 0.10), 28, 0.18, 0, 12);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-eyebrow,
+.theme-light #dashboardHomeRoot .dashboard-premium-card-kicker,
+.theme-light #dashboardHomeRoot .dashboard-premium-session-status,
+.theme-light #dashboardHomeRoot .dashboard-premium-rating {
+    -fx-text-fill: #3178bf;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-hero-title,
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-title,
+.theme-light #dashboardHomeRoot .dashboard-premium-stat-value,
+.theme-light #dashboardHomeRoot .dashboard-premium-section-title,
+.theme-light #dashboardHomeRoot .dashboard-premium-session-title,
+.theme-light #dashboardHomeRoot .dashboard-premium-tutor-name,
+.theme-light #dashboardHomeRoot .dashboard-premium-activity-title,
+.theme-light #dashboardHomeRoot .dashboard-premium-resource-title,
+.theme-light #dashboardHomeRoot .dashboard-premium-account-name,
+.theme-light #dashboardHomeRoot .dashboard-premium-date-day {
+    -fx-text-fill: #15263a;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-hero-subtitle,
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-section-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-session-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-account-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-activity-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-resource-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-tutor-copy,
+.theme-light #dashboardHomeRoot .dashboard-premium-stat-label,
+.theme-light #dashboardHomeRoot .dashboard-premium-date-month,
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-copy-strong {
+    -fx-text-fill: #6f849a;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-primary-button {
+    -fx-background-color: linear-gradient(to right, #3fb9ff 0%, #5d86ff 100%);
     -fx-text-fill: white;
-    -fx-background-radius: 14px;
-    -fx-border-radius: 14px;
-    -fx-padding: 10px 16px;
-    -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.20), 10, 0.16, 0, 3);
+    -fx-effect: dropshadow(gaussian, rgba(86, 152, 255, 0.22), 18, 0.20, 0, 6);
 }
 
-#dashboardHomeRoot .session-button:hover,
-#dashboardHomeRoot .contact-button:hover {
-    -fx-background-color: linear-gradient(to right, #8a79eb 0%, #6d58d3 100%);
+.theme-light #dashboardHomeRoot .dashboard-premium-secondary-button,
+.theme-light #dashboardHomeRoot .dashboard-premium-tertiary-button,
+.theme-light #dashboardHomeRoot .dashboard-premium-action-rail-button {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.92) 0%, rgba(247, 250, 253, 0.94) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
+    -fx-text-fill: #17314a;
 }
 
-#dashboardHomeRoot .progress-subject {
-    -fx-text-fill: #313747;
+.theme-light #dashboardHomeRoot .dashboard-premium-secondary-button:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-tertiary-button:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-action-rail-button:hover {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.98) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.18);
 }
 
-#dashboardHomeRoot .progress-bar > .track {
-    -fx-background-color: #e2e5ee;
-    -fx-background-radius: 999px;
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-card,
+.theme-light #dashboardHomeRoot .dashboard-premium-stat-card,
+.theme-light #dashboardHomeRoot .dashboard-premium-section-card {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.94) 0%, rgba(248, 251, 254, 0.96) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
+    -fx-effect: dropshadow(gaussian, rgba(32, 56, 84, 0.08), 18, 0.16, 0, 8);
 }
 
-#dashboardHomeRoot .progress-bar > .bar {
-    -fx-background-color: linear-gradient(to right, #8a79eb 0%, #6350c7 100%);
-    -fx-background-radius: 999px;
-    -fx-background-insets: 0;
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-card-primary {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(244, 251, 255, 0.98) 0%, rgba(235, 247, 255, 0.96) 100%);
+    -fx-border-color: rgba(85, 177, 255, 0.16);
 }
 
-#dashboardHomeRoot .tutor-avatar {
-    -fx-background-color: #f2efff;
-    -fx-border-color: #ded7fe;
-    -fx-border-width: 1px;
-    -fx-text-fill: #5f49bf;
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-card-secondary {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(250, 249, 255, 0.98) 0%, rgba(242, 244, 255, 0.96) 100%);
+    -fx-border-color: rgba(129, 141, 255, 0.14);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-floating-card-tertiary {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(246, 255, 252, 0.98) 0%, rgba(238, 252, 248, 0.96) 100%);
+    -fx-border-color: rgba(102, 195, 167, 0.14);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-session-card,
+.theme-light #dashboardHomeRoot .dashboard-premium-tutor-card,
+.theme-light #dashboardHomeRoot .dashboard-premium-resource-row,
+.theme-light #dashboardHomeRoot .dashboard-premium-activity-item {
+    -fx-background-color: linear-gradient(to bottom, rgba(248, 250, 253, 0.96) 0%, rgba(243, 247, 251, 0.94) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.09);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-date-panel,
+.theme-light #dashboardHomeRoot .dashboard-premium-avatar-dot,
+.theme-light #dashboardHomeRoot .dashboard-premium-activity-dot {
+    -fx-background-color:
+        linear-gradient(to bottom right, rgba(79, 216, 255, 0.14) 0%, rgba(102, 132, 255, 0.11) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.16);
+    -fx-effect: dropshadow(gaussian, rgba(99, 152, 220, 0.10), 10, 0.14, 0, 3);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-avatar-text,
+.theme-light #dashboardHomeRoot .dashboard-premium-activity-dot-text {
+    -fx-text-fill: #17314a;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-inline-chip,
+.theme-light #dashboardHomeRoot .dashboard-premium-chip,
+.theme-light #dashboardHomeRoot .dashboard-premium-account-chip {
+    -fx-background-color: linear-gradient(to right, rgba(79, 216, 255, 0.10) 0%, rgba(119, 143, 255, 0.08) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.16);
+    -fx-text-fill: #1d4a74;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-chip-positive {
+    -fx-background-color: rgba(90, 205, 151, 0.12);
+    -fx-border-color: rgba(76, 176, 132, 0.20);
+    -fx-text-fill: #1f6d51;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-session-status-pending {
+    -fx-text-fill: #b77a2e;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-stat-card:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-section-card:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-session-card:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-tutor-card:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-resource-row:hover,
+.theme-light #dashboardHomeRoot .dashboard-premium-activity-item:hover {
+    -fx-border-color: rgba(93, 158, 255, 0.18);
+    -fx-effect: dropshadow(gaussian, rgba(86, 140, 205, 0.08), 16, 0.14, 0, 6);
 }

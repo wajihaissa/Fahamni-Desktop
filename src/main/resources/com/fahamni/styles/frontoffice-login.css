@@ -258,6 +258,7 @@
     -fx-effect: dropshadow(gaussian, rgba(108, 192, 255, 0.34), 16, 0.22, 0, 0);
 }
 
+
 .login-root .combo-box.login-input {
     -fx-background-insets: 0;
 }
