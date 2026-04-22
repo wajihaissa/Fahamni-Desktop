@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane id="aboutRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="about-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml">
+    <VBox alignment="TOP_CENTER" styleClass="about-shell-wrap">
+        <padding>
+            <Insets top="12" right="18" bottom="26" left="18"/>
+        </padding>
+
+        <VBox maxWidth="1280.0" spacing="24.0" styleClass="about-content">
+            <FlowPane hgap="24.0" prefWrapLength="1120.0" styleClass="about-hero" vgap="24.0">
+                <VBox maxWidth="700.0" minWidth="340.0" spacing="18.0" styleClass="about-hero-copy">
+                    <Label text="ABOUT FAHAMNI" styleClass="about-eyebrow"/>
+                    <Label text="A smart educational platform where students, tutors, and administrators work inside one learning ecosystem."
+                           styleClass="about-hero-title" wrapText="true"/>
+                    <Label text="Fahamni was imagined as more than a school project interface. The idea is to combine tutoring, planning, academic content, communication, and campus operations into one product that feels structured, professional, and useful every day."
+                           styleClass="about-hero-subtitle" wrapText="true"/>
+                    <FlowPane hgap="12.0" prefWrapLength="520.0" vgap="12.0">
+                        <Label text="Tutoring marketplace" styleClass="about-chip"/>
+                        <Label text="Calendar and planner" styleClass="about-chip"/>
+                        <Label text="Rooms and equipment" styleClass="about-chip"/>
+                        <Label text="Content and resources" styleClass="about-chip"/>
+                        <Label text="Messaging and quiz" styleClass="about-chip"/>
+                        <Label text="Secure authentication" styleClass="about-chip"/>
+                    </FlowPane>
+                </VBox>
+
+                <VBox maxWidth="390.0" minWidth="300.0" spacing="14.0" styleClass="about-side-stack">
+                    <VBox spacing="10.0">
+                        <styleClass>
+                            <String fx:value="about-side-card"/>
+                            <String fx:value="about-side-card-primary"/>
+                        </styleClass>
+                        <Label text="PROJECT IDEA" styleClass="about-card-kicker"/>
+                        <Label text="One platform for learning support, academic coordination, and operational management."
+                               styleClass="about-card-title" wrapText="true"/>
+                        <Label text="Each role gets a dedicated experience, but they all stay connected inside the same product flow."
+                               styleClass="about-card-copy" wrapText="true"/>
+                    </VBox>
+
+                    <VBox spacing="10.0" styleClass="about-side-card">
+                        <Label text="WHY IT MATTERS" styleClass="about-card-kicker"/>
+                        <Label text="It reduces fragmentation between booking, studying, communication, and infrastructure so the user experience feels calmer and more complete."
+                               styleClass="about-card-copy" wrapText="true"/>
+                    </VBox>
+
+                    <VBox spacing="10.0" styleClass="about-side-card">
+                        <Label text="PRODUCT SHAPE" styleClass="about-card-kicker"/>
+                        <FlowPane hgap="8.0" prefWrapLength="320.0" vgap="8.0">
+                            <Label text="Students" styleClass="about-micro-chip"/>
+                            <Label text="Tutors" styleClass="about-micro-chip"/>
+                            <Label text="Admins" styleClass="about-micro-chip"/>
+                            <Label text="Online and onsite" styleClass="about-micro-chip"/>
+                        </FlowPane>
+                    </VBox>
+                </VBox>
+            </FlowPane>
+
+            <FlowPane hgap="16.0" prefWrapLength="1180.0" styleClass="about-stat-strip" vgap="16.0">
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="3" styleClass="about-stat-value"/>
+                    <Label text="Role Spaces" styleClass="about-stat-label"/>
+                    <Label text="Student, tutor, and administrator experiences." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="2" styleClass="about-stat-value"/>
+                    <Label text="Delivery Modes" styleClass="about-stat-label"/>
+                    <Label text="Sessions can be managed online or onsite." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="6+" styleClass="about-stat-value"/>
+                    <Label text="Core Modules" styleClass="about-stat-label"/>
+                    <Label text="Booking, planning, content, messaging, quiz, and campus tools." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="24/7" styleClass="about-stat-value"/>
+                    <Label text="Secure Access Mindset" styleClass="about-stat-label"/>
+                    <Label text="JWT, Face ID, password recovery, and 2FA support." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+            </FlowPane>
+
+            <VBox spacing="16.0" styleClass="about-section-card">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <VBox spacing="4.0">
+                        <Label text="Who Fahamni Serves" styleClass="about-section-title"/>
+                        <Label text="The platform was designed around three different needs that still need to stay connected."
+                               styleClass="about-section-copy" wrapText="true"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Multi-role platform" styleClass="about-soft-button"/>
+                </HBox>
+
+                <FlowPane hgap="18.0" prefWrapLength="1180.0" vgap="18.0">
+                    <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
+                        <Label text="Students" styleClass="about-audience-title"/>
+                        <Label text="Students can search for tutors, reserve sessions, organize their calendar, follow planner blocks, access study tools, and keep learning resources close by."
+                               styleClass="about-body-copy" wrapText="true"/>
+                    </VBox>
+                    <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
+                        <Label text="Tutors" styleClass="about-audience-title"/>
+                        <Label text="Tutors can publish support sessions, choose online or onsite delivery, manage requests, follow teaching activity, and contribute content to the platform."
+                               styleClass="about-body-copy" wrapText="true"/>
+                    </VBox>
+                    <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
+                        <Label text="Administrators" styleClass="about-audience-title"/>
+                        <Label text="Administrators oversee users, rooms, equipment, content, and platform quality, giving Fahamni a real operational backbone behind the front-office experience."
+                               styleClass="about-body-copy" wrapText="true"/>
+                    </VBox>
+                </FlowPane>
+            </VBox>
+
+            <VBox spacing="16.0" styleClass="about-section-card">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <VBox spacing="4.0">
+                        <Label text="Core Features" styleClass="about-section-title"/>
+                        <Label text="Fahamni mixes learning support and product operations instead of separating them into disconnected tools."
+                               styleClass="about-section-copy" wrapText="true"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Educational platform" styleClass="about-soft-button"/>
+                </HBox>
+
+                <FlowPane hgap="18.0" prefWrapLength="1180.0" vgap="18.0">
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <Label text="Booking and Session Flow" styleClass="about-feature-title"/>
+                        <Label text="Students can find tutors, check availability, book sessions, and keep better visibility on upcoming learning appointments."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Tutoring" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <Label text="Calendar and Planner" styleClass="about-feature-title"/>
+                        <Label text="The platform supports a more guided study routine through scheduling, planning, and clearer academic structure."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Productivity" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <Label text="Rooms and Equipment" styleClass="about-feature-title"/>
+                        <Label text="Onsite tutoring is supported with room assignment, equipment readiness, and infrastructure visibility for admins and tutors."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Operations" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <Label text="Resources and Blog" styleClass="about-feature-title"/>
+                        <Label text="Educational content extends the product beyond reservations and makes the platform useful between tutoring sessions too."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Content" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <Label text="Messaging and Interaction" styleClass="about-feature-title"/>
+                        <Label text="Communication features help learners and tutors stay aligned without moving across unrelated apps and tools."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Collaboration" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <Label text="Security and Access" styleClass="about-feature-title"/>
+                        <Label text="JWT sessions, password reset, Face ID login, and two-factor authentication make the product feel more trustworthy and professional."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Security" styleClass="about-feature-tag"/>
+                    </VBox>
+                </FlowPane>
+            </VBox>
+
+            <FlowPane hgap="20.0" prefWrapLength="1180.0" vgap="20.0">
+                <VBox minWidth="340.0" prefWidth="620.0" spacing="14.0" styleClass="about-section-card">
+                    <Label text="What Makes Fahamni Different" styleClass="about-section-title"/>
+                    <Label text="Fahamni is not only a learning workspace and not only a booking app. It is a hybrid product that mixes tutoring support, planning, communication, content, and operational administration inside one software experience."
+                           styleClass="about-body-copy" wrapText="true"/>
+                </VBox>
+
+                <VBox minWidth="340.0" prefWidth="620.0" spacing="14.0" styleClass="about-section-card">
+                    <Label text="Product Vision" styleClass="about-section-title"/>
+                    <Label text="The goal is to give students a calmer way to find support, give tutors a structured way to manage sessions, and give administrators the tools to manage the academic environment behind the scenes."
+                           styleClass="about-body-copy" wrapText="true"/>
+                </VBox>
+            </FlowPane>
+
+            <VBox spacing="10.0" styleClass="about-summary-banner">
+                <Label text="Fahamni in one sentence" styleClass="about-summary-title"/>
+                <Label text="A learning support platform that helps students find academic help, helps tutors organize sessions, and helps administrators manage the digital and physical environment around learning."
+                       styleClass="about-summary-copy" wrapText="true"/>
+            </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

@@ -90,6 +90,7 @@
                         <Button fx:id="plannerButton" text="Planner" onAction="#showPlanner" styleClass="front-navbar-link"/>
                         <Button fx:id="quizButton" text="Quiz" onAction="#showQuiz" styleClass="front-navbar-link"/>
                         <Button fx:id="blogButton" text="Blog" onAction="#showBlog" styleClass="front-navbar-link"/>
+                        <Button fx:id="aboutButton" text="A Propos" onAction="#showAbout" styleClass="front-navbar-link"/>
                     </FlowPane>
                 </center>
 

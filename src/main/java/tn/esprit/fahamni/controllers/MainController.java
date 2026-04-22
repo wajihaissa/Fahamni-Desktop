@@ -60,6 +60,7 @@ public class MainController {
     @FXML private Button messengerButton;
     @FXML private Button quizButton;
     @FXML private Button blogButton;
+    @FXML private Button aboutButton;
     @FXML private Button themeToggleButton;
     @FXML private Button accountButton;
     @FXML private Label profileAvatarLabel;
@@ -156,6 +157,12 @@ public class MainController {
     private void showBlog() {
         loadView("BlogView.fxml", "Blog & Ressources");
         setActiveButton(blogButton);
+    }
+
+    @FXML
+    private void showAbout() {
+        loadView("AboutView.fxml", "A propos de Fahamni");
+        setActiveButton(aboutButton);
     }
 
     @FXML
@@ -519,6 +526,7 @@ public class MainController {
         removeActiveClass(messengerButton);
         removeActiveClass(quizButton);
         removeActiveClass(blogButton);
+        removeActiveClass(aboutButton);
 
         if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");

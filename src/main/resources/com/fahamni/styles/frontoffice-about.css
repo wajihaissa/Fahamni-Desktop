@@ -1,0 +1,328 @@
+/* About page */
+
+#aboutRoot,
+#aboutRoot > .viewport,
+#aboutRoot .corner {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+#aboutRoot .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+#aboutRoot .scroll-bar:vertical .track {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 999px;
+}
+
+#aboutRoot .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(96, 224, 255, 0.28);
+    -fx-background-radius: 999px;
+}
+
+#aboutRoot .increment-button,
+#aboutRoot .decrement-button,
+#aboutRoot .increment-arrow,
+#aboutRoot .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: "";
+}
+
+.theme-light #aboutRoot .scroll-bar:vertical .track {
+    -fx-background-color: rgba(22, 49, 74, 0.08);
+}
+
+.theme-light #aboutRoot .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(83, 165, 255, 0.30);
+}
+
+#aboutRoot .about-shell-wrap,
+#aboutRoot .about-content,
+#aboutRoot .about-stat-strip {
+    -fx-background-color: transparent;
+}
+
+#aboutRoot .about-hero,
+#aboutRoot .about-stat-card,
+#aboutRoot .about-section-card,
+#aboutRoot .about-audience-card,
+#aboutRoot .about-feature-card,
+#aboutRoot .about-side-card,
+#aboutRoot .about-summary-banner {
+    -fx-border-width: 1px;
+    -fx-background-radius: 28px;
+    -fx-border-radius: 28px;
+}
+
+.theme-dark #aboutRoot .about-hero,
+.theme-dark #aboutRoot .about-stat-card,
+.theme-dark #aboutRoot .about-section-card,
+.theme-dark #aboutRoot .about-audience-card,
+.theme-dark #aboutRoot .about-feature-card,
+.theme-dark #aboutRoot .about-side-card,
+.theme-dark #aboutRoot .about-summary-banner {
+    -fx-background-color: linear-gradient(to bottom, rgba(14, 24, 38, 0.92) 0%, rgba(10, 18, 29, 0.90) 100%);
+    -fx-border-color: rgba(144, 190, 246, 0.12);
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.30), 22, 0.18, 0, 8);
+}
+
+.theme-light #aboutRoot .about-hero,
+.theme-light #aboutRoot .about-stat-card,
+.theme-light #aboutRoot .about-section-card,
+.theme-light #aboutRoot .about-audience-card,
+.theme-light #aboutRoot .about-feature-card,
+.theme-light #aboutRoot .about-side-card,
+.theme-light #aboutRoot .about-summary-banner {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.94) 0%, rgba(248, 251, 254, 0.96) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
+    -fx-effect: dropshadow(gaussian, rgba(32, 56, 84, 0.09), 18, 0.16, 0, 8);
+}
+
+#aboutRoot .about-hero,
+#aboutRoot .about-section-card,
+#aboutRoot .about-audience-card,
+#aboutRoot .about-feature-card,
+#aboutRoot .about-side-card,
+#aboutRoot .about-summary-banner {
+    -fx-padding: 22px;
+}
+
+#aboutRoot .about-hero {
+    -fx-padding: 32px;
+}
+
+.theme-dark #aboutRoot .about-hero {
+    -fx-background-color:
+        radial-gradient(center 16% 14%, radius 42%, rgba(83, 214, 255, 0.22) 0%, rgba(83, 214, 255, 0.00) 72%),
+        radial-gradient(center 94% 8%, radius 28%, rgba(74, 125, 255, 0.20) 0%, rgba(74, 125, 255, 0.00) 78%),
+        linear-gradient(to bottom right, rgba(11, 20, 33, 0.95) 0%, rgba(10, 18, 29, 0.92) 100%);
+}
+
+.theme-light #aboutRoot .about-hero {
+    -fx-background-color:
+        radial-gradient(center 18% 12%, radius 40%, rgba(79, 216, 255, 0.19) 0%, rgba(79, 216, 255, 0.00) 74%),
+        radial-gradient(center 92% 9%, radius 28%, rgba(110, 129, 255, 0.14) 0%, rgba(110, 129, 255, 0.00) 78%),
+        radial-gradient(center 76% 84%, radius 22%, rgba(255, 214, 188, 0.14) 0%, rgba(255, 214, 188, 0.00) 72%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 254, 0.96) 100%);
+}
+
+#aboutRoot .about-eyebrow,
+#aboutRoot .about-card-kicker {
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 0.6px;
+}
+
+.theme-dark #aboutRoot .about-eyebrow,
+.theme-dark #aboutRoot .about-card-kicker,
+.theme-dark #aboutRoot .about-feature-tag {
+    -fx-text-fill: #55c8ff;
+}
+
+.theme-light #aboutRoot .about-eyebrow,
+.theme-light #aboutRoot .about-card-kicker,
+.theme-light #aboutRoot .about-feature-tag {
+    -fx-text-fill: #3178bf;
+}
+
+#aboutRoot .about-hero-title {
+    -fx-font-size: 38px;
+    -fx-font-weight: 800;
+    -fx-line-spacing: 3px;
+}
+
+#aboutRoot .about-section-title,
+#aboutRoot .about-audience-title,
+#aboutRoot .about-feature-title,
+#aboutRoot .about-card-title,
+#aboutRoot .about-summary-title {
+    -fx-font-size: 19px;
+    -fx-font-weight: 760;
+}
+
+#aboutRoot .about-stat-value {
+    -fx-font-size: 29px;
+    -fx-font-weight: 800;
+}
+
+#aboutRoot .about-stat-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+}
+
+#aboutRoot .about-hero-subtitle,
+#aboutRoot .about-section-copy,
+#aboutRoot .about-card-copy,
+#aboutRoot .about-body-copy,
+#aboutRoot .about-stat-copy,
+#aboutRoot .about-summary-copy {
+    -fx-font-size: 13px;
+    -fx-line-spacing: 2px;
+}
+
+#aboutRoot .about-chip,
+#aboutRoot .about-micro-chip,
+#aboutRoot .about-feature-tag {
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+    -fx-font-weight: 700;
+}
+
+#aboutRoot .about-chip {
+    -fx-padding: 7px 12px;
+    -fx-font-size: 12px;
+}
+
+#aboutRoot .about-micro-chip,
+#aboutRoot .about-feature-tag {
+    -fx-padding: 6px 10px;
+    -fx-font-size: 11px;
+}
+
+#aboutRoot .about-soft-button {
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+    -fx-padding: 10px 16px;
+    -fx-font-size: 12px;
+    -fx-font-weight: 700;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+    -fx-cursor: hand;
+}
+
+#aboutRoot .about-side-card-primary {
+    -fx-translate-x: -8px;
+}
+
+#aboutRoot .about-stat-card {
+    -fx-padding: 20px 22px;
+}
+
+#aboutRoot .about-summary-banner {
+    -fx-padding: 24px 26px;
+}
+
+.theme-dark #aboutRoot .about-hero-title,
+.theme-dark #aboutRoot .about-card-title,
+.theme-dark #aboutRoot .about-section-title,
+.theme-dark #aboutRoot .about-audience-title,
+.theme-dark #aboutRoot .about-feature-title,
+.theme-dark #aboutRoot .about-summary-title,
+.theme-dark #aboutRoot .about-stat-value {
+    -fx-text-fill: #f5fbff;
+}
+
+.theme-light #aboutRoot .about-hero-title,
+.theme-light #aboutRoot .about-card-title,
+.theme-light #aboutRoot .about-section-title,
+.theme-light #aboutRoot .about-audience-title,
+.theme-light #aboutRoot .about-feature-title,
+.theme-light #aboutRoot .about-summary-title,
+.theme-light #aboutRoot .about-stat-value {
+    -fx-text-fill: #15263a;
+}
+
+.theme-dark #aboutRoot .about-hero-subtitle,
+.theme-dark #aboutRoot .about-section-copy,
+.theme-dark #aboutRoot .about-card-copy,
+.theme-dark #aboutRoot .about-body-copy,
+.theme-dark #aboutRoot .about-stat-copy,
+.theme-dark #aboutRoot .about-summary-copy,
+.theme-dark #aboutRoot .about-stat-label {
+    -fx-text-fill: #90a4bd;
+}
+
+.theme-light #aboutRoot .about-hero-subtitle,
+.theme-light #aboutRoot .about-section-copy,
+.theme-light #aboutRoot .about-card-copy,
+.theme-light #aboutRoot .about-body-copy,
+.theme-light #aboutRoot .about-stat-copy,
+.theme-light #aboutRoot .about-summary-copy,
+.theme-light #aboutRoot .about-stat-label {
+    -fx-text-fill: #6f849a;
+}
+
+.theme-dark #aboutRoot .about-chip,
+.theme-dark #aboutRoot .about-micro-chip,
+.theme-dark #aboutRoot .about-feature-tag {
+    -fx-background-color: rgba(82, 215, 255, 0.12);
+    -fx-border-color: rgba(96, 224, 255, 0.20);
+    -fx-text-fill: #a6ebff;
+}
+
+.theme-light #aboutRoot .about-chip,
+.theme-light #aboutRoot .about-micro-chip,
+.theme-light #aboutRoot .about-feature-tag {
+    -fx-background-color: linear-gradient(to right, rgba(79, 216, 255, 0.10) 0%, rgba(119, 143, 255, 0.08) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.16);
+    -fx-text-fill: #1d4a74;
+}
+
+.theme-dark #aboutRoot .about-soft-button {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-text-fill: #e8f5ff;
+}
+
+.theme-dark #aboutRoot .about-soft-button:hover {
+    -fx-background-color: rgba(96, 224, 255, 0.10);
+    -fx-border-color: rgba(96, 224, 255, 0.20);
+}
+
+.theme-light #aboutRoot .about-soft-button {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.94) 0%, rgba(247, 250, 253, 0.96) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
+    -fx-text-fill: #17314a;
+}
+
+.theme-light #aboutRoot .about-soft-button:hover {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.98) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.18);
+}
+
+.theme-dark #aboutRoot .about-stat-card,
+.theme-dark #aboutRoot .about-audience-card,
+.theme-dark #aboutRoot .about-feature-card,
+.theme-dark #aboutRoot .about-side-card {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+}
+
+.theme-light #aboutRoot .about-stat-card,
+.theme-light #aboutRoot .about-audience-card,
+.theme-light #aboutRoot .about-feature-card,
+.theme-light #aboutRoot .about-side-card {
+    -fx-background-color: linear-gradient(to bottom, rgba(248, 250, 253, 0.96) 0%, rgba(243, 247, 251, 0.94) 100%);
+}
+
+.theme-dark #aboutRoot .about-summary-banner {
+    -fx-background-color:
+        radial-gradient(center 18% 12%, radius 38%, rgba(83, 214, 255, 0.18) 0%, rgba(83, 214, 255, 0.00) 74%),
+        linear-gradient(to right, rgba(14, 24, 38, 0.96) 0%, rgba(10, 18, 29, 0.94) 100%);
+}
+
+.theme-light #aboutRoot .about-summary-banner {
+    -fx-background-color:
+        radial-gradient(center 18% 12%, radius 38%, rgba(79, 216, 255, 0.14) 0%, rgba(79, 216, 255, 0.00) 74%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.98) 0%, rgba(246, 250, 255, 0.98) 100%);
+}
+
+.theme-dark #aboutRoot .about-stat-card:hover,
+.theme-dark #aboutRoot .about-section-card:hover,
+.theme-dark #aboutRoot .about-audience-card:hover,
+.theme-dark #aboutRoot .about-feature-card:hover,
+.theme-dark #aboutRoot .about-side-card:hover {
+    -fx-border-color: rgba(96, 224, 255, 0.24);
+}
+
+.theme-light #aboutRoot .about-stat-card:hover,
+.theme-light #aboutRoot .about-section-card:hover,
+.theme-light #aboutRoot .about-audience-card:hover,
+.theme-light #aboutRoot .about-feature-card:hover,
+.theme-light #aboutRoot .about-side-card:hover {
+    -fx-border-color: rgba(93, 158, 255, 0.18);
+    -fx-effect: dropshadow(gaussian, rgba(86, 140, 205, 0.08), 16, 0.14, 0, 6);
+}
