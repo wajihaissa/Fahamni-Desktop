@@ -55,11 +55,33 @@ public record Room3DPreviewData(
             .orElse(1);
     }
 
+    public int minRow() {
+        return seats.stream()
+            .mapToInt(SeatPreview::row)
+            .min()
+            .orElse(1);
+    }
+
     public int maxColumn() {
         return seats.stream()
             .mapToInt(SeatPreview::column)
             .max()
             .orElse(1);
+    }
+
+    public int minColumn() {
+        return seats.stream()
+            .mapToInt(SeatPreview::column)
+            .min()
+            .orElse(1);
+    }
+
+    public int rowSpan() {
+        return Math.max(1, maxRow() - minRow() + 1);
+    }
+
+    public int columnSpan() {
+        return Math.max(1, maxColumn() - minColumn() + 1);
     }
 
     public String summaryLine() {

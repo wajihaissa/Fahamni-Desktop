@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.room3d;
 
 import com.jme3.app.SimpleApplication;
+import com.jme3.asset.TextureKey;
 import com.jme3.font.BitmapFont;
 import com.jme3.font.BitmapText;
 import com.jme3.input.MouseInput;
@@ -14,13 +15,19 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.shadow.CompareMode;
+import com.jme3.shadow.DirectionalLightShadowRenderer;
+import com.jme3.shadow.EdgeFilteringMode;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Quad;
 import com.jme3.collision.CollisionResults;
+import com.jme3.texture.Texture;
 
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -35,18 +42,33 @@ public class Room3DApplication extends SimpleApplication {
     private static final float CLICK_DRAG_THRESHOLD = 8f;
     private static final float HOVERED_SEAT_SCALE = 1.03f;
     private static final float SELECTED_SEAT_SCALE = 1.08f;
-    private static final float HUD_SIDE_MARGIN = 26f;
-    private static final float HUD_TOP_MARGIN = 22f;
-    private static final float HUD_BOTTOM_MARGIN = 26f;
-    private static final float HUD_BLOCK_GAP = 10f;
+    private static final float CAMERA_TRANSITION_DURATION_SECONDS = 0.55f;
+    private static final float CAMERA_BUTTON_WIDTH = 144f;
+    private static final float CAMERA_BUTTON_HEIGHT = 28f;
+    private static final float CAMERA_BUTTON_GAP = 10f;
+    private static final float CAMERA_BUTTON_MARGIN_TOP = 18f;
+    private static final float CAMERA_BUTTON_MARGIN_RIGHT = 18f;
+    private static final float CAMERA_BUTTON_LABEL_PADDING_X = 12f;
+    private static final float CAMERA_BUTTON_LABEL_BASELINE = 20f;
+    private static final ColorRGBA CAMERA_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.9f, 0.94f, 0.98f, 0.92f);
+    private static final ColorRGBA CAMERA_BUTTON_HOVER_COLOR = new ColorRGBA(0.76f, 0.86f, 0.97f, 0.96f);
+    private static final ColorRGBA CAMERA_BUTTON_ACTIVE_COLOR = new ColorRGBA(0.18f, 0.42f, 0.72f, 0.98f);
+    private static final ColorRGBA CAMERA_BUTTON_TEXT_COLOR = new ColorRGBA(0.2f, 0.28f, 0.38f, 1f);
 
     private static final float WALL_HEIGHT = 3.8f;
     private static final float CEILING_THICKNESS = 0.05f;
     private static final float FLOOR_THICKNESS = 0.08f;
     private static final float FRONT_BORDER_HEIGHT = 0.22f;
+    private static final float SHOWCASE_CAMERA_FOV = 42f;
+    private static final float TEACHER_CAMERA_FOV = 88f;
+    private static final String FLOOR_TEXTURE_PATH = "com/fahamni/room3d/textures/floor-concrete-light.png";
+    private static final String WALL_TEXTURE_PATH = "com/fahamni/room3d/textures/wall-plaster-soft.png";
+    private static final String WOOD_TEXTURE_PATH = "com/fahamni/room3d/textures/desk-oak-light.png";
 
     private Room3DPreviewData previewData;
     private Node sceneRoot;
+    private Geometry ceilingCutaway;
+    private Node ceilingLightPanels;
     private BitmapFont hudFont;
     private BitmapText titleText;
     private BitmapText summaryText;
@@ -55,6 +77,8 @@ public class Room3DApplication extends SimpleApplication {
     private BitmapText interactionHintText;
     private BitmapText hoverText;
     private boolean initialized;
+    private DirectionalLightShadowRenderer shadowRenderer;
+    private DirectionalLight primaryShadowLight;
 
     private Material floorMaterial;
     private Material wallMaterial;
@@ -66,6 +90,9 @@ public class Room3DApplication extends SimpleApplication {
     private Material glassMaterial;
     private Material lightPanelMaterial;
     private Material screenMaterial;
+    private Material boardMaterial;
+    private Material storageMaterial;
+    private Material accentMaterial;
     private Material availableSeatMaterial;
     private Material reservedSeatMaterial;
     private Material maintenanceSeatMaterial;
@@ -74,12 +101,19 @@ public class Room3DApplication extends SimpleApplication {
     private Material selectedIndicatorMaterial;
 
     private final Map<Node, SeatVisual> seatVisuals = new HashMap<>();
+    private final Map<CameraPreset, CameraPresetButton> cameraPresetButtons = new EnumMap<>(CameraPreset.class);
     private Node hoveredSeatNode;
     private Node selectedSeatNode;
     private Vector2f primaryClickStart;
     private boolean primarySelectionArmed;
     private volatile Integer selectedSeatIdSnapshot;
     private volatile String selectedSeatLabelSnapshot;
+    private LayoutMetrics activeLayoutMetrics;
+    private CameraPreset activeCameraPreset = CameraPreset.ENTRANCE;
+    private CameraPreset hoveredCameraPreset;
+    private CameraTransition activeCameraTransition;
+    private float activeCameraTransitionElapsed;
+    private float activeCameraFov = SHOWCASE_CAMERA_FOV;
 
     private final ActionListener selectionListener = (name, isPressed, tpf) -> {
         if (sceneRoot == null) {
@@ -92,6 +126,9 @@ public class Room3DApplication extends SimpleApplication {
         }
 
         if (QUICK_SELECT_SEAT_MAPPING.equals(name) && isPressed) {
+            if (findCameraPresetAtCursor(inputManager.getCursorPosition()) != null) {
+                return;
+            }
             selectSeat(findSeatNodeAtCursor());
         }
     };
@@ -105,7 +142,7 @@ public class Room3DApplication extends SimpleApplication {
         initialized = true;
         setDisplayFps(false);
         setDisplayStatView(false);
-        viewPort.setBackgroundColor(new ColorRGBA(0.96f, 0.98f, 1f, 1f));
+        viewPort.setBackgroundColor(new ColorRGBA(0.9f, 0.91f, 0.92f, 1f));
 
         flyCam.setMoveSpeed(14f);
         flyCam.setDragToRotate(true);
@@ -116,22 +153,30 @@ public class Room3DApplication extends SimpleApplication {
 
         hudFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         initialiseMaterials();
+        initialiseShadows();
         rebuildScene();
     }
 
     @Override
     public void simpleUpdate(float tpf) {
+        updateCameraPresetHover();
         updateHoveredSeat();
+        updateCameraTransition(tpf);
     }
 
     @Override
     public void reshape(int width, int height) {
         super.reshape(width, height);
+        updateCameraLens();
         updateHudPositions();
     }
 
     @Override
     public void destroy() {
+        if (shadowRenderer != null) {
+            viewPort.removeProcessor(shadowRenderer);
+            shadowRenderer = null;
+        }
         Room3DViewerLauncher.onApplicationClosed(this);
         super.destroy();
     }
@@ -161,12 +206,21 @@ public class Room3DApplication extends SimpleApplication {
         }
         guiNode.detachAllChildren();
         seatVisuals.clear();
+        cameraPresetButtons.clear();
         hoveredSeatNode = null;
         selectedSeatNode = null;
         primaryClickStart = null;
         primarySelectionArmed = false;
         selectedSeatIdSnapshot = null;
         selectedSeatLabelSnapshot = null;
+        activeLayoutMetrics = null;
+        activeCameraPreset = CameraPreset.ENTRANCE;
+        hoveredCameraPreset = null;
+        activeCameraTransition = null;
+        activeCameraTransitionElapsed = 0f;
+        activeCameraFov = SHOWCASE_CAMERA_FOV;
+        ceilingCutaway = null;
+        ceilingLightPanels = null;
 
         initialiseHud();
 
@@ -175,8 +229,10 @@ public class Room3DApplication extends SimpleApplication {
 
         LayoutMetrics metrics = buildLayoutMetrics(previewData);
 
+        sceneRoot.attachChild(createFloorPlinth(metrics));
         sceneRoot.attachChild(createFloor(metrics));
-        sceneRoot.attachChild(createCeiling(metrics));
+        ceilingCutaway = createCeiling(metrics);
+        sceneRoot.attachChild(ceilingCutaway);
         attachWalls(metrics);
         attachArchitecturalDetails(metrics);
         attachTeachingArea(metrics);
@@ -221,6 +277,8 @@ public class Room3DApplication extends SimpleApplication {
         hoverText.setColor(ColorRGBA.White);
         hoverText.setCullHint(Spatial.CullHint.Always);
 
+        initialiseCameraPresetButtons();
+
         guiNode.attachChild(titleText);
         guiNode.attachChild(summaryText);
         guiNode.attachChild(selectionText);
@@ -229,75 +287,113 @@ public class Room3DApplication extends SimpleApplication {
         guiNode.attachChild(hoverText);
     }
 
+    private void initialiseCameraPresetButtons() {
+        cameraPresetButtons.clear();
+
+        for (CameraPreset preset : CameraPreset.values()) {
+            CameraPresetButton button = createCameraPresetButton(preset);
+            cameraPresetButtons.put(preset, button);
+            guiNode.attachChild(button.node());
+        }
+
+        updateCameraPresetButtonStyles();
+    }
+
     private void updateHudPositions() {
         if (titleText == null || summaryText == null || selectionText == null
             || legendText == null || interactionHintText == null || hoverText == null) {
             return;
         }
 
-        float topBaseline = cam.getHeight() - HUD_TOP_MARGIN;
-        positionHudTopRight(titleText, topBaseline);
-        positionHudTopRight(
-            summaryText,
-            titleText.getLocalTranslation().y
-                - estimateTextBlockHeight(titleText.getText(), titleText.getLineHeight())
-                - HUD_BLOCK_GAP
-        );
-
-        interactionHintText.setLocalTranslation(
-            HUD_SIDE_MARGIN,
-            HUD_BOTTOM_MARGIN + estimateTextBlockHeight(interactionHintText.getText(), interactionHintText.getLineHeight()),
-            0f
-        );
-        selectionText.setLocalTranslation(
-            HUD_SIDE_MARGIN,
-            interactionHintText.getLocalTranslation().y
-                + estimateTextBlockHeight(selectionText.getText(), selectionText.getLineHeight())
-                + HUD_BLOCK_GAP,
-            0f
-        );
-        positionHudBottomRight(
-            legendText,
-            HUD_BOTTOM_MARGIN + estimateTextBlockHeight(legendText.getText(), legendText.getLineHeight())
-        );
+        float topMargin = cam.getHeight() - 18f;
+        titleText.setLocalTranslation(18f, topMargin, 0f);
+        summaryText.setLocalTranslation(18f, topMargin - titleText.getLineHeight() - 8f, 0f);
+        selectionText.setLocalTranslation(18f, summaryText.getLocalTranslation().y - summaryText.getLineHeight() - 6f, 0f);
+        interactionHintText.setLocalTranslation(18f, 24f + interactionHintText.getLineHeight(), 0f);
+        legendText.setLocalTranslation(18f, interactionHintText.getLocalTranslation().y + legendText.getLineHeight() + 10f, 0f);
+        updateCameraPresetButtonPositions();
         updateHoverTextPosition();
     }
 
-    private void positionHudTopRight(BitmapText text, float baselineY) {
-        if (text == null) {
-            return;
-        }
+    private CameraPresetButton createCameraPresetButton(CameraPreset preset) {
+        Node buttonNode = new Node("camera-preset-button-" + preset.name().toLowerCase(Locale.ROOT));
 
-        float textX = Math.max(HUD_SIDE_MARGIN, cam.getWidth() - text.getLineWidth() - HUD_SIDE_MARGIN);
-        text.setLocalTranslation(textX, baselineY, 0f);
+        Geometry background = new Geometry(buttonNode.getName() + "-background", new Quad(CAMERA_BUTTON_WIDTH, CAMERA_BUTTON_HEIGHT));
+        background.setMaterial(createFlatMaterial(CAMERA_BUTTON_DEFAULT_COLOR.clone()));
+        background.setQueueBucket(RenderQueue.Bucket.Gui);
+
+        BitmapText label = new BitmapText(hudFont);
+        label.setSize(hudFont.getCharSet().getRenderedSize() * 0.84f);
+        label.setColor(CAMERA_BUTTON_TEXT_COLOR);
+        label.setText(preset.label());
+        label.setLocalTranslation(CAMERA_BUTTON_LABEL_PADDING_X, CAMERA_BUTTON_LABEL_BASELINE, 0f);
+
+        buttonNode.attachChild(background);
+        buttonNode.attachChild(label);
+        return new CameraPresetButton(preset, buttonNode, background, label, CAMERA_BUTTON_WIDTH, CAMERA_BUTTON_HEIGHT);
     }
 
-    private void positionHudBottomRight(BitmapText text, float baselineY) {
-        if (text == null) {
+    private void updateCameraPresetButtonPositions() {
+        if (cameraPresetButtons.isEmpty()) {
             return;
         }
 
-        float textX = Math.max(HUD_SIDE_MARGIN, cam.getWidth() - text.getLineWidth() - HUD_SIDE_MARGIN);
-        text.setLocalTranslation(textX, baselineY, 0f);
+        float totalWidth = (CAMERA_BUTTON_WIDTH * 2f) + CAMERA_BUTTON_GAP;
+        float startX = Math.max(18f, cam.getWidth() - CAMERA_BUTTON_MARGIN_RIGHT - totalWidth);
+        float startY = cam.getHeight() - CAMERA_BUTTON_MARGIN_TOP - CAMERA_BUTTON_HEIGHT;
+
+        for (CameraPreset preset : CameraPreset.values()) {
+            CameraPresetButton button = cameraPresetButtons.get(preset);
+            if (button == null) {
+                continue;
+            }
+
+            float x = startX + (preset.column() * (CAMERA_BUTTON_WIDTH + CAMERA_BUTTON_GAP));
+            float y = startY - (preset.row() * (CAMERA_BUTTON_HEIGHT + CAMERA_BUTTON_GAP));
+            button.node().setLocalTranslation(x, y, 0f);
+        }
+    }
+
+    private void updateCameraPresetButtonStyles() {
+        for (CameraPreset preset : CameraPreset.values()) {
+            CameraPresetButton button = cameraPresetButtons.get(preset);
+            if (button == null) {
+                continue;
+            }
+
+            boolean active = preset == activeCameraPreset;
+            boolean hovered = preset == hoveredCameraPreset;
+
+            ColorRGBA backgroundColor = active
+                ? CAMERA_BUTTON_ACTIVE_COLOR
+                : hovered ? CAMERA_BUTTON_HOVER_COLOR : CAMERA_BUTTON_DEFAULT_COLOR;
+            ColorRGBA labelColor = active ? ColorRGBA.White : CAMERA_BUTTON_TEXT_COLOR;
+
+            button.background().getMaterial().setColor("Color", backgroundColor);
+            button.label().setColor(labelColor);
+        }
     }
 
     private void initialiseMaterials() {
-        floorMaterial = createLitMaterial(new ColorRGBA(0.67f, 0.71f, 0.76f, 1f));
-        wallMaterial = createLitMaterial(new ColorRGBA(0.88f, 0.91f, 0.95f, 1f));
-        ceilingMaterial = createLitMaterial(new ColorRGBA(0.95f, 0.96f, 0.98f, 1f));
-        deskMaterial = createLitMaterial(new ColorRGBA(0.46f, 0.31f, 0.2f, 1f));
-        stageMaterial = createLitMaterial(new ColorRGBA(0.54f, 0.57f, 0.63f, 1f));
-        trimMaterial = createLitMaterial(new ColorRGBA(0.23f, 0.34f, 0.47f, 1f));
-        metalMaterial = createLitMaterial(new ColorRGBA(0.42f, 0.46f, 0.53f, 1f));
-        glassMaterial = createLitMaterial(new ColorRGBA(0.55f, 0.73f, 0.89f, 1f));
-        lightPanelMaterial = createFlatMaterial(new ColorRGBA(1f, 0.98f, 0.9f, 1f));
-        screenMaterial = createFlatMaterial(new ColorRGBA(0.19f, 0.25f, 0.33f, 1f));
-        availableSeatMaterial = createLitMaterial(new ColorRGBA(0.28f, 0.68f, 0.44f, 1f));
-        reservedSeatMaterial = createLitMaterial(new ColorRGBA(0.88f, 0.47f, 0.25f, 1f));
-        maintenanceSeatMaterial = createLitMaterial(new ColorRGBA(0.83f, 0.68f, 0.23f, 1f));
-        unavailableSeatMaterial = createLitMaterial(new ColorRGBA(0.53f, 0.56f, 0.62f, 1f));
-        hoverIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.18f, 0.63f, 0.92f, 1f));
-        selectedIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.07f, 0.41f, 0.92f, 1f));
+        floorMaterial = createTexturedLitMaterial(FLOOR_TEXTURE_PATH, new ColorRGBA(0.94f, 0.94f, 0.94f, 1f), 0.62f, 6f);
+        wallMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.99f, 0.99f, 0.98f, 1f), 0.72f, 3f);
+        ceilingMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(1f, 1f, 0.995f, 1f), 0.76f, 2f);
+        deskMaterial = createTexturedLitMaterial(WOOD_TEXTURE_PATH, new ColorRGBA(0.97f, 0.93f, 0.86f, 1f), 0.58f, 14f);
+        stageMaterial = createTexturedLitMaterial(FLOOR_TEXTURE_PATH, new ColorRGBA(0.97f, 0.97f, 0.96f, 1f), 0.65f, 4f);
+        trimMaterial = createLitMaterial(new ColorRGBA(0.85f, 0.87f, 0.9f, 1f));
+        metalMaterial = createLitMaterial(new ColorRGBA(0.28f, 0.31f, 0.36f, 1f));
+        glassMaterial = createLitMaterial(new ColorRGBA(0.9f, 0.95f, 0.99f, 1f));
+        lightPanelMaterial = createFlatMaterial(new ColorRGBA(1f, 0.99f, 0.97f, 1f));
+        screenMaterial = createFlatMaterial(new ColorRGBA(0.17f, 0.19f, 0.23f, 1f));
+        boardMaterial = createLitMaterial(new ColorRGBA(0.99f, 0.99f, 0.98f, 1f));
+        storageMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.985f, 0.985f, 0.98f, 1f), 0.7f, 4f);
+        accentMaterial = createFlatMaterial(new ColorRGBA(0.72f, 0.85f, 0.92f, 1f));
+        availableSeatMaterial = createLitMaterial(new ColorRGBA(0.24f, 0.34f, 0.56f, 1f));
+        reservedSeatMaterial = createLitMaterial(new ColorRGBA(0.72f, 0.42f, 0.31f, 1f));
+        maintenanceSeatMaterial = createLitMaterial(new ColorRGBA(0.69f, 0.58f, 0.24f, 1f));
+        unavailableSeatMaterial = createLitMaterial(new ColorRGBA(0.5f, 0.54f, 0.6f, 1f));
+        hoverIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.36f, 0.67f, 0.9f, 0.88f));
+        selectedIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.14f, 0.44f, 0.86f, 0.92f));
     }
 
     private Material createLitMaterial(ColorRGBA baseColor) {
@@ -310,16 +406,63 @@ public class Room3DApplication extends SimpleApplication {
         return material;
     }
 
+    private Material createTexturedLitMaterial(String texturePath, ColorRGBA baseColor, float ambientFactor, float shininess) {
+        Material material = createLitMaterial(baseColor);
+        TextureKey textureKey = new TextureKey(texturePath, false);
+        textureKey.setGenerateMips(true);
+        textureKey.setAnisotropy(16);
+        Texture texture = assetManager.loadTexture(textureKey);
+        texture.setWrap(Texture.WrapMode.Repeat);
+        texture.setMinFilter(Texture.MinFilter.Trilinear);
+        texture.setMagFilter(Texture.MagFilter.Bilinear);
+        texture.setAnisotropicFilter(16);
+        material.setTexture("DiffuseMap", texture);
+        material.setColor("Ambient", baseColor.mult(ambientFactor));
+        material.setFloat("Shininess", shininess);
+        return material;
+    }
+
     private Material createFlatMaterial(ColorRGBA color) {
         Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         material.setColor("Color", color);
         return material;
     }
 
+    private void initialiseShadows() {
+        if (shadowRenderer != null) {
+            viewPort.removeProcessor(shadowRenderer);
+        }
+
+        shadowRenderer = new DirectionalLightShadowRenderer(assetManager, 4096, 4);
+        shadowRenderer.setLambda(0.58f);
+        shadowRenderer.setShadowIntensity(0.48f);
+        shadowRenderer.setEdgeFilteringMode(EdgeFilteringMode.PCF8);
+        shadowRenderer.setShadowCompareMode(CompareMode.Hardware);
+        shadowRenderer.setEnabledStabilization(true);
+        shadowRenderer.setShadowZExtend(48f);
+        shadowRenderer.setShadowZFadeLength(10f);
+        shadowRenderer.setEdgesThickness(3);
+        viewPort.addProcessor(shadowRenderer);
+    }
+
+    private void updateCameraLens() {
+        if (cam == null || cam.getHeight() <= 0) {
+            return;
+        }
+
+        float aspect = (float) cam.getWidth() / (float) cam.getHeight();
+        cam.setFrustumPerspective(activeCameraFov, aspect, 0.05f, Math.max(350f, cam.getFrustumFar()));
+    }
+
     private Geometry createFloor(LayoutMetrics metrics) {
+        Box floorMesh = new Box(metrics.roomWidth() / 2f, FLOOR_THICKNESS, metrics.roomDepth() / 2f);
+        floorMesh.scaleTextureCoordinates(new Vector2f(
+            Math.max(3f, metrics.roomWidth() * 0.55f),
+            Math.max(3f, metrics.roomDepth() * 0.55f)
+        ));
         Geometry floor = new Geometry(
             "room-floor",
-            new Box(metrics.roomWidth() / 2f, FLOOR_THICKNESS, metrics.roomDepth() / 2f)
+            floorMesh
         );
         floor.setMaterial(floorMaterial);
         floor.setShadowMode(RenderQueue.ShadowMode.Receive);
@@ -327,12 +470,33 @@ public class Room3DApplication extends SimpleApplication {
         return floor;
     }
 
+    private Geometry createFloorPlinth(LayoutMetrics metrics) {
+        Box plinthMesh = new Box((metrics.roomWidth() / 2f) + 0.42f, 0.15f, (metrics.roomDepth() / 2f) + 0.42f);
+        plinthMesh.scaleTextureCoordinates(new Vector2f(
+            Math.max(3f, metrics.roomWidth() * 0.45f),
+            Math.max(3f, metrics.roomDepth() * 0.45f)
+        ));
+        Geometry plinth = new Geometry(
+            "room-floor-plinth",
+            plinthMesh
+        );
+        plinth.setMaterial(storageMaterial);
+        plinth.setShadowMode(RenderQueue.ShadowMode.Receive);
+        plinth.setLocalTranslation(0f, -0.17f, 0f);
+        return plinth;
+    }
+
     private Geometry createCeiling(LayoutMetrics metrics) {
         float ceilingDepth = metrics.roomDepth() * 0.68f;
         float ceilingCenterZ = -(metrics.roomDepth() - ceilingDepth) / 2f;
+        Box ceilingMesh = new Box(metrics.roomWidth() / 2f, CEILING_THICKNESS, ceilingDepth / 2f);
+        ceilingMesh.scaleTextureCoordinates(new Vector2f(
+            Math.max(2f, metrics.roomWidth() * 0.36f),
+            Math.max(2f, ceilingDepth * 0.36f)
+        ));
         Geometry ceiling = new Geometry(
             "room-ceiling-cutaway",
-            new Box(metrics.roomWidth() / 2f, CEILING_THICKNESS, ceilingDepth / 2f)
+            ceilingMesh
         );
         ceiling.setMaterial(ceilingMaterial);
         ceiling.setShadowMode(RenderQueue.ShadowMode.Receive);
@@ -381,69 +545,68 @@ public class Room3DApplication extends SimpleApplication {
         float frameOffset = 0.01f;
 
         sceneRoot.attachChild(createSimpleBox(
-            "back-accent-strip",
-            metrics.roomWidth() * 0.42f,
-            0.12f,
+            "ceiling-cornice",
+            metrics.roomWidth() * 0.48f,
+            0.08f,
             0.04f,
             trimMaterial,
-            new Vector3f(0f, 1.3f, -halfRoomDepth + 0.06f)
+            new Vector3f(0f, WALL_HEIGHT - 0.32f, -halfRoomDepth + 0.08f)
         ));
 
-        float[] windowZPositions = {-metrics.roomDepth() * 0.16f, metrics.roomDepth() * 0.12f};
-        for (int index = 0; index < windowZPositions.length; index++) {
-            float windowZ = windowZPositions[index];
-            String leftKey = "left-window-" + index;
+        for (int index = 0; index < 7; index++) {
+            float windowZ = -metrics.roomDepth() * 0.18f + (index * 0.9f);
             String rightKey = "right-window-" + index;
 
             sceneRoot.attachChild(createSimpleBox(
-                leftKey,
-                0.025f,
-                0.78f,
-                0.72f,
-                glassMaterial,
-                new Vector3f(-halfRoomWidth + 0.04f, 2.05f, windowZ)
-            ));
-            sceneRoot.attachChild(createSimpleBox(
-                leftKey + "-frame",
-                0.035f,
-                0.86f,
-                0.82f,
-                trimMaterial,
-                new Vector3f(-halfRoomWidth + 0.02f, 2.05f, windowZ)
-            ));
-            sceneRoot.attachChild(createSimpleBox(
                 rightKey,
-                0.025f,
-                0.78f,
+                0.02f,
                 0.72f,
+                0.32f,
                 glassMaterial,
-                new Vector3f(halfRoomWidth - 0.04f, 2.05f, windowZ)
+                new Vector3f(halfRoomWidth - 0.045f, 1.92f, windowZ)
             ));
             sceneRoot.attachChild(createSimpleBox(
                 rightKey + "-frame",
-                0.035f,
-                0.86f,
-                0.82f,
+                0.032f,
+                0.8f,
+                0.36f,
                 trimMaterial,
-                new Vector3f(halfRoomWidth - 0.02f, 2.05f, windowZ)
+                new Vector3f(halfRoomWidth - 0.022f, 1.92f, windowZ)
             ));
         }
 
         sceneRoot.attachChild(createSimpleBox(
+            "wall-poster-frame",
+            0.04f,
+            0.5f,
+            0.78f,
+            trimMaterial,
+            new Vector3f(-halfRoomWidth + 0.045f, 1.78f, -metrics.roomDepth() * 0.18f)
+        ));
+        sceneRoot.attachChild(createSimpleBox(
+            "wall-poster-art",
+            0.018f,
+            0.44f,
+            0.7f,
+            accentMaterial,
+            new Vector3f(-halfRoomWidth + 0.068f, 1.78f, -metrics.roomDepth() * 0.18f)
+        ));
+
+        sceneRoot.attachChild(createSimpleBox(
             "door",
-            0.52f,
-            1.02f,
+            0.46f,
+            1.0f,
             0.03f,
-            deskMaterial,
-            new Vector3f(-halfRoomWidth + 1.05f, 1.02f, -halfRoomDepth + 0.07f)
+            storageMaterial,
+            new Vector3f(-halfRoomWidth + 0.88f, 1.0f, -halfRoomDepth + 0.07f)
         ));
         sceneRoot.attachChild(createSimpleBox(
             "door-handle",
-            0.03f,
-            0.03f,
+            0.024f,
+            0.024f,
             0.015f,
             metalMaterial,
-            new Vector3f(-halfRoomWidth + 0.74f, 0.95f, -halfRoomDepth + 0.11f)
+            new Vector3f(-halfRoomWidth + 0.62f, 0.92f, -halfRoomDepth + 0.11f)
         ));
 
         sceneRoot.attachChild(createSimpleBox(
@@ -454,10 +617,31 @@ public class Room3DApplication extends SimpleApplication {
             trimMaterial,
             new Vector3f(0f, FRONT_BORDER_HEIGHT + frameOffset, halfRoomDepth)
         ));
+        sceneRoot.attachChild(createSimpleBox(
+            "room-baseboard-left",
+            0.03f,
+            0.09f,
+            metrics.roomDepth(),
+            trimMaterial,
+            new Vector3f(-halfRoomWidth + 0.01f, 0.09f, 0f)
+        ));
+        sceneRoot.attachChild(createSimpleBox(
+            "room-baseboard-back",
+            metrics.roomWidth(),
+            0.09f,
+            0.03f,
+            trimMaterial,
+            new Vector3f(0f, 0.09f, -halfRoomDepth + 0.01f)
+        ));
     }
 
     private Geometry createWall(String name, float width, float height, float depth, Vector3f position) {
-        Geometry wall = new Geometry(name, new Box(width / 2f, height / 2f, depth / 2f));
+        Box wallMesh = new Box(width / 2f, height / 2f, depth / 2f);
+        wallMesh.scaleTextureCoordinates(new Vector2f(
+            Math.max(2f, width * 0.42f),
+            Math.max(2f, Math.max(height, depth) * 0.42f)
+        ));
+        Geometry wall = new Geometry(name, wallMesh);
         wall.setMaterial(wallMaterial);
         wall.setShadowMode(RenderQueue.ShadowMode.Receive);
         wall.setLocalTranslation(position);
@@ -470,7 +654,7 @@ public class Room3DApplication extends SimpleApplication {
         sceneRoot.attachChild(createSimpleBox(
             "teaching-platform",
             Math.max(2.8f, metrics.layoutWidth() + 1.6f),
-            0.09f,
+            0.05f,
             1.25f,
             stageMaterial,
             new Vector3f(0f, 0f, frontZoneZ + 0.45f)
@@ -499,17 +683,13 @@ public class Room3DApplication extends SimpleApplication {
             ));
             sceneRoot.attachChild(centralTable);
         } else {
-            Node desk = createTableNode("teacher-desk", 2.2f, 0.82f, 0.77f, deskMaterial);
-            desk.setLocalTranslation(0f, 0f, frontZoneZ);
-            desk.attachChild(createSimpleBox(
-                "teacher-laptop",
-                0.24f,
-                0.015f,
-                0.18f,
-                screenMaterial,
-                new Vector3f(0f, 0.81f, -0.05f)
-            ));
+            Node desk = createTeacherDeskNode();
+            desk.setLocalTranslation(-Math.max(1.45f, metrics.layoutWidth() * 0.38f), 0f, frontZoneZ - 0.12f);
             sceneRoot.attachChild(desk);
+
+            Node storageShelf = createStorageShelfNode();
+            storageShelf.setLocalTranslation(Math.max(1.65f, metrics.layoutWidth() * 0.44f), 0f, frontZoneZ + 0.16f);
+            sceneRoot.attachChild(storageShelf);
         }
     }
 
@@ -517,8 +697,8 @@ public class Room3DApplication extends SimpleApplication {
         String disposition = normalize(previewData.disposition());
 
         for (Room3DPreviewData.SeatPreview seat : previewData.seats()) {
-            float x = ((seat.column() - 1) * metrics.seatSpacingX()) - (metrics.layoutWidth() / 2f);
-            float z = metrics.frontSeatZ() - ((seat.row() - 1) * metrics.seatSpacingZ());
+            float x = ((seat.column() - metrics.minColumn()) * metrics.seatSpacingX()) - (metrics.layoutWidth() / 2f);
+            float z = metrics.frontSeatZ() - ((seat.row() - metrics.minRow()) * metrics.seatSpacingZ());
 
             Node seatNode = createSeatNode(seat, disposition);
             seatNode.setLocalTranslation(x, 0f, z);
@@ -540,36 +720,36 @@ public class Room3DApplication extends SimpleApplication {
 
         seatNode.attachChild(createSimpleBox(
             "seat-base-" + seat.number(),
-            0.34f,
-            0.09f,
-            0.33f,
+            0.22f,
+            0.035f,
+            0.22f,
             seatMaterial,
-            new Vector3f(0f, 0.35f, 0f)
+            new Vector3f(0f, 0.43f, 0f)
         ));
         seatNode.attachChild(createSimpleBox(
             "seat-back-" + seat.number(),
-            0.34f,
-            0.34f,
-            0.07f,
+            0.22f,
+            0.22f,
+            0.03f,
             seatMaterial,
-            new Vector3f(0f, 0.77f, -0.26f)
+            new Vector3f(0f, 0.7f, -0.18f)
         ));
         seatNode.attachChild(createSimpleBox(
             "seat-support-" + seat.number(),
-            0.08f,
-            0.15f,
-            0.08f,
+            0.03f,
+            0.18f,
+            0.03f,
             metalMaterial,
-            new Vector3f(0f, 0.15f, 0f)
+            new Vector3f(0f, 0.19f, -0.02f)
         ));
-        seatNode.attachChild(createChairLeg("seat-leg-fl-" + seat.number(), 0.24f, -0.2f));
-        seatNode.attachChild(createChairLeg("seat-leg-fr-" + seat.number(), -0.24f, -0.2f));
-        seatNode.attachChild(createChairLeg("seat-leg-bl-" + seat.number(), 0.24f, 0.2f));
-        seatNode.attachChild(createChairLeg("seat-leg-br-" + seat.number(), -0.24f, 0.2f));
+        seatNode.attachChild(createChairLeg("seat-leg-fl-" + seat.number(), 0.17f, -0.14f));
+        seatNode.attachChild(createChairLeg("seat-leg-fr-" + seat.number(), -0.17f, -0.14f));
+        seatNode.attachChild(createChairLeg("seat-leg-bl-" + seat.number(), 0.17f, 0.14f));
+        seatNode.attachChild(createChairLeg("seat-leg-br-" + seat.number(), -0.17f, 0.14f));
 
         if (!"reunion".equals(disposition)) {
             Node deskNode = createSeatDeskNode(seat.number(), disposition);
-            deskNode.setLocalTranslation(0f, 0f, 0.66f);
+            deskNode.setLocalTranslation(0f, 0f, 0.6f);
             seatNode.attachChild(deskNode);
         }
 
@@ -581,7 +761,7 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private Geometry createChairLeg(String name, float x, float z) {
-        return createSimpleBox(name, 0.03f, 0.18f, 0.03f, metalMaterial, new Vector3f(x, 0.17f, z));
+        return createSimpleBox(name, 0.018f, 0.2f, 0.018f, metalMaterial, new Vector3f(x, 0.19f, z));
     }
 
     private Geometry createSeatIndicator(int seatNumber) {
@@ -596,62 +776,62 @@ public class Room3DApplication extends SimpleApplication {
     private Node createSeatDeskNode(int seatNumber, String disposition) {
         Node deskNode;
         if ("informatique".equals(disposition)) {
-            deskNode = createTableNode("lab-desk-" + seatNumber, 0.76f, 0.48f, 0.73f, deskMaterial);
+            deskNode = createTableNode("lab-desk-" + seatNumber, 0.82f, 0.5f, 0.73f, deskMaterial);
             deskNode.attachChild(createSimpleBox(
                 "monitor-" + seatNumber,
-                0.19f,
-                0.13f,
+                0.16f,
+                0.1f,
                 0.025f,
                 screenMaterial,
-                new Vector3f(0f, 0.96f, 0.1f)
+                new Vector3f(0f, 0.9f, 0.1f)
             ));
             deskNode.attachChild(createSimpleBox(
                 "monitor-stand-" + seatNumber,
-                0.025f,
-                0.08f,
+                0.02f,
+                0.06f,
                 0.025f,
                 metalMaterial,
-                new Vector3f(0f, 0.84f, 0.12f)
+                new Vector3f(0f, 0.8f, 0.12f)
             ));
             deskNode.attachChild(createSimpleBox(
                 "keyboard-" + seatNumber,
-                0.18f,
-                0.012f,
+                0.16f,
+                0.01f,
                 0.07f,
                 metalMaterial,
-                new Vector3f(0f, 0.79f, -0.06f)
+                new Vector3f(0f, 0.76f, -0.06f)
             ));
             return deskNode;
         }
 
         if ("conference".equals(disposition) || "u".equals(disposition)) {
-            deskNode = createTableNode("conference-desk-" + seatNumber, 0.66f, 0.44f, 0.73f, deskMaterial);
+            deskNode = createTableNode("conference-desk-" + seatNumber, 0.72f, 0.46f, 0.73f, deskMaterial);
             deskNode.attachChild(createSimpleBox(
                 "conference-pad-" + seatNumber,
                 0.15f,
                 0.01f,
                 0.1f,
                 trimMaterial,
-                new Vector3f(0f, 0.79f, 0.02f)
+                new Vector3f(0f, 0.76f, 0.02f)
             ));
             return deskNode;
         }
 
-        deskNode = createTableNode("class-desk-" + seatNumber, 0.54f, 0.36f, 0.71f, deskMaterial);
+        deskNode = createTableNode("class-desk-" + seatNumber, 0.72f, 0.42f, 0.72f, deskMaterial);
         deskNode.attachChild(createSimpleBox(
             "class-book-" + seatNumber,
             0.14f,
-            0.025f,
+            0.018f,
             0.1f,
             trimMaterial,
-            new Vector3f(0f, 0.76f, 0.02f)
+            new Vector3f(0f, 0.75f, 0.02f)
         ));
         return deskNode;
     }
 
     private Node createTableNode(String name, float width, float depth, float topHeight, Material topMaterial) {
         Node tableNode = new Node(name);
-        float topHalfHeight = 0.03f;
+        float topHalfHeight = 0.022f;
         float legInsetX = Math.max(0.08f, width / 2f - 0.09f);
         float legInsetZ = Math.max(0.08f, depth / 2f - 0.09f);
         float legHalfHeight = Math.max(0.24f, (topHeight - (topHalfHeight * 2f)) / 2f);
@@ -667,80 +847,194 @@ public class Room3DApplication extends SimpleApplication {
         ));
         tableNode.attachChild(createSimpleBox(
             name + "-leg-1",
-            0.03f,
+            0.018f,
             legHalfHeight,
-            0.03f,
+            0.018f,
             metalMaterial,
             new Vector3f(legInsetX, legCenterY, legInsetZ)
         ));
         tableNode.attachChild(createSimpleBox(
             name + "-leg-2",
-            0.03f,
+            0.018f,
             legHalfHeight,
-            0.03f,
+            0.018f,
             metalMaterial,
             new Vector3f(-legInsetX, legCenterY, legInsetZ)
         ));
         tableNode.attachChild(createSimpleBox(
             name + "-leg-3",
-            0.03f,
+            0.018f,
             legHalfHeight,
-            0.03f,
+            0.018f,
             metalMaterial,
             new Vector3f(legInsetX, legCenterY, -legInsetZ)
         ));
         tableNode.attachChild(createSimpleBox(
             name + "-leg-4",
-            0.03f,
+            0.018f,
             legHalfHeight,
-            0.03f,
+            0.018f,
             metalMaterial,
             new Vector3f(-legInsetX, legCenterY, -legInsetZ)
         ));
         return tableNode;
     }
 
+    private Node createTeacherDeskNode() {
+        Node deskNode = createTableNode("teacher-desk", 0.98f, 0.56f, 0.75f, storageMaterial);
+        deskNode.attachChild(createSimpleBox(
+            "teacher-desk-device",
+            0.16f,
+            0.012f,
+            0.12f,
+            screenMaterial,
+            new Vector3f(0.12f, 0.79f, -0.02f)
+        ));
+        deskNode.attachChild(createSimpleBox(
+            "teacher-desk-cup",
+            0.028f,
+            0.05f,
+            0.028f,
+            metalMaterial,
+            new Vector3f(-0.2f, 0.81f, 0.08f)
+        ));
+        return deskNode;
+    }
+
+    private Node createStorageShelfNode() {
+        Node shelfNode = new Node("teacher-storage-shelf");
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-body",
+            0.42f,
+            0.7f,
+            0.2f,
+            storageMaterial,
+            new Vector3f(0f, 0.7f, 0f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-shelf-top",
+            0.45f,
+            0.02f,
+            0.22f,
+            trimMaterial,
+            new Vector3f(0f, 1.42f, 0f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-mid",
+            0.38f,
+            0.016f,
+            0.18f,
+            trimMaterial,
+            new Vector3f(0f, 0.92f, 0f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-books-1",
+            0.06f,
+            0.14f,
+            0.05f,
+            availableSeatMaterial,
+            new Vector3f(-0.18f, 0.66f, 0.08f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-books-2",
+            0.06f,
+            0.12f,
+            0.05f,
+            reservedSeatMaterial,
+            new Vector3f(-0.04f, 0.64f, 0.08f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-box",
+            0.1f,
+            0.07f,
+            0.09f,
+            metalMaterial,
+            new Vector3f(0.18f, 1.48f, 0f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-plant-pot",
+            0.06f,
+            0.05f,
+            0.06f,
+            deskMaterial,
+            new Vector3f(-0.18f, 1.48f, 0f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-plant-leaf-1",
+            0.03f,
+            0.1f,
+            0.03f,
+            createLitMaterial(new ColorRGBA(0.52f, 0.7f, 0.48f, 1f)),
+            new Vector3f(-0.22f, 1.62f, 0f)
+        ));
+        shelfNode.attachChild(createSimpleBox(
+            "teacher-storage-plant-leaf-2",
+            0.03f,
+            0.08f,
+            0.03f,
+            createLitMaterial(new ColorRGBA(0.58f, 0.74f, 0.54f, 1f)),
+            new Vector3f(-0.15f, 1.58f, 0.04f)
+        ));
+        return shelfNode;
+    }
+
     private Node createPresentationScreen() {
         Node screenNode = new Node("presentation-screen");
         screenNode.attachChild(createSimpleBox(
-            "screen-frame",
-            1.78f,
-            0.96f,
-            0.06f,
+            "board-frame-center",
+            1.32f,
+            0.72f,
+            0.05f,
             trimMaterial,
-            new Vector3f(0f, 2.1f, 0f)
+            new Vector3f(0f, 2.02f, 0f)
         ));
         screenNode.attachChild(createSimpleBox(
-            "screen-surface",
-            1.62f,
-            0.82f,
+            "board-surface-center",
+            1.22f,
+            0.64f,
             0.03f,
-            screenMaterial,
-            new Vector3f(0f, 2.1f, 0.01f)
+            boardMaterial,
+            new Vector3f(0f, 2.02f, 0.015f)
         ));
         screenNode.attachChild(createSimpleBox(
-            "screen-support-left",
+            "board-surface-left",
+            0.42f,
+            0.62f,
             0.04f,
-            0.82f,
-            0.04f,
-            metalMaterial,
-            new Vector3f(-0.68f, 0.82f, 0f)
+            boardMaterial,
+            new Vector3f(-1.05f, 2.0f, 0.02f)
         ));
         screenNode.attachChild(createSimpleBox(
-            "screen-support-right",
+            "board-surface-right",
+            0.42f,
+            0.62f,
             0.04f,
-            0.82f,
-            0.04f,
-            metalMaterial,
-            new Vector3f(0.68f, 0.82f, 0f)
+            boardMaterial,
+            new Vector3f(1.05f, 2.0f, 0.02f)
         ));
         screenNode.attachChild(createSimpleBox(
-            "screen-base",
-            0.84f,
-            0.04f,
-            0.28f,
+            "board-tray",
+            1.26f,
+            0.025f,
+            0.08f,
             metalMaterial,
-            new Vector3f(0f, 0.04f, 0.1f)
+            new Vector3f(0f, 1.26f, 0.08f)
+        ));
+        screenNode.attachChild(createSimpleBox(
+            "board-projector-bar",
+            0.6f,
+            0.03f,
+            0.05f,
+            trimMaterial,
+            new Vector3f(0f, 2.95f, 0.03f)
+        ));
+        screenNode.attachChild(createSimpleBox(
+            "board-clock",
+            0.11f,
+            0.11f,
+            0.025f,
+            storageMaterial,
+            new Vector3f(0f, 2.72f, 0.04f)
         ));
         return screenNode;
     }
@@ -761,12 +1055,14 @@ public class Room3DApplication extends SimpleApplication {
     private void attachCeilingLights(LayoutMetrics metrics) {
         float[] xPositions = {-metrics.roomWidth() * 0.18f, metrics.roomWidth() * 0.18f};
         float[] zPositions = {-metrics.roomDepth() * 0.22f, metrics.roomDepth() * 0.05f, metrics.roomDepth() * 0.32f};
+        ceilingLightPanels = new Node("ceiling-light-panels");
+        sceneRoot.attachChild(ceilingLightPanels);
 
         for (int row = 0; row < zPositions.length; row++) {
             for (int column = 0; column < xPositions.length; column++) {
                 float x = xPositions[column];
                 float z = zPositions[row];
-                sceneRoot.attachChild(createSimpleBox(
+                ceilingLightPanels.attachChild(createSimpleBox(
                     "ceiling-light-" + row + "-" + column,
                     0.5f,
                     0.02f,
@@ -776,8 +1072,8 @@ public class Room3DApplication extends SimpleApplication {
                 ));
 
                 PointLight pointLight = new PointLight();
-                pointLight.setColor(new ColorRGBA(1f, 0.96f, 0.9f, 1f).mult(0.95f));
-                pointLight.setRadius(Math.max(8f, metrics.roomWidth()));
+                pointLight.setColor(new ColorRGBA(1f, 0.96f, 0.9f, 1f).mult(0.68f));
+                pointLight.setRadius(Math.max(7f, metrics.roomWidth() * 0.9f));
                 pointLight.setPosition(new Vector3f(x, WALL_HEIGHT - 0.32f, z));
                 sceneRoot.addLight(pointLight);
             }
@@ -786,32 +1082,191 @@ public class Room3DApplication extends SimpleApplication {
 
     private void attachLights() {
         AmbientLight ambientLight = new AmbientLight();
-        ambientLight.setColor(ColorRGBA.White.mult(0.72f));
+        ambientLight.setColor(new ColorRGBA(1f, 0.995f, 0.985f, 1f).mult(0.46f));
         sceneRoot.addLight(ambientLight);
 
-        DirectionalLight keyLight = new DirectionalLight();
-        keyLight.setDirection(new Vector3f(-0.38f, -1f, -0.16f).normalizeLocal());
-        keyLight.setColor(ColorRGBA.White.mult(0.72f));
-        sceneRoot.addLight(keyLight);
+        primaryShadowLight = new DirectionalLight();
+        primaryShadowLight.setDirection(new Vector3f(-0.58f, -0.78f, -0.24f).normalizeLocal());
+        primaryShadowLight.setColor(new ColorRGBA(1f, 0.98f, 0.95f, 1f).mult(0.62f));
+        sceneRoot.addLight(primaryShadowLight);
+        if (shadowRenderer != null) {
+            shadowRenderer.setLight(primaryShadowLight);
+        }
 
         DirectionalLight fillLight = new DirectionalLight();
-        fillLight.setDirection(new Vector3f(0.34f, -0.78f, 0.26f).normalizeLocal());
-        fillLight.setColor(ColorRGBA.White.mult(0.24f));
+        fillLight.setDirection(new Vector3f(0.42f, -0.9f, 0.18f).normalizeLocal());
+        fillLight.setColor(new ColorRGBA(0.96f, 0.98f, 1f, 1f).mult(0.16f));
         sceneRoot.addLight(fillLight);
     }
 
     private void positionCamera(LayoutMetrics metrics) {
         float maxDimension = Math.max(metrics.roomWidth(), metrics.roomDepth());
-        float halfRoomDepth = metrics.roomDepth() / 2f;
-        float screenFocusZ = Math.min(halfRoomDepth - 0.85f, metrics.frontSeatZ() + 2.35f);
-        cam.setLocation(new Vector3f(
-            metrics.roomWidth() * 0.08f,
-            Math.min(1.9f, Math.max(1.65f, maxDimension * 0.16f)),
-            Math.max(-halfRoomDepth + 1.25f, -metrics.roomDepth() * 0.34f)
-        ));
-        cam.lookAt(new Vector3f(0f, 1.75f, screenFocusZ), Vector3f.UNIT_Y);
+        activeLayoutMetrics = metrics;
+        updateCameraLens();
+        applyCameraPreset(CameraPreset.ENTRANCE, false);
         cam.setFrustumFar(Math.max(250f, maxDimension * 12f));
+        updateCameraLens();
         flyCam.setMoveSpeed(Math.max(10f, maxDimension * 1.2f));
+    }
+
+    private CameraView buildCameraView(LayoutMetrics metrics, CameraPreset preset) {
+        float maxDimension = Math.max(metrics.roomWidth(), metrics.roomDepth());
+        float halfRoomWidth = metrics.roomWidth() / 2f;
+        float halfRoomDepth = metrics.roomDepth() / 2f;
+        float screenCenterZ = Math.min(halfRoomDepth - 0.82f, metrics.frontSeatZ() + 2.43f);
+        // Anchor the teacher view to the board side so it always stays at the front of the room
+        // and looks back over nearly the whole classroom.
+        float teacherCameraZ = Math.min(
+            screenCenterZ - Math.max(0.06f, metrics.seatSpacingZ() * 0.02f),
+            halfRoomDepth - 0.18f
+        );
+        float teacherFocusZ = -Math.max(2.05f, metrics.layoutDepth() * 0.7f);
+
+        return switch (preset) {
+            case ENTRANCE -> new CameraView(
+                new Vector3f(
+                    Math.min(-halfRoomWidth - 2.4f, -metrics.roomWidth() * 0.7f),
+                    Math.max(7.05f, maxDimension * 0.66f),
+                    Math.max(halfRoomDepth + 2.35f, metrics.roomDepth() * 0.72f)
+                ),
+                new Vector3f(0f, 1.02f, -metrics.roomDepth() * 0.04f),
+                SHOWCASE_CAMERA_FOV
+            );
+            case BACK -> new CameraView(
+                new Vector3f(
+                    -metrics.roomWidth() * 0.14f,
+                    Math.min(3.4f, Math.max(2.7f, maxDimension * 0.27f)),
+                    Math.max(-halfRoomDepth - 0.2f, -metrics.roomDepth() * 0.66f)
+                ),
+                new Vector3f(0f, 1.45f, screenCenterZ - 0.02f),
+                SHOWCASE_CAMERA_FOV + 2f
+            );
+            case TEACHER -> new CameraView(
+                new Vector3f(
+                    0f,
+                    Math.min(2.08f, Math.max(1.92f, maxDimension * 0.17f)),
+                    teacherCameraZ
+                ),
+                new Vector3f(
+                    0f,
+                    1.18f,
+                    teacherFocusZ
+                ),
+                TEACHER_CAMERA_FOV
+            );
+            case TOP -> new CameraView(
+                new Vector3f(
+                    0f,
+                    Math.max(6.4f, maxDimension * 0.8f),
+                    0f
+                ),
+                new Vector3f(0f, 0.55f, 0f),
+                SHOWCASE_CAMERA_FOV
+            );
+        };
+    }
+
+    private void applyCameraPreset(CameraPreset preset, boolean animate) {
+        if (activeLayoutMetrics == null || preset == null) {
+            return;
+        }
+
+        CameraView targetView = buildCameraView(activeLayoutMetrics, preset);
+        activeCameraPreset = preset;
+        updateCeilingVisibilityForPreset(preset);
+        updateCameraPresetButtonStyles();
+
+        if (animate) {
+            startCameraTransition(targetView);
+            return;
+        }
+
+        activeCameraTransition = null;
+        activeCameraTransitionElapsed = 0f;
+        setCameraView(targetView);
+    }
+
+    private void startCameraTransition(CameraView targetView) {
+        Vector3f transitionStartLocation = cam.getLocation().clone();
+        Vector3f transitionStartTarget = estimateCurrentLookTarget();
+        activeCameraTransition = new CameraTransition(
+            transitionStartLocation,
+            targetView.location().clone(),
+            transitionStartTarget,
+            targetView.target().clone(),
+            activeCameraFov,
+            targetView.fovDegrees()
+        );
+        activeCameraTransitionElapsed = 0f;
+    }
+
+    private void updateCameraTransition(float tpf) {
+        if (activeCameraTransition == null) {
+            return;
+        }
+
+        activeCameraTransitionElapsed += tpf;
+        float normalizedProgress = Math.min(1f, activeCameraTransitionElapsed / CAMERA_TRANSITION_DURATION_SECONDS);
+        float easedProgress = smoothStep(normalizedProgress);
+
+        setCameraView(new CameraView(
+            interpolate(activeCameraTransition.startLocation(), activeCameraTransition.endLocation(), easedProgress),
+            interpolate(activeCameraTransition.startTarget(), activeCameraTransition.endTarget(), easedProgress),
+            interpolate(activeCameraTransition.startFov(), activeCameraTransition.endFov(), easedProgress)
+        ));
+
+        if (normalizedProgress >= 1f) {
+            activeCameraTransition = null;
+            activeCameraTransitionElapsed = 0f;
+        }
+    }
+
+    private void setCameraView(CameraView view) {
+        activeCameraFov = view.fovDegrees();
+        updateCameraLens();
+        cam.setLocation(view.location().clone());
+        cam.lookAt(view.target(), Vector3f.UNIT_Y);
+    }
+
+    private void updateCeilingVisibilityForPreset(CameraPreset preset) {
+        if (ceilingCutaway == null) {
+            return;
+        }
+
+        Spatial.CullHint ceilingCullHint =
+            preset == CameraPreset.TOP || preset == CameraPreset.ENTRANCE
+                ? Spatial.CullHint.Always
+                : Spatial.CullHint.Inherit;
+
+        ceilingCutaway.setCullHint(ceilingCullHint);
+        if (ceilingLightPanels != null) {
+            ceilingLightPanels.setCullHint(ceilingCullHint);
+        }
+    }
+
+    private Vector3f estimateCurrentLookTarget() {
+        if (activeLayoutMetrics == null) {
+            return cam.getLocation().add(cam.getDirection().mult(8f));
+        }
+
+        float focusDistance = Math.max(activeLayoutMetrics.roomWidth(), activeLayoutMetrics.roomDepth()) * 0.78f;
+        return cam.getLocation().add(cam.getDirection().mult(focusDistance));
+    }
+
+    private float smoothStep(float progress) {
+        return progress * progress * (3f - (2f * progress));
+    }
+
+    private Vector3f interpolate(Vector3f start, Vector3f end, float progress) {
+        return new Vector3f(
+            start.x + ((end.x - start.x) * progress),
+            start.y + ((end.y - start.y) * progress),
+            start.z + ((end.z - start.z) * progress)
+        );
+    }
+
+    private float interpolate(float start, float end, float progress) {
+        return start + ((end - start) * progress);
     }
 
     private void updateHoveredSeat() {
@@ -819,7 +1274,7 @@ public class Room3DApplication extends SimpleApplication {
             return;
         }
 
-        if (primarySelectionArmed) {
+        if (primarySelectionArmed || findCameraPresetAtCursor(inputManager.getCursorPosition()) != null) {
             setHoveredSeat(null);
             return;
         }
@@ -845,20 +1300,22 @@ public class Room3DApplication extends SimpleApplication {
             default -> 1.35f;
         };
 
-        float layoutWidth = Math.max(2.6f, Math.max(0, previewData.maxColumn() - 1) * seatSpacingX);
-        float layoutDepth = Math.max(2.6f, Math.max(0, previewData.maxRow() - 1) * seatSpacingZ);
+        int minRow = previewData.minRow();
+        int minColumn = previewData.minColumn();
+        float layoutWidth = Math.max(2.6f, Math.max(0, previewData.columnSpan() - 1) * seatSpacingX);
+        float layoutDepth = Math.max(2.6f, Math.max(0, previewData.rowSpan() - 1) * seatSpacingZ);
         float roomWidth = layoutWidth + 5.2f;
         float roomDepth = layoutDepth + 6.6f;
         float frontSeatZ = layoutDepth / 2f;
 
-        return new LayoutMetrics(seatSpacingX, seatSpacingZ, layoutWidth, layoutDepth, roomWidth, roomDepth, frontSeatZ);
+        return new LayoutMetrics(seatSpacingX, seatSpacingZ, layoutWidth, layoutDepth, roomWidth, roomDepth, frontSeatZ, minRow, minColumn);
     }
 
     private String buildDefaultSummary() {
         return previewData.summaryLine()
             + " | Disposition: "
             + previewData.disposition()
-            + "\nEtat: "
+            + " | Etat: "
             + previewData.roomStatus()
             + " | Acces PMR: "
             + (previewData.accessible() ? "oui" : "non");
@@ -872,24 +1329,22 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private String buildLegendText() {
-        return "Legende places"
-            + "\nVert: "
+        return "Legende places | vert "
             + countSeats(RoomSeatVisualState.AVAILABLE)
-            + " disponibles | Orange: "
+            + " disponibles | orange "
             + countSeats(RoomSeatVisualState.RESERVED)
-            + " reservees"
-            + "\nJaune: "
+            + " reservees | jaune "
             + countSeats(RoomSeatVisualState.MAINTENANCE)
-            + " maintenance | Gris: "
+            + " maintenance | gris "
             + countSeats(RoomSeatVisualState.UNAVAILABLE)
             + " indisponibles";
     }
 
     private String buildInteractionHintText() {
         if (previewData.supportsSeatSelection()) {
-            return "Survol: apercu | Clic: choisir une place libre | Clic vide: reinitialiser | Glisser: camera | ZQSD/WASD: deplacement";
+            return "Survol: apercu | Clic: choisir une place libre | Boutons camera: vues rapides | Glisser: camera | ZQSD/WASD: deplacement";
         }
-        return "Survol: apercu | Clic: selection d'information | Clic vide: reinitialiser | Glisser: camera | ZQSD/WASD: deplacement";
+        return "Survol: apercu | Clic: selection d'information | Boutons camera: vues rapides | Glisser: camera | ZQSD/WASD: deplacement";
     }
 
     private int countSeats(RoomSeatVisualState state) {
@@ -911,8 +1366,26 @@ public class Room3DApplication extends SimpleApplication {
         return geometry;
     }
 
+    private void updateCameraPresetHover() {
+        if (inputManager == null) {
+            return;
+        }
+
+        CameraPreset newHoveredPreset = findCameraPresetAtCursor(inputManager.getCursorPosition());
+        if (newHoveredPreset == hoveredCameraPreset) {
+            return;
+        }
+
+        hoveredCameraPreset = newHoveredPreset;
+        updateCameraPresetButtonStyles();
+    }
+
     private void handlePrimarySeatInteraction(boolean isPressed) {
         if (isPressed) {
+            if (activeCameraTransition != null && findCameraPresetAtCursor(inputManager.getCursorPosition()) == null) {
+                activeCameraTransition = null;
+                activeCameraTransitionElapsed = 0f;
+            }
             primarySelectionArmed = true;
             primaryClickStart = inputManager.getCursorPosition().clone();
             return;
@@ -930,7 +1403,38 @@ public class Room3DApplication extends SimpleApplication {
             return;
         }
 
+        CameraPreset clickedPreset = findCameraPresetAtCursor(inputManager.getCursorPosition());
+        if (clickedPreset != null) {
+            applyCameraPreset(clickedPreset, true);
+            return;
+        }
+
         selectSeat(findSeatNodeAtCursor());
+    }
+
+    private CameraPreset findCameraPresetAtCursor(Vector2f cursorPosition) {
+        if (cursorPosition == null || cameraPresetButtons.isEmpty()) {
+            return null;
+        }
+
+        for (CameraPreset preset : CameraPreset.values()) {
+            CameraPresetButton button = cameraPresetButtons.get(preset);
+            if (button == null) {
+                continue;
+            }
+
+            Vector3f buttonPosition = button.node().getLocalTranslation();
+            float x = buttonPosition.x;
+            float y = buttonPosition.y;
+            if (cursorPosition.x >= x
+                && cursorPosition.x <= x + button.width()
+                && cursorPosition.y >= y
+                && cursorPosition.y <= y + button.height()) {
+                return preset;
+            }
+        }
+
+        return null;
     }
 
     private Node findSeatNodeAtCursor() {
@@ -1178,6 +1682,58 @@ public class Room3DApplication extends SimpleApplication {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
     }
 
+    private enum CameraPreset {
+        ENTRANCE("Vue entree", 0, 0),
+        BACK("Vue fond de salle", 0, 1),
+        TEACHER("Vue enseignant", 1, 0),
+        TOP("Vue dessus", 1, 1);
+
+        private final String label;
+        private final int row;
+        private final int column;
+
+        CameraPreset(String label, int row, int column) {
+            this.label = label;
+            this.row = row;
+            this.column = column;
+        }
+
+        private String label() {
+            return label;
+        }
+
+        private int row() {
+            return row;
+        }
+
+        private int column() {
+            return column;
+        }
+    }
+
+    private record CameraView(Vector3f location, Vector3f target, float fovDegrees) {
+    }
+
+    private record CameraTransition(
+        Vector3f startLocation,
+        Vector3f endLocation,
+        Vector3f startTarget,
+        Vector3f endTarget,
+        float startFov,
+        float endFov
+    ) {
+    }
+
+    private record CameraPresetButton(
+        CameraPreset preset,
+        Node node,
+        Geometry background,
+        BitmapText label,
+        float width,
+        float height
+    ) {
+    }
+
     private record SeatVisual(Room3DPreviewData.SeatPreview seat, Geometry indicator) {
     }
 
@@ -1188,7 +1744,9 @@ public class Room3DApplication extends SimpleApplication {
         float layoutDepth,
         float roomWidth,
         float roomDepth,
-        float frontSeatZ
+        float frontSeatZ,
+        int minRow,
+        int minColumn
     ) {
     }
 }

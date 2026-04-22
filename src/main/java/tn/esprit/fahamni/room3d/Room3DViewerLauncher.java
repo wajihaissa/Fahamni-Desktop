@@ -79,6 +79,10 @@ public final class Room3DViewerLauncher {
             settings.setTitle(buildWindowTitle(previewData));
             settings.setResizable(true);
             settings.setResolution(1280, 720);
+            settings.setSamples(8);
+            settings.setGammaCorrection(true);
+            settings.setVSync(true);
+            settings.setFrameRate(120);
 
             application.setShowSettings(false);
             application.setSettings(settings);
