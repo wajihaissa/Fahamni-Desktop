@@ -16,24 +16,24 @@
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.MainController">
     <top>
-        <VBox spacing="12.0" styleClass="front-navbar-shell" BorderPane.alignment="CENTER">
+        <VBox spacing="10.0" styleClass="front-navbar-shell" BorderPane.alignment="CENTER">
             <padding>
-                <Insets top="18" right="20" bottom="0" left="20"/>
+                <Insets top="12" right="20" bottom="0" left="20"/>
             </padding>
 
-            <HBox alignment="CENTER_LEFT" spacing="18.0" styleClass="front-navbar-topbar">
+            <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="front-navbar-topbar">
                 <padding>
-                    <Insets top="18" right="20" bottom="18" left="20"/>
+                    <Insets top="12" right="18" bottom="12" left="18"/>
                 </padding>
 
-                <VBox spacing="6.0" styleClass="front-navbar-brand">
+                <VBox spacing="4.0" styleClass="front-navbar-brand">
                     <Label text="FAHAMNI" styleClass="front-navbar-brand-title"/>
                     <Label text="Apprendre avec clarte, progresser avec confiance." styleClass="front-navbar-brand-slogan" wrapText="true"/>
                 </VBox>
 
                 <Region HBox.hgrow="ALWAYS"/>
 
-                <HBox spacing="14.0" alignment="CENTER_RIGHT" styleClass="front-navbar-actions">
+                <HBox spacing="10.0" alignment="CENTER_RIGHT" styleClass="front-navbar-actions">
                     <HBox spacing="10.0" alignment="CENTER" styleClass="front-navbar-utility-inline">
                         <StackPane styleClass="front-alert-button-wrap">
                             <Button fx:id="alertButton" text="🔔" styleClass="front-navbar-icon-button" onAction="#toggleAlertsPopup"/>
@@ -51,7 +51,7 @@
                         <Button fx:id="accountButton" text="Compte" styleClass="front-navbar-ghost-button" onAction="#toggleAccountMenu"/>
                     </HBox>
 
-                    <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="front-navbar-profile">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="front-navbar-profile">
                         <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar"/>
                         <VBox spacing="2.0" styleClass="front-navbar-profile-copy">
                             <Label fx:id="profileNameLabel" text="Etudiant Fahamni" styleClass="profile-name"/>

@@ -18,11 +18,11 @@ import java.util.Locale;
 
 public class AdminSalleService implements IServices<Salle> {
     private static final List<String> DEFAULT_BATIMENTS = List.of(
-        "Batiment A",
-        "Batiment B",
-        "Batiment C",
-        "Batiment D",
-        "Batiment E"
+        "Bloc A",
+        "Bloc B",
+        "Bloc C",
+        "Bloc D",
+        "Bloc Tech"
     );
 
     private static final String INSERT_SQL =
