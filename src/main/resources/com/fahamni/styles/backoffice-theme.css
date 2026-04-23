@@ -780,6 +780,34 @@
             -fx-background-radius: 999px;
         }
 
+        .backoffice-room-preview-button {
+            -fx-background-color: linear-gradient(to bottom, #fbfdff 0%, #e3efff 100%);
+            -fx-border-color: #96b8ea;
+            -fx-border-width: 1px;
+            -fx-text-fill: #1f4f90;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 7px 13px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+            -fx-effect: dropshadow(gaussian, rgba(34, 84, 161, 0.16), 10, 0.18, 0, 3);
+        }
+
+        .backoffice-room-preview-button:hover {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #ebf4ff 100%);
+            -fx-border-color: #76a0e1;
+            -fx-text-fill: #18447f;
+            -fx-effect: dropshadow(gaussian, rgba(34, 84, 161, 0.22), 12, 0.20, 0, 4);
+        }
+
+        .backoffice-room-preview-button:pressed {
+            -fx-background-color: linear-gradient(to bottom, #dcecff 0%, #c9ddff 100%);
+            -fx-border-color: #5f8cd5;
+            -fx-text-fill: #153b6c;
+            -fx-effect: none;
+        }
+
         .infrastructure-header, .infrastructure-panel, .infrastructure-note, .infrastructure-stat-card, .infrastructure-detail-panel {
             -fx-background-color: rgba(255, 255, 255, 0.92);
             -fx-border-color: #dbe5f6;
