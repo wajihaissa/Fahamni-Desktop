@@ -187,6 +187,27 @@
                     <Label fx:id="detailDescriptionLabel" text="Aucun element selectionne." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
                 </VBox>
 
+                <VBox fx:id="room3DSpotlightContainer" spacing="10.0" managed="false" visible="false">
+                    <styleClass>
+                        <String fx:value="infrastructure-detail-preview"/>
+                        <String fx:value="infrastructure-room-3d-panel"/>
+                    </styleClass>
+                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                        <Label text="Studio 3D" styleClass="infrastructure-detail-section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="room3DModeLabel" text="Modele genere" styleClass="infrastructure-room-3d-chip"/>
+                    </HBox>
+                    <Label fx:id="room3DHeadlineLabel" text="Explorez la salle en immersion." wrapText="true" styleClass="infrastructure-room-3d-title"/>
+                    <Label fx:id="room3DCopyLabel" text="Le moteur 3D reprend la disposition et la capacite de la salle selectionnee." wrapText="true" styleClass="infrastructure-room-3d-copy"/>
+                    <FlowPane fx:id="room3DHighlightsContainer" hgap="10.0" vgap="10.0" prefWrapLength="304.0"/>
+                    <Button fx:id="room3DPreviewButton" text="Explorer la salle en 3D" maxWidth="Infinity" onAction="#handlePreviewSelectedRoom3D">
+                        <styleClass>
+                            <String fx:value="backoffice-primary-button"/>
+                            <String fx:value="infrastructure-room-3d-button"/>
+                        </styleClass>
+                    </Button>
+                </VBox>
+
                 <VBox spacing="8.0" styleClass="infrastructure-detail-section">
                     <HBox alignment="CENTER_LEFT" spacing="8.0">
                         <Label text="Equipements fixes" styleClass="infrastructure-detail-section-title"/>

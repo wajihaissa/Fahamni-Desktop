@@ -311,6 +311,71 @@
     -fx-border-color: #d8d3f5;
 }
 
+#infrastructureCatalogRoot .infrastructure-room-3d-panel {
+    -fx-background-color:
+        radial-gradient(center 18% 18%, radius 36%, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.00) 72%),
+        radial-gradient(center 88% 12%, radius 28%, rgba(173, 219, 255, 0.22) 0%, rgba(173, 219, 255, 0.00) 75%),
+        linear-gradient(to right, #f4f1ff 0%, #edf4ff 52%, #f7f4ff 100%);
+    -fx-border-color: #d7d6f4;
+    -fx-effect: dropshadow(gaussian, rgba(97, 84, 188, 0.12), 16, 0.16, 0, 4);
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-panel .infrastructure-detail-section-title {
+    -fx-text-fill: #5142b9;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-title {
+    -fx-text-fill: #1f2740;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-copy {
+    -fx-text-fill: #5f6980;
+    -fx-font-size: 12px;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-chip,
+#infrastructureCatalogRoot .infrastructure-room-3d-card-chip {
+    -fx-background-color: rgba(255, 255, 255, 0.78);
+    -fx-border-color: rgba(134, 123, 224, 0.34);
+    -fx-border-width: 1px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-text-fill: #5948bf;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-chip {
+    -fx-padding: 5px 10px;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-card-chip {
+    -fx-padding: 6px 10px;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-metric {
+    -fx-background-color: rgba(255, 255, 255, 0.72);
+    -fx-border-color: rgba(148, 160, 228, 0.34);
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 10px 12px;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-metric-label {
+    -fx-text-fill: #707b92;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-metric-value {
+    -fx-text-fill: #253352;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
 #infrastructureCatalogRoot .backoffice-primary-button {
     -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
     -fx-text-fill: white;
@@ -321,6 +386,15 @@
 
 #infrastructureCatalogRoot .backoffice-primary-button:hover {
     -fx-background-color: linear-gradient(to right, #6d5dd3 0%, #5b76d6 100%);
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-button {
+    -fx-background-color: linear-gradient(to right, #6150ce 0%, #4775d5 100%);
+    -fx-effect: dropshadow(gaussian, rgba(79, 92, 197, 0.24), 14, 0.20, 0, 4);
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-button:hover {
+    -fx-background-color: linear-gradient(to right, #6d5ddd 0%, #5481df 100%);
 }
 
 #infrastructureCatalogRoot .backoffice-primary-button:disabled {
@@ -348,6 +422,18 @@
     -fx-background-color: #f4f2ff;
     -fx-border-color: #c8c0f0;
     -fx-text-fill: #5b49be;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-action {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f2f5ff 100%);
+    -fx-border-color: #d5dcf6;
+    -fx-text-fill: #5848bc;
+}
+
+#infrastructureCatalogRoot .infrastructure-room-3d-action:hover {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #ecefff 100%);
+    -fx-border-color: #c2c8f2;
+    -fx-text-fill: #4938af;
 }
 
 #infrastructureCatalogRoot .backoffice-feedback.success {

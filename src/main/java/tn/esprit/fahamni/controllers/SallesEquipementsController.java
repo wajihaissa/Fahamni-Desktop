@@ -22,6 +22,9 @@ import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Place;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.SalleEquipement;
+import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DViewMode;
+import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminPlaceService;
 import tn.esprit.fahamni.services.AdminSalleService;
@@ -108,6 +111,24 @@ public class SallesEquipementsController {
     private Label detailDescriptionLabel;
 
     @FXML
+    private VBox room3DSpotlightContainer;
+
+    @FXML
+    private Label room3DModeLabel;
+
+    @FXML
+    private Label room3DHeadlineLabel;
+
+    @FXML
+    private Label room3DCopyLabel;
+
+    @FXML
+    private FlowPane room3DHighlightsContainer;
+
+    @FXML
+    private Button room3DPreviewButton;
+
+    @FXML
     private Label detailFixedEquipmentSummaryLabel;
 
     @FXML
@@ -132,6 +153,7 @@ public class SallesEquipementsController {
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final AdminPlaceService placeService = new AdminPlaceService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipements = FXCollections.observableArrayList();
     private final ObservableList<Place> places = FXCollections.observableArrayList();
@@ -154,6 +176,18 @@ public class SallesEquipementsController {
     private void handleRefresh() {
         hideFeedback();
         loadCatalog(true);
+    }
+
+    @FXML
+    private void handlePreviewSelectedRoom3D() {
+        hideFeedback();
+
+        if (!(selectedElement instanceof Salle salle)) {
+            showFeedback("Selectionnez une salle pour ouvrir son studio 3D.", false);
+            return;
+        }
+
+        openRoom3DPreview(salle, true);
     }
 
     @FXML
@@ -316,6 +350,7 @@ public class SallesEquipementsController {
                 + " places | "
                 + formatOptionalText(salle.getLocalisation())
         );
+        Label previewChip = createRoom3DTeaserChip(salle);
         Region descriptionSpace = createCardDescriptionSpace();
 
         VBox details = new VBox(7);
@@ -332,6 +367,15 @@ public class SallesEquipementsController {
             event.consume();
         });
 
+        Button preview3DButton = createSecondaryButton("Vue 3D");
+        preview3DButton.getStyleClass().add("infrastructure-room-3d-action");
+        preview3DButton.setDisable(salle.getCapacite() <= 0);
+        preview3DButton.setOnAction(event -> {
+            selectRoom(salle, card, false);
+            openRoom3DPreview(salle, false);
+            event.consume();
+        });
+
         Button chooseButton = createPrimaryButton("Choisir");
         chooseButton.setDisable(!isUsable(salle.getEtat()));
         chooseButton.setOnAction(event -> {
@@ -339,8 +383,8 @@ public class SallesEquipementsController {
             event.consume();
         });
 
-        HBox actions = createActions(detailsButton, chooseButton);
-        card.getChildren().addAll(header, metaLine, descriptionSpace, details, actions);
+        HBox actions = createRoomActions(detailsButton, preview3DButton, chooseButton);
+        card.getChildren().addAll(header, metaLine, previewChip, descriptionSpace, details, actions);
         return card;
     }
 
@@ -461,6 +505,16 @@ public class SallesEquipementsController {
         return actions;
     }
 
+    private HBox createRoomActions(Button detailsButton, Button preview3DButton, Button chooseButton) {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox actions = new HBox(8, detailsButton, preview3DButton, spacer, chooseButton);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        actions.getStyleClass().add("infrastructure-actions");
+        return actions;
+    }
+
     private Button createPrimaryButton(String text) {
         Button button = new Button(text);
         button.getStyleClass().add("backoffice-primary-button");
@@ -490,6 +544,19 @@ public class SallesEquipementsController {
         return emptyState;
     }
 
+    private Label createRoom3DTeaserChip(Salle salle) {
+        int configuredSeats = resolveConfiguredSeatCount(salle);
+        String chipText = configuredSeats > 0
+            ? "Modele 3D base sur le plan reel"
+            : "Modele 3D genere automatiquement";
+
+        Label label = new Label(chipText);
+        label.setWrapText(true);
+        label.setMaxWidth(Double.MAX_VALUE);
+        label.getStyleClass().add("infrastructure-room-3d-card-chip");
+        return label;
+    }
+
     private void selectRoom(Salle salle, Node card, boolean showPreview) {
         selectCard(card);
         selectedElement = salle;
@@ -510,6 +577,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText(formatDescription(salle.getDescription()));
         detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+        updateRoom3DSpotlight(salle, availability);
         updateFixedEquipmentDetails(salle.getIdSalle());
 
         detailFactsContainer.getChildren().setAll(
@@ -544,6 +612,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText(formatDescription(equipement.getDescription()));
         detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(equipement.getEtat(), "ce materiel"));
+        hideRoom3DSpotlight();
         resetFixedEquipmentDetails();
 
         detailFactsContainer.getChildren().setAll(
@@ -573,6 +642,23 @@ public class SallesEquipementsController {
         Label valueNode = new Label(value);
         valueNode.setWrapText(true);
         valueNode.getStyleClass().add("infrastructure-detail-fact-value");
+
+        card.getChildren().addAll(labelNode, valueNode);
+        return card;
+    }
+
+    private Node createRoom3DHighlight(String label, String value) {
+        VBox card = new VBox(4);
+        card.setPrefWidth(88);
+        card.setMinWidth(88);
+        card.getStyleClass().add("infrastructure-room-3d-metric");
+
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("infrastructure-room-3d-metric-label");
+
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.getStyleClass().add("infrastructure-room-3d-metric-value");
 
         card.getChildren().addAll(labelNode, valueNode);
         return card;
@@ -608,6 +694,66 @@ public class SallesEquipementsController {
         sessionPreviewContainer.setManaged(true);
         sessionPreviewContainer.setVisible(true);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+    }
+
+    private void updateRoom3DSpotlight(Salle salle, RoomAvailability availability) {
+        if (room3DSpotlightContainer == null) {
+            return;
+        }
+
+        int configuredSeats = resolveConfiguredSeatCount(salle);
+        boolean usesConfiguredPlan = configuredSeats > 0;
+        String roomName = formatOptionalText(salle.getNom());
+        String disposition = formatOptionalText(salle.getTypeDisposition());
+
+        room3DModeLabel.setText(usesConfiguredPlan ? "Plan reel" : "Generation auto");
+        room3DHeadlineLabel.setText("Entrez dans " + roomName + " avant de la reserver.");
+        room3DCopyLabel.setText(
+            usesConfiguredPlan
+                ? "La scene 3D reprend les places deja configurees pour cette salle et respecte sa disposition."
+                : "Aucun plan detaille n'est disponible : la scene 3D est composee automatiquement a partir de la capacite et de la disposition."
+        );
+        room3DHighlightsContainer.getChildren().setAll(
+            createRoom3DHighlight("Source", usesConfiguredPlan ? configuredSeats + " places reelles" : "Capacite " + salle.getCapacite()),
+            createRoom3DHighlight("Disponibles", availability.availablePlaces() + " / " + availability.totalPlaces()),
+            createRoom3DHighlight("Disposition", disposition),
+            createRoom3DHighlight("Acces", salle.isAccesHandicape() ? "PMR" : "Standard")
+        );
+        room3DPreviewButton.setDisable(salle.getCapacite() <= 0);
+        room3DSpotlightContainer.setManaged(true);
+        room3DSpotlightContainer.setVisible(true);
+    }
+
+    private void hideRoom3DSpotlight() {
+        if (room3DSpotlightContainer == null) {
+            return;
+        }
+
+        room3DModeLabel.setText("Modele genere");
+        room3DHeadlineLabel.setText("Explorez la salle en immersion.");
+        room3DCopyLabel.setText("Le moteur 3D reprend la disposition et la capacite de la salle selectionnee.");
+        room3DHighlightsContainer.getChildren().clear();
+        room3DPreviewButton.setDisable(true);
+        room3DSpotlightContainer.setManaged(false);
+        room3DSpotlightContainer.setVisible(false);
+    }
+
+    private void openRoom3DPreview(Salle salle, boolean showSuccessFeedback) {
+        hideFeedback();
+
+        if (salle == null) {
+            showFeedback("Selectionnez une salle pour ouvrir son studio 3D.", false);
+            return;
+        }
+
+        try {
+            Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(salle, false, Room3DViewMode.PREVIEW));
+            if (showSuccessFeedback) {
+                showFeedback("Le studio 3D de \"" + formatOptionalText(salle.getNom()) + "\" est ouvert.", true);
+            }
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            showFeedback("Ouverture 3D impossible : " + resolveMessage(exception), false);
+        }
     }
 
     private void useRoomForSession(Salle salle) {
@@ -692,6 +838,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText("Aucun element selectionne.");
         detailUseButton.setDisable(true);
         detailHintLabel.setText("Choisissez une salle ou un materiel pour preparer l'integration future.");
+        hideRoom3DSpotlight();
         resetFixedEquipmentDetails();
         hideSessionPreview();
     }
@@ -778,6 +925,16 @@ public class SallesEquipementsController {
             .map(equipement -> formatOptionalText(equipement.getNomEquipement()) + " x" + equipement.getQuantite())
             .reduce((left, right) -> left + ", " + right)
             .orElse("aucun");
+    }
+
+    private int resolveConfiguredSeatCount(Salle salle) {
+        if (salle == null || salle.getIdSalle() <= 0) {
+            return 0;
+        }
+
+        return (int) places.stream()
+            .filter(place -> place.getIdSalle() == salle.getIdSalle())
+            .count();
     }
 
     private boolean matchesRoomSearch(Salle salle, String normalizedSearch) {
