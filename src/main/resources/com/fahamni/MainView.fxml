@@ -10,6 +10,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
 
 <BorderPane fx:id="rootPane" prefHeight="860.0" prefWidth="1440.0"
             xmlns="http://javafx.com/javafx/17"
@@ -42,7 +43,14 @@
                 <right>
                     <HBox alignment="CENTER_RIGHT" spacing="12.0" styleClass="front-navbar-actions" BorderPane.alignment="CENTER">
                         <StackPane styleClass="front-alert-button-wrap">
-                            <Button fx:id="alertButton" text="N" onAction="#toggleAlertsPopup" styleClass="front-navbar-icon-button"/>
+                            <Button fx:id="alertButton" onAction="#toggleAlertsPopup" styleClass="front-navbar-icon-button">
+                                <graphic>
+                                    <StackPane styleClass="front-alert-icon-shell">
+                                        <SVGPath content="M10 21c1.1 0 2-.9 2-2H8c0 1.1.9 2 2 2zm6-5v-5c0-3.07-1.63-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C5.63 5.36 4 7.92 4 11v5l-2 2v1h16v-1l-2-2z"
+                                                 styleClass="front-alert-icon"/>
+                                    </StackPane>
+                                </graphic>
+                            </Button>
                             <Label fx:id="alertNotifBadge" text=""
                                    StackPane.alignment="TOP_RIGHT"
                                    managed="false" visible="false">
