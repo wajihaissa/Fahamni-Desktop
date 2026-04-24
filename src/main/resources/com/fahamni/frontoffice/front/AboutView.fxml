@@ -25,7 +25,7 @@
                 <Insets top="12" right="18" bottom="26" left="18"/>
             </padding>
 
-            <VBox fx:id="aboutContent" maxWidth="1280.0" spacing="24.0" styleClass="about-content">
+            <VBox fx:id="aboutContent" maxWidth="1.7976931348623157E308" spacing="24.0" styleClass="about-content">
             <FlowPane fx:id="aboutHeroSection" hgap="24.0" prefWrapLength="1120.0" styleClass="about-hero" vgap="24.0">
                 <VBox maxWidth="700.0" minWidth="340.0" spacing="18.0" styleClass="about-hero-copy">
                     <Label text="ABOUT FAHAMNI" styleClass="about-eyebrow"/>
