@@ -467,6 +467,24 @@
     -fx-text-fill: #5b49be;
 }
 
+#tutorDiscoveryRoot .reservation-content .action-button.accept {
+    -fx-background-color: #edf9f2;
+    -fx-border-color: #bfe7cc;
+    -fx-border-width: 1px;
+    -fx-text-fill: #239158;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-effect: none;
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.accept:hover {
+    -fx-background-color: #e2f5ea;
+    -fx-border-color: #a9dbbb;
+    -fx-text-fill: #1d7f4d;
+    -fx-effect: none;
+}
+
 #tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action {
     -fx-background-color: linear-gradient(to bottom, #fff5fb 0%, #f6e7fb 100%);
     -fx-border-color: #e3c5eb;
