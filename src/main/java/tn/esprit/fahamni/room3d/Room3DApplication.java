@@ -160,6 +160,7 @@ public class Room3DApplication extends SimpleApplication {
         initialiseMaterials();
         initialiseShadows();
         rebuildScene();
+        Room3DViewerLauncher.markApplicationReady(this);
     }
 
     @Override
@@ -203,6 +204,14 @@ public class Room3DApplication extends SimpleApplication {
 
     public String getSelectedSeatLabel() {
         return selectedSeatLabelSnapshot;
+    }
+
+    void clearSeatSelection() {
+        Node previousSelectedSeat = selectedSeatNode;
+        selectedSeatNode = null;
+        refreshSeatVisual(previousSelectedSeat);
+        refreshSeatVisual(hoveredSeatNode);
+        updateSelectionText();
     }
 
     private void setSelectedSeatSnapshot(Integer seatId, String seatLabel) {

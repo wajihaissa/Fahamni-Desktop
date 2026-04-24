@@ -9,6 +9,7 @@ public final class Room3DViewerLauncher {
     private static final Object LOCK = new Object();
 
     private static Room3DApplication activeApplication;
+    private static boolean activeViewerReady;
     private static Integer selectedSeatIdSnapshot;
     private static String selectedSeatLabelSnapshot;
 
@@ -20,6 +21,7 @@ public final class Room3DViewerLauncher {
 
         synchronized (LOCK) {
             clearSelectedSeatSnapshotLocked();
+            activeViewerReady = false;
 
             if (activeApplication != null) {
                 Room3DApplication application = activeApplication;
@@ -60,9 +62,55 @@ public final class Room3DViewerLauncher {
         }
     }
 
+    public static boolean isActiveViewerReady() {
+        synchronized (LOCK) {
+            return activeApplication != null && activeViewerReady;
+        }
+    }
+
+    public static boolean waitForActiveViewerReady(long timeoutMillis) {
+        long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMillis);
+        while (System.currentTimeMillis() < deadline) {
+            synchronized (LOCK) {
+                if (activeApplication == null) {
+                    return false;
+                }
+                if (activeViewerReady) {
+                    return true;
+                }
+            }
+
+            try {
+                Thread.sleep(40L);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+
+        synchronized (LOCK) {
+            return activeApplication != null && activeViewerReady;
+        }
+    }
+
     public static void clearSelectedSeatSnapshot() {
         synchronized (LOCK) {
             clearSelectedSeatSnapshotLocked();
+        }
+    }
+
+    public static void clearActiveSeatSelection() {
+        Room3DApplication application;
+        synchronized (LOCK) {
+            clearSelectedSeatSnapshotLocked();
+            application = activeApplication;
+        }
+
+        if (application != null) {
+            application.enqueue(() -> {
+                application.clearSeatSelection();
+                return null;
+            });
         }
     }
 
@@ -81,6 +129,15 @@ public final class Room3DViewerLauncher {
         synchronized (LOCK) {
             if (activeApplication == application) {
                 activeApplication = null;
+                activeViewerReady = false;
+            }
+        }
+    }
+
+    static void markApplicationReady(Room3DApplication application) {
+        synchronized (LOCK) {
+            if (activeApplication == application) {
+                activeViewerReady = true;
             }
         }
     }
