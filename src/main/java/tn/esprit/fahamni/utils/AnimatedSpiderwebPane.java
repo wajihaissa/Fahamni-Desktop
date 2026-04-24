@@ -13,7 +13,7 @@ import java.util.Random;
 
 public class AnimatedSpiderwebPane extends Pane {
 
-    private static final int NODE_COUNT = 18;
+    private static final int NODE_COUNT = 32;
     private static final double CLIP_RADIUS = 32.0;
 
     private final Canvas canvas = new Canvas();
@@ -88,9 +88,9 @@ public class AnimatedSpiderwebPane extends Pane {
         graphics.clearRect(0.0, 0.0, width, height);
 
         boolean lightMode = FrontOfficeThemePreference.isLightMode();
-        double maxDistance = Math.max(120.0, Math.min(width, height) * 0.28);
-        Color lineBase = lightMode ? Color.rgb(76, 142, 255) : Color.rgb(89, 225, 255);
-        Color dotBase = lightMode ? Color.rgb(67, 132, 235) : Color.rgb(111, 236, 255);
+        double maxDistance = Math.max(138.0, Math.min(width, height) * 0.34);
+        Color lineBase = lightMode ? Color.rgb(53, 115, 214) : Color.rgb(89, 225, 255);
+        Color dotBase = lightMode ? Color.rgb(44, 121, 228) : Color.rgb(111, 236, 255);
 
         List<Point> points = new ArrayList<>(nodes.size());
         for (WebNode node : nodes) {
@@ -109,14 +109,14 @@ public class AnimatedSpiderwebPane extends Pane {
                 }
 
                 double intensity = 1.0 - (distance / maxDistance);
-                double alpha = (lightMode ? 0.10 : 0.18) * intensity;
+                double alpha = (lightMode ? 0.20 : 0.18) * intensity;
                 graphics.setStroke(Color.color(
                     lineBase.getRed(),
                     lineBase.getGreen(),
                     lineBase.getBlue(),
                     alpha
                 ));
-                graphics.setLineWidth(lightMode ? 0.8 : 0.95);
+                graphics.setLineWidth(lightMode ? 1.05 : 0.95);
                 graphics.strokeLine(firstPoint.x, firstPoint.y, secondPoint.x, secondPoint.y);
             }
         }
@@ -126,7 +126,7 @@ public class AnimatedSpiderwebPane extends Pane {
                 dotBase.getRed(),
                 dotBase.getGreen(),
                 dotBase.getBlue(),
-                lightMode ? 0.22 : 0.34
+                lightMode ? 0.34 : 0.34
             ));
             graphics.fillOval(point.x - point.radius, point.y - point.radius, point.radius * 2.0, point.radius * 2.0);
 
@@ -135,7 +135,7 @@ public class AnimatedSpiderwebPane extends Pane {
                 dotBase.getRed(),
                 dotBase.getGreen(),
                 dotBase.getBlue(),
-                lightMode ? 0.05 : 0.09
+                lightMode ? 0.10 : 0.09
             ));
             graphics.fillOval(point.x - glowRadius, point.y - glowRadius, glowRadius * 2.0, glowRadius * 2.0);
         }
@@ -145,7 +145,16 @@ public class AnimatedSpiderwebPane extends Pane {
         Random random = new Random(42L);
         List<WebNode> items = new ArrayList<>(NODE_COUNT);
 
-        for (int index = 0; index < NODE_COUNT; index++) {
+        addAnchorNode(items, 0.06, 0.16);
+        addAnchorNode(items, 0.05, 0.42);
+        addAnchorNode(items, 0.07, 0.72);
+        addAnchorNode(items, 0.18, 0.88);
+        addAnchorNode(items, 0.50, 0.90);
+        addAnchorNode(items, 0.82, 0.86);
+        addAnchorNode(items, 0.94, 0.30);
+        addAnchorNode(items, 0.93, 0.66);
+
+        while (items.size() < NODE_COUNT) {
             items.add(new WebNode(
                 0.08 + (0.84 * random.nextDouble()),
                 0.12 + (0.76 * random.nextDouble()),
@@ -160,6 +169,10 @@ public class AnimatedSpiderwebPane extends Pane {
         }
 
         return items;
+    }
+
+    private void addAnchorNode(List<WebNode> items, double x, double y) {
+        items.add(new WebNode(x, y, 6.0, 6.0, 0.26, 0.24, 0.0, 1.4, 1.8));
     }
 
     private record Point(double x, double y, double radius) {

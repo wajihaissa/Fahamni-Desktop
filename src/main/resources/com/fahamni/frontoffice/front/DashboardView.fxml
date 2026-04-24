@@ -18,12 +18,14 @@
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.DashboardController">
-    <VBox alignment="TOP_CENTER" styleClass="dashboard-premium-shell-wrap">
-        <padding>
-            <Insets top="12" right="22" bottom="26" left="22"/>
-        </padding>
+    <StackPane styleClass="dashboard-premium-page-shell">
+        <AnimatedSpiderwebPane fx:id="dashboardBackgroundSpiderwebPane" styleClass="dashboard-premium-page-spiderweb"/>
+        <VBox alignment="TOP_CENTER" styleClass="dashboard-premium-shell-wrap">
+            <padding>
+                <Insets top="12" right="22" bottom="26" left="22"/>
+            </padding>
 
-        <VBox fx:id="dashboardHomeContent" id="dashboardHomeContent" maxWidth="1280.0" spacing="24.0" styleClass="dashboard-premium-content">
+            <VBox fx:id="dashboardHomeContent" id="dashboardHomeContent" maxWidth="1280.0" spacing="24.0" styleClass="dashboard-premium-content">
             <StackPane fx:id="heroSection" styleClass="dashboard-premium-hero">
                 <AnimatedSpiderwebPane fx:id="heroSpiderwebPane" styleClass="dashboard-premium-spiderweb" />
                 <FlowPane hgap="24.0" prefWrapLength="1120.0" styleClass="dashboard-premium-hero-layout" vgap="24.0">
@@ -423,6 +425,7 @@
                     </VBox>
                 </VBox>
             </FlowPane>
+            </VBox>
         </VBox>
-    </VBox>
+    </StackPane>
 </ScrollPane>

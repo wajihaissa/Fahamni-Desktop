@@ -36,6 +36,10 @@
     -fx-background-color: transparent;
 }
 
+#dashboardHomeRoot .dashboard-premium-page-shell {
+    -fx-background-color: transparent;
+}
+
 #dashboardHomeContent {
     -fx-background-color: transparent;
 }
@@ -61,6 +65,10 @@
 
 #dashboardHomeRoot .dashboard-premium-hero-layout {
     -fx-padding: 32px;
+}
+
+#dashboardHomeRoot .dashboard-premium-page-spiderweb {
+    -fx-opacity: 0.42;
 }
 
 #dashboardHomeRoot .dashboard-premium-spiderweb {
@@ -468,7 +476,11 @@
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-spiderweb {
-    -fx-opacity: 0.76;
+    -fx-opacity: 0.92;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-page-spiderweb {
+    -fx-opacity: 0.66;
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-eyebrow,
