@@ -205,6 +205,14 @@ public class Room3DApplication extends SimpleApplication {
         return selectedSeatLabelSnapshot;
     }
 
+    private void setSelectedSeatSnapshot(Integer seatId, String seatLabel) {
+        selectedSeatIdSnapshot = seatId;
+        selectedSeatLabelSnapshot = seatId == null || seatLabel == null || seatLabel.isBlank()
+            ? null
+            : seatLabel;
+        Room3DViewerLauncher.updateSelectedSeatSnapshot(selectedSeatIdSnapshot, selectedSeatLabelSnapshot);
+    }
+
     private void rebuildScene() {
         if (sceneRoot != null) {
             rootNode.detachChild(sceneRoot);
@@ -216,8 +224,7 @@ public class Room3DApplication extends SimpleApplication {
         selectedSeatNode = null;
         primaryClickStart = null;
         primarySelectionArmed = false;
-        selectedSeatIdSnapshot = null;
-        selectedSeatLabelSnapshot = null;
+        setSelectedSeatSnapshot(null, null);
         activeLayoutMetrics = null;
         activeCameraPreset = CameraPreset.ENTRANCE;
         hoveredCameraPreset = null;
@@ -2410,8 +2417,7 @@ public class Room3DApplication extends SimpleApplication {
             selectedSeatNode = null;
             refreshSeatVisual(previousSelectedSeat);
             refreshSeatVisual(hoveredSeatNode);
-            selectedSeatIdSnapshot = null;
-            selectedSeatLabelSnapshot = null;
+            setSelectedSeatSnapshot(null, null);
             selectionText.setText(buildUnavailableSelectionText(seat));
             selectionText.setColor(resolveSeatHudColor(seat == null ? RoomSeatVisualState.UNAVAILABLE : seat.state()));
             updateBitmapTextVisibility(selectionText);
@@ -2465,8 +2471,7 @@ public class Room3DApplication extends SimpleApplication {
         if (selectedSeatNode == null) {
             selectionText.setText(buildDefaultSelectionText());
             selectionText.setColor(createHudNeutralColor());
-            selectedSeatIdSnapshot = null;
-            selectedSeatLabelSnapshot = null;
+            setSelectedSeatSnapshot(null, null);
             updateBitmapTextVisibility(selectionText);
             updateHudPositions();
             return;
@@ -2476,8 +2481,7 @@ public class Room3DApplication extends SimpleApplication {
         if (seatVisual == null) {
             selectionText.setText(buildDefaultSelectionText());
             selectionText.setColor(createHudNeutralColor());
-            selectedSeatIdSnapshot = null;
-            selectedSeatLabelSnapshot = null;
+            setSelectedSeatSnapshot(null, null);
             updateBitmapTextVisibility(selectionText);
             updateHudPositions();
             return;
@@ -2638,13 +2642,11 @@ public class Room3DApplication extends SimpleApplication {
 
     private void updateSelectionSnapshot(Room3DPreviewData.SeatPreview seat) {
         if (seat == null || !previewData.supportsSeatSelection() || !seat.selectable() || !seat.hasPersistentId()) {
-            selectedSeatIdSnapshot = null;
-            selectedSeatLabelSnapshot = null;
+            setSelectedSeatSnapshot(null, null);
             return;
         }
 
-        selectedSeatIdSnapshot = seat.seatId();
-        selectedSeatLabelSnapshot = seat.label();
+        setSelectedSeatSnapshot(seat.seatId(), seat.label());
     }
 
     private String normalize(String value) {

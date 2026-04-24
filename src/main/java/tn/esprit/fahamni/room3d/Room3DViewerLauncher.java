@@ -9,6 +9,8 @@ public final class Room3DViewerLauncher {
     private static final Object LOCK = new Object();
 
     private static Room3DApplication activeApplication;
+    private static Integer selectedSeatIdSnapshot;
+    private static String selectedSeatLabelSnapshot;
 
     private Room3DViewerLauncher() {
     }
@@ -17,6 +19,8 @@ public final class Room3DViewerLauncher {
         Objects.requireNonNull(previewData, "previewData");
 
         synchronized (LOCK) {
+            clearSelectedSeatSnapshotLocked();
+
             if (activeApplication != null) {
                 Room3DApplication application = activeApplication;
                 activeApplication.enqueue(() -> {
@@ -38,19 +42,27 @@ public final class Room3DViewerLauncher {
 
     public static Integer getActiveSelectedSeatId() {
         synchronized (LOCK) {
-            return activeApplication == null ? null : activeApplication.getSelectedSeatId();
+            refreshSelectedSeatSnapshotLocked();
+            return selectedSeatIdSnapshot;
         }
     }
 
     public static String getActiveSelectedSeatLabel() {
         synchronized (LOCK) {
-            return activeApplication == null ? null : activeApplication.getSelectedSeatLabel();
+            refreshSelectedSeatSnapshotLocked();
+            return selectedSeatLabelSnapshot;
         }
     }
 
     public static boolean isActiveSelectionMode() {
         synchronized (LOCK) {
             return activeApplication != null && activeApplication.isSelectionMode();
+        }
+    }
+
+    public static void clearSelectedSeatSnapshot() {
+        synchronized (LOCK) {
+            clearSelectedSeatSnapshotLocked();
         }
     }
 
@@ -73,6 +85,15 @@ public final class Room3DViewerLauncher {
         }
     }
 
+    static void updateSelectedSeatSnapshot(Integer seatId, String seatLabel) {
+        synchronized (LOCK) {
+            selectedSeatIdSnapshot = seatId;
+            selectedSeatLabelSnapshot = seatId == null || seatLabel == null || seatLabel.isBlank()
+                ? null
+                : seatLabel;
+        }
+    }
+
     private static void startApplication(Room3DApplication application, Room3DPreviewData previewData) {
         try {
             AppSettings settings = new AppSettings(true);
@@ -91,6 +112,22 @@ public final class Room3DViewerLauncher {
             onApplicationClosed(application);
             throw exception;
         }
+    }
+
+    private static void refreshSelectedSeatSnapshotLocked() {
+        if (activeApplication == null) {
+            return;
+        }
+
+        updateSelectedSeatSnapshot(
+            activeApplication.getSelectedSeatId(),
+            activeApplication.getSelectedSeatLabel()
+        );
+    }
+
+    private static void clearSelectedSeatSnapshotLocked() {
+        selectedSeatIdSnapshot = null;
+        selectedSeatLabelSnapshot = null;
     }
 
     private static String buildWindowTitle(Room3DPreviewData previewData) {

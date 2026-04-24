@@ -578,6 +578,173 @@
     -fx-border-color: #d8def2;
 }
 
+.seat-selection-dialog .button-bar .button.action-button.secondary.infrastructure-room-3d-action,
+.seat-selection-dialog .button-bar .button.reservation-dialog-3d-button {
+    -fx-background-color: linear-gradient(to bottom, #fff5fb 0%, #f6e7fb 100%);
+    -fx-border-color: #e3c5eb;
+    -fx-border-width: 1px;
+    -fx-text-fill: #934e88;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(185, 122, 186, 0.16), 14, 0.18, 0, 4);
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.infrastructure-room-3d-action:hover,
+.seat-selection-dialog .button-bar .button.reservation-dialog-3d-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #ffeefd 0%, #f2defa 100%);
+    -fx-border-color: #d7b2e4;
+    -fx-text-fill: #8a437d;
+    -fx-effect: dropshadow(gaussian, rgba(185, 122, 186, 0.22), 16, 0.20, 0, 5);
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.reservation-dialog-2d-button,
+.seat-selection-dialog .button-bar .button.reservation-dialog-2d-button {
+    -fx-background-color: linear-gradient(to bottom, #f5efff 0%, #ece3ff 100%);
+    -fx-border-color: #d9c9f5;
+    -fx-border-width: 1px;
+    -fx-text-fill: #694ab9;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(109, 91, 209, 0.14), 14, 0.18, 0, 4);
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.reservation-dialog-2d-button:hover,
+.seat-selection-dialog .button-bar .button.reservation-dialog-2d-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #f1e7ff 0%, #e6d8ff 100%);
+    -fx-border-color: #ccb7f2;
+    -fx-text-fill: #5e3fb1;
+    -fx-effect: dropshadow(gaussian, rgba(109, 91, 209, 0.20), 16, 0.20, 0, 5);
+}
+
+.seat-selection-dialog .button-bar .button:hover {
+    -fx-effect: dropshadow(gaussian, rgba(93, 76, 199, 0.16), 16, 0.16, 0, 4);
+}
+
+.seat-selection-dialog .button-bar .button:focused {
+    -fx-border-color: #7263d9;
+    -fx-border-width: 1.2px;
+}
+
+.reservation-dialog-shell {
+    -fx-background-color: transparent;
+    -fx-padding: 18px 20px 8px 20px;
+    -fx-spacing: 14px;
+}
+
+.reservation-dialog-hero {
+    -fx-alignment: center-left;
+    -fx-background-color:
+        linear-gradient(to right, rgba(109, 91, 209, 0.12) 0%, rgba(76, 103, 203, 0.10) 42%, rgba(255, 255, 255, 0.98) 100%),
+        linear-gradient(to bottom, #ffffff 0%, #f9fbff 100%);
+    -fx-background-radius: 24px;
+    -fx-border-color: #d8dff2;
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-padding: 16px 18px;
+    -fx-effect: dropshadow(gaussian, rgba(91, 84, 161, 0.10), 16, 0.12, 0, 4);
+}
+
+.reservation-dialog-kicker {
+    -fx-font-size: 10px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #7c73b0;
+}
+
+.reservation-dialog-title {
+    -fx-font-size: 22px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #2a2854;
+}
+
+.reservation-dialog-copy,
+.reservation-dialog-card-copy {
+    -fx-font-size: 12px;
+    -fx-text-fill: #667392;
+}
+
+.reservation-dialog-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8faff 100%);
+    -fx-border-color: #dbe2f1;
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 14px 16px;
+    -fx-effect: dropshadow(gaussian, rgba(18, 28, 56, 0.05), 12, 0.14, 0, 3);
+}
+
+.reservation-dialog-card-highlight {
+    -fx-background-color:
+        linear-gradient(to right, rgba(109, 91, 209, 0.10) 0%, rgba(76, 103, 203, 0.08) 100%),
+        linear-gradient(to bottom, #ffffff 0%, #f7f9ff 100%);
+    -fx-border-color: #d3dcf5;
+}
+
+.reservation-dialog-note-card {
+    -fx-background-color: linear-gradient(to right, #fcfcff 0%, #f5f8ff 100%);
+}
+
+.reservation-dialog-option-card {
+    -fx-min-width: 0px;
+    -fx-pref-width: 0px;
+}
+
+.reservation-dialog-card-title {
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #2b344c;
+}
+
+.reservation-dialog-inline-chip {
+    -fx-padding: 6px 11px;
+    -fx-font-size: 11px;
+}
+
+.reservation-dialog-status-badge {
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 10px 12px;
+    -fx-border-width: 1px;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.reservation-dialog-status-live {
+    -fx-background-color: linear-gradient(to right, #eef2ff 0%, #f5f7ff 100%);
+    -fx-border-color: #d4dcfa;
+    -fx-text-fill: #4757a0;
+}
+
+.reservation-dialog-status-ready {
+    -fx-background-color: linear-gradient(to right, #eef9f1 0%, #f5fcf7 100%);
+    -fx-border-color: #cfe7d7;
+    -fx-text-fill: #2f7b4c;
+}
+
+.reservation-dialog-status-offline {
+    -fx-background-color: linear-gradient(to right, #f6f7fb 0%, #fafbfe 100%);
+    -fx-border-color: #dfe4ee;
+    -fx-text-fill: #707c92;
+}
+
+.reservation-dialog-selection-value {
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 12px 14px;
+    -fx-border-width: 1px;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.reservation-dialog-selection-value-active {
+    -fx-background-color: linear-gradient(to right, #edf1ff 0%, #f4f6ff 100%);
+    -fx-border-color: #d5ddf7;
+    -fx-text-fill: #36446d;
+}
+
+.reservation-dialog-selection-value-muted {
+    -fx-background-color: linear-gradient(to bottom, #fbfcff 0%, #f5f7fc 100%);
+    -fx-border-color: #e1e6ef;
+    -fx-text-fill: #7e889f;
+}
+
 #tutorDiscoveryRoot .seat-selection-hero {
     -fx-alignment: center-left;
     -fx-background-color:
