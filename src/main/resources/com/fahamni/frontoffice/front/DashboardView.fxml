@@ -386,7 +386,7 @@
                 <VBox minWidth="320.0" prefWidth="620.0" spacing="16.0" styleClass="dashboard-premium-section-card">
                     <Label text="Campus and Equipment" styleClass="dashboard-premium-section-title"/>
                     <StackPane fx:id="campusVisualPane" minHeight="210.0" prefHeight="210.0" styleClass="dashboard-premium-campus-visual-shell">
-                        <StackPane styleClass="dashboard-premium-campus-image-frame">
+                        <StackPane fx:id="campusImageFramePane" styleClass="dashboard-premium-campus-image-frame">
                             <StackPane.margin>
                                 <Insets top="4" right="4" bottom="4" left="4"/>
                             </StackPane.margin>

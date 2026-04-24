@@ -8,6 +8,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Region;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
@@ -94,6 +95,15 @@ public final class FrontOfficeMotion {
         clip.widthProperty().bind(imageView.fitWidthProperty());
         clip.heightProperty().bind(imageView.fitHeightProperty());
         imageView.setClip(clip);
+    }
+
+    public static void bindImageToRegion(ImageView imageView, Region region) {
+        if (imageView == null || region == null) {
+            return;
+        }
+
+        imageView.fitWidthProperty().bind(region.widthProperty());
+        imageView.fitHeightProperty().bind(region.heightProperty());
     }
 
     private static void installHoverForSelector(Parent root, String selector, double hoverScale, double hoverTranslateY, int durationMs) {

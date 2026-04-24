@@ -81,6 +81,9 @@ public class DashboardController {
     private ImageView campusRoomImageView;
 
     @FXML
+    private StackPane campusImageFramePane;
+
+    @FXML
     private void initialize() {
         welcomeTitleLabel.setText("Learn better with the right tutor, tools, and study flow");
         welcomeSubtitleLabel.setText(
@@ -97,6 +100,7 @@ public class DashboardController {
             FrontOfficeMotion.applyRoundedClip(heroStudyImageView, 38);
             FrontOfficeMotion.applyRoundedClip(tutorPortraitImageView, 28);
             FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 22);
+            FrontOfficeMotion.bindImageToRegion(campusRoomImageView, campusImageFramePane);
         });
         playIntroAnimation();
     }

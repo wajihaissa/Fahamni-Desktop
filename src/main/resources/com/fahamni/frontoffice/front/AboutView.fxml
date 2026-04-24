@@ -240,7 +240,7 @@
                     <Label text="A learning support platform that helps students find academic help, helps tutors organize sessions, and helps administrators manage the digital and physical environment around learning."
                            styleClass="about-summary-copy" wrapText="true"/>
                 </VBox>
-                <StackPane minHeight="250.0" prefHeight="250.0" styleClass="about-summary-image-shell" HBox.hgrow="ALWAYS">
+                <StackPane fx:id="aboutSummaryImageShell" minHeight="250.0" prefHeight="250.0" styleClass="about-summary-image-shell" HBox.hgrow="ALWAYS">
                     <ImageView fx:id="aboutSummaryImageView" fitHeight="250.0" fitWidth="760.0" pickOnBounds="true"
                                preserveRatio="false" smooth="true" styleClass="about-summary-photo">
                         <image>

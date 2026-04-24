@@ -45,6 +45,9 @@ public class AboutController {
     private HBox aboutSummaryBanner;
 
     @FXML
+    private StackPane aboutSummaryImageShell;
+
+    @FXML
     private ImageView aboutPortraitImageView;
 
     @FXML
@@ -56,6 +59,7 @@ public class AboutController {
             FrontOfficeMotion.installInteractiveMotion(aboutContent);
             FrontOfficeMotion.applyRoundedClip(aboutPortraitImageView, 38);
             FrontOfficeMotion.applyRoundedClip(aboutSummaryImageView, 42);
+            FrontOfficeMotion.bindImageToRegion(aboutSummaryImageView, aboutSummaryImageShell);
         });
         playIntroAnimation();
     }
