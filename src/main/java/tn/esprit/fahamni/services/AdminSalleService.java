@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -47,8 +48,21 @@ public class AdminSalleService implements IServices<Salle> {
     private static final String DELETE_SQL = "DELETE FROM salle WHERE idSalle = ?";
     private static final String INSERT_PLACE_SQL =
         "INSERT INTO place (numero, rang, colonne, etat, idSalle) VALUES (?, ?, ?, ?, ?)";
-    private static final String SELECT_PLACES_BY_SALLE_SQL =
-        "SELECT numero, rang, colonne FROM place WHERE idSalle = ? ORDER BY numero ASC";
+    private static final String DELETE_PLACE_SQL = "DELETE FROM place WHERE idPlace = ?";
+    private static final String SELECT_PLACES_BY_SALLE_SQL = """
+        SELECT
+            p.idPlace,
+            p.numero,
+            p.rang,
+            p.colonne,
+            CASE
+                WHEN EXISTS (SELECT 1 FROM reservation_place rp WHERE rp.idPlace = p.idPlace) THEN 1
+                ELSE 0
+            END AS linkedReservation
+        FROM place p
+        WHERE p.idSalle = ?
+        ORDER BY p.numero ASC, p.idPlace ASC
+        """;
     private static final String COUNT_DUPLICATE_SALLE_SQL = """
         SELECT COUNT(*) AS total
         FROM salle
@@ -345,6 +359,12 @@ public class AdminSalleService implements IServices<Salle> {
         }
 
         List<PlaceSnapshot> existingPlaces = getPlaceSnapshots(connection, salle.getIdSalle());
+        int extraPlaces = existingPlaces.size() - salle.getCapacite();
+        if (extraPlaces > 0) {
+            removeExtraPlaces(connection, salle, existingPlaces, extraPlaces);
+            existingPlaces = getPlaceSnapshots(connection, salle.getIdSalle());
+        }
+
         int missingPlaces = salle.getCapacite() - existingPlaces.size();
         if (missingPlaces <= 0) {
             return;
@@ -377,6 +397,39 @@ public class AdminSalleService implements IServices<Salle> {
         }
     }
 
+    private void removeExtraPlaces(
+        Connection connection,
+        Salle salle,
+        List<PlaceSnapshot> existingPlaces,
+        int extraPlaces
+    ) throws SQLException {
+        List<PlaceSnapshot> removablePlaces = existingPlaces.stream()
+            .filter(place -> !place.linkedToReservation())
+            .sorted(Comparator
+                .comparingInt(PlaceSnapshot::numero)
+                .thenComparingInt(PlaceSnapshot::idPlace)
+                .reversed())
+            .toList();
+
+        if (removablePlaces.size() < extraPlaces) {
+            int minimumCapacity = existingPlaces.size() - removablePlaces.size();
+            throw new SQLException(
+                "La capacite de la salle ne peut pas etre reduite a "
+                    + salle.getCapacite()
+                    + " car "
+                    + minimumCapacity
+                    + " place(s) sont deja liee(s) a des reservations. "
+                    + "La capacite minimale possible est "
+                    + minimumCapacity
+                    + "."
+            );
+        }
+
+        for (int index = 0; index < extraPlaces; index++) {
+            deletePlace(connection, removablePlaces.get(index).idPlace());
+        }
+    }
+
     private List<PlaceSnapshot> getPlaceSnapshots(Connection connection, int salleId) throws SQLException {
         List<PlaceSnapshot> places = new ArrayList<>();
         try (PreparedStatement statement = connection.prepareStatement(SELECT_PLACES_BY_SALLE_SQL)) {
@@ -384,9 +437,11 @@ public class AdminSalleService implements IServices<Salle> {
             try (ResultSet resultSet = statement.executeQuery()) {
                 while (resultSet.next()) {
                     places.add(new PlaceSnapshot(
+                        resultSet.getInt("idPlace"),
                         resultSet.getInt("numero"),
                         resultSet.getInt("rang"),
-                        resultSet.getInt("colonne")
+                        resultSet.getInt("colonne"),
+                        resultSet.getInt("linkedReservation") > 0
                     ));
                 }
             }
@@ -402,6 +457,15 @@ public class AdminSalleService implements IServices<Salle> {
             statement.setString(4, "disponible");
             statement.setInt(5, salleId);
             statement.executeUpdate();
+        }
+    }
+
+    private void deletePlace(Connection connection, int placeId) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(DELETE_PLACE_SQL)) {
+            statement.setInt(1, placeId);
+            if (statement.executeUpdate() == 0) {
+                throw new SQLException("Aucune place trouvee avec l'id " + placeId + ".");
+            }
         }
     }
 
@@ -502,6 +566,6 @@ public class AdminSalleService implements IServices<Salle> {
         return value == null || value.trim().isEmpty();
     }
 
-    private record PlaceSnapshot(int numero, int rang, int colonne) {
+    private record PlaceSnapshot(int idPlace, int numero, int rang, int colonne, boolean linkedToReservation) {
     }
 }
