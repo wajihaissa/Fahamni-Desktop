@@ -53,24 +53,6 @@
                                 <Image url="@/com/fahamni/images/frontoffice/dashboard-hero-study.png"/>
                             </image>
                         </ImageView>
-                        <FlowPane hgap="8.0" prefWrapLength="360.0" styleClass="dashboard-premium-hero-photo-chip-row" vgap="8.0"
-                                  StackPane.alignment="TOP_CENTER">
-                            <StackPane.margin>
-                                <Insets top="14" right="0" bottom="0" left="0"/>
-                            </StackPane.margin>
-                            <Label text="Study support" styleClass="dashboard-premium-chip"/>
-                            <Label text="Clean workspace" styleClass="dashboard-premium-chip"/>
-                            <Label text="Desktop product" styleClass="dashboard-premium-chip"/>
-                        </FlowPane>
-                        <VBox maxWidth="250.0" spacing="6.0" styleClass="dashboard-premium-hero-photo-copy"
-                              StackPane.alignment="TOP_LEFT">
-                            <StackPane.margin>
-                                <Insets top="52" right="0" bottom="0" left="18"/>
-                            </StackPane.margin>
-                            <Label text="LIVE LEARNING SPACE" styleClass="dashboard-premium-card-kicker"/>
-                            <Label text="Focused tutoring that feels calm, modern, and real."
-                                   styleClass="dashboard-premium-photo-title" wrapText="true"/>
-                        </VBox>
                     </StackPane>
 
                     <VBox spacing="12.0">
