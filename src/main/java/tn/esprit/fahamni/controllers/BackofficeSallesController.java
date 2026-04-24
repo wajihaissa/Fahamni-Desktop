@@ -414,9 +414,10 @@ public class BackofficeSallesController {
         batimentComboBox.getItems().setAll(salleService.getAvailableBatiments());
         typeComboBox.getItems().setAll(salleService.getAvailableTypes());
         etatComboBox.getItems().setAll(salleService.getAvailableEtats());
-        dispositionComboBox.getItems().setAll(salleService.getAvailableDispositions());
         etageComboBox.getItems().setAll(0, 1, 2, 3, 4);
-        typeComboBox.valueProperty().addListener((obs, oldValue, newValue) -> applySuggestedDisposition(newValue));
+        typeComboBox.valueProperty().addListener((obs, oldValue, newValue) ->
+            refreshDispositionOptions(newValue, dispositionComboBox == null ? null : dispositionComboBox.getValue())
+        );
     }
 
     private void configurePagination() {
@@ -464,7 +465,7 @@ public class BackofficeSallesController {
         typeComboBox.setValue(salle.getTypeSalle());
         etatComboBox.setValue(salle.getEtat());
         etageComboBox.setValue(normalizeEtageValue(salle.getEtage()));
-        dispositionComboBox.setValue(salle.getTypeDisposition());
+        refreshDispositionOptions(salle.getTypeSalle(), salle.getTypeDisposition());
         accesHandicapeCheckBox.setSelected(salle.isAccesHandicape());
         statutDetailleField.setText(defaultString(salle.getStatutDetaille()));
         descriptionArea.setText(defaultString(salle.getDescription()));
@@ -481,7 +482,7 @@ public class BackofficeSallesController {
         typeComboBox.setValue(typeComboBox.getItems().isEmpty() ? null : typeComboBox.getItems().get(0));
         etatComboBox.setValue(etatComboBox.getItems().isEmpty() ? null : etatComboBox.getItems().get(0));
         etageComboBox.setValue(null);
-        dispositionComboBox.setValue(null);
+        refreshDispositionOptions(typeComboBox.getValue(), null);
         accesHandicapeCheckBox.setSelected(false);
         statutDetailleField.clear();
         descriptionArea.clear();
@@ -490,21 +491,16 @@ public class BackofficeSallesController {
         updateSelectionBadge(null);
     }
 
-    private void applySuggestedDisposition(String typeSalle) {
+    private void refreshDispositionOptions(String typeSalle, String preferredDisposition) {
         if (dispositionComboBox == null) {
             return;
         }
 
-        String suggestedDisposition = salleService.getSuggestedDispositionForType(typeSalle);
-        if (suggestedDisposition == null || suggestedDisposition.isBlank()) {
-            return;
-        }
+        dispositionComboBox.getItems().setAll(salleService.getAvailableDispositionsForType(typeSalle));
+        dispositionComboBox.setDisable(dispositionComboBox.getItems().size() <= 1);
 
-        if (!dispositionComboBox.getItems().contains(suggestedDisposition)) {
-            return;
-        }
-
-        dispositionComboBox.setValue(suggestedDisposition);
+        String resolvedDisposition = salleService.resolveDispositionForType(typeSalle, preferredDisposition);
+        dispositionComboBox.setValue(resolvedDisposition);
     }
 
     private void applyFilter(String filterText) {
@@ -540,6 +536,7 @@ public class BackofficeSallesController {
         String batiment = requireText(batimentComboBox.getValue(), "Le batiment est obligatoire.");
         String typeSalle = requireText(typeComboBox.getValue(), "Le type de salle est obligatoire.");
         String etat = requireText(etatComboBox.getValue(), "L'etat de la salle est obligatoire.");
+        String disposition = salleService.resolveDispositionForType(typeSalle, dispositionComboBox.getValue());
 
         return new Salle(
             idSalle,
@@ -551,7 +548,7 @@ public class BackofficeSallesController {
             trimToNull(descriptionArea.getText()),
             batiment,
             etageComboBox.getValue(),
-            trimToNull(dispositionComboBox.getValue()),
+            disposition,
             accesHandicapeCheckBox.isSelected(),
             trimToNull(statutDetailleField.getText()),
             maintenanceDate

@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class AdminSalleService implements IServices<Salle> {
     private static final List<String> DEFAULT_BATIMENTS = List.of(
@@ -23,6 +24,20 @@ public class AdminSalleService implements IServices<Salle> {
         "Bloc C",
         "Bloc D",
         "Bloc Tech"
+    );
+    private static final List<String> DEFAULT_DISPOSITIONS = List.of(
+        "classe",
+        "u",
+        "reunion",
+        "conference",
+        "atelier",
+        "informatique"
+    );
+    private static final Map<String, List<String>> COMPATIBLE_DISPOSITIONS_BY_TYPE = Map.of(
+        "cours", List.of("classe", "u", "atelier"),
+        "conference", List.of("conference", "reunion", "u"),
+        "laboratoire", List.of("informatique", "atelier"),
+        "amphitheatre", List.of("conference")
     );
 
     private static final String INSERT_SQL =
@@ -204,7 +219,15 @@ public class AdminSalleService implements IServices<Salle> {
     }
 
     public List<String> getAvailableDispositions() {
-        return List.of("classe", "u", "reunion", "conference", "atelier", "informatique");
+        return DEFAULT_DISPOSITIONS;
+    }
+
+    public List<String> getAvailableDispositionsForType(String typeSalle) {
+        if (isBlank(typeSalle)) {
+            return DEFAULT_DISPOSITIONS;
+        }
+
+        return COMPATIBLE_DISPOSITIONS_BY_TYPE.getOrDefault(normalizeLookupKey(typeSalle), DEFAULT_DISPOSITIONS);
     }
 
     public String getSuggestedDispositionForType(String typeSalle) {
@@ -219,6 +242,40 @@ public class AdminSalleService implements IServices<Salle> {
             case "amphitheatre" -> "conference";
             default -> null;
         };
+    }
+
+    public boolean isDispositionCompatible(String typeSalle, String disposition) {
+        if (isBlank(typeSalle) || isBlank(disposition)) {
+            return false;
+        }
+
+        String normalizedDisposition = normalizeLookupKey(disposition);
+        return getAvailableDispositionsForType(typeSalle).stream()
+            .map(this::normalizeLookupKey)
+            .anyMatch(normalizedDisposition::equals);
+    }
+
+    public String resolveDispositionForType(String typeSalle, String requestedDisposition) {
+        List<String> compatibleDispositions = getAvailableDispositionsForType(typeSalle);
+        if (compatibleDispositions.isEmpty()) {
+            return normalizeText(requestedDisposition);
+        }
+
+        if (!isBlank(requestedDisposition)) {
+            String normalizedRequestedDisposition = normalizeLookupKey(requestedDisposition);
+            for (String compatibleDisposition : compatibleDispositions) {
+                if (normalizeLookupKey(compatibleDisposition).equals(normalizedRequestedDisposition)) {
+                    return compatibleDisposition;
+                }
+            }
+        }
+
+        String suggestedDisposition = getSuggestedDispositionForType(typeSalle);
+        if (!isBlank(suggestedDisposition) && isDispositionCompatible(typeSalle, suggestedDisposition)) {
+            return suggestedDisposition;
+        }
+
+        return compatibleDispositions.get(0);
     }
 
     private void fillStatement(PreparedStatement statement, Salle salle) throws SQLException {
@@ -381,6 +438,14 @@ public class AdminSalleService implements IServices<Salle> {
         if (isBlank(salle.getTypeSalle())) {
             throw new IllegalArgumentException("Le type de salle est obligatoire.");
         }
+        String resolvedDisposition = resolveDispositionForType(salle.getTypeSalle(), salle.getTypeDisposition());
+        if (isBlank(resolvedDisposition)) {
+            throw new IllegalArgumentException("La disposition de la salle est obligatoire.");
+        }
+        if (!isDispositionCompatible(salle.getTypeSalle(), resolvedDisposition)) {
+            throw new IllegalArgumentException("La disposition selectionnee n'est pas compatible avec le type de salle.");
+        }
+        salle.setTypeDisposition(resolvedDisposition);
         if (isBlank(salle.getEtat())) {
             throw new IllegalArgumentException("L'etat de la salle est obligatoire.");
         }
