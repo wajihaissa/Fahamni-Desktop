@@ -467,6 +467,32 @@
     -fx-text-fill: #5b49be;
 }
 
+#tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action {
+    -fx-background-color: linear-gradient(to bottom, #fff5fb 0%, #f6e7fb 100%);
+    -fx-border-color: #e3c5eb;
+    -fx-border-width: 1px;
+    -fx-text-fill: #934e88;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(194, 151, 213, 0.18), 12, 0.18, 0, 4);
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action:hover {
+    -fx-background-color: linear-gradient(to bottom, #fff8fc 0%, #efd8f7 100%);
+    -fx-border-color: #d5afe3;
+    -fx-text-fill: #82407a;
+    -fx-effect: dropshadow(gaussian, rgba(194, 151, 213, 0.24), 14, 0.22, 0, 5);
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action:pressed {
+    -fx-background-color: linear-gradient(to bottom, #f2def5 0%, #e4c7ef 100%);
+    -fx-border-color: #c999d7;
+    -fx-text-fill: #74396f;
+    -fx-effect: none;
+}
+
 #tutorDiscoveryRoot .reservation-content .backoffice-page-button.active-page {
     -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
     -fx-text-fill: white;
