@@ -153,6 +153,70 @@
     -fx-padding: 12px 14px;
 }
 
+#infrastructureCatalogRoot .infrastructure-pagination-bar {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fafafe 100%);
+    -fx-border-color: #e3e6ef;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 12px 14px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.05), 12, 0.14, 0, 4);
+}
+
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-summary {
+    -fx-text-fill: #5d78a2;
+}
+
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-per-page-label {
+    -fx-text-fill: #263c63;
+}
+
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-page-size-combo,
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-page-size-combo.combo-box-base {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f9faff 100%);
+    -fx-border-color: #d9dfea;
+    -fx-border-width: 1px;
+    -fx-background-radius: 15px;
+    -fx-border-radius: 15px;
+    -fx-pref-height: 40px;
+}
+
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-page-size-combo:focused,
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-page-size-combo.combo-box-base:focused {
+    -fx-border-color: #6b5dd3;
+    -fx-effect: dropshadow(gaussian, rgba(107, 93, 211, 0.18), 12, 0.18, 0, 2);
+}
+
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-page-size-combo .arrow,
+#infrastructureCatalogRoot .infrastructure-pagination-bar .pagination-page-size-combo.combo-box-base .arrow {
+    -fx-background-color: #727a8d;
+}
+
+#infrastructureCatalogRoot .backoffice-secondary-button,
+#infrastructureCatalogRoot .action-button.secondary,
+#infrastructureCatalogRoot .backoffice-edit-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fd 100%);
+    -fx-border-color: #d7dcef;
+    -fx-border-width: 1px;
+    -fx-text-fill: #344158;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+}
+
+#infrastructureCatalogRoot .backoffice-secondary-button:hover,
+#infrastructureCatalogRoot .action-button.secondary:hover,
+#infrastructureCatalogRoot .backoffice-edit-button:hover {
+    -fx-background-color: #f4f2ff;
+    -fx-border-color: #c8c0f0;
+    -fx-text-fill: #5b49be;
+}
+
+#infrastructureCatalogRoot .backoffice-page-button.active-page {
+    -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
 #infrastructureCatalogRoot .search-field,
 #infrastructureCatalogRoot .filter-combo,
 #infrastructureCatalogRoot .combo-box-base {
@@ -335,8 +399,7 @@
     -fx-font-size: 12px;
 }
 
-#infrastructureCatalogRoot .infrastructure-room-3d-chip,
-#infrastructureCatalogRoot .infrastructure-room-3d-card-chip {
+#infrastructureCatalogRoot .infrastructure-room-3d-chip {
     -fx-background-color: rgba(255, 255, 255, 0.78);
     -fx-border-color: rgba(134, 123, 224, 0.34);
     -fx-border-width: 1px;
@@ -349,10 +412,6 @@
 
 #infrastructureCatalogRoot .infrastructure-room-3d-chip {
     -fx-padding: 5px 10px;
-}
-
-#infrastructureCatalogRoot .infrastructure-room-3d-card-chip {
-    -fx-padding: 6px 10px;
 }
 
 #infrastructureCatalogRoot .infrastructure-room-3d-metric {
@@ -388,13 +447,27 @@
     -fx-background-color: linear-gradient(to right, #6d5dd3 0%, #5b76d6 100%);
 }
 
-#infrastructureCatalogRoot .infrastructure-room-3d-button {
-    -fx-background-color: linear-gradient(to right, #6150ce 0%, #4775d5 100%);
-    -fx-effect: dropshadow(gaussian, rgba(79, 92, 197, 0.24), 14, 0.20, 0, 4);
+#infrastructureCatalogRoot .backoffice-primary-button.infrastructure-room-3d-button {
+    -fx-background-color: linear-gradient(to right, #d98ab7 0%, #b990e8 100%);
+    -fx-border-color: #c884bb;
+    -fx-border-width: 1px;
+    -fx-text-fill: white;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(185, 122, 186, 0.30), 14, 0.20, 0, 4);
 }
 
-#infrastructureCatalogRoot .infrastructure-room-3d-button:hover {
-    -fx-background-color: linear-gradient(to right, #6d5ddd 0%, #5481df 100%);
+#infrastructureCatalogRoot .backoffice-primary-button.infrastructure-room-3d-button:hover {
+    -fx-background-color: linear-gradient(to right, #e69ac6 0%, #c79cf2 100%);
+    -fx-border-color: #c075b3;
+    -fx-effect: dropshadow(gaussian, rgba(185, 122, 186, 0.36), 16, 0.22, 0, 5);
+}
+
+#infrastructureCatalogRoot .backoffice-primary-button.infrastructure-room-3d-button:pressed {
+    -fx-background-color: linear-gradient(to right, #ca78a6 0%, #ae82dd 100%);
+    -fx-border-color: #b16ea8;
+    -fx-effect: none;
 }
 
 #infrastructureCatalogRoot .backoffice-primary-button:disabled {
@@ -424,16 +497,30 @@
     -fx-text-fill: #5b49be;
 }
 
-#infrastructureCatalogRoot .infrastructure-room-3d-action {
-    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f2f5ff 100%);
-    -fx-border-color: #d5dcf6;
-    -fx-text-fill: #5848bc;
+#infrastructureCatalogRoot .action-button.secondary.infrastructure-room-3d-action {
+    -fx-background-color: linear-gradient(to bottom, #fff5fb 0%, #f6e7fb 100%);
+    -fx-border-color: #e3c5eb;
+    -fx-border-width: 1px;
+    -fx-text-fill: #934e88;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(194, 151, 213, 0.18), 12, 0.18, 0, 4);
 }
 
-#infrastructureCatalogRoot .infrastructure-room-3d-action:hover {
-    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #ecefff 100%);
-    -fx-border-color: #c2c8f2;
-    -fx-text-fill: #4938af;
+#infrastructureCatalogRoot .action-button.secondary.infrastructure-room-3d-action:hover {
+    -fx-background-color: linear-gradient(to bottom, #fff8fc 0%, #efd8f7 100%);
+    -fx-border-color: #d5afe3;
+    -fx-text-fill: #82407a;
+    -fx-effect: dropshadow(gaussian, rgba(194, 151, 213, 0.24), 14, 0.22, 0, 5);
+}
+
+#infrastructureCatalogRoot .action-button.secondary.infrastructure-room-3d-action:pressed {
+    -fx-background-color: linear-gradient(to bottom, #f2def5 0%, #e4c7ef 100%);
+    -fx-border-color: #cda7dc;
+    -fx-text-fill: #73376c;
+    -fx-effect: none;
 }
 
 #infrastructureCatalogRoot .backoffice-feedback.success {

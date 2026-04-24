@@ -24,6 +24,7 @@ import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.PaginationSupport;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
@@ -1570,17 +1571,14 @@ public class ReservationController {
 
         int totalItems = filteredSessions.size();
         int pageSize = getSelectedSessionPageSize();
-        int totalPages = calculateTotalPages(totalItems, pageSize);
-        currentSessionPage = clamp(currentSessionPage, 1, totalPages);
+        PaginationSupport.PageSlice pageSlice = PaginationSupport.slice(currentSessionPage, totalItems, pageSize);
+        currentSessionPage = pageSlice.currentPage();
 
-        int fromIndex = (currentSessionPage - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, totalItems);
-
-        filteredSessions.subList(fromIndex, toIndex).stream()
+        filteredSessions.subList(pageSlice.fromIndex(), pageSlice.toIndex()).stream()
             .map(this::buildRecentSessionCard)
             .forEach(recentSessionsContainer.getChildren()::add);
 
-        updateSessionPagination(totalItems, fromIndex + 1, toIndex, totalPages);
+        updateSessionPagination(pageSlice);
     }
 
     private VBox buildRecentSessionCard(Seance seance) {
@@ -2414,50 +2412,24 @@ public class ReservationController {
         return selectedValue != null && selectedValue > 0 ? selectedValue : DEFAULT_SESSION_PAGE_SIZE;
     }
 
-    private int calculateTotalPages(int totalItems, int pageSize) {
-        if (totalItems <= 0) {
-            return 1;
-        }
-        return (int) Math.ceil((double) totalItems / pageSize);
-    }
-
-    private int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(value, max));
-    }
-
-    private void updateSessionPagination(int totalItems, int fromItem, int toItem, int totalPages) {
+    private void updateSessionPagination(PaginationSupport.PageSlice pageSlice) {
         sessionPaginationBar.setManaged(true);
         sessionPaginationBar.setVisible(true);
-        sessionPaginationSummaryLabel.setText(fromItem + "-" + toItem + " sur " + totalItems + " seances affichees");
-        sessionPreviousPageButton.setDisable(currentSessionPage <= 1);
-        sessionNextPageButton.setDisable(currentSessionPage >= totalPages);
+        sessionPaginationSummaryLabel.setText(
+            PaginationSupport.buildRangeSummary(pageSlice, "seance", "seances", "affichee", "affichees")
+        );
+        sessionPreviousPageButton.setDisable(pageSlice.currentPage() <= 1);
+        sessionNextPageButton.setDisable(pageSlice.currentPage() >= pageSlice.totalPages());
 
-        sessionPageButtonsContainer.getChildren().clear();
-        for (int page : buildVisiblePageNumbers(totalPages)) {
-            Button pageButton = new Button(String.valueOf(page));
-            pageButton.getStyleClass().add("backoffice-page-button");
-            if (page == currentSessionPage) {
-                pageButton.getStyleClass().add("active-page");
-            } else {
-                pageButton.setOnAction(event -> {
-                    currentSessionPage = page;
-                    applySessionFilters();
-                });
+        PaginationSupport.populatePageButtons(
+            sessionPageButtonsContainer,
+            pageSlice.currentPage(),
+            pageSlice.totalPages(),
+            page -> {
+                currentSessionPage = page;
+                applySessionFilters();
             }
-            sessionPageButtonsContainer.getChildren().add(pageButton);
-        }
-    }
-
-    private List<Integer> buildVisiblePageNumbers(int totalPages) {
-        int firstPage = Math.max(1, currentSessionPage - 2);
-        int lastPage = Math.min(totalPages, firstPage + 4);
-        firstPage = Math.max(1, lastPage - 4);
-
-        java.util.ArrayList<Integer> pages = new java.util.ArrayList<>();
-        for (int page = firstPage; page <= lastPage; page++) {
-            pages.add(page);
-        }
-        return pages;
+        );
     }
 
     private void hideSessionPagination() {
