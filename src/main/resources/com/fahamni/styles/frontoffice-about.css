@@ -50,6 +50,7 @@
 #aboutRoot .about-audience-card,
 #aboutRoot .about-feature-card,
 #aboutRoot .about-side-card,
+#aboutRoot .about-photo-card,
 #aboutRoot .about-summary-banner {
     -fx-border-width: 1px;
     -fx-background-radius: 28px;
@@ -62,6 +63,7 @@
 .theme-dark #aboutRoot .about-audience-card,
 .theme-dark #aboutRoot .about-feature-card,
 .theme-dark #aboutRoot .about-side-card,
+.theme-dark #aboutRoot .about-photo-card,
 .theme-dark #aboutRoot .about-summary-banner {
     -fx-background-color: linear-gradient(to bottom, rgba(14, 24, 38, 0.92) 0%, rgba(10, 18, 29, 0.90) 100%);
     -fx-border-color: rgba(144, 190, 246, 0.12);
@@ -74,6 +76,7 @@
 .theme-light #aboutRoot .about-audience-card,
 .theme-light #aboutRoot .about-feature-card,
 .theme-light #aboutRoot .about-side-card,
+.theme-light #aboutRoot .about-photo-card,
 .theme-light #aboutRoot .about-summary-banner {
     -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.94) 0%, rgba(248, 251, 254, 0.96) 100%);
     -fx-border-color: rgba(90, 124, 164, 0.10);
@@ -85,6 +88,7 @@
 #aboutRoot .about-audience-card,
 #aboutRoot .about-feature-card,
 #aboutRoot .about-side-card,
+#aboutRoot .about-photo-card,
 #aboutRoot .about-summary-banner {
     -fx-padding: 22px;
 }
@@ -182,6 +186,17 @@
     -fx-font-size: 11px;
 }
 
+#aboutRoot .about-icon-badge {
+    -fx-min-width: 32px;
+    -fx-min-height: 32px;
+    -fx-alignment: center;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+}
+
 #aboutRoot .about-soft-button {
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
@@ -204,6 +219,34 @@
 
 #aboutRoot .about-summary-banner {
     -fx-padding: 24px 26px;
+    -fx-alignment: center-left;
+}
+
+#aboutRoot .about-photo-card {
+    -fx-padding: 0;
+}
+
+#aboutRoot .about-photo-image-shell,
+#aboutRoot .about-summary-image-shell {
+    -fx-background-color: rgba(8, 15, 24, 0.82);
+    -fx-border-color: rgba(149, 192, 255, 0.12);
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
+    -fx-padding: 0;
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.28), 18, 0.16, 0, 6);
+}
+
+#aboutRoot .about-photo-copy-block {
+    -fx-padding: 0 20px 20px 20px;
+}
+
+#aboutRoot .about-summary-copy-block {
+    -fx-padding: 4px 0 4px 0;
+}
+
+#aboutRoot .about-photo-chip {
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.24), 12, 0.16, 0, 3);
 }
 
 .theme-dark #aboutRoot .about-hero-title,
@@ -254,12 +297,30 @@
     -fx-text-fill: #a6ebff;
 }
 
+.theme-dark #aboutRoot .about-icon-badge {
+    -fx-background-color: rgba(82, 215, 255, 0.12);
+    -fx-border-color: rgba(96, 224, 255, 0.20);
+    -fx-text-fill: #a6ebff;
+}
+
 .theme-light #aboutRoot .about-chip,
 .theme-light #aboutRoot .about-micro-chip,
 .theme-light #aboutRoot .about-feature-tag {
     -fx-background-color: linear-gradient(to right, rgba(79, 216, 255, 0.10) 0%, rgba(119, 143, 255, 0.08) 100%);
     -fx-border-color: rgba(93, 158, 255, 0.16);
     -fx-text-fill: #1d4a74;
+}
+
+.theme-light #aboutRoot .about-icon-badge {
+    -fx-background-color: linear-gradient(to right, rgba(79, 216, 255, 0.10) 0%, rgba(119, 143, 255, 0.08) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.16);
+    -fx-text-fill: #1d4a74;
+}
+
+.theme-light #aboutRoot .about-photo-image-shell,
+.theme-light #aboutRoot .about-summary-image-shell {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 253, 0.94) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
 }
 
 .theme-dark #aboutRoot .about-soft-button {
@@ -287,14 +348,16 @@
 .theme-dark #aboutRoot .about-stat-card,
 .theme-dark #aboutRoot .about-audience-card,
 .theme-dark #aboutRoot .about-feature-card,
-.theme-dark #aboutRoot .about-side-card {
+.theme-dark #aboutRoot .about-side-card,
+.theme-dark #aboutRoot .about-photo-card {
     -fx-background-color: rgba(255, 255, 255, 0.03);
 }
 
 .theme-light #aboutRoot .about-stat-card,
 .theme-light #aboutRoot .about-audience-card,
 .theme-light #aboutRoot .about-feature-card,
-.theme-light #aboutRoot .about-side-card {
+.theme-light #aboutRoot .about-side-card,
+.theme-light #aboutRoot .about-photo-card {
     -fx-background-color: linear-gradient(to bottom, rgba(248, 250, 253, 0.96) 0%, rgba(243, 247, 251, 0.94) 100%);
 }
 
@@ -314,7 +377,9 @@
 .theme-dark #aboutRoot .about-section-card:hover,
 .theme-dark #aboutRoot .about-audience-card:hover,
 .theme-dark #aboutRoot .about-feature-card:hover,
-.theme-dark #aboutRoot .about-side-card:hover {
+.theme-dark #aboutRoot .about-side-card:hover,
+.theme-dark #aboutRoot .about-photo-card:hover,
+.theme-dark #aboutRoot .about-summary-banner:hover {
     -fx-border-color: rgba(96, 224, 255, 0.24);
 }
 
@@ -322,7 +387,9 @@
 .theme-light #aboutRoot .about-section-card:hover,
 .theme-light #aboutRoot .about-audience-card:hover,
 .theme-light #aboutRoot .about-feature-card:hover,
-.theme-light #aboutRoot .about-side-card:hover {
+.theme-light #aboutRoot .about-side-card:hover,
+.theme-light #aboutRoot .about-photo-card:hover,
+.theme-light #aboutRoot .about-summary-banner:hover {
     -fx-border-color: rgba(93, 158, 255, 0.18);
     -fx-effect: dropshadow(gaussian, rgba(86, 140, 205, 0.08), 16, 0.14, 0, 6);
 }

@@ -4,9 +4,12 @@ import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import tn.esprit.fahamni.services.NotificationService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.FrontOfficeMotion;
+import tn.esprit.fahamni.utils.FrontOfficeNavigation;
 import tn.esprit.fahamni.utils.FrontOfficeThemePreference;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
@@ -79,9 +82,11 @@ public class MainController {
         }
         System.out.println("MainController initialized");
         SessionCreationContext.registerNavigator(this::showReservations);
+        FrontOfficeNavigation.registerNavigator(this::openDestination);
         refreshCurrentUserSummary();
         applyThemeMode();
         initializeAccountMenu();
+        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
         showDashboard();
         refreshBlogBadge();
     }
@@ -400,9 +405,29 @@ public class MainController {
         AnchorPane.setLeftAnchor(view, 0.0);
         AnchorPane.setRightAnchor(view, 0.0);
         contentPane.getChildren().add(view);
+        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
         playViewTransition(view);
         if (pageTitle != null) {
             pageTitle.setText(title);
+        }
+    }
+
+    private void openDestination(FrontOfficeNavigation.Destination destination) {
+        if (destination == null) {
+            return;
+        }
+
+        switch (destination) {
+            case DASHBOARD -> showDashboard();
+            case RESERVATIONS -> showReservations();
+            case CALENDAR -> showSeances();
+            case INFRASTRUCTURE -> showSallesEquipements();
+            case PLANNER -> showPlanner();
+            case QUIZ -> showQuiz();
+            case BLOG -> showBlog();
+            case ABOUT -> showAbout();
+            case PROFILE -> showProfile();
+            case SETTINGS -> showSettings();
         }
     }
 

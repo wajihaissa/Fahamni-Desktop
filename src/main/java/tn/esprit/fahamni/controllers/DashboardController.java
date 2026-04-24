@@ -4,12 +4,21 @@ import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.PauseTransition;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
+import tn.esprit.fahamni.services.SessionCreationContext;
+import tn.esprit.fahamni.utils.FrontOfficeMotion;
+import tn.esprit.fahamni.utils.FrontOfficeNavigation;
 import tn.esprit.fahamni.utils.UserSession;
 
 public class DashboardController {
@@ -22,6 +31,15 @@ public class DashboardController {
 
     @FXML
     private VBox floatingStack;
+
+    @FXML
+    private StackPane heroVisualPane;
+
+    @FXML
+    private Region heroGlowOrbOne;
+
+    @FXML
+    private Region heroGlowOrbTwo;
 
     @FXML
     private FlowPane statStrip;
@@ -54,6 +72,15 @@ public class DashboardController {
     private Label focusCopyLabel;
 
     @FXML
+    private ImageView heroStudyImageView;
+
+    @FXML
+    private ImageView tutorPortraitImageView;
+
+    @FXML
+    private ImageView campusRoomImageView;
+
+    @FXML
     private void initialize() {
         welcomeTitleLabel.setText("Learn better with the right tutor, tools, and study flow");
         welcomeSubtitleLabel.setText(
@@ -65,7 +92,34 @@ public class DashboardController {
         focusTitleLabel.setText("Priority for today");
         focusCopyLabel.setText(
             "Start with your next session, then keep the week steady with planner blocks and resource check-ins.");
+        Platform.runLater(() -> {
+            FrontOfficeMotion.installInteractiveMotion(dashboardHomeContent);
+            FrontOfficeMotion.applyRoundedClip(heroStudyImageView, 38);
+            FrontOfficeMotion.applyRoundedClip(tutorPortraitImageView, 28);
+            FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 34);
+        });
         playIntroAnimation();
+    }
+
+    @FXML
+    private void handleNavigationAction(ActionEvent event) {
+        if (!(event.getSource() instanceof Button button) || button.getUserData() == null) {
+            return;
+        }
+
+        String target = button.getUserData().toString();
+        if ("CREATE_SESSION".equals(target)) {
+            boolean opened = SessionCreationContext.requestSessionCreationOpen();
+            if (!opened) {
+                FrontOfficeNavigation.open(FrontOfficeNavigation.Destination.RESERVATIONS);
+            }
+            return;
+        }
+
+        try {
+            FrontOfficeNavigation.open(FrontOfficeNavigation.Destination.valueOf(target));
+        } catch (IllegalArgumentException ignored) {
+        }
     }
 
     private void playIntroAnimation() {
@@ -100,15 +154,9 @@ public class DashboardController {
     }
 
     private void playFloatingMotion() {
-        if (floatingStack == null) {
-            return;
-        }
-
-        TranslateTransition floatTransition = new TranslateTransition(Duration.seconds(3.6), floatingStack);
-        floatTransition.setFromY(-4.0);
-        floatTransition.setToY(6.0);
-        floatTransition.setCycleCount(TranslateTransition.INDEFINITE);
-        floatTransition.setAutoReverse(true);
-        floatTransition.play();
+        FrontOfficeMotion.playFloat(floatingStack, 0.0, 0.0, -4.0, 6.0, 3.8);
+        FrontOfficeMotion.playFloat(heroVisualPane, -2.0, 2.0, -3.0, 5.0, 4.6);
+        FrontOfficeMotion.playFloat(heroGlowOrbOne, -10.0, 12.0, -8.0, 10.0, 7.6);
+        FrontOfficeMotion.playFloat(heroGlowOrbTwo, 8.0, -10.0, 10.0, -8.0, 8.4);
     }
 }

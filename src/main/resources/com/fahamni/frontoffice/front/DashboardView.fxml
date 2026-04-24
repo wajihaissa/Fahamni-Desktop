@@ -2,6 +2,8 @@
 
 <?import java.lang.String?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
@@ -21,8 +23,8 @@
         </padding>
 
         <VBox fx:id="dashboardHomeContent" id="dashboardHomeContent" maxWidth="1280.0" spacing="24.0" styleClass="dashboard-premium-content">
-            <FlowPane fx:id="heroSection" hgap="24.0" prefWrapLength="1080.0" styleClass="dashboard-premium-hero" vgap="24.0">
-                <VBox maxWidth="650.0" minWidth="320.0" spacing="18.0" styleClass="dashboard-premium-hero-copy">
+            <FlowPane fx:id="heroSection" hgap="24.0" prefWrapLength="1120.0" styleClass="dashboard-premium-hero" vgap="24.0">
+                <VBox maxWidth="620.0" minWidth="320.0" spacing="18.0" styleClass="dashboard-premium-hero-copy">
                     <Label text="SMART LEARNING PLATFORM" styleClass="dashboard-premium-eyebrow"/>
                     <Label fx:id="welcomeTitleLabel" text="Learn better with the right tutor, tools, and study flow"
                            styleClass="dashboard-premium-hero-title" wrapText="true"/>
@@ -30,47 +32,74 @@
                            text="Book tutoring sessions, manage your calendar, access study tools, and stay focused from one clean workspace."
                            styleClass="dashboard-premium-hero-subtitle" wrapText="true"/>
                     <FlowPane hgap="12.0" prefWrapLength="420.0" styleClass="dashboard-premium-hero-actions" vgap="12.0">
-                        <Button text="Find a Tutor" styleClass="dashboard-premium-primary-button"/>
-                        <Button text="Open Planner" styleClass="dashboard-premium-secondary-button"/>
+                        <Button fx:id="primaryCtaButton" text="Find a Tutor" onAction="#handleNavigationAction"
+                                styleClass="dashboard-premium-primary-button" userData="RESERVATIONS"/>
+                        <Button fx:id="secondaryCtaButton" text="Open Planner" onAction="#handleNavigationAction"
+                                styleClass="dashboard-premium-secondary-button" userData="PLANNER"/>
                     </FlowPane>
                 </VBox>
 
-                <VBox fx:id="floatingStack" maxWidth="360.0" minWidth="280.0" spacing="16.0" styleClass="dashboard-premium-floating-stack">
-                    <VBox spacing="10.0">
-                        <styleClass>
-                            <String fx:value="dashboard-premium-floating-card"/>
-                            <String fx:value="dashboard-premium-floating-card-primary"/>
-                        </styleClass>
-                        <HBox alignment="CENTER_LEFT" spacing="10.0">
-                            <Label text="NEXT SESSION" styleClass="dashboard-premium-card-kicker"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <Label text="TODAY" styleClass="dashboard-premium-inline-chip"/>
-                        </HBox>
-                        <Label text="Linear Algebra with Ahmed Ben Ali" styleClass="dashboard-premium-floating-title" wrapText="true"/>
-                        <Label text="18:00 / Online / 45 min" styleClass="dashboard-premium-floating-copy"/>
-                    </VBox>
+                <VBox fx:id="floatingStack" maxWidth="420.0" minWidth="320.0" spacing="12.0" styleClass="dashboard-premium-floating-stack">
+                    <StackPane fx:id="heroVisualPane" minHeight="258.0" prefHeight="258.0" styleClass="dashboard-premium-hero-visual-shell">
+                        <Region fx:id="heroGlowOrbOne" managed="false" mouseTransparent="true"
+                                styleClass="dashboard-premium-background-orb dashboard-premium-background-orb-one"
+                                StackPane.alignment="TOP_RIGHT"/>
+                        <Region fx:id="heroGlowOrbTwo" managed="false" mouseTransparent="true"
+                                styleClass="dashboard-premium-background-orb dashboard-premium-background-orb-two"
+                                StackPane.alignment="BOTTOM_LEFT"/>
+                        <ImageView fx:id="heroStudyImageView" fitHeight="258.0" fitWidth="420.0" pickOnBounds="true"
+                                   preserveRatio="false" smooth="true" styleClass="dashboard-premium-hero-image">
+                            <image>
+                                <Image url="@/com/fahamni/images/frontoffice/dashboard-hero-study.png"/>
+                            </image>
+                        </ImageView>
+                        <FlowPane hgap="8.0" prefWrapLength="360.0" styleClass="dashboard-premium-hero-photo-chip-row" vgap="8.0"
+                                  StackPane.alignment="TOP_CENTER">
+                            <StackPane.margin>
+                                <Insets top="14" right="0" bottom="0" left="0"/>
+                            </StackPane.margin>
+                            <Label text="Study support" styleClass="dashboard-premium-chip"/>
+                            <Label text="Clean workspace" styleClass="dashboard-premium-chip"/>
+                            <Label text="Desktop product" styleClass="dashboard-premium-chip"/>
+                        </FlowPane>
+                        <VBox maxWidth="250.0" spacing="6.0" styleClass="dashboard-premium-hero-photo-copy"
+                              StackPane.alignment="TOP_LEFT">
+                            <StackPane.margin>
+                                <Insets top="52" right="0" bottom="0" left="18"/>
+                            </StackPane.margin>
+                            <Label text="LIVE LEARNING SPACE" styleClass="dashboard-premium-card-kicker"/>
+                            <Label text="Focused tutoring that feels calm, modern, and real."
+                                   styleClass="dashboard-premium-photo-title" wrapText="true"/>
+                        </VBox>
+                    </StackPane>
 
-                    <VBox spacing="10.0">
-                        <styleClass>
-                            <String fx:value="dashboard-premium-floating-card"/>
-                            <String fx:value="dashboard-premium-floating-card-secondary"/>
-                        </styleClass>
-                        <Label text="STUDY STREAK" styleClass="dashboard-premium-card-kicker"/>
-                        <Label text="7 focused days this week" styleClass="dashboard-premium-floating-title"/>
-                        <Label fx:id="focusTitleLabel" text="Priority for today" styleClass="dashboard-premium-floating-copy-strong"/>
-                        <Label fx:id="focusCopyLabel"
-                               text="Start with your next session, then keep the week steady with planner blocks and resource check-ins."
-                               styleClass="dashboard-premium-floating-copy" wrapText="true"/>
-                    </VBox>
+                    <VBox spacing="12.0">
+                        <VBox maxWidth="1.7976931348623157E308" spacing="10.0">
+                            <styleClass>
+                                <String fx:value="dashboard-premium-floating-card"/>
+                                <String fx:value="dashboard-premium-floating-card-primary"/>
+                            </styleClass>
+                            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                <Label text="NEXT SESSION" styleClass="dashboard-premium-card-kicker"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label text="TODAY" styleClass="dashboard-premium-inline-chip"/>
+                            </HBox>
+                            <Label text="Linear Algebra with Ahmed Ben Ali" styleClass="dashboard-premium-floating-title" wrapText="true"/>
+                            <Label text="18:00 / Online / 45 min / Confirmed" styleClass="dashboard-premium-floating-copy" wrapText="true"/>
+                        </VBox>
 
-                    <VBox spacing="10.0">
-                        <styleClass>
-                            <String fx:value="dashboard-premium-floating-card"/>
-                            <String fx:value="dashboard-premium-floating-card-tertiary"/>
-                        </styleClass>
-                        <Label text="CAMPUS SNAPSHOT" styleClass="dashboard-premium-card-kicker"/>
-                        <Label text="3 rooms ready for onsite tutoring" styleClass="dashboard-premium-floating-title" wrapText="true"/>
-                        <Label text="Equipment prepared / projector / whiteboard" styleClass="dashboard-premium-floating-copy"/>
+                        <VBox maxWidth="1.7976931348623157E308" spacing="10.0">
+                            <styleClass>
+                                <String fx:value="dashboard-premium-floating-card"/>
+                                <String fx:value="dashboard-premium-floating-card-secondary"/>
+                            </styleClass>
+                            <Label text="STUDY STREAK" styleClass="dashboard-premium-card-kicker"/>
+                            <Label text="7 focused days this week" styleClass="dashboard-premium-floating-title" wrapText="true"/>
+                            <Label fx:id="focusTitleLabel" text="Priority for today" styleClass="dashboard-premium-floating-copy-strong"/>
+                            <Label fx:id="focusCopyLabel"
+                                   text="Start with your next session, then keep the week steady with planner blocks and resource check-ins."
+                                   styleClass="dashboard-premium-floating-copy" wrapText="true"/>
+                        </VBox>
                     </VBox>
                 </VBox>
             </FlowPane>
@@ -107,7 +136,8 @@
                                 <Label text="A clear timeline of your next learning blocks." styleClass="dashboard-premium-section-copy"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <Button text="View Calendar" styleClass="dashboard-premium-tertiary-button"/>
+                            <Button text="View Calendar" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-tertiary-button" userData="CALENDAR"/>
                         </HBox>
 
                         <VBox spacing="14.0">
@@ -128,7 +158,7 @@
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <VBox alignment="CENTER_RIGHT" spacing="8.0">
                                     <Label text="Confirmed" styleClass="dashboard-premium-session-status"/>
-                                    <Button text="View Session">
+                                    <Button text="View Session" onAction="#handleNavigationAction" userData="CALENDAR">
                                         <styleClass>
                                             <String fx:value="dashboard-premium-secondary-button"/>
                                             <String fx:value="dashboard-premium-inline-action"/>
@@ -159,7 +189,7 @@
                                             <String fx:value="dashboard-premium-session-status-pending"/>
                                         </styleClass>
                                     </Label>
-                                    <Button text="Open Details">
+                                    <Button text="Open Details" onAction="#handleNavigationAction" userData="CALENDAR">
                                         <styleClass>
                                             <String fx:value="dashboard-premium-secondary-button"/>
                                             <String fx:value="dashboard-premium-inline-action"/>
@@ -185,7 +215,7 @@
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <VBox alignment="CENTER_RIGHT" spacing="8.0">
                                     <Label text="Scheduled" styleClass="dashboard-premium-session-status"/>
-                                    <Button text="View Session">
+                                    <Button text="View Session" onAction="#handleNavigationAction" userData="CALENDAR">
                                         <styleClass>
                                             <String fx:value="dashboard-premium-secondary-button"/>
                                             <String fx:value="dashboard-premium-inline-action"/>
@@ -207,22 +237,28 @@
                                 <Label text="Profiles selected for your recent study patterns." styleClass="dashboard-premium-section-copy"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <Button text="Explore All" styleClass="dashboard-premium-tertiary-button"/>
+                            <Button text="Explore All" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-tertiary-button" userData="RESERVATIONS"/>
                         </HBox>
 
                         <VBox spacing="14.0">
                             <HBox spacing="14.0" styleClass="dashboard-premium-tutor-card">
-                                <StackPane minHeight="58.0" minWidth="58.0" prefHeight="58.0" prefWidth="58.0" styleClass="dashboard-premium-avatar-dot">
-                                    <Label text="AB" styleClass="dashboard-premium-avatar-text"/>
+                                <StackPane minHeight="72.0" minWidth="72.0" prefHeight="72.0" prefWidth="72.0" styleClass="dashboard-premium-photo-avatar-shell">
+                                    <ImageView fx:id="tutorPortraitImageView" fitHeight="72.0" fitWidth="72.0" pickOnBounds="true"
+                                               preserveRatio="false" smooth="true" styleClass="dashboard-premium-avatar-photo">
+                                        <image>
+                                            <Image url="@/com/fahamni/images/frontoffice/tutor-portrait-sarah.png"/>
+                                        </image>
+                                    </ImageView>
                                 </StackPane>
                                 <VBox spacing="5.0">
-                                    <Label text="Ahmed Ben Ali" styleClass="dashboard-premium-tutor-name"/>
-                                    <Label text="Algebra / Exam strategy / Remote tutoring" styleClass="dashboard-premium-tutor-copy"/>
+                                    <Label text="Sarah Mansour" styleClass="dashboard-premium-tutor-name"/>
+                                    <Label text="Physics / Guided exercises / Onsite sessions" styleClass="dashboard-premium-tutor-copy"/>
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <VBox alignment="CENTER_RIGHT" spacing="6.0">
-                                    <Label text="4.9 rating" styleClass="dashboard-premium-rating"/>
-                                    <Button text="View Profile">
+                                    <Label text="Top match / 4.9 rating" styleClass="dashboard-premium-rating"/>
+                                    <Button text="View Profile" onAction="#handleNavigationAction" userData="RESERVATIONS">
                                         <styleClass>
                                             <String fx:value="dashboard-premium-secondary-button"/>
                                             <String fx:value="dashboard-premium-inline-action"/>
@@ -233,16 +269,16 @@
 
                             <HBox spacing="14.0" styleClass="dashboard-premium-tutor-card">
                                 <StackPane minHeight="58.0" minWidth="58.0" prefHeight="58.0" prefWidth="58.0" styleClass="dashboard-premium-avatar-dot">
-                                    <Label text="SM" styleClass="dashboard-premium-avatar-text"/>
+                                    <Label text="AB" styleClass="dashboard-premium-avatar-text"/>
                                 </StackPane>
                                 <VBox spacing="5.0">
-                                    <Label text="Sarah Mansour" styleClass="dashboard-premium-tutor-name"/>
-                                    <Label text="Physics / Guided exercises / Onsite sessions" styleClass="dashboard-premium-tutor-copy"/>
+                                    <Label text="Ahmed Ben Ali" styleClass="dashboard-premium-tutor-name"/>
+                                    <Label text="Algebra / Exam strategy / Remote tutoring" styleClass="dashboard-premium-tutor-copy"/>
                                 </VBox>
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <VBox alignment="CENTER_RIGHT" spacing="6.0">
                                     <Label text="4.8 rating" styleClass="dashboard-premium-rating"/>
-                                    <Button text="View Profile">
+                                    <Button text="View Profile" onAction="#handleNavigationAction" userData="RESERVATIONS">
                                         <styleClass>
                                             <String fx:value="dashboard-premium-secondary-button"/>
                                             <String fx:value="dashboard-premium-inline-action"/>
@@ -262,7 +298,7 @@
                                 <Region HBox.hgrow="ALWAYS"/>
                                 <VBox alignment="CENTER_RIGHT" spacing="6.0">
                                     <Label text="4.7 rating" styleClass="dashboard-premium-rating"/>
-                                    <Button text="View Profile">
+                                    <Button text="View Profile" onAction="#handleNavigationAction" userData="RESERVATIONS">
                                         <styleClass>
                                             <String fx:value="dashboard-premium-secondary-button"/>
                                             <String fx:value="dashboard-premium-inline-action"/>
@@ -278,10 +314,14 @@
                     <VBox spacing="16.0" styleClass="dashboard-premium-section-card">
                         <Label text="Quick Actions" styleClass="dashboard-premium-section-title"/>
                         <VBox spacing="10.0">
-                            <Button text="Book a Session" styleClass="dashboard-premium-action-rail-button"/>
-                            <Button text="Open Calendar" styleClass="dashboard-premium-action-rail-button"/>
-                            <Button text="Browse Resources" styleClass="dashboard-premium-action-rail-button"/>
-                            <Button text="Check Rooms" styleClass="dashboard-premium-action-rail-button"/>
+                            <Button text="Book a Session" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-action-rail-button" userData="CREATE_SESSION"/>
+                            <Button text="Open Calendar" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-action-rail-button" userData="CALENDAR"/>
+                            <Button text="Browse Resources" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-action-rail-button" userData="BLOG"/>
+                            <Button text="Check Rooms" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-action-rail-button" userData="INFRASTRUCTURE"/>
                         </VBox>
                     </VBox>
 
@@ -340,7 +380,8 @@
                                 <Label text="Worked examples, exercises, and quick recap sheets." styleClass="dashboard-premium-resource-copy"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <Button text="Open" styleClass="dashboard-premium-tertiary-button"/>
+                            <Button text="Open" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-tertiary-button" userData="BLOG"/>
                         </HBox>
                         <HBox spacing="12.0" styleClass="dashboard-premium-resource-row">
                             <VBox spacing="4.0">
@@ -348,13 +389,28 @@
                                 <Label text="A compact reference for mechanics and motion topics." styleClass="dashboard-premium-resource-copy"/>
                             </VBox>
                             <Region HBox.hgrow="ALWAYS"/>
-                            <Button text="Open" styleClass="dashboard-premium-tertiary-button"/>
+                            <Button text="Open" onAction="#handleNavigationAction"
+                                    styleClass="dashboard-premium-tertiary-button" userData="BLOG"/>
                         </HBox>
                     </VBox>
                 </VBox>
 
                 <VBox minWidth="320.0" prefWidth="620.0" spacing="16.0" styleClass="dashboard-premium-section-card">
                     <Label text="Campus and Equipment" styleClass="dashboard-premium-section-title"/>
+                    <StackPane fx:id="campusVisualPane" minHeight="210.0" prefHeight="210.0" styleClass="dashboard-premium-campus-visual-shell">
+                        <ImageView fx:id="campusRoomImageView" fitHeight="210.0" fitWidth="620.0" pickOnBounds="true"
+                                   preserveRatio="false" smooth="true" styleClass="dashboard-premium-campus-image">
+                            <image>
+                                <Image url="@/com/fahamni/images/frontoffice/campus-room-ready.png"/>
+                            </image>
+                        </ImageView>
+                        <Label text="ONSITE READY" styleClass="dashboard-premium-inline-chip dashboard-premium-image-chip"
+                               StackPane.alignment="TOP_LEFT">
+                            <StackPane.margin>
+                                <Insets top="14" right="0" bottom="0" left="14"/>
+                            </StackPane.margin>
+                        </Label>
+                    </StackPane>
                     <Label text="Quick visibility into rooms and gear before you book onsite sessions." styleClass="dashboard-premium-section-copy" wrapText="true"/>
                     <VBox spacing="12.0">
                         <HBox spacing="12.0" styleClass="dashboard-premium-resource-row">

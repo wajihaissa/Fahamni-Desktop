@@ -148,7 +148,68 @@
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-stack {
-    -fx-padding: 8px 0 0 0;
+    -fx-padding: 2px 0 0 0;
+    -fx-pref-width: 400px;
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-visual-shell,
+#dashboardHomeRoot .dashboard-premium-campus-visual-shell {
+    -fx-background-color: rgba(8, 15, 24, 0.78);
+    -fx-border-color: rgba(149, 192, 255, 0.16);
+    -fx-border-width: 1px;
+    -fx-background-radius: 28px;
+    -fx-border-radius: 28px;
+    -fx-padding: 0;
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.36), 26, 0.18, 0, 10);
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-image,
+#dashboardHomeRoot .dashboard-premium-campus-image {
+    -fx-opacity: 0.98;
+}
+
+#dashboardHomeRoot .dashboard-premium-background-orb {
+    -fx-pref-width: 150px;
+    -fx-pref-height: 150px;
+    -fx-background-radius: 999px;
+    -fx-background-color: rgba(79, 216, 255, 0.18);
+    -fx-effect: dropshadow(gaussian, rgba(79, 216, 255, 0.20), 40, 0.28, 0, 0);
+}
+
+#dashboardHomeRoot .dashboard-premium-background-orb-one {
+    -fx-pref-width: 148px;
+    -fx-pref-height: 148px;
+}
+
+#dashboardHomeRoot .dashboard-premium-background-orb-two {
+    -fx-pref-width: 116px;
+    -fx-pref-height: 116px;
+    -fx-background-color: rgba(97, 129, 255, 0.18);
+    -fx-effect: dropshadow(gaussian, rgba(97, 129, 255, 0.18), 34, 0.24, 0, 0);
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-photo-copy {
+    -fx-background-color: linear-gradient(to bottom, rgba(11, 19, 31, 0.70) 0%, rgba(11, 19, 31, 0.52) 100%);
+    -fx-border-color: rgba(149, 192, 255, 0.12);
+    -fx-border-width: 1px;
+    -fx-background-radius: 22px;
+    -fx-border-radius: 22px;
+    -fx-padding: 12px 14px;
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.22), 14, 0.18, 0, 4);
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-photo-chip-row {
+    -fx-padding: 0;
+}
+
+#dashboardHomeRoot .dashboard-premium-photo-title {
+    -fx-text-fill: #f4f9ff;
+    -fx-font-size: 16px;
+    -fx-font-weight: 760;
+}
+
+#dashboardHomeRoot .dashboard-premium-image-chip {
+    -fx-effect: dropshadow(gaussian, rgba(3, 8, 15, 0.28), 10, 0.16, 0, 2);
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-card {
@@ -158,20 +219,16 @@
     -fx-border-width: 1px;
     -fx-background-radius: 26px;
     -fx-border-radius: 26px;
-    -fx-padding: 18px 20px;
+    -fx-padding: 15px 18px;
     -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.42), 26, 0.18, 0, 10);
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-card-primary {
-    -fx-translate-x: -18px;
+    -fx-translate-x: 0;
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-card-secondary {
-    -fx-translate-x: 8px;
-}
-
-#dashboardHomeRoot .dashboard-premium-floating-card-tertiary {
-    -fx-translate-x: -10px;
+    -fx-translate-x: 0;
 }
 
 #dashboardHomeRoot .dashboard-premium-inline-chip,
@@ -195,7 +252,7 @@
 
 #dashboardHomeRoot .dashboard-premium-floating-title {
     -fx-text-fill: #f4f8ff;
-    -fx-font-size: 20px;
+    -fx-font-size: 17px;
     -fx-font-weight: 750;
 }
 
@@ -321,6 +378,16 @@
     -fx-text-fill: #eff8ff;
     -fx-font-size: 12px;
     -fx-font-weight: 800;
+}
+
+#dashboardHomeRoot .dashboard-premium-photo-avatar-shell {
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(144, 190, 246, 0.16);
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 0;
+    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.24), 12, 0.16, 0, 4);
 }
 
 #dashboardHomeRoot .dashboard-premium-rating {
@@ -464,6 +531,28 @@
     -fx-border-color: rgba(102, 195, 167, 0.14);
 }
 
+.theme-light #dashboardHomeRoot .dashboard-premium-hero-visual-shell,
+.theme-light #dashboardHomeRoot .dashboard-premium-campus-visual-shell {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 254, 0.94) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
+    -fx-effect: dropshadow(gaussian, rgba(32, 56, 84, 0.10), 20, 0.16, 0, 8);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-background-orb {
+    -fx-background-color: rgba(79, 216, 255, 0.14);
+    -fx-effect: dropshadow(gaussian, rgba(79, 216, 255, 0.14), 30, 0.22, 0, 0);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-background-orb-two {
+    -fx-background-color: rgba(97, 129, 255, 0.12);
+    -fx-effect: dropshadow(gaussian, rgba(97, 129, 255, 0.12), 26, 0.20, 0, 0);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-hero-photo-copy {
+    -fx-background-color: linear-gradient(to bottom, rgba(16, 28, 45, 0.58) 0%, rgba(11, 20, 33, 0.46) 100%);
+    -fx-border-color: rgba(132, 181, 235, 0.16);
+}
+
 .theme-light #dashboardHomeRoot .dashboard-premium-session-card,
 .theme-light #dashboardHomeRoot .dashboard-premium-tutor-card,
 .theme-light #dashboardHomeRoot .dashboard-premium-resource-row,
@@ -484,6 +573,15 @@
 .theme-light #dashboardHomeRoot .dashboard-premium-avatar-text,
 .theme-light #dashboardHomeRoot .dashboard-premium-activity-dot-text {
     -fx-text-fill: #17314a;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-photo-title {
+    -fx-text-fill: #f5f9ff;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-photo-avatar-shell {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 253, 0.94) 100%);
+    -fx-border-color: rgba(90, 124, 164, 0.12);
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-inline-chip,

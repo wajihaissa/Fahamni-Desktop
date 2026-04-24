@@ -11,6 +11,7 @@ C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminArticle.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\OperationResult.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\SessionManager.java
+C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\AboutController.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminUserService.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\JwtService.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\interfaces\IServices.java
@@ -22,6 +23,7 @@ C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Reservation.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeSessionsController.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeContentController.java
+C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\FrontOfficeNavigation.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Article.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminReclamationSalleService.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\MailService.java
@@ -45,6 +47,7 @@ C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminMaintenanceSalleService.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\ActivityLogService.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\PlannerService.java
+C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\FrontOfficeMotion.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeUsersController.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\StudyPlanRequest.java
 C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\WebcamCaptureDialog.java
