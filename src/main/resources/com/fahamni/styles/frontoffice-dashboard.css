@@ -54,8 +54,17 @@
     -fx-border-width: 1px;
     -fx-background-radius: 32px;
     -fx-border-radius: 32px;
-    -fx-padding: 32px;
+    -fx-padding: 0;
+    -fx-alignment: center;
     -fx-effect: dropshadow(gaussian, rgba(4, 9, 18, 0.44), 42, 0.20, 0, 16);
+}
+
+#dashboardHomeRoot .dashboard-premium-hero-layout {
+    -fx-padding: 32px;
+}
+
+#dashboardHomeRoot .dashboard-premium-spiderweb {
+    -fx-opacity: 0.90;
 }
 
 #dashboardHomeRoot .dashboard-premium-hero-copy {
@@ -456,6 +465,10 @@
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.98) 0%, rgba(249, 251, 254, 0.96) 100%);
     -fx-border-color: rgba(90, 124, 164, 0.10);
     -fx-effect: dropshadow(gaussian, rgba(32, 56, 84, 0.10), 28, 0.18, 0, 12);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-spiderweb {
+    -fx-opacity: 0.76;
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-eyebrow,

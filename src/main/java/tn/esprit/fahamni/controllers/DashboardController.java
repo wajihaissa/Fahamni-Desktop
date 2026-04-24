@@ -27,7 +27,7 @@ public class DashboardController {
     private VBox dashboardHomeContent;
 
     @FXML
-    private FlowPane heroSection;
+    private StackPane heroSection;
 
     @FXML
     private VBox floatingStack;
