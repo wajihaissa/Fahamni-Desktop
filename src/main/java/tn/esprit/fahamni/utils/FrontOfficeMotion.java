@@ -4,6 +4,7 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.image.ImageView;
@@ -98,12 +99,20 @@ public final class FrontOfficeMotion {
     }
 
     public static void bindImageToRegion(ImageView imageView, Region region) {
+        bindImageToRegion(imageView, region, 0.0, 0.0);
+    }
+
+    public static void bindImageToRegion(ImageView imageView, Region region, double horizontalInset, double verticalInset) {
         if (imageView == null || region == null) {
             return;
         }
 
-        imageView.fitWidthProperty().bind(region.widthProperty());
-        imageView.fitHeightProperty().bind(region.heightProperty());
+        imageView.fitWidthProperty().bind(Bindings.createDoubleBinding(
+            () -> Math.max(0.0, region.getWidth() - horizontalInset),
+            region.widthProperty()));
+        imageView.fitHeightProperty().bind(Bindings.createDoubleBinding(
+            () -> Math.max(0.0, region.getHeight() - verticalInset),
+            region.heightProperty()));
     }
 
     private static void installHoverForSelector(Parent root, String selector, double hoverScale, double hoverTranslateY, int durationMs) {

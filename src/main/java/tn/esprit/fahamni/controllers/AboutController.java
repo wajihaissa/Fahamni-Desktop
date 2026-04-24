@@ -11,8 +11,6 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import tn.esprit.fahamni.utils.FrontOfficeMotion;
@@ -42,24 +40,16 @@ public class AboutController {
     private VBox aboutPortraitCard;
 
     @FXML
-    private HBox aboutSummaryBanner;
-
-    @FXML
-    private StackPane aboutSummaryImageShell;
+    private VBox aboutSummaryBanner;
 
     @FXML
     private ImageView aboutPortraitImageView;
-
-    @FXML
-    private ImageView aboutSummaryImageView;
 
     @FXML
     private void initialize() {
         Platform.runLater(() -> {
             FrontOfficeMotion.installInteractiveMotion(aboutContent);
             FrontOfficeMotion.applyRoundedClip(aboutPortraitImageView, 38);
-            FrontOfficeMotion.applyRoundedClip(aboutSummaryImageView, 42);
-            FrontOfficeMotion.bindImageToRegion(aboutSummaryImageView, aboutSummaryImageShell);
         });
         playIntroAnimation();
     }

@@ -35,6 +35,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Popup;
 
 import java.io.IOException;
@@ -47,6 +48,11 @@ import tn.esprit.fahamni.Models.Notification;
 import tn.esprit.fahamni.services.UserAccountService;
 
 public class MainController {
+
+    private static final String THEME_MOON_ICON =
+        "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c3.87 0 7.18-2.45 8.44-5.88-.65.28-1.36.43-2.12.43-2.97 0-5.38-2.41-5.38-5.38 0-2.7 1.99-4.94 4.58-5.33A8.96 8.96 0 0 0 12 3z";
+    private static final String THEME_SUN_ICON =
+        "M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm8.04-18.95l-1.41-1.41-1.8 1.79 1.42 1.42 1.79-1.8zM17.24 19.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 13h3v-2h-3v2zm-8-8h-2v3h2V5zm0 4a3 3 0 100 6 3 3 0 000-6zm-7.03 10.66l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z";
 
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
@@ -66,6 +72,7 @@ public class MainController {
     @FXML private Button blogButton;
     @FXML private Button aboutButton;
     @FXML private Button themeToggleButton;
+    @FXML private SVGPath themeToggleIcon;
     @FXML private Button accountButton;
     @FXML private Label profileAvatarLabel;
     @FXML private Label profileNameLabel;
@@ -438,8 +445,13 @@ public class MainController {
 
     private void applyThemeMode() {
         FrontOfficeThemePreference.apply(rootPane);
+        boolean lightMode = FrontOfficeThemePreference.isLightMode();
         if (themeToggleButton != null) {
-            themeToggleButton.setText(FrontOfficeThemePreference.isLightMode() ? "Dark Mode" : "Light Mode");
+            themeToggleButton.setText("");
+            themeToggleButton.setAccessibleText(lightMode ? "Switch to dark mode" : "Switch to light mode");
+        }
+        if (themeToggleIcon != null) {
+            themeToggleIcon.setContent(lightMode ? THEME_MOON_ICON : THEME_SUN_ICON);
         }
         refreshAccountMenuTheme();
         if (alertsPopup != null && alertsPopup.isShowing()) {

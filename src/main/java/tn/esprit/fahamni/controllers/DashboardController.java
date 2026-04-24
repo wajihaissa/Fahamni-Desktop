@@ -81,7 +81,7 @@ public class DashboardController {
     private ImageView campusRoomImageView;
 
     @FXML
-    private StackPane campusImageFramePane;
+    private StackPane campusVisualPane;
 
     @FXML
     private void initialize() {
@@ -99,8 +99,8 @@ public class DashboardController {
             FrontOfficeMotion.installInteractiveMotion(dashboardHomeContent);
             FrontOfficeMotion.applyRoundedClip(heroStudyImageView, 38);
             FrontOfficeMotion.applyRoundedClip(tutorPortraitImageView, 28);
-            FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 22);
-            FrontOfficeMotion.bindImageToRegion(campusRoomImageView, campusImageFramePane);
+            FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 24);
+            FrontOfficeMotion.bindImageToRegion(campusRoomImageView, campusVisualPane, 8.0, 8.0);
         });
         playIntroAnimation();
     }
