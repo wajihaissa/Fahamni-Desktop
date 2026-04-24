@@ -386,16 +386,21 @@
                 <VBox minWidth="320.0" prefWidth="620.0" spacing="16.0" styleClass="dashboard-premium-section-card">
                     <Label text="Campus and Equipment" styleClass="dashboard-premium-section-title"/>
                     <StackPane fx:id="campusVisualPane" minHeight="210.0" prefHeight="210.0" styleClass="dashboard-premium-campus-visual-shell">
-                        <ImageView fx:id="campusRoomImageView" fitHeight="210.0" fitWidth="620.0" pickOnBounds="true"
-                                   preserveRatio="false" smooth="true" styleClass="dashboard-premium-campus-image">
-                            <image>
-                                <Image url="@/com/fahamni/images/frontoffice/campus-room-ready.png"/>
-                            </image>
-                        </ImageView>
+                        <StackPane styleClass="dashboard-premium-campus-image-frame">
+                            <StackPane.margin>
+                                <Insets top="10" right="10" bottom="10" left="10"/>
+                            </StackPane.margin>
+                            <ImageView fx:id="campusRoomImageView" fitHeight="190.0" fitWidth="600.0" pickOnBounds="true"
+                                       preserveRatio="false" smooth="true" styleClass="dashboard-premium-campus-image">
+                                <image>
+                                    <Image url="@/com/fahamni/images/frontoffice/campus-room-ready.png"/>
+                                </image>
+                            </ImageView>
+                        </StackPane>
                         <Label text="ONSITE READY" styleClass="dashboard-premium-inline-chip dashboard-premium-image-chip"
                                StackPane.alignment="TOP_LEFT">
                             <StackPane.margin>
-                                <Insets top="14" right="0" bottom="0" left="14"/>
+                                <Insets top="22" right="0" bottom="0" left="22"/>
                             </StackPane.margin>
                         </Label>
                     </StackPane>

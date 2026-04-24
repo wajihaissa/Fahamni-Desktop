@@ -38,10 +38,19 @@
     -fx-background-color: rgba(83, 165, 255, 0.30);
 }
 
+#aboutRoot .about-page-shell {
+    -fx-background-color: transparent;
+    -fx-alignment: top-center;
+}
+
 #aboutRoot .about-shell-wrap,
 #aboutRoot .about-content,
 #aboutRoot .about-stat-strip {
     -fx-background-color: transparent;
+}
+
+#aboutRoot .about-page-spiderweb {
+    -fx-opacity: 0.42;
 }
 
 #aboutRoot .about-hero,
@@ -392,4 +401,8 @@
 .theme-light #aboutRoot .about-summary-banner:hover {
     -fx-border-color: rgba(93, 158, 255, 0.18);
     -fx-effect: dropshadow(gaussian, rgba(86, 140, 205, 0.08), 16, 0.14, 0, 6);
+}
+
+.theme-light #aboutRoot .about-page-spiderweb {
+    -fx-opacity: 0.66;
 }

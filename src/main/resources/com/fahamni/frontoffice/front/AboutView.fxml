@@ -12,17 +12,20 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import tn.esprit.fahamni.utils.AnimatedSpiderwebPane?>
 
 <ScrollPane id="aboutRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="about-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.AboutController">
-    <VBox alignment="TOP_CENTER" styleClass="about-shell-wrap">
-        <padding>
-            <Insets top="12" right="18" bottom="26" left="18"/>
-        </padding>
+    <StackPane styleClass="about-page-shell">
+        <AnimatedSpiderwebPane fx:id="aboutBackgroundSpiderwebPane" styleClass="about-page-spiderweb"/>
+        <VBox alignment="TOP_CENTER" styleClass="about-shell-wrap">
+            <padding>
+                <Insets top="12" right="18" bottom="26" left="18"/>
+            </padding>
 
-        <VBox fx:id="aboutContent" maxWidth="1280.0" spacing="24.0" styleClass="about-content">
+            <VBox fx:id="aboutContent" maxWidth="1280.0" spacing="24.0" styleClass="about-content">
             <FlowPane fx:id="aboutHeroSection" hgap="24.0" prefWrapLength="1120.0" styleClass="about-hero" vgap="24.0">
                 <VBox maxWidth="700.0" minWidth="340.0" spacing="18.0" styleClass="about-hero-copy">
                     <Label text="ABOUT FAHAMNI" styleClass="about-eyebrow"/>
@@ -251,6 +254,7 @@
                     </Label>
                 </StackPane>
             </HBox>
+            </VBox>
         </VBox>
-    </VBox>
+    </StackPane>
 </ScrollPane>

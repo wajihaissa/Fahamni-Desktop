@@ -38,6 +38,7 @@
 
 #dashboardHomeRoot .dashboard-premium-page-shell {
     -fx-background-color: transparent;
+    -fx-alignment: top-center;
 }
 
 #dashboardHomeContent {
@@ -69,6 +70,12 @@
 
 #dashboardHomeRoot .dashboard-premium-page-spiderweb {
     -fx-opacity: 0.42;
+}
+
+#dashboardHomeRoot .dashboard-premium-campus-image-frame {
+    -fx-background-color: rgba(255, 255, 255, 0.02);
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
 }
 
 #dashboardHomeRoot .dashboard-premium-spiderweb {
@@ -481,6 +488,10 @@
 
 .theme-light #dashboardHomeRoot .dashboard-premium-page-spiderweb {
     -fx-opacity: 0.66;
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-campus-image-frame {
+    -fx-background-color: rgba(255, 255, 255, 0.28);
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-eyebrow,
