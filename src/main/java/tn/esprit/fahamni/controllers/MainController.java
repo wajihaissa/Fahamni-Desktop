@@ -34,6 +34,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Popup;
 
 import java.io.IOException;
@@ -86,6 +87,7 @@ public class MainController {
         refreshCurrentUserSummary();
         applyThemeMode();
         initializeAccountMenu();
+        installContentClip();
         Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
         showDashboard();
         refreshBlogBadge();
@@ -400,6 +402,9 @@ public class MainController {
 
     private void displayView(Node view, String title) {
         contentPane.getChildren().clear();
+        if (view instanceof Region region) {
+            region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        }
         AnchorPane.setTopAnchor(view, 0.0);
         AnchorPane.setBottomAnchor(view, 0.0);
         AnchorPane.setLeftAnchor(view, 0.0);
@@ -481,25 +486,22 @@ public class MainController {
         }
 
         view.setOpacity(0.0);
-        view.setTranslateY(18.0);
-        view.setScaleX(0.992);
-        view.setScaleY(0.992);
 
         FadeTransition fadeTransition = new FadeTransition(Duration.millis(320), view);
         fadeTransition.setFromValue(0.0);
         fadeTransition.setToValue(1.0);
+        fadeTransition.play();
+    }
 
-        TranslateTransition slideTransition = new TranslateTransition(Duration.millis(320), view);
-        slideTransition.setFromY(18.0);
-        slideTransition.setToY(0.0);
+    private void installContentClip() {
+        if (contentPane == null) {
+            return;
+        }
 
-        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(320), view);
-        scaleTransition.setFromX(0.992);
-        scaleTransition.setFromY(0.992);
-        scaleTransition.setToX(1.0);
-        scaleTransition.setToY(1.0);
-
-        new ParallelTransition(fadeTransition, slideTransition, scaleTransition).play();
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(contentPane.widthProperty());
+        clip.heightProperty().bind(contentPane.heightProperty());
+        contentPane.setClip(clip);
     }
 
     private void refreshCurrentUserSummary() {

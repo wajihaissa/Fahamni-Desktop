@@ -73,9 +73,9 @@
 }
 
 #dashboardHomeRoot .dashboard-premium-campus-image-frame {
-    -fx-background-color: rgba(255, 255, 255, 0.02);
-    -fx-background-radius: 24px;
-    -fx-border-radius: 24px;
+    -fx-background-color: transparent;
+    -fx-background-radius: 22px;
+    -fx-border-radius: 22px;
 }
 
 #dashboardHomeRoot .dashboard-premium-spiderweb {
@@ -185,6 +185,11 @@
     -fx-border-radius: 28px;
     -fx-padding: 0;
     -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.36), 26, 0.18, 0, 10);
+}
+
+#dashboardHomeRoot .dashboard-premium-campus-visual-shell {
+    -fx-background-color: rgba(8, 15, 24, 0.26);
+    -fx-border-color: rgba(149, 192, 255, 0.10);
 }
 
 #dashboardHomeRoot .dashboard-premium-hero-image,
@@ -491,7 +496,7 @@
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-campus-image-frame {
-    -fx-background-color: rgba(255, 255, 255, 0.28);
+    -fx-background-color: transparent;
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-eyebrow,
@@ -581,6 +586,11 @@
     -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 254, 0.94) 100%);
     -fx-border-color: rgba(90, 124, 164, 0.10);
     -fx-effect: dropshadow(gaussian, rgba(32, 56, 84, 0.10), 20, 0.16, 0, 8);
+}
+
+.theme-light #dashboardHomeRoot .dashboard-premium-campus-visual-shell {
+    -fx-background-color: rgba(255, 255, 255, 0.42);
+    -fx-border-color: rgba(90, 124, 164, 0.08);
 }
 
 .theme-light #dashboardHomeRoot .dashboard-premium-background-orb {

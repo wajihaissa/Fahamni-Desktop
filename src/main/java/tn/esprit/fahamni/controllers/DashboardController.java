@@ -96,7 +96,7 @@ public class DashboardController {
             FrontOfficeMotion.installInteractiveMotion(dashboardHomeContent);
             FrontOfficeMotion.applyRoundedClip(heroStudyImageView, 38);
             FrontOfficeMotion.applyRoundedClip(tutorPortraitImageView, 28);
-            FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 26);
+            FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 22);
         });
         playIntroAnimation();
     }

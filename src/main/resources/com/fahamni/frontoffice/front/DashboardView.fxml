@@ -388,9 +388,9 @@
                     <StackPane fx:id="campusVisualPane" minHeight="210.0" prefHeight="210.0" styleClass="dashboard-premium-campus-visual-shell">
                         <StackPane styleClass="dashboard-premium-campus-image-frame">
                             <StackPane.margin>
-                                <Insets top="10" right="10" bottom="10" left="10"/>
+                                <Insets top="4" right="4" bottom="4" left="4"/>
                             </StackPane.margin>
-                            <ImageView fx:id="campusRoomImageView" fitHeight="190.0" fitWidth="600.0" pickOnBounds="true"
+                            <ImageView fx:id="campusRoomImageView" fitHeight="202.0" fitWidth="612.0" pickOnBounds="true"
                                        preserveRatio="false" smooth="true" styleClass="dashboard-premium-campus-image">
                                 <image>
                                     <Image url="@/com/fahamni/images/frontoffice/campus-room-ready.png"/>
@@ -400,7 +400,7 @@
                         <Label text="ONSITE READY" styleClass="dashboard-premium-inline-chip dashboard-premium-image-chip"
                                StackPane.alignment="TOP_LEFT">
                             <StackPane.margin>
-                                <Insets top="22" right="0" bottom="0" left="22"/>
+                                <Insets top="14" right="0" bottom="0" left="14"/>
                             </StackPane.margin>
                         </Label>
                     </StackPane>
