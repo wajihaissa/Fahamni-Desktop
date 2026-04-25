@@ -24,6 +24,10 @@ public class AiQuizAssistantService {
             Pattern.compile("\"content\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
     private static final Pattern QUESTION_BLOCK_PATTERN =
             Pattern.compile("QUESTION\\s+(\\d+)\\s*:(.*?)(?=QUESTION\\s+\\d+\\s*:|$)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
+    private static final Pattern METADATA_TOPIC_PATTERN =
+            Pattern.compile("(?im)^TOPIC\\s*:\\s*(.+)$");
+    private static final Pattern METADATA_DIFFICULTY_PATTERN =
+            Pattern.compile("(?im)^DIFFICULTY\\s*:\\s*(.+)$");
 
     private final HttpClient httpClient;
 
@@ -56,45 +60,332 @@ public class AiQuizAssistantService {
         );
     }
 
-    public String generateHint(Quiz quiz, Question question, Long selectedChoiceId) {
-        if (question == null) {
-            return "Read the question carefully and eliminate the weakest answer first.";
+    public QuestionMetadata inferQuestionMetadata(String quizKeyword, String quizTitle, String questionText, List<String> choices) {
+        String fallbackTopic = safeText(quizKeyword, "General");
+        String normalizedQuestion = safeText(questionText, "");
+        List<String> normalizedChoices = choices == null ? List.of() : choices.stream()
+                .filter(choice -> !isBlank(choice))
+                .map(String::trim)
+                .toList();
+
+        Optional<QuestionMetadata> remoteMetadata = tryInferQuestionMetadataWithOpenAi(
+                fallbackTopic,
+                safeText(quizTitle, "Quiz"),
+                normalizedQuestion,
+                normalizedChoices
+        );
+        if (remoteMetadata.isPresent()) {
+            return remoteMetadata.get();
         }
 
-        if (!isBlank(question.getHint())) {
-            return question.getHint();
+        return buildFallbackMetadata(fallbackTopic, normalizedQuestion, normalizedChoices);
+    }
+
+    public String generateHint(Quiz quiz, Question question, Long selectedChoiceId) {
+        if (question == null) {
+            return "Read the question carefully and focus on the main idea it is testing.";
+        }
+
+        String keyword = quiz != null && !isBlank(quiz.getKeyword()) ? quiz.getKeyword() : "the topic";
+        Optional<String> remoteHint = tryGenerateHintWithOpenAi(quiz, question, selectedChoiceId);
+        if (remoteHint.isPresent()) {
+            return remoteHint.get();
         }
 
         Choice selectedChoice = findChoiceById(question, selectedChoiceId);
-        Choice correctChoice = findCorrectChoice(question);
-        String keyword = quiz != null && !isBlank(quiz.getKeyword()) ? quiz.getKeyword() : "the topic";
 
         if (selectedChoice != null && Boolean.TRUE.equals(selectedChoice.getIsCorrect())) {
-            return "You are already leaning in the right direction. Re-read the wording and confirm why that option fits best.";
+            return "You are on a promising track. Re-read the wording and make sure your choice matches the main idea, not just a familiar phrase.";
         }
 
-        if (!isBlank(question.getExplanation())) {
-            return question.getExplanation();
+        if (selectedChoice != null) {
+            return deriveQuestionSpecificHint(question, keyword, true);
         }
 
-        if (selectedChoice != null && correctChoice != null) {
-            return "Think about " + keyword + ": \"" + selectedChoice.getChoice()
-                    + "\" sounds tempting, but the best answer is the one most directly tied to the main concept, not just a related detail.";
+        return deriveQuestionSpecificHint(question, keyword, false);
+    }
+
+    private Optional<String> tryGenerateHintWithOpenAi(Quiz quiz, Question question, Long selectedChoiceId) {
+        String apiKey = EnvConfig.get("OPENAI_API_KEY");
+        String model = EnvConfig.get("OPENAI_MODEL");
+        if (isBlank(apiKey) || isBlank(model) || question == null || isBlank(question.getQuestion())) {
+            return Optional.empty();
         }
 
-        List<String> nonCorrectChoices = question.getChoices().stream()
-                .filter(choice -> !Boolean.TRUE.equals(choice.getIsCorrect()))
-                .map(Choice::getChoice)
-                .filter(choice -> !isBlank(choice))
-                .limit(2)
-                .toList();
+        String prompt = buildHintPrompt(quiz, question, selectedChoiceId);
+        String requestBody = """
+                {
+                  "model": "%s",
+                  "messages": [
+                    {
+                      "role": "system",
+                      "content": "You write short, non-revealing quiz hints. Never mention the correct answer. Never rule out answer choices. Never say option, choice, eliminate, or rule out."
+                    },
+                    {
+                      "role": "user",
+                      "content": "%s"
+                    }
+                  ],
+                  "temperature": 0.7
+                }
+                """.formatted(escapeJson(model), escapeJson(prompt));
 
-        if (correctChoice != null && !nonCorrectChoices.isEmpty()) {
-            return "Focus on the core idea of " + keyword + ". Try ruling out options like "
-                    + String.join(" and ", nonCorrectChoices) + " before deciding.";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                .timeout(Duration.ofSeconds(15))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return Optional.empty();
+            }
+
+            Optional<String> content = extractFirstMessageContent(response.body())
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank())
+                    .map(this::sanitizeHintText);
+
+            return content.filter(value -> !value.isBlank());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        } catch (IOException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private Optional<QuestionMetadata> tryInferQuestionMetadataWithOpenAi(
+            String quizKeyword,
+            String quizTitle,
+            String questionText,
+            List<String> choices
+    ) {
+        String apiKey = EnvConfig.get("OPENAI_API_KEY");
+        String model = EnvConfig.get("OPENAI_MODEL");
+        if (isBlank(apiKey) || isBlank(model) || isBlank(questionText)) {
+            return Optional.empty();
         }
 
-        return "Look for the answer that best matches the main idea of " + keyword + ", not just a familiar word.";
+        String prompt = buildQuestionMetadataPrompt(quizKeyword, quizTitle, questionText, choices);
+        String requestBody = """
+                {
+                  "model": "%s",
+                  "messages": [
+                    {
+                      "role": "system",
+                      "content": "You classify quiz questions. Reply using exactly two lines: TOPIC: ... and DIFFICULTY: Easy|Medium|Hard"
+                    },
+                    {
+                      "role": "user",
+                      "content": "%s"
+                    }
+                  ],
+                  "temperature": 0.2
+                }
+                """.formatted(escapeJson(model), escapeJson(prompt));
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                .timeout(Duration.ofSeconds(15))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return Optional.empty();
+            }
+
+            Optional<String> content = extractFirstMessageContent(response.body());
+            if (content.isEmpty()) {
+                return Optional.empty();
+            }
+
+            return parseQuestionMetadata(content.get(), quizKeyword);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        } catch (IOException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private String deriveQuestionSpecificHint(Question question, String keyword, boolean hasSelection) {
+        String prompt = question != null && !isBlank(question.getQuestion())
+                ? question.getQuestion().trim().toLowerCase(Locale.ROOT)
+                : "";
+
+        if (prompt.startsWith("why ")) {
+            return "Focus on the reason or benefit the question is asking about in " + keyword + ".";
+        }
+
+        if (prompt.contains("what should you do first") || prompt.contains("first step")) {
+            return "Think about the foundation someone should understand before moving into details in " + keyword + ".";
+        }
+
+        if (prompt.contains("best describes") || prompt.contains("main goal") || prompt.contains("main purpose")) {
+            return "Look for the definition or core purpose behind " + keyword + ", not a side effect or extreme claim.";
+        }
+
+        if (prompt.contains("best sign") || prompt.contains("understands")) {
+            return "Think about what would genuinely show understanding of " + keyword + " in practice.";
+        }
+
+        if (prompt.contains("distractor")) {
+            return "Focus on what makes an answer seem believable while still missing the main idea.";
+        }
+
+        if (hasSelection) {
+            return "Re-read the question and check whether your current choice answers exactly what is being asked about " + keyword + ".";
+        }
+
+        return "Use the wording of this question as your guide and focus on the main concept it is testing in " + keyword + ".";
+    }
+
+    private String buildHintPrompt(Quiz quiz, Question question, Long selectedChoiceId) {
+        String topic = quiz != null && !isBlank(quiz.getKeyword()) ? quiz.getKeyword().trim() : "General knowledge";
+        String title = quiz != null && !isBlank(quiz.getTitre()) ? quiz.getTitre().trim() : "Quiz";
+        String selectedChoiceText = findChoiceById(question, selectedChoiceId) != null
+                ? findChoiceById(question, selectedChoiceId).getChoice()
+                : "";
+
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Quiz title: ").append(title).append("\n");
+        prompt.append("Topic: ").append(topic).append("\n");
+        prompt.append("Question: ").append(question.getQuestion().trim()).append("\n");
+        prompt.append("Answer candidates:\n");
+
+        char label = 'A';
+        for (Choice choice : question.getChoices()) {
+            if (choice != null && !isBlank(choice.getChoice())) {
+                prompt.append(label).append(". ").append(choice.getChoice().trim()).append("\n");
+                label++;
+            }
+        }
+
+        if (!isBlank(selectedChoiceText)) {
+            prompt.append("Current learner selection: ").append(selectedChoiceText.trim()).append("\n");
+        }
+
+        prompt.append("""
+                Write exactly one short hint for this question.
+                Requirements:
+                - 1 sentence only
+                - help the learner get closer conceptually
+                - do not reveal or imply the right answer
+                - do not refer to any answer candidate directly
+                - do not say option, choice, eliminate, rule out, correct answer, or wrong answer
+                """);
+        return prompt.toString();
+    }
+
+    private String sanitizeHintText(String hint) {
+        String normalized = hint == null ? "" : hint.trim();
+        if (normalized.isEmpty()) {
+            return normalized;
+        }
+
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if (lower.contains("option")
+                || lower.contains("options")
+                || lower.contains("choice")
+                || lower.contains("choices")
+                || lower.contains("rule out")
+                || lower.contains("ruling out")
+                || lower.contains("eliminate")
+                || lower.contains("correct answer")
+                || lower.contains("wrong answer")) {
+            return "";
+        }
+
+        return normalized.replaceAll("\\s+", " ");
+    }
+
+    private String buildQuestionMetadataPrompt(String quizKeyword, String quizTitle, String questionText, List<String> choices) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Quiz title: ").append(quizTitle).append("\n");
+        prompt.append("Quiz keyword: ").append(quizKeyword).append("\n");
+        prompt.append("Question: ").append(questionText).append("\n");
+        if (choices != null && !choices.isEmpty()) {
+            prompt.append("Choices:\n");
+            char label = 'A';
+            for (String choice : choices) {
+                prompt.append(label).append(". ").append(choice).append("\n");
+                label++;
+            }
+        }
+        prompt.append("""
+                Classify this question.
+                Rules:
+                - TOPIC should be short and specific
+                - use the actual subject of the question, not a generic label
+                - DIFFICULTY must be exactly one of: Easy, Medium, Hard
+                """);
+        return prompt.toString();
+    }
+
+    private Optional<QuestionMetadata> parseQuestionMetadata(String content, String fallbackTopic) {
+        Matcher topicMatcher = METADATA_TOPIC_PATTERN.matcher(content);
+        Matcher difficultyMatcher = METADATA_DIFFICULTY_PATTERN.matcher(content);
+        boolean hasTopic = topicMatcher.find();
+        boolean hasDifficulty = difficultyMatcher.find();
+        if (!hasTopic && !hasDifficulty) {
+            return Optional.empty();
+        }
+
+        String topic = hasTopic ? topicMatcher.group(1).trim() : fallbackTopic;
+        String difficulty = hasDifficulty ? difficultyMatcher.group(1).trim() : "Medium";
+        topic = safeText(topic, fallbackTopic);
+        difficulty = normalizeDifficultyLabel(difficulty);
+        return Optional.of(new QuestionMetadata(topic, difficulty));
+    }
+
+    private QuestionMetadata buildFallbackMetadata(String fallbackTopic, String questionText, List<String> choices) {
+        String normalizedQuestion = questionText == null ? "" : questionText.toLowerCase(Locale.ROOT);
+        int signalScore = normalizedQuestion.length();
+        if (choices != null) {
+            signalScore += choices.stream().mapToInt(choice -> choice == null ? 0 : choice.length()).sum() / Math.max(1, choices.size());
+        }
+
+        String difficulty;
+        if (signalScore < 90 && !normalizedQuestion.contains("why") && !normalizedQuestion.contains("best")) {
+            difficulty = "Easy";
+        } else if (signalScore > 180 || normalizedQuestion.contains("why") || normalizedQuestion.contains("distractor")) {
+            difficulty = "Hard";
+        } else {
+            difficulty = "Medium";
+        }
+
+        String topic = fallbackTopic;
+        if (normalizedQuestion.contains("life")) {
+            topic = "Life";
+        } else if (normalizedQuestion.contains("russian")) {
+            topic = "Russian";
+        } else if (normalizedQuestion.contains("valorant")) {
+            topic = "Valorant";
+        }
+
+        return new QuestionMetadata(topic, difficulty);
+    }
+
+    private String normalizeDifficultyLabel(String difficulty) {
+        if (isBlank(difficulty)) {
+            return "Medium";
+        }
+        String normalized = difficulty.trim().toLowerCase(Locale.ROOT);
+        if ("easy".equals(normalized)) {
+            return "Easy";
+        }
+        if ("hard".equals(normalized)) {
+            return "Hard";
+        }
+        return "Medium";
     }
 
     private Optional<Quiz> tryGenerateQuizDraftWithOpenAi(String topic, String title, int questionCount, String difficulty) {
@@ -237,7 +528,7 @@ public class AiQuizAssistantService {
 
         templates.add(new QuestionTemplate(
                 "Which statement best describes the main goal of " + topic + "?",
-                "Pick the option that explains the purpose, not just a tool or side effect.",
+                "Focus on the main purpose, not just a tool or side effect.",
                 "The correct answer defines the core purpose of " + topic + " at a high level.",
                 "To solve a clearly identified learning or practical need",
                 "To make every task fully automatic without review",
@@ -258,8 +549,8 @@ public class AiQuizAssistantService {
         ));
 
         templates.add(new QuestionTemplate(
-                "Which option is the best sign that someone understands " + topic + "?",
-                "Real understanding shows up when the person can explain choices clearly.",
+                "Which sign best shows that someone understands " + topic + "?",
+                "Real understanding shows up when the person can explain the concept clearly.",
                 "Explaining reasoning and applying the concept correctly is a stronger signal than memorizing isolated facts.",
                 "They can justify why one solution fits better than the others",
                 "They repeat keywords without context",
@@ -383,6 +674,9 @@ public class AiQuizAssistantService {
     }
 
     public record GeneratedQuizDraft(Quiz quiz, String provider) {
+    }
+
+    public record QuestionMetadata(String topic, String difficulty) {
     }
 
     private record QuestionTemplate(

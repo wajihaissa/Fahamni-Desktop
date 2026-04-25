@@ -1,7 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
 import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -26,13 +25,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class BackofficeQuizController {
 
     @FXML private TableView<Quiz> quizzesTable;
-    @FXML private TableColumn<Quiz, Long> idColumn;
     @FXML private TableColumn<Quiz, String> titleColumn;
     @FXML private TableColumn<Quiz, String> keywordColumn;
     @FXML private TableColumn<Quiz, Integer> questionsColumn;
@@ -66,14 +66,14 @@ public class BackofficeQuizController {
     private Quiz selectedQuiz = null;
     private int selectedQuestionIndex = -1;
     private static final int MAX_QUESTIONS = 5;
+    private static final int MIN_TITLE_LENGTH = 3;
+    private static final int MIN_KEYWORD_LENGTH = 2;
+    private static final int MIN_QUESTION_LENGTH = 10;
 
     @FXML
     private void initialize() {
         quizzesTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         quizzesTable.setFixedCellSize(40);
-
-        idColumn.setCellValueFactory(cell ->
-                new SimpleLongProperty(cell.getValue().getId()).asObject());
 
         titleColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(cell.getValue().getTitre()));
@@ -102,7 +102,6 @@ public class BackofficeQuizController {
         lastScoreColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(getLastScoreLabel(cell.getValue())));
 
-        idColumn.setCellFactory(tc -> createCell(Pos.CENTER));
         titleColumn.setCellFactory(tc -> createCell(Pos.CENTER_LEFT));
         keywordColumn.setCellFactory(tc -> createCell(Pos.CENTER_LEFT));
         questionsColumn.setCellFactory(tc -> createCell(Pos.CENTER));
@@ -132,13 +131,9 @@ public class BackofficeQuizController {
 
     @FXML
     public void handleCreateQuiz(ActionEvent event) {
-        if (titleField.getText().trim().isEmpty() || keywordField.getText().trim().isEmpty()) {
-            showFeedback("Veuillez remplir le titre et le mot-cle", true);
-            return;
-        }
-
-        if (currentQuestions.isEmpty()) {
-            showFeedback("Veuillez ajouter au moins une question", true);
+        String quizValidationError = validateQuizForm();
+        if (quizValidationError != null) {
+            showFeedback(quizValidationError, true);
             return;
         }
 
@@ -175,14 +170,9 @@ public class BackofficeQuizController {
             return;
         }
 
-        if (questionField.getText().trim().isEmpty()) {
-            showFeedback("Veuillez entrer une question", true);
-            return;
-        }
-
-        if (choice1Field.getText().trim().isEmpty() || choice2Field.getText().trim().isEmpty()
-                || choice3Field.getText().trim().isEmpty() || choice4Field.getText().trim().isEmpty()) {
-            showFeedback("Veuillez remplir tous les choix", true);
+        String questionValidationError = validateQuestionEditor(isEditing);
+        if (questionValidationError != null) {
+            showFeedback(questionValidationError, true);
             return;
         }
 
@@ -227,13 +217,9 @@ public class BackofficeQuizController {
             return;
         }
 
-        if (titleField.getText().trim().isEmpty() || keywordField.getText().trim().isEmpty()) {
-            showFeedback("Veuillez remplir le titre et le mot-cle", true);
-            return;
-        }
-
-        if (currentQuestions.isEmpty()) {
-            showFeedback("Veuillez ajouter au moins une question", true);
+        String quizValidationError = validateQuizForm();
+        if (quizValidationError != null) {
+            showFeedback(quizValidationError, true);
             return;
         }
 
@@ -285,12 +271,11 @@ public class BackofficeQuizController {
 
     @FXML
     public void handleGenerateQuizWithAi(ActionEvent event) {
-        String title = titleField.getText() != null ? titleField.getText().trim() : "";
-        String topic = keywordField.getText() != null && !keywordField.getText().trim().isEmpty()
-                ? keywordField.getText().trim()
-                : title;
+        String title = normalizeText(titleField.getText());
+        String keyword = normalizeText(keywordField.getText());
+        String topic = keyword != null ? keyword : title;
 
-        if (topic.isEmpty()) {
+        if (topic == null || topic.isBlank()) {
             showFeedback("Ajoutez un titre ou un mot-cle avant la generation IA", true);
             return;
         }
@@ -315,6 +300,12 @@ public class BackofficeQuizController {
         keywordField.setText(generatedQuiz.getKeyword());
         currentQuestions.clear();
         currentQuestions.addAll(generatedQuiz.getQuestions());
+        String generatedQuizError = validateAndNormalizeCurrentQuestions();
+        if (generatedQuizError != null) {
+            currentQuestions.clear();
+            showFeedback("Le quiz genere doit etre corrige avant usage : " + generatedQuizError, true);
+            return;
+        }
         clearQuestionEditor();
         updateQuestionsList();
         showFeedback("Quiz genere avec " + generatedDraft.provider() + ". Verifiez puis enregistrez.", false);
@@ -322,10 +313,13 @@ public class BackofficeQuizController {
 
     private Quiz buildQuizFromForm() {
         Quiz quiz = new Quiz();
-        quiz.setTitre(titleField.getText().trim());
-        quiz.setKeyword(keywordField.getText().trim());
+        String normalizedTitle = normalizeText(titleField.getText());
+        String normalizedKeyword = normalizeText(keywordField.getText());
+        quiz.setTitre(normalizedTitle);
+        quiz.setKeyword(normalizedKeyword);
 
         for (Question question : currentQuestions) {
+            enrichQuestionMetadata(question, normalizedTitle, normalizedKeyword);
             quiz.addQuestion(question);
         }
 
@@ -334,13 +328,13 @@ public class BackofficeQuizController {
 
     private Question buildQuestionFromFields() {
         Question question = new Question();
-        question.setQuestion(questionField.getText().trim());
+        question.setQuestion(normalizeText(questionField.getText()));
 
         String[] choiceTexts = {
-                choice1Field.getText().trim(),
-                choice2Field.getText().trim(),
-                choice3Field.getText().trim(),
-                choice4Field.getText().trim()
+                normalizeText(choice1Field.getText()),
+                normalizeText(choice2Field.getText()),
+                normalizeText(choice3Field.getText()),
+                normalizeText(choice4Field.getText())
         };
         String correctChoice = correctChoiceComboBox.getValue();
 
@@ -352,6 +346,225 @@ public class BackofficeQuizController {
         }
 
         return question;
+    }
+
+    private String validateQuizForm() {
+        String normalizedTitle = normalizeText(titleField.getText());
+        String normalizedKeyword = normalizeText(keywordField.getText());
+
+        titleField.setText(normalizedTitle == null ? "" : normalizedTitle);
+        keywordField.setText(normalizedKeyword == null ? "" : normalizedKeyword);
+
+        if (normalizedTitle == null || normalizedKeyword == null) {
+            return "Veuillez remplir le titre et le mot-cle.";
+        }
+        if (normalizedTitle.length() < MIN_TITLE_LENGTH) {
+            return "Le titre doit contenir au moins " + MIN_TITLE_LENGTH + " caracteres.";
+        }
+        if (normalizedKeyword.length() < MIN_KEYWORD_LENGTH) {
+            return "Le mot-cle doit contenir au moins " + MIN_KEYWORD_LENGTH + " caracteres.";
+        }
+        if (!containsLettersOrDigits(normalizedKeyword)) {
+            return "Le mot-cle doit contenir des lettres ou des chiffres utiles.";
+        }
+        if (isDuplicateQuizTitle(normalizedTitle)) {
+            return "Un autre quiz utilise deja ce titre.";
+        }
+        if (currentQuestions.isEmpty()) {
+            return "Veuillez ajouter au moins une question.";
+        }
+
+        return validateAndNormalizeCurrentQuestions();
+    }
+
+    private String validateQuestionEditor(boolean isEditing) {
+        String normalizedQuestion = normalizeText(questionField.getText());
+        String normalizedChoice1 = normalizeText(choice1Field.getText());
+        String normalizedChoice2 = normalizeText(choice2Field.getText());
+        String normalizedChoice3 = normalizeText(choice3Field.getText());
+        String normalizedChoice4 = normalizeText(choice4Field.getText());
+
+        questionField.setText(normalizedQuestion == null ? "" : normalizedQuestion);
+        choice1Field.setText(normalizedChoice1 == null ? "" : normalizedChoice1);
+        choice2Field.setText(normalizedChoice2 == null ? "" : normalizedChoice2);
+        choice3Field.setText(normalizedChoice3 == null ? "" : normalizedChoice3);
+        choice4Field.setText(normalizedChoice4 == null ? "" : normalizedChoice4);
+
+        if (normalizedQuestion == null) {
+            return "Veuillez entrer une question.";
+        }
+        if (normalizedQuestion.length() < MIN_QUESTION_LENGTH) {
+            return "La question doit etre plus precise (au moins " + MIN_QUESTION_LENGTH + " caracteres).";
+        }
+        if (looksLikePlaceholder(normalizedQuestion)) {
+            return "La question semble etre un texte de test. Remplacez-la par un vrai enonce.";
+        }
+
+        List<String> normalizedChoices = List.of(normalizedChoice1, normalizedChoice2, normalizedChoice3, normalizedChoice4);
+        if (normalizedChoices.stream().anyMatch(choice -> choice == null || choice.isBlank())) {
+            return "Veuillez remplir tous les choix.";
+        }
+        if (normalizedChoices.stream().anyMatch(this::looksLikePlaceholderChoice)) {
+            return "Remplacez les choix generiques par de vraies reponses.";
+        }
+
+        Set<String> uniqueChoices = new HashSet<>();
+        for (String choice : normalizedChoices) {
+            if (!uniqueChoices.add(choice.toLowerCase(Locale.ROOT))) {
+                return "Les choix d'une meme question doivent etre differents.";
+            }
+        }
+
+        if (hasDuplicateQuestion(normalizedQuestion, isEditing ? selectedQuestionIndex : -1)) {
+            return "Cette question existe deja dans ce quiz.";
+        }
+
+        return null;
+    }
+
+    private String validateAndNormalizeCurrentQuestions() {
+        Set<String> normalizedQuestions = new HashSet<>();
+
+        for (Question question : currentQuestions) {
+            if (question == null) {
+                return "Une question est invalide.";
+            }
+
+            String normalizedQuestion = normalizeText(question.getQuestion());
+            question.setQuestion(normalizedQuestion);
+            if (normalizedQuestion == null || normalizedQuestion.length() < MIN_QUESTION_LENGTH) {
+                return "Chaque question doit contenir au moins " + MIN_QUESTION_LENGTH + " caracteres.";
+            }
+            if (looksLikePlaceholder(normalizedQuestion)) {
+                return "Une question contient encore un texte trop generique.";
+            }
+            if (!normalizedQuestions.add(normalizedQuestion.toLowerCase(Locale.ROOT))) {
+                return "Deux questions du quiz sont identiques.";
+            }
+
+            List<Choice> choices = question.getChoices();
+            if (choices == null || choices.size() < 2) {
+                return "Chaque question doit contenir au moins deux choix.";
+            }
+
+            int correctAnswers = 0;
+            Set<String> normalizedChoices = new HashSet<>();
+            for (Choice choice : choices) {
+                if (choice == null) {
+                    return "Un choix de reponse est invalide.";
+                }
+
+                String normalizedChoice = normalizeText(choice.getChoice());
+                choice.setChoice(normalizedChoice);
+                if (normalizedChoice == null) {
+                    return "Tous les choix doivent etre renseignes.";
+                }
+                if (looksLikePlaceholderChoice(normalizedChoice)) {
+                    return "Un choix contient encore un texte generique.";
+                }
+                if (!normalizedChoices.add(normalizedChoice.toLowerCase(Locale.ROOT))) {
+                    return "Les choix d'une meme question doivent etre differents.";
+                }
+                if (Boolean.TRUE.equals(choice.getIsCorrect())) {
+                    correctAnswers++;
+                }
+            }
+
+            if (correctAnswers != 1) {
+                return "Chaque question doit avoir exactement une bonne reponse.";
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isDuplicateQuizTitle(String normalizedTitle) {
+        return quizItems.stream()
+                .filter(quiz -> quiz != null && quiz.getTitre() != null)
+                .anyMatch(quiz -> {
+                    if (selectedQuiz != null && selectedQuiz.getId() != null && selectedQuiz.getId().equals(quiz.getId())) {
+                        return false;
+                    }
+                    return normalizedTitle.equalsIgnoreCase(normalizeText(quiz.getTitre()));
+                });
+    }
+
+    private boolean hasDuplicateQuestion(String normalizedQuestion, int ignoredIndex) {
+        for (int i = 0; i < currentQuestions.size(); i++) {
+            if (i == ignoredIndex) {
+                continue;
+            }
+            Question current = currentQuestions.get(i);
+            if (current != null && normalizedQuestion.equalsIgnoreCase(normalizeText(current.getQuestion()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private boolean containsLettersOrDigits(String value) {
+        return value != null && value.matches(".*[\\p{L}\\p{N}].*");
+    }
+
+    private boolean looksLikePlaceholder(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.equals("question")
+                || normalized.equals("test")
+                || normalized.equals("question test")
+                || normalized.equals("sample question");
+    }
+
+    private boolean looksLikePlaceholderChoice(String value) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.matches("^(choix|option|choice)\\s*[a-d1-4]$")
+                || normalized.equals("reponse")
+                || normalized.equals("answer")
+                || normalized.equals("test");
+    }
+
+    private void enrichQuestionMetadata(Question question, String quizTitle, String quizKeyword) {
+        if (question == null) {
+            return;
+        }
+
+        boolean missingTopic = normalizeText(question.getTopic()) == null;
+        boolean missingDifficulty = normalizeText(question.getDifficulty()) == null;
+        if (!missingTopic && !missingDifficulty) {
+            return;
+        }
+
+        List<String> choiceTexts = question.getChoices().stream()
+                .map(Choice::getChoice)
+                .filter(choice -> choice != null && !choice.isBlank())
+                .toList();
+
+        AiQuizAssistantService.QuestionMetadata metadata = aiQuizAssistantService.inferQuestionMetadata(
+                quizKeyword,
+                quizTitle,
+                question.getQuestion(),
+                choiceTexts
+        );
+
+        if (missingTopic) {
+            question.setTopic(normalizeText(metadata.topic()));
+        }
+        if (missingDifficulty) {
+            question.setDifficulty(normalizeText(metadata.difficulty()));
+        }
     }
 
     private void populateForm(Quiz quiz) {
@@ -490,10 +703,22 @@ public class BackofficeQuizController {
 
     private String getLastScoreLabel(Quiz quiz) {
         return quiz.getQuizResults().stream()
-                .map(r -> r.getPercentage())
-                .filter(p -> p != null)
-                .map(p -> NumberFormat.getPercentInstance(Locale.FRANCE).format(p / 100.0))
-                .findFirst()
+                .filter(result -> result.getPercentage() != null)
+                .max((left, right) -> {
+                    Instant leftCompletedAt = left.getCompletedAt();
+                    Instant rightCompletedAt = right.getCompletedAt();
+                    if (leftCompletedAt == null && rightCompletedAt == null) {
+                        return 0;
+                    }
+                    if (leftCompletedAt == null) {
+                        return -1;
+                    }
+                    if (rightCompletedAt == null) {
+                        return 1;
+                    }
+                    return leftCompletedAt.compareTo(rightCompletedAt);
+                })
+                .map(result -> NumberFormat.getPercentInstance(Locale.FRANCE).format(result.getPercentage() / 100.0))
                 .orElse("-");
     }
 }

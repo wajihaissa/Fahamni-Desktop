@@ -50,7 +50,6 @@
             <Label text="Liste des quiz" styleClass="backoffice-section-title"/>
             <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
                 <columns>
-                    <TableColumn fx:id="idColumn" text="ID"/>
                     <TableColumn fx:id="titleColumn" text="Titre"/>
         <TableColumn fx:id="keywordColumn" text="Mot-clé"/>
                     <TableColumn fx:id="questionsColumn" text="Questions"/>

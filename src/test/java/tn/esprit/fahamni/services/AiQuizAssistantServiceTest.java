@@ -42,4 +42,19 @@ class AiQuizAssistantServiceTest {
         assertFalse(hint.isBlank());
         assertTrue(hint.length() > 10);
     }
+
+    @Test
+    void generateHintDoesNotRuleOutOptions() {
+        Question question = service.generateQuizDraft("Life", "Life Smart Quiz", 3, "Easy")
+                .quiz()
+                .getQuestions()
+                .get(0);
+
+        String hint = service.generateHint(null, question, null).toLowerCase();
+
+        assertFalse(hint.contains("rule out"));
+        assertFalse(hint.contains("ruling out"));
+        assertFalse(hint.contains("option"));
+        assertFalse(hint.contains("choice"));
+    }
 }
