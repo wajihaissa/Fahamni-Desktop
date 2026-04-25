@@ -5,8 +5,11 @@ import java.util.List;
 
 public class Question {
     private Long id;
+    private Long sourceQuestionId;
     private String question;
     private Quiz quiz;
+    private String topic;
+    private String difficulty;
     private String hint;
     private String explanation;
     private final List<Choice> choices;
@@ -23,6 +26,14 @@ public class Question {
         this.id = id;
     }
 
+    public Long getSourceQuestionId() {
+        return sourceQuestionId;
+    }
+
+    public void setSourceQuestionId(Long sourceQuestionId) {
+        this.sourceQuestionId = sourceQuestionId;
+    }
+
     public String getQuestion() {
         return question;
     }
@@ -37,6 +48,22 @@ public class Question {
 
     public void setQuiz(Quiz quiz) {
         this.quiz = quiz;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
+    }
+
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty;
     }
 
     public String getHint() {
