@@ -3,7 +3,10 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox xmlns="http://javafx.com/javafx/17"
@@ -18,14 +21,53 @@
     <Label text="Local Camera Preview"
            style="-fx-text-fill: white; -fx-font-size: 18px; -fx-font-weight: bold;"/>
 
-    <ImageView fx:id="localCameraView"
-               fitWidth="800.0"
-               fitHeight="450.0"
-               preserveRatio="true"
-               smooth="true"
-               style="-fx-background-color: black;"/>
+    <HBox spacing="10.0">
+        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+            <Label text="My Port (Listen)"
+                   style="-fx-text-fill: #cbd5e1; -fx-font-weight: bold;"/>
+            <TextField fx:id="myPortField" promptText="5000" text="5000"/>
+        </VBox>
+        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+            <Label text="Target IP"
+                   style="-fx-text-fill: #cbd5e1; -fx-font-weight: bold;"/>
+            <TextField fx:id="targetIpField" promptText="192.168.1.100"/>
+        </VBox>
+        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+            <Label text="Target Port"
+                   style="-fx-text-fill: #cbd5e1; -fx-font-weight: bold;"/>
+            <TextField fx:id="targetPortField" promptText="5000" text="5000"/>
+        </VBox>
+    </HBox>
 
-    <Button text="Stop Preview"
-            onAction="#stopPreview"
-            style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    <HBox spacing="10.0">
+        <Button text="Start Call"
+                onAction="#startCall"
+                style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="End Call"
+                onAction="#endCall"
+                style="-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <HBox spacing="12.0" HBox.hgrow="ALWAYS">
+        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+            <Label text="Local Camera"
+                   style="-fx-text-fill: #e2e8f0; -fx-font-weight: bold;"/>
+            <ImageView fx:id="localCameraView"
+                       fitWidth="520.0"
+                       fitHeight="320.0"
+                       preserveRatio="true"
+                       smooth="true"
+                       style="-fx-background-color: black;"/>
+        </VBox>
+        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+            <Label text="Remote Camera"
+                   style="-fx-text-fill: #e2e8f0; -fx-font-weight: bold;"/>
+            <ImageView fx:id="remoteCameraView"
+                       fitWidth="520.0"
+                       fitHeight="320.0"
+                       preserveRatio="true"
+                       smooth="true"
+                       style="-fx-background-color: black;"/>
+        </VBox>
+    </HBox>
 </VBox>

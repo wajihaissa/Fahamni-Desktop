@@ -20,6 +20,15 @@ public class LocalCameraService {
      * Starts camera capture on a background thread and pushes JavaFX images to the callback.
      */
     public void startPreview(Consumer<Image> onFrameReady) {
+        startPreview(onFrameReady, null);
+    }
+
+    /**
+     * Starts camera capture on a background thread.
+     * onFrameReady: pushes JavaFX Image for local UI preview.
+     * onRawFrameReady: pushes BufferedImage for network processing (UDP sender).
+     */
+    public void startPreview(Consumer<Image> onFrameReady, Consumer<BufferedImage> onRawFrameReady) {
         if (running) {
             return;
         }
@@ -48,6 +57,11 @@ public class LocalCameraService {
                     BufferedImage bufferedImage = frameConverter.convert(frame);
                     if (bufferedImage == null) {
                         continue;
+                    }
+
+                    // Give raw frames to networking code (if provided).
+                    if (onRawFrameReady != null) {
+                        onRawFrameReady.accept(bufferedImage);
                     }
 
                     // Convert BufferedImage -> JavaFX Image.
