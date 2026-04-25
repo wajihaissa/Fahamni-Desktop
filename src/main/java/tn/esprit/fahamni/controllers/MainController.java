@@ -42,6 +42,9 @@ public class MainController {
     private Button coursButton;
 
     @FXML
+    private Button callLabButton;
+
+    @FXML
     private void initialize() {
         System.out.println("MainController initialized");
         // Initialize the ViewNavigator with references to contentPane and pageTitle
@@ -100,6 +103,12 @@ public class MainController {
     }
 
     @FXML
+    private void showCallLab() {
+        loadView("VideoChatView.fxml", "Call Lab");
+        setActiveButton(callLabButton);
+    }
+
+    @FXML
     private void handleLogout() {
         try {
             Main.showLogin();
@@ -110,14 +119,7 @@ public class MainController {
 
     private void loadView(String fxmlFile, String title) {
         try {
-            Node view = SceneManager.loadView(Main.class, SceneManager.frontofficeView(fxmlFile));
-            contentPane.getChildren().clear();
-            AnchorPane.setTopAnchor(view, 0.0);
-            AnchorPane.setBottomAnchor(view, 0.0);
-            AnchorPane.setLeftAnchor(view, 0.0);
-            AnchorPane.setRightAnchor(view, 0.0);
-            contentPane.getChildren().add(view);
-            pageTitle.setText(title);
+            ViewNavigator.getInstance().loadView(SceneManager.frontofficeView(fxmlFile), title);
         } catch (Exception e) {
             e.printStackTrace();
             // For now, show a placeholder
@@ -138,6 +140,7 @@ public class MainController {
         quizButton.getStyleClass().remove("active");
         blogButton.getStyleClass().remove("active");
         coursButton.getStyleClass().remove("active");
+        callLabButton.getStyleClass().remove("active");
 
         // Set active
         if (!activeButton.getStyleClass().contains("active")) {
