@@ -131,25 +131,11 @@ public class AdaptiveQuizService {
         String difficulty = normalizeDifficulty(question.getDifficulty());
         double topicWeight = topicWeaknessScores.getOrDefault(topic, 45.0);
 
-        double accuracyPenalty = performance == null ? 18.0 : (100.0 - performance.getAccuracyRate()) * 0.65;
-        double retryBonus = performance == null ? 22.0 : Math.min(performance.getIncorrectAnswers() * 9.0, 30.0);
-        double noveltyBonus = performance == null ? 16.0 : Math.max(0.0, 12.0 - (performance.getAttempts() * 2.0));
-        double freshnessPenalty = 0.0;
-
-        if (performance != null && performance.getLastAnsweredAt() != null) {
-            long daysSinceLastSeen = ChronoUnit.DAYS.between(performance.getLastAnsweredAt(), Instant.now());
-            if (daysSinceLastSeen < 2) {
-                freshnessPenalty = 14.0;
-            } else if (daysSinceLastSeen < 7) {
-                freshnessPenalty = 6.0;
-            }
-        }
-
-        double difficultyFit = switch (difficulty) {
-            case "Hard" -> targetDifficultyDistribution.getOrDefault("Hard", 0) > 0 ? 12.0 : -5.0;
-            case "Easy" -> targetDifficultyDistribution.getOrDefault("Easy", 0) > 0 ? 10.0 : -4.0;
-            default -> targetDifficultyDistribution.getOrDefault("Medium", 0) > 0 ? 14.0 : 0.0;
-        };
+        double accuracyPenalty = computeAccuracyPenalty(performance);
+        double retryBonus = computeRetryBonus(performance);
+        double noveltyBonus = computeNoveltyBonus(performance);
+        double freshnessPenalty = computeFreshnessPenalty(performance);
+        double difficultyFit = computeDifficultyFit(difficulty, targetDifficultyDistribution);
 
         return topicWeight + accuracyPenalty + retryBonus + noveltyBonus + difficultyFit - freshnessPenalty;
     }
@@ -296,6 +282,41 @@ public class AdaptiveQuizService {
         String userToken = user.getId() != null ? String.valueOf(user.getId()) : "user";
         String timeToken = String.valueOf(createdAt.getEpochSecond());
         return "adaptive-" + sanitizedTopic + "-" + userToken + "-" + timeToken;
+    }
+
+    private double computeAccuracyPenalty(QuizQuestionPerformance performance) {
+        return performance == null ? 18.0 : (100.0 - performance.getAccuracyRate()) * 0.65;
+    }
+
+    private double computeRetryBonus(QuizQuestionPerformance performance) {
+        return performance == null ? 22.0 : Math.min(performance.getIncorrectAnswers() * 9.0, 30.0);
+    }
+
+    private double computeNoveltyBonus(QuizQuestionPerformance performance) {
+        return performance == null ? 16.0 : Math.max(0.0, 12.0 - (performance.getAttempts() * 2.0));
+    }
+
+    private double computeFreshnessPenalty(QuizQuestionPerformance performance) {
+        if (performance == null || performance.getLastAnsweredAt() == null) {
+            return 0.0;
+        }
+
+        long daysSinceLastSeen = ChronoUnit.DAYS.between(performance.getLastAnsweredAt(), Instant.now());
+        if (daysSinceLastSeen < 2) {
+            return 14.0;
+        }
+        if (daysSinceLastSeen < 7) {
+            return 6.0;
+        }
+        return 0.0;
+    }
+
+    private double computeDifficultyFit(String difficulty, Map<String, Integer> targetDifficultyDistribution) {
+        return switch (difficulty) {
+            case "Hard" -> targetDifficultyDistribution.getOrDefault("Hard", 0) > 0 ? 12.0 : -5.0;
+            case "Easy" -> targetDifficultyDistribution.getOrDefault("Easy", 0) > 0 ? 10.0 : -4.0;
+            default -> targetDifficultyDistribution.getOrDefault("Medium", 0) > 0 ? 14.0 : 0.0;
+        };
     }
 
     private String normalizeTopic(String topic) {
