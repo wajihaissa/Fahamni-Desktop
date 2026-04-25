@@ -100,19 +100,7 @@ public class QuizAnalyticsService {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    QuizLeaderboardEntry entry = new QuizLeaderboardEntry();
-                    entry.setRank(rs.getInt("leaderboard_rank"));
-                    entry.setUserId(rs.getInt("user_id"));
-                    entry.setUserName(rs.getString("user_name"));
-                    entry.setUserEmail(rs.getString("user_email"));
-                    entry.setAttempts(rs.getInt("attempts"));
-                    entry.setAveragePercentage(rs.getDouble("average_percentage"));
-                    entry.setBestPercentage(rs.getDouble("best_percentage"));
-                    entry.setPassRate(rs.getDouble("pass_rate"));
-                    entry.setConsistencyScore(rs.getDouble("consistency_score"));
-                    entry.setImprovementScore(rs.getDouble("improvement_score"));
-                    entry.setWeightedScore(rs.getDouble("weighted_score"));
-                    entries.add(entry);
+                    entries.add(mapLeaderboardEntry(rs));
                 }
             }
         } catch (SQLException e) {
@@ -275,17 +263,7 @@ public class QuizAnalyticsService {
             stmt.setInt(1, userId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    QuizQuestionPerformance performance = new QuizQuestionPerformance();
-                    performance.setQuestionId(rs.getLong("question_id"));
-                    performance.setTopic(rs.getString("topic"));
-                    performance.setDifficulty(rs.getString("difficulty"));
-                    performance.setAttempts(rs.getInt("attempts"));
-                    performance.setCorrectAnswers(rs.getInt("correct_answers"));
-                    performance.setIncorrectAnswers(rs.getInt("incorrect_answers"));
-                    performance.setAccuracyRate(rs.getDouble("accuracy_rate"));
-                    Timestamp lastAnsweredAt = rs.getTimestamp("last_answered_at");
-                    performance.setLastAnsweredAt(lastAnsweredAt != null ? lastAnsweredAt.toInstant() : null);
-                    performances.add(performance);
+                    performances.add(mapQuestionPerformance(rs));
                 }
             }
         } catch (SQLException e) {
@@ -306,5 +284,35 @@ public class QuizAnalyticsService {
             return "Easy";
         }
         return "Medium";
+    }
+
+    private QuizLeaderboardEntry mapLeaderboardEntry(ResultSet rs) throws SQLException {
+        QuizLeaderboardEntry entry = new QuizLeaderboardEntry();
+        entry.setRank(rs.getInt("leaderboard_rank"));
+        entry.setUserId(rs.getInt("user_id"));
+        entry.setUserName(rs.getString("user_name"));
+        entry.setUserEmail(rs.getString("user_email"));
+        entry.setAttempts(rs.getInt("attempts"));
+        entry.setAveragePercentage(rs.getDouble("average_percentage"));
+        entry.setBestPercentage(rs.getDouble("best_percentage"));
+        entry.setPassRate(rs.getDouble("pass_rate"));
+        entry.setConsistencyScore(rs.getDouble("consistency_score"));
+        entry.setImprovementScore(rs.getDouble("improvement_score"));
+        entry.setWeightedScore(rs.getDouble("weighted_score"));
+        return entry;
+    }
+
+    private QuizQuestionPerformance mapQuestionPerformance(ResultSet rs) throws SQLException {
+        QuizQuestionPerformance performance = new QuizQuestionPerformance();
+        performance.setQuestionId(rs.getLong("question_id"));
+        performance.setTopic(rs.getString("topic"));
+        performance.setDifficulty(rs.getString("difficulty"));
+        performance.setAttempts(rs.getInt("attempts"));
+        performance.setCorrectAnswers(rs.getInt("correct_answers"));
+        performance.setIncorrectAnswers(rs.getInt("incorrect_answers"));
+        performance.setAccuracyRate(rs.getDouble("accuracy_rate"));
+        Timestamp lastAnsweredAt = rs.getTimestamp("last_answered_at");
+        performance.setLastAnsweredAt(lastAnsweredAt != null ? lastAnsweredAt.toInstant() : null);
+        return performance;
     }
 }
