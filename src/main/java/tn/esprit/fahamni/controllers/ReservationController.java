@@ -2054,17 +2054,53 @@ public class ReservationController {
         VBox cardBox = new VBox(14.0);
         cardBox.getStyleClass().addAll("reservation-form-shell", "matching-swipe-card");
 
-        HBox titleRow = new HBox(10.0);
+        VBox heroCard = new VBox(12.0);
+        heroCard.getStyleClass().addAll("matching-hero-card", "matching-hero-card-student");
+
+        HBox titleRow = new HBox(14.0);
+        titleRow.getStyleClass().add("matching-hero-header");
+
+        StackPane avatarBadge = buildMatchingAvatarBadge(card.tutorName(), "matching-avatar-badge-student");
+
+        VBox identityBox = new VBox(4.0);
+        identityBox.getStyleClass().add("matching-hero-content");
+
+        Label eyebrowLabel = new Label("PROFIL COMPATIBLE");
+        eyebrowLabel.getStyleClass().add("matching-hero-eyebrow");
+
         Label tutorNameLabel = new Label(card.tutorName());
-        tutorNameLabel.getStyleClass().add("subsection-title");
+        tutorNameLabel.getStyleClass().addAll("subsection-title", "matching-hero-title");
+
+        Label heroSubtitleLabel = new Label(buildStudentMatchingHeroSubtitle(card, state.needProfile));
+        heroSubtitleLabel.setWrapText(true);
+        heroSubtitleLabel.getStyleClass().add("matching-hero-subtitle");
+        identityBox.getChildren().addAll(eyebrowLabel, tutorNameLabel, heroSubtitleLabel);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         titleRow.getChildren().addAll(
-            tutorNameLabel,
+            avatarBadge,
+            identityBox,
             spacer,
-            buildChoiceChip(resolveMatchingConfidenceLabel(card.score())),
-            buildChoiceChipHighlight(Math.round(card.score()) + "/100")
+            buildMatchingScoreBox(card.score(), resolveMatchingConfidenceLabel(card.score()))
         );
+
+        FlowPane heroChipRow = new FlowPane(8.0, 8.0);
+        heroChipRow.getStyleClass().add("matching-hero-chip-row");
+        heroChipRow.getChildren().addAll(
+            buildChoiceChip(resolveMatchingConfidenceLabel(card.score())),
+            buildChoiceChipHighlight(Math.round(card.score()) + "/100"),
+            buildChoiceChip(card.matchingModeSessions() > 0 ? "Format coherent" : "Format compatible")
+        );
+
+        FlowPane metricRow = new FlowPane(10.0, 10.0);
+        metricRow.getStyleClass().add("matching-metric-row");
+        metricRow.getChildren().addAll(
+            buildMatchingMetricCard(String.valueOf(card.subjectSessions()), "Seances matiere"),
+            buildMatchingMetricCard(String.valueOf(card.totalSessions()), "Seances total"),
+            buildMatchingMetricCard(String.valueOf(card.acceptedReservations()), "Reservations OK")
+        );
+        heroCard.getChildren().addAll(titleRow, heroChipRow, metricRow);
 
         Label metaLabel = new Label(
             card.subjectSessions() + " seance(s) deja animee(s) dans la matiere"
@@ -2084,6 +2120,15 @@ public class ReservationController {
                 .map(keyword -> buildChoiceChipHighlight("Focus " + keyword))
                 .forEach(insightRow.getChildren()::add);
         }
+        if (insightRow.getChildren().isEmpty()) {
+            insightRow.getChildren().add(buildChoiceChip("Analyse intelligente active"));
+        }
+
+        VBox spotlightPanel = buildMatchingSpotlightPanel(
+            "Lecture rapide",
+            buildStudentMatchingSpotlight(card, state.needProfile),
+            "matching-spotlight-panel-student"
+        );
 
         VBox aiPanel = new VBox(8.0);
         aiPanel.getStyleClass().add("matching-ai-panel");
@@ -2114,14 +2159,19 @@ public class ReservationController {
             .forEach(signalsRow.getChildren()::add);
 
         HBox actionRow = new HBox(10.0);
+        actionRow.getStyleClass().add("matching-action-row");
         Button passButton = new Button("Passer");
-        passButton.getStyleClass().add("backoffice-secondary-button");
+        passButton.getStyleClass().addAll("backoffice-secondary-button", "matching-action-button", "matching-action-pass");
 
         Button interestedButton = new Button("Interesse");
-        interestedButton.getStyleClass().add("backoffice-primary-button");
+        interestedButton.getStyleClass().addAll(
+            "backoffice-primary-button",
+            "matching-action-button",
+            "matching-action-like"
+        );
 
         Button superMatchButton = new Button("Super match");
-        superMatchButton.getStyleClass().add("backoffice-edit-button");
+        superMatchButton.getStyleClass().addAll("backoffice-edit-button", "matching-action-button", "matching-action-super");
 
         actionRow.getChildren().addAll(passButton, interestedButton, superMatchButton);
 
@@ -2169,7 +2219,17 @@ public class ReservationController {
             decisionBadge
         ));
 
-        cardBox.getChildren().addAll(titleRow, metaLabel, insightRow, aiPanel, reasonKicker, reasonLabel, signalsRow, actionRow);
+        cardBox.getChildren().addAll(
+            heroCard,
+            metaLabel,
+            insightRow,
+            spotlightPanel,
+            aiPanel,
+            reasonKicker,
+            reasonLabel,
+            signalsRow,
+            actionRow
+        );
         installStudentSwipeInteractions(
             swipeSurface,
             card,
@@ -2284,19 +2344,55 @@ public class ReservationController {
         VBox card = new VBox(14.0);
         card.getStyleClass().addAll("reservation-form-shell", "matching-swipe-card");
 
-        HBox titleRow = new HBox(10.0);
+        VBox heroCard = new VBox(12.0);
+        heroCard.getStyleClass().addAll("matching-hero-card", "matching-hero-card-tutor");
+
+        HBox titleRow = new HBox(14.0);
+        titleRow.getStyleClass().add("matching-hero-header");
+
+        StackPane avatarBadge = buildMatchingAvatarBadge(item.participantName(), "matching-avatar-badge-tutor");
+
+        VBox identityBox = new VBox(4.0);
+        identityBox.getStyleClass().add("matching-hero-content");
+
+        Label eyebrowLabel = new Label("DEMANDE ETUDIANT");
+        eyebrowLabel.getStyleClass().add("matching-hero-eyebrow");
+
         Label subjectLabel = new Label(safeText(item.subject()));
-        subjectLabel.getStyleClass().add("subsection-title");
+        subjectLabel.getStyleClass().addAll("subsection-title", "matching-hero-title");
+
+        Label heroSubtitleLabel = new Label(buildTutorMatchingHeroSubtitle(item));
+        heroSubtitleLabel.setWrapText(true);
+        heroSubtitleLabel.getStyleClass().add("matching-hero-subtitle");
+        identityBox.getChildren().addAll(eyebrowLabel, subjectLabel, heroSubtitleLabel);
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         titleRow.getChildren().addAll(
-            subjectLabel,
+            avatarBadge,
+            identityBox,
             spacer,
+            buildMatchingScoreBox(item.compatibilityScore(), resolveMatchingConfidenceLabel(item.compatibilityScore()))
+        );
+
+        FlowPane heroChipRow = new FlowPane(8.0, 8.0);
+        heroChipRow.getStyleClass().add("matching-hero-chip-row");
+        heroChipRow.getChildren().addAll(
             item.studentDecision() == MatchingService.DECISION_SUPER
                 ? buildChoiceChipHighlight("Super match")
                 : buildChoiceChip("Interesse"),
-            buildChoiceChipHighlight(Math.round(item.compatibilityScore()) + "/100")
+            buildChoiceChipHighlight(Math.round(item.compatibilityScore()) + "/100"),
+            buildChoiceChip(formatMatchingVisibility(item.visibilityScope()))
         );
+
+        FlowPane metricRow = new FlowPane(10.0, 10.0);
+        metricRow.getStyleClass().add("matching-metric-row");
+        metricRow.getChildren().addAll(
+            buildMatchingMetricCard(item.durationMin() + " min", "Duree"),
+            buildMatchingMetricCard(mapModeLabel(item.mode()), "Format"),
+            buildMatchingMetricCard(resolveMatchingPriorityLabel(item.studentDecision()), "Priorite")
+        );
+        heroCard.getChildren().addAll(titleRow, heroChipRow, metricRow);
 
         Label metaLabel = new Label(
             "Etudiant: " + item.participantName()
@@ -2323,6 +2419,14 @@ public class ReservationController {
         aiDecisionLabel.getStyleClass().addAll("reservation-section-copy", "matching-ai-secondary-copy");
         aiPanel.getChildren().addAll(aiKicker, aiSummaryLabel, aiDecisionLabel);
 
+        VBox objectivePanel = buildMatchingSpotlightPanel(
+            "Brief etudiant",
+            buildTutorMatchingObjectivePreview(item),
+            item.studentDecision() == MatchingService.DECISION_SUPER
+                ? "matching-spotlight-panel-priority"
+                : "matching-spotlight-panel-tutor"
+        );
+
         Label summaryLabel = new Label(buildTutorMatchingRequestSummary(item));
         summaryLabel.setWrapText(true);
         summaryLabel.getStyleClass().add("reservation-section-copy");
@@ -2346,8 +2450,9 @@ public class ReservationController {
         detailLabel.getStyleClass().add("reservation-section-copy");
 
         HBox actionRow = new HBox(10.0);
+        actionRow.getStyleClass().add("matching-action-row");
         Button refuseButton = new Button("Refuser");
-        refuseButton.getStyleClass().add("backoffice-secondary-button");
+        refuseButton.getStyleClass().addAll("backoffice-secondary-button", "matching-action-button", "matching-action-pass");
         refuseButton.setOnAction(event -> {
             OperationResult result = matchingService.refuseTutorMatch(item.candidateId(), getCurrentTutorId());
             setInlineFeedback(feedbackLabel, result.getMessage(), result.isSuccess());
@@ -2358,7 +2463,11 @@ public class ReservationController {
         });
 
         Button acceptButton = new Button("Accepter et planifier");
-        acceptButton.getStyleClass().add("backoffice-primary-button");
+        acceptButton.getStyleClass().addAll(
+            "backoffice-primary-button",
+            "matching-action-button",
+            "matching-action-accept"
+        );
         acceptButton.setOnAction(event -> {
             MatchingAcceptanceResult result = matchingService.acceptTutorMatch(item.candidateId(), getCurrentTutorId());
             setInlineFeedback(feedbackLabel, result.message(), result.success());
@@ -2371,8 +2480,201 @@ public class ReservationController {
         });
 
         actionRow.getChildren().addAll(refuseButton, acceptButton);
-        card.getChildren().addAll(titleRow, metaLabel, aiPanel, summaryLabel, keywordsRow, detailLabel, actionRow);
+        card.getChildren().addAll(heroCard, metaLabel, objectivePanel, aiPanel, summaryLabel, keywordsRow, detailLabel, actionRow);
         return card;
+    }
+
+    private StackPane buildMatchingAvatarBadge(String sourceText, String toneClass) {
+        StackPane badge = new StackPane();
+        badge.getStyleClass().add("matching-avatar-badge");
+        if (toneClass != null && !toneClass.isBlank()) {
+            badge.getStyleClass().add(toneClass);
+        }
+
+        Label initialsLabel = new Label(resolveMatchingInitials(sourceText));
+        initialsLabel.getStyleClass().add("matching-avatar-text");
+        badge.getChildren().add(initialsLabel);
+        return badge;
+    }
+
+    private VBox buildMatchingScoreBox(double score, String caption) {
+        VBox scoreBox = new VBox(6.0);
+        scoreBox.getStyleClass().add("matching-score-shell");
+
+        Label scoreValueLabel = new Label(Math.round(score) + "/100");
+        scoreValueLabel.getStyleClass().add("matching-score-value");
+
+        Label captionLabel = new Label(safeText(caption));
+        captionLabel.setWrapText(true);
+        captionLabel.setMaxWidth(150.0);
+        captionLabel.getStyleClass().add("matching-score-caption");
+
+        ProgressBar scoreBar = new ProgressBar(Math.max(0.0, Math.min(1.0, score / 100.0)));
+        scoreBar.setMaxWidth(Double.MAX_VALUE);
+        scoreBar.getStyleClass().addAll("matching-score-progress", resolveMatchingScoreProgressStyle(score));
+
+        scoreBox.getChildren().addAll(scoreValueLabel, captionLabel, scoreBar);
+        return scoreBox;
+    }
+
+    private VBox buildMatchingMetricCard(String value, String label) {
+        VBox metricCard = new VBox(4.0);
+        metricCard.getStyleClass().add("matching-metric-card");
+        metricCard.setMinWidth(118.0);
+        metricCard.setPrefWidth(132.0);
+        metricCard.setMaxWidth(Double.MAX_VALUE);
+
+        Label valueLabel = new Label(safeText(value));
+        valueLabel.setWrapText(true);
+        valueLabel.getStyleClass().add("matching-metric-value");
+
+        Label labelLabel = new Label(safeText(label));
+        labelLabel.setWrapText(true);
+        labelLabel.getStyleClass().add("matching-metric-label");
+
+        metricCard.getChildren().addAll(valueLabel, labelLabel);
+        return metricCard;
+    }
+
+    private VBox buildMatchingSpotlightPanel(String title, String body, String toneClass) {
+        VBox panel = new VBox(6.0);
+        panel.getStyleClass().add("matching-spotlight-panel");
+        if (toneClass != null && !toneClass.isBlank()) {
+            panel.getStyleClass().add(toneClass);
+        }
+
+        Label titleLabel = new Label(safeText(title));
+        titleLabel.getStyleClass().add("matching-spotlight-title");
+
+        Label bodyLabel = new Label(safeText(body));
+        bodyLabel.setWrapText(true);
+        bodyLabel.getStyleClass().add("matching-spotlight-copy");
+
+        panel.getChildren().addAll(titleLabel, bodyLabel);
+        return panel;
+    }
+
+    private String buildStudentMatchingHeroSubtitle(StudentMatchCard card, MatchingNeedProfile needProfile) {
+        List<String> fragments = new ArrayList<>();
+        String needContext = buildStudentNeedContextLabel(needProfile);
+        if (needContext != null) {
+            fragments.add(needContext);
+        }
+        fragments.add(card.matchingModeSessions() > 0 ? "format deja pratique" : "format compatible confirme");
+        return String.join(" | ", fragments);
+    }
+
+    private String buildStudentMatchingSpotlight(StudentMatchCard card, MatchingNeedProfile needProfile) {
+        if (card == null) {
+            return "Le matching a repere un profil exploitable pour continuer le deck.";
+        }
+
+        List<String> visibleSignals = card.signals() == null
+            ? List.of()
+            : card.signals().stream()
+                .filter(Objects::nonNull)
+                .map(this::normalizeText)
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(2)
+                .toList();
+
+        StringBuilder summary = new StringBuilder();
+        String needSummary = needProfile == null ? null : normalizeText(needProfile.summary());
+        if (needSummary != null) {
+            summary.append(needSummary).append(" ");
+        }
+        summary.append(card.tutorName())
+            .append(" ressort avec ")
+            .append(card.subjectSessions())
+            .append(" seance(s) pertinentes");
+        if (card.matchingModeSessions() > 0) {
+            summary.append(" et un historique deja coherent sur ce format");
+        }
+        if (!visibleSignals.isEmpty()) {
+            summary.append(". Signaux dominants: ").append(String.join(", ", visibleSignals));
+        } else {
+            summary.append(". Le profil reste lisible et directement exploitable pour une decision rapide");
+        }
+        summary.append(".");
+        return summary.toString();
+    }
+
+    private String buildTutorMatchingHeroSubtitle(TutorMatchInboxItem item) {
+        if (item == null) {
+            return "Demande pre-qualifiee par le matching.";
+        }
+
+        List<String> fragments = new ArrayList<>();
+        String participantName = normalizeText(item.participantName());
+        if (participantName != null) {
+            fragments.add(participantName);
+        }
+        fragments.add(formatDateTimeOrPlaceholder(item.requestedStartAt()));
+        fragments.add(formatMatchingVisibility(item.visibilityScope()));
+        return String.join(" | ", fragments);
+    }
+
+    private String buildTutorMatchingObjectivePreview(TutorMatchInboxItem item) {
+        if (item == null) {
+            return "Le brief etudiant sera visible ici des qu'une demande sera qualifiee.";
+        }
+
+        String summary = normalizeText(item.objectiveSummary());
+        if (summary != null) {
+            return summary;
+        }
+
+        String objective = normalizeText(item.objectiveText());
+        if (objective == null) {
+            return "Le besoin a ete qualifie automatiquement et reste coherent avec le creneau demande.";
+        }
+        return ellipsizeText(objective, 220);
+    }
+
+    private String resolveMatchingPriorityLabel(int decision) {
+        return decision == MatchingService.DECISION_SUPER ? "Priorite haute" : "Interet confirme";
+    }
+
+    private String resolveMatchingScoreProgressStyle(double score) {
+        if (score >= 85.0) {
+            return "matching-score-progress-elite";
+        }
+        if (score >= 70.0) {
+            return "matching-score-progress-strong";
+        }
+        return "matching-score-progress-regular";
+    }
+
+    private String resolveMatchingInitials(String sourceText) {
+        String normalizedValue = normalizeText(sourceText);
+        if (normalizedValue == null) {
+            return "FM";
+        }
+
+        StringBuilder initials = new StringBuilder();
+        for (String token : normalizedValue.split(" ")) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+            initials.append(token.substring(0, 1).toUpperCase(Locale.ROOT));
+            if (initials.length() >= 2) {
+                return initials.toString();
+            }
+        }
+
+        if (initials.length() > 0) {
+            return initials.toString();
+        }
+        return normalizedValue.substring(0, Math.min(2, normalizedValue.length())).toUpperCase(Locale.ROOT);
+    }
+
+    private String ellipsizeText(String value, int maxLength) {
+        String normalizedValue = normalizeText(value);
+        if (normalizedValue == null || maxLength <= 0 || normalizedValue.length() <= maxLength) {
+            return normalizedValue != null ? normalizedValue : "";
+        }
+        return normalizedValue.substring(0, Math.max(0, maxLength - 3)) + "...";
     }
 
     private void prepareMatchingSessionPlanning(MatchingPlanContext planContext) {

@@ -309,7 +309,9 @@ public class SeanceController {
             }
 
             selectSeance(seance);
-            if (event.getClickCount() >= 2 && !isInteractiveTarget(event.getTarget())) {
+            if (event.getClickCount() >= 2
+                && !isInteractiveTarget(event.getTarget())
+                && canCurrentUserOpenSessionEvaluations(seance)) {
                 openSessionReviewsDialog(seance);
             }
         });
@@ -327,7 +329,7 @@ public class SeanceController {
     }
 
     private void openSessionReviewsDialog(Seance seance) {
-        if (seance == null) {
+        if (seance == null || !canCurrentUserOpenSessionEvaluations(seance)) {
             return;
         }
 
@@ -390,22 +392,11 @@ public class SeanceController {
             animatedNodes.add(emptyLabel);
         } else {
             evaluations.stream()
-                .limit(5)
                 .map(evaluation -> buildReviewCard(seance, evaluation))
                 .forEach(card -> {
                     cardsBox.getChildren().add(card);
                     animatedNodes.add(card);
                 });
-
-            if (evaluations.size() > 5) {
-                Label moreLabel = new Label(
-                    (evaluations.size() - 5) + " autre(s) avis sont aussi disponibles pour cette seance."
-                );
-                moreLabel.setWrapText(true);
-                moreLabel.getStyleClass().add("calendar-review-empty");
-                cardsBox.getChildren().add(moreLabel);
-                animatedNodes.add(moreLabel);
-            }
         }
 
         ScrollPane scrollPane = new ScrollPane(cardsBox);
@@ -463,14 +454,14 @@ public class SeanceController {
         if (evaluation == null) {
             return "Avis etudiant";
         }
-        if (canCurrentTutorSeeReviewAuthor(seance)) {
+        if (canCurrentUserOpenSessionEvaluations(seance)) {
             String normalizedName = normalizeText(evaluation.participantName());
             return normalizedName != null ? normalizedName : "Etudiant Fahamni";
         }
         return "Avis etudiant";
     }
 
-    private boolean canCurrentTutorSeeReviewAuthor(Seance seance) {
+    private boolean canCurrentUserOpenSessionEvaluations(Seance seance) {
         return UserSession.isCurrentTutor()
             && seance != null
             && UserSession.getCurrentUserId() == seance.getTuteurId();
