@@ -120,21 +120,8 @@ public class AiQuizAssistantService {
                 0.7
         );
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
-                .timeout(Duration.ofSeconds(15))
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                return Optional.empty();
-            }
-
-            Optional<String> content = extractFirstMessageContent(response.body())
+            Optional<String> content = sendChatCompletion(apiKey, requestBody)
                     .map(String::trim)
                     .filter(value -> !value.isBlank())
                     .map(this::sanitizeHintText);
@@ -168,21 +155,8 @@ public class AiQuizAssistantService {
                 0.2
         );
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
-                .timeout(Duration.ofSeconds(15))
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                return Optional.empty();
-            }
-
-            Optional<String> content = extractFirstMessageContent(response.body());
+            Optional<String> content = sendChatCompletion(apiKey, requestBody);
             if (content.isEmpty()) {
                 return Optional.empty();
             }
@@ -383,21 +357,8 @@ public class AiQuizAssistantService {
                 0.8
         );
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
-                .timeout(Duration.ofSeconds(25))
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                return Optional.empty();
-            }
-
-            Optional<String> content = extractFirstMessageContent(response.body());
+            Optional<String> content = sendChatCompletion(apiKey, requestBody);
             if (content.isEmpty()) {
                 return Optional.empty();
             }
@@ -420,6 +381,23 @@ public class AiQuizAssistantService {
             return Optional.empty();
         }
         return Optional.of(unescapeJson(matcher.group(1)));
+    }
+
+    private Optional<String> sendChatCompletion(String apiKey, String requestBody) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                .timeout(Duration.ofSeconds(25))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            return Optional.empty();
+        }
+
+        return extractFirstMessageContent(response.body());
     }
 
     private Quiz parseQuizDraft(String content, String fallbackTitle, String fallbackTopic) {
