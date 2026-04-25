@@ -2,13 +2,16 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.Models.Reservation;
+import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,8 +27,14 @@ public class ReservationService {
     public static final int MIN_STUDENT_RATING = 1;
     public static final int MAX_STUDENT_RATING = 5;
     private static final int MAX_STUDENT_REVIEW_LENGTH = 1000;
+    public static final String PAYMENT_STATUS_NOT_REQUIRED = "not_required";
+    public static final String PAYMENT_STATUS_PENDING = "pending";
+    public static final String PAYMENT_STATUS_COMPLETED = "completed";
+    public static final String PAYMENT_STATUS_FAILED = "failed";
+    public static final String PAYMENT_STATUS_EXPIRED = "expired";
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
+    private final KonnectPaymentService konnectPaymentService = new KonnectPaymentService();
 
     private final List<Reservation> reservations = new ArrayList<>(List.of(
         new Reservation("Mathematics - Algebra Fundamentals", "Ahmed Ben Ali",
@@ -37,6 +46,10 @@ public class ReservationService {
         new Reservation("English - Grammar", "Leila Khemiri",
             "15 Nov 2024 - 11:00 AM", "Online (Zoom)", 45.0, "Completed", false, 4)
     ));
+
+    public ReservationService() {
+        ensurePaymentSchema();
+    }
 
     public List<Reservation> getAllReservations() {
         return new ArrayList<>(reservations);
@@ -60,40 +73,240 @@ public class ReservationService {
     }
 
     public OperationResult reserveSeance(Seance seance, int participantId) {
+        ReservationCreationResult result = reserveSeanceDetailed(seance, participantId);
+        return result.success()
+            ? OperationResult.success(result.message())
+            : OperationResult.failure(result.message());
+    }
+
+    public ReservationCreationResult reserveSeanceDetailed(Seance seance, int participantId) {
         if (cnx == null) {
-            return OperationResult.failure("Connexion a la base indisponible.");
+            return ReservationCreationResult.failure("Connexion a la base indisponible.");
         }
         if (seance == null || seance.getId() <= 0) {
-            return OperationResult.failure("Selectionnez une seance valide.");
+            return ReservationCreationResult.failure("Selectionnez une seance valide.");
         }
         if (participantId <= 0) {
-            return OperationResult.failure("Participant invalide pour la reservation.");
+            return ReservationCreationResult.failure("Participant invalide pour la reservation.");
         }
         if (seance.getTuteurId() == participantId) {
-            return OperationResult.failure("Vous ne pouvez pas reserver votre propre seance.");
+            return ReservationCreationResult.failure("Vous ne pouvez pas reserver votre propre seance.");
         }
         if (seance.getStatus() != 1) {
-            return OperationResult.failure("Seules les seances publiees peuvent etre reservees.");
+            return ReservationCreationResult.failure("Seules les seances publiees peuvent etre reservees.");
         }
         if (seance.getStartAt() != null && seance.getStartAt().isBefore(LocalDateTime.now())) {
-            return OperationResult.failure("Cette seance est deja passee.");
+            return ReservationCreationResult.failure("Cette seance est deja passee.");
         }
 
         try {
             if (!participantExists(participantId)) {
-                return OperationResult.failure("Participant introuvable dans la base.");
+                return ReservationCreationResult.failure("Participant introuvable dans la base.");
             }
             if (hasActiveReservation(seance.getId(), participantId)) {
-                return OperationResult.failure("Vous avez deja reserve cette seance.");
+                return ReservationCreationResult.failure("Vous avez deja reserve cette seance.");
             }
             if (countActiveReservationsBySeanceId(seance.getId()) >= seance.getMaxParticipants()) {
-                return OperationResult.failure("Cette seance est complete.");
+                return ReservationCreationResult.failure("Cette seance est complete.");
             }
 
-            insertReservation(seance.getId(), participantId);
-            return OperationResult.success("Reservation envoyee avec succes. Statut: en attente.");
+            int reservationId = insertReservation(seance.getId(), participantId);
+            boolean paymentRequired = seance.getPrice() > 0.0;
+            return new ReservationCreationResult(
+                true,
+                paymentRequired
+                    ? "Reservation creee. Un paiement Konnect Sandbox est requis avant validation par le tuteur."
+                    : "Reservation envoyee avec succes. Statut: en attente.",
+                reservationId,
+                paymentRequired
+            );
         } catch (SQLException e) {
-            return OperationResult.failure("Reservation impossible: " + e.getMessage());
+            return ReservationCreationResult.failure("Reservation impossible: " + e.getMessage());
+        }
+    }
+
+    public PaymentLaunchResult startKonnectSandboxPayment(int reservationId, int participantId) {
+        if (cnx == null) {
+            return PaymentLaunchResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0 || participantId <= 0) {
+            return PaymentLaunchResult.failure("Reservation invalide pour le paiement.");
+        }
+
+        String sql = """
+            SELECT
+                r.id AS reservation_id,
+                r.status AS reservation_status,
+                r.cancell_at,
+                s.id AS seance_id,
+                s.matiere,
+                s.price_tnd,
+                u.full_name,
+                u.email
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            INNER JOIN user u ON u.id = r.participant_id
+            WHERE r.id = ? AND r.participant_id = ?
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, participantId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return PaymentLaunchResult.failure("Reservation introuvable pour ce participant.");
+                }
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return PaymentLaunchResult.failure("Cette reservation est annulee.");
+                }
+
+                int currentStatus = normalizeStoredStatus(rs.getInt("reservation_status"));
+                if (currentStatus == STATUS_REFUSED) {
+                    return PaymentLaunchResult.failure("Cette reservation a ete refusee.");
+                }
+
+                BigDecimal price = rs.getBigDecimal("price_tnd");
+                int amountMillimes = priceTndToMillimes(price);
+                if (amountMillimes <= 0) {
+                    return PaymentLaunchResult.failure("Cette seance est gratuite. Aucun paiement n'est necessaire.");
+                }
+
+                PaymentSnapshot currentPayment = findPaymentSnapshot(reservationId);
+                if (currentPayment != null && PAYMENT_STATUS_COMPLETED.equals(currentPayment.status())) {
+                    return new PaymentLaunchResult(
+                        true,
+                        "Le paiement Konnect est deja confirme pour cette reservation.",
+                        reservationId,
+                        currentPayment.paymentRef(),
+                        currentPayment.paymentUrl(),
+                        currentPayment.status()
+                    );
+                }
+
+                String[] nameParts = splitFullName(rs.getString("full_name"));
+                KonnectPaymentService.CreatePaymentRequest request = new KonnectPaymentService.CreatePaymentRequest(
+                    buildKonnectOrderId(reservationId),
+                    amountMillimes,
+                    "Reservation Fahamni - " + safeText(rs.getString("matiere")),
+                    rs.getString("email"),
+                    nameParts[0],
+                    nameParts[1]
+                );
+
+                KonnectPaymentService.PaymentInitialization initialization = konnectPaymentService.initializePayment(request);
+                if (!initialization.success()) {
+                    return PaymentLaunchResult.failure(initialization.message());
+                }
+
+                upsertPaymentSnapshot(
+                    reservationId,
+                    amountMillimes,
+                    PAYMENT_STATUS_PENDING,
+                    initialization.paymentRef(),
+                    initialization.paymentUrl(),
+                    null,
+                    null,
+                    initialization.providerPayload(),
+                    LocalDateTime.now(),
+                    null,
+                    null
+                );
+
+                return new PaymentLaunchResult(
+                    true,
+                    "Paiement Konnect Sandbox initialise. Finalisez le paiement dans la page ouverte.",
+                    reservationId,
+                    initialization.paymentRef(),
+                    initialization.paymentUrl(),
+                    PAYMENT_STATUS_PENDING
+                );
+            }
+        } catch (SQLException exception) {
+            return PaymentLaunchResult.failure("Initialisation du paiement impossible: " + exception.getMessage());
+        }
+    }
+
+    public PaymentVerificationResult refreshReservationPaymentStatus(int reservationId, int participantId) {
+        if (cnx == null) {
+            return PaymentVerificationResult.failure("Connexion a la base indisponible.");
+        }
+        if (reservationId <= 0 || participantId <= 0) {
+            return PaymentVerificationResult.failure("Reservation invalide pour verifier le paiement.");
+        }
+
+        String sql = """
+            SELECT
+                r.id AS reservation_id,
+                r.cancell_at,
+                p.payment_ref,
+                p.payment_url,
+                p.amount_millimes,
+                p.status AS payment_status
+            FROM reservation r
+            LEFT JOIN reservation_payment p ON p.reservation_id = r.id
+            WHERE r.id = ? AND r.participant_id = ?
+            """;
+
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, participantId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return PaymentVerificationResult.failure("Reservation introuvable pour ce participant.");
+                }
+                if (rs.getTimestamp("cancell_at") != null) {
+                    return PaymentVerificationResult.failure("Cette reservation est annulee.");
+                }
+
+                String currentStatus = normalizePaymentStatus(rs.getString("payment_status"));
+                if (currentStatus == null) {
+                    return PaymentVerificationResult.failure("Aucun paiement Konnect n'est encore initialise pour cette reservation.");
+                }
+                if (PAYMENT_STATUS_COMPLETED.equals(currentStatus)) {
+                    return new PaymentVerificationResult(
+                        true,
+                        "Le paiement Konnect est deja confirme.",
+                        currentStatus,
+                        rs.getString("payment_ref"),
+                        rs.getString("payment_url")
+                    );
+                }
+
+                KonnectPaymentService.PaymentStatusCheck statusCheck =
+                    konnectPaymentService.fetchPaymentDetails(rs.getString("payment_ref"));
+                if (!statusCheck.success()) {
+                    return PaymentVerificationResult.failure(statusCheck.message());
+                }
+
+                String normalizedStatus = normalizePaymentStatus(statusCheck.normalizedStatus());
+                LocalDateTime checkedAt = LocalDateTime.now();
+                LocalDateTime completedAt = PAYMENT_STATUS_COMPLETED.equals(normalizedStatus) ? checkedAt : null;
+                upsertPaymentSnapshot(
+                    reservationId,
+                    statusCheck.amountMillimes() != null
+                        ? statusCheck.amountMillimes()
+                        : rs.getInt("amount_millimes"),
+                    normalizedStatus,
+                    statusCheck.paymentRef(),
+                    statusCheck.paymentUrl() != null ? statusCheck.paymentUrl() : rs.getString("payment_url"),
+                    statusCheck.providerStatus(),
+                    statusCheck.transactionStatus(),
+                    statusCheck.providerPayload(),
+                    null,
+                    checkedAt,
+                    completedAt
+                );
+
+                return new PaymentVerificationResult(
+                    true,
+                    buildPaymentVerificationMessage(normalizedStatus),
+                    normalizedStatus,
+                    statusCheck.paymentRef(),
+                    statusCheck.paymentUrl() != null ? statusCheck.paymentUrl() : rs.getString("payment_url")
+                );
+            }
+        } catch (SQLException exception) {
+            return PaymentVerificationResult.failure("Verification du paiement impossible: " + exception.getMessage());
         }
     }
 
@@ -186,11 +399,19 @@ public class ReservationService {
                 s.status AS seance_status,
                 s.tuteur_id,
                 s.mode_seance,
+                s.price_tnd,
                 r.student_rating,
                 r.student_review,
-                r.rated_at
+                r.rated_at,
+                p.amount_millimes,
+                p.status AS payment_status,
+                p.payment_ref,
+                p.payment_url,
+                p.initiated_at,
+                p.completed_at
             FROM reservation r
             INNER JOIN seance s ON s.id = r.seance_id
+            LEFT JOIN reservation_payment p ON p.reservation_id = r.id
             WHERE r.participant_id = ? AND r.cancell_at IS NULL
             ORDER BY
                 CASE
@@ -219,6 +440,13 @@ public class ReservationService {
                         rs.getInt("seance_status"),
                         rs.getInt("tuteur_id"),
                         rs.getString("mode_seance"),
+                        getNullablePriceTnd(rs, "price_tnd"),
+                        getNullableInteger(rs, "amount_millimes"),
+                        normalizePaymentStatus(rs.getString("payment_status")),
+                        rs.getString("payment_ref"),
+                        rs.getString("payment_url"),
+                        readDateTime(rs, "initiated_at"),
+                        readDateTime(rs, "completed_at"),
                         getNullableInteger(rs, "student_rating"),
                         rs.getString("student_review"),
                         readDateTime(rs, "rated_at")
@@ -367,6 +595,11 @@ public class ReservationService {
                 int maxParticipants = rs.getInt("max_participants");
                 if (countAcceptedReservationsBySeanceId(seanceId) >= maxParticipants) {
                     return OperationResult.failure("La capacite de cette seance est deja atteinte.");
+                }
+
+                String paymentValidationError = validatePaymentBeforeAcceptance(reservationId);
+                if (paymentValidationError != null) {
+                    return OperationResult.failure(paymentValidationError);
                 }
             }
         } catch (SQLException e) {
@@ -696,6 +929,13 @@ public class ReservationService {
         int seanceStatus,
         int tutorId,
         String sessionMode,
+        Double sessionPriceTnd,
+        Integer paymentAmountMillimes,
+        String paymentStatus,
+        String paymentRef,
+        String paymentUrl,
+        LocalDateTime paymentInitiatedAt,
+        LocalDateTime paymentCompletedAt,
         Integer studentRating,
         String studentReview,
         LocalDateTime ratedAt
@@ -723,11 +963,73 @@ public class ReservationService {
             return isAccepted() && isCompleted();
         }
 
+        public boolean requiresPayment() {
+            return paymentAmountMillimes != null && paymentAmountMillimes > 0;
+        }
+
+        public boolean isPaymentCompleted() {
+            return PAYMENT_STATUS_COMPLETED.equals(paymentStatus);
+        }
+
+        public boolean canLaunchPayment() {
+            return requiresPayment() && !isPaymentCompleted() && !isRefused();
+        }
+
         public boolean hasRating() {
             return studentRating != null
                 && studentRating >= MIN_STUDENT_RATING
                 && studentRating <= MAX_STUDENT_RATING;
         }
+    }
+
+    public record ReservationCreationResult(
+        boolean success,
+        String message,
+        int reservationId,
+        boolean paymentRequired
+    ) {
+        public static ReservationCreationResult failure(String message) {
+            return new ReservationCreationResult(false, message, 0, false);
+        }
+    }
+
+    public record PaymentLaunchResult(
+        boolean success,
+        String message,
+        int reservationId,
+        String paymentRef,
+        String paymentUrl,
+        String paymentStatus
+    ) {
+        public static PaymentLaunchResult failure(String message) {
+            return new PaymentLaunchResult(false, message, 0, null, null, null);
+        }
+    }
+
+    public record PaymentVerificationResult(
+        boolean success,
+        String message,
+        String paymentStatus,
+        String paymentRef,
+        String paymentUrl
+    ) {
+        public static PaymentVerificationResult failure(String message) {
+            return new PaymentVerificationResult(false, message, null, null, null);
+        }
+    }
+
+    private record PaymentSnapshot(
+        int reservationId,
+        int amountMillimes,
+        String status,
+        String paymentRef,
+        String paymentUrl,
+        String providerStatus,
+        String transactionStatus,
+        LocalDateTime initiatedAt,
+        LocalDateTime lastCheckedAt,
+        LocalDateTime completedAt
+    ) {
     }
 
     public record ReservationStats(int total, int pending, int accepted, int refused) {
@@ -746,6 +1048,271 @@ public class ReservationService {
         public boolean hasReview() {
             return review != null && !review.isBlank();
         }
+    }
+
+    private String validatePaymentBeforeAcceptance(int reservationId) throws SQLException {
+        if (reservationId <= 0 || cnx == null) {
+            return null;
+        }
+
+        String sql = """
+            SELECT
+                s.price_tnd,
+                p.status AS payment_status
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            LEFT JOIN reservation_payment p ON p.reservation_id = r.id
+            WHERE r.id = ?
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, reservationId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return "Reservation introuvable.";
+                }
+
+                BigDecimal price = rs.getBigDecimal("price_tnd");
+                if (priceTndToMillimes(price) <= 0) {
+                    return null;
+                }
+
+                String paymentStatus = normalizePaymentStatus(rs.getString("payment_status"));
+                if (PAYMENT_STATUS_COMPLETED.equals(paymentStatus)) {
+                    return null;
+                }
+                return "Le paiement Konnect doit etre confirme avant d'accepter cette reservation.";
+            }
+        }
+    }
+
+    private PaymentSnapshot findPaymentSnapshot(int reservationId) throws SQLException {
+        if (reservationId <= 0 || cnx == null || !DatabaseSchemaUtils.tableExists(cnx, "reservation_payment")) {
+            return null;
+        }
+
+        String sql = """
+            SELECT
+                reservation_id,
+                amount_millimes,
+                status,
+                payment_ref,
+                payment_url,
+                provider_status,
+                transaction_status,
+                initiated_at,
+                last_checked_at,
+                completed_at
+            FROM reservation_payment
+            WHERE reservation_id = ?
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, reservationId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new PaymentSnapshot(
+                    rs.getInt("reservation_id"),
+                    rs.getInt("amount_millimes"),
+                    normalizePaymentStatus(rs.getString("status")),
+                    rs.getString("payment_ref"),
+                    rs.getString("payment_url"),
+                    rs.getString("provider_status"),
+                    rs.getString("transaction_status"),
+                    readDateTime(rs, "initiated_at"),
+                    readDateTime(rs, "last_checked_at"),
+                    readDateTime(rs, "completed_at")
+                );
+            }
+        }
+    }
+
+    private void upsertPaymentSnapshot(int reservationId,
+                                       int amountMillimes,
+                                       String status,
+                                       String paymentRef,
+                                       String paymentUrl,
+                                       String providerStatus,
+                                       String transactionStatus,
+                                       String providerPayload,
+                                       LocalDateTime initiatedAt,
+                                       LocalDateTime lastCheckedAt,
+                                       LocalDateTime completedAt) throws SQLException {
+        if (reservationId <= 0 || cnx == null) {
+            return;
+        }
+
+        PaymentSnapshot existing = findPaymentSnapshot(reservationId);
+        LocalDateTime now = LocalDateTime.now();
+        String sql;
+        if (existing == null) {
+            sql = """
+                INSERT INTO reservation_payment (
+                    reservation_id, provider, amount_millimes, currency_token, status, payment_ref, payment_url,
+                    provider_status, transaction_status, provider_payload, initiated_at, last_checked_at,
+                    completed_at, created_at, updated_at
+                )
+                VALUES (?, 'konnect', ?, 'TND', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+            try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+                pst.setInt(1, reservationId);
+                pst.setInt(2, amountMillimes);
+                pst.setString(3, normalizePaymentStatus(status));
+                pst.setString(4, paymentRef);
+                pst.setString(5, paymentUrl);
+                pst.setString(6, providerStatus);
+                pst.setString(7, transactionStatus);
+                pst.setString(8, providerPayload);
+                pst.setTimestamp(9, toTimestamp(initiatedAt));
+                pst.setTimestamp(10, toTimestamp(lastCheckedAt));
+                pst.setTimestamp(11, toTimestamp(completedAt));
+                pst.setTimestamp(12, Timestamp.valueOf(now));
+                pst.setTimestamp(13, Timestamp.valueOf(now));
+                pst.executeUpdate();
+            }
+            return;
+        }
+
+        sql = """
+            UPDATE reservation_payment
+            SET amount_millimes = ?,
+                status = ?,
+                payment_ref = ?,
+                payment_url = ?,
+                provider_status = ?,
+                transaction_status = ?,
+                provider_payload = ?,
+                initiated_at = COALESCE(?, initiated_at),
+                last_checked_at = COALESCE(?, last_checked_at),
+                completed_at = COALESCE(?, completed_at),
+                updated_at = ?
+            WHERE reservation_id = ?
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, amountMillimes > 0 ? amountMillimes : existing.amountMillimes());
+            pst.setString(2, normalizePaymentStatus(status));
+            pst.setString(3, paymentRef != null ? paymentRef : existing.paymentRef());
+            pst.setString(4, paymentUrl != null ? paymentUrl : existing.paymentUrl());
+            pst.setString(5, providerStatus != null ? providerStatus : existing.providerStatus());
+            pst.setString(6, transactionStatus != null ? transactionStatus : existing.transactionStatus());
+            pst.setString(7, providerPayload);
+            pst.setTimestamp(8, toTimestamp(initiatedAt));
+            pst.setTimestamp(9, toTimestamp(lastCheckedAt));
+            pst.setTimestamp(10, toTimestamp(completedAt));
+            pst.setTimestamp(11, Timestamp.valueOf(now));
+            pst.setInt(12, reservationId);
+            pst.executeUpdate();
+        }
+    }
+
+    private void ensurePaymentSchema() {
+        if (cnx == null) {
+            return;
+        }
+        try {
+            if (!DatabaseSchemaUtils.columnExists(cnx, "seance", "price_tnd")) {
+                DatabaseSchemaUtils.executeDdl(
+                    cnx,
+                    "ALTER TABLE seance ADD COLUMN price_tnd DECIMAL(10,3) NULL DEFAULT NULL"
+                );
+            }
+            if (!DatabaseSchemaUtils.tableExists(cnx, "reservation_payment")) {
+                DatabaseSchemaUtils.executeDdl(
+                    cnx,
+                    """
+                    CREATE TABLE reservation_payment (
+                        reservation_id INT PRIMARY KEY,
+                        provider VARCHAR(30) NOT NULL DEFAULT 'konnect',
+                        amount_millimes INT NOT NULL,
+                        currency_token VARCHAR(10) NOT NULL DEFAULT 'TND',
+                        status VARCHAR(30) NOT NULL DEFAULT 'pending',
+                        payment_ref VARCHAR(120) NULL,
+                        payment_url TEXT NULL,
+                        provider_status VARCHAR(60) NULL,
+                        transaction_status VARCHAR(60) NULL,
+                        provider_payload TEXT NULL,
+                        initiated_at DATETIME NULL,
+                        last_checked_at DATETIME NULL,
+                        completed_at DATETIME NULL,
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NULL,
+                        CONSTRAINT fk_reservation_payment_reservation
+                            FOREIGN KEY (reservation_id) REFERENCES reservation(id)
+                            ON DELETE CASCADE
+                    )
+                    """
+                );
+            }
+        } catch (SQLException exception) {
+            System.out.println("Bootstrap schema paiement impossible: " + exception.getMessage());
+        }
+    }
+
+    private Double getNullablePriceTnd(ResultSet rs, String columnName) throws SQLException {
+        BigDecimal value = rs.getBigDecimal(columnName);
+        return value == null ? null : value.doubleValue();
+    }
+
+    private int priceTndToMillimes(BigDecimal priceTnd) {
+        if (priceTnd == null) {
+            return 0;
+        }
+        return priceTnd.multiply(BigDecimal.valueOf(1000L)).intValue();
+    }
+
+    private String[] splitFullName(String fullName) {
+        String normalized = safeText(fullName);
+        String[] parts = normalized.split("\\s+", 2);
+        String firstName = parts.length > 0 ? parts[0] : "Client";
+        String lastName = parts.length > 1 ? parts[1] : "Fahamni";
+        return new String[]{firstName, lastName};
+    }
+
+    private String buildKonnectOrderId(int reservationId) {
+        return "fahamni-reservation-" + reservationId + "-" + System.currentTimeMillis();
+    }
+
+    private String buildPaymentVerificationMessage(String paymentStatus) {
+        String normalizedStatus = normalizePaymentStatus(paymentStatus);
+        if (PAYMENT_STATUS_COMPLETED.equals(normalizedStatus)) {
+            return "Paiement Konnect confirme avec succes.";
+        }
+        if (PAYMENT_STATUS_FAILED.equals(normalizedStatus)) {
+            return "Le paiement Konnect a echoue. Vous pouvez relancer un nouveau lien.";
+        }
+        if (PAYMENT_STATUS_EXPIRED.equals(normalizedStatus)) {
+            return "Le lien de paiement Konnect a expire. Generez un nouveau lien.";
+        }
+        return "Le paiement Konnect est encore en attente. Verifiez apres finalisation dans le navigateur.";
+    }
+
+    private String normalizePaymentStatus(String status) {
+        if (status == null) {
+            return null;
+        }
+        String normalized = status.trim().toLowerCase();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        return switch (normalized) {
+            case PAYMENT_STATUS_COMPLETED -> PAYMENT_STATUS_COMPLETED;
+            case PAYMENT_STATUS_FAILED -> PAYMENT_STATUS_FAILED;
+            case PAYMENT_STATUS_EXPIRED -> PAYMENT_STATUS_EXPIRED;
+            case PAYMENT_STATUS_NOT_REQUIRED -> PAYMENT_STATUS_NOT_REQUIRED;
+            default -> PAYMENT_STATUS_PENDING;
+        };
+    }
+
+    private String safeText(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.trim().replaceAll("\\s+", " ");
+        return normalized.isEmpty() ? "" : normalized;
+    }
+
+    private Timestamp toTimestamp(LocalDateTime value) {
+        return value == null ? null : Timestamp.valueOf(value);
     }
 
     private int countAcceptedReservationsBySeanceId(int seanceId) throws SQLException {
@@ -776,7 +1343,7 @@ public class ReservationService {
         }
     }
 
-    private void insertReservation(int seanceId, int participantId) throws SQLException {
+    private int insertReservation(int seanceId, int participantId) throws SQLException {
         String sql = """
             INSERT INTO reservation (
                 status, reserved_at, cancell_at, notes, seance_id, participant_id,
@@ -784,7 +1351,7 @@ public class ReservationService {
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
-        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+        try (PreparedStatement pst = cnx.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             LocalDateTime now = LocalDateTime.now();
             pst.setInt(1, 0);
             pst.setTimestamp(2, Timestamp.valueOf(now));
@@ -796,6 +1363,12 @@ public class ReservationService {
             pst.setTimestamp(8, null);
             pst.setTimestamp(9, null);
             pst.executeUpdate();
+            try (ResultSet generatedKeys = pst.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    return generatedKeys.getInt(1);
+                }
+            }
+            throw new SQLException("Identifiant reservation non genere.");
         }
     }
 

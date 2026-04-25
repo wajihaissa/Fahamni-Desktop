@@ -2,9 +2,12 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -29,6 +32,8 @@ public class SeanceService implements IServices<Seance> {
     public static final int MIN_CAPACITY = 1;
     public static final int MAX_CAPACITY = 50;
     public static final int MIN_DESCRIPTION_LENGTH = 15;
+    public static final double MIN_PRICE_TND = 0.0;
+    public static final double MAX_PRICE_TND = 5000.0;
 
     private static final DateTimeFormatter SEARCH_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final List<String> FALLBACK_SUBJECTS = List.of(
@@ -43,6 +48,10 @@ public class SeanceService implements IServices<Seance> {
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+
+    public SeanceService() {
+        ensurePriceColumn();
+    }
 
     public boolean hasDatabaseConnection() {
         return cnx != null;
@@ -132,7 +141,7 @@ public class SeanceService implements IServices<Seance> {
 
         String sql = """
             SELECT id, matiere, start_at, duration_min, max_participants, status,
-                   description, created_at, updated_at, tuteur_id, mode_seance, salle_id
+                   description, created_at, updated_at, tuteur_id, mode_seance, salle_id, price_tnd
             FROM seance
             ORDER BY id DESC
             """;
@@ -185,9 +194,9 @@ public class SeanceService implements IServices<Seance> {
         String sql = """
             INSERT INTO seance (
                 matiere, start_at, duration_min, max_participants, status, description,
-                created_at, updated_at, tuteur_id, mode_seance, salle_id
+                created_at, updated_at, tuteur_id, mode_seance, salle_id, price_tnd
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -206,6 +215,7 @@ public class SeanceService implements IServices<Seance> {
             pst.setInt(9, seance.getTuteurId());
             pst.setString(10, seance.getMode());
             setNullableInteger(pst, 11, seance.getSalleId());
+            pst.setBigDecimal(12, normalizePriceTnd(seance.getPrice()));
             pst.executeUpdate();
 
             try (ResultSet generatedKeys = pst.getGeneratedKeys()) {
@@ -251,7 +261,7 @@ public class SeanceService implements IServices<Seance> {
             UPDATE seance
             SET matiere = ?, start_at = ?, duration_min = ?, max_participants = ?,
                 status = ?, description = ?, updated_at = ?, tuteur_id = ?,
-                mode_seance = ?, salle_id = ?
+                mode_seance = ?, salle_id = ?, price_tnd = ?
             WHERE id = ?
             """;
 
@@ -269,7 +279,8 @@ public class SeanceService implements IServices<Seance> {
             pst.setInt(8, seance.getTuteurId());
             pst.setString(9, seance.getMode());
             setNullableInteger(pst, 10, seance.getSalleId());
-            pst.setInt(11, seance.getId());
+            pst.setBigDecimal(11, normalizePriceTnd(seance.getPrice()));
+            pst.setInt(12, seance.getId());
 
             int updatedRows = pst.executeUpdate();
             if (updatedRows == 0) {
@@ -373,6 +384,10 @@ public class SeanceService implements IServices<Seance> {
         );
         seance.setMode(normalizeMode(rs.getString("mode_seance")));
         seance.setSalleId(getNullableInteger(rs, "salle_id"));
+        BigDecimal price = rs.getBigDecimal("price_tnd");
+        if (price != null) {
+            seance.setPrice(price.setScale(3, RoundingMode.HALF_UP).doubleValue());
+        }
         return seance;
     }
 
@@ -410,6 +425,10 @@ public class SeanceService implements IServices<Seance> {
         }
         if (normalizedDescription == null || normalizedDescription.length() < MIN_DESCRIPTION_LENGTH) {
             return "Ajoutez une description d'au moins " + MIN_DESCRIPTION_LENGTH + " caracteres.";
+        }
+        if (seance.getPrice() < MIN_PRICE_TND || seance.getPrice() > MAX_PRICE_TND) {
+            return "Le prix doit etre compris entre " + formatPrice(MIN_PRICE_TND)
+                + " TND et " + formatPrice(MAX_PRICE_TND) + " TND.";
         }
         if (seance.getTuteurId() <= 0) {
             return "Le tuteur doit avoir un identifiant valide.";
@@ -811,6 +830,31 @@ public class SeanceService implements IServices<Seance> {
         }
         String normalizedValue = value.trim().replaceAll("\\s+", " ");
         return normalizedValue.isEmpty() ? null : normalizedValue;
+    }
+
+    private void ensurePriceColumn() {
+        if (cnx == null) {
+            return;
+        }
+        try {
+            if (!DatabaseSchemaUtils.columnExists(cnx, "seance", "price_tnd")) {
+                DatabaseSchemaUtils.executeDdl(
+                    cnx,
+                    "ALTER TABLE seance ADD COLUMN price_tnd DECIMAL(10,3) NULL DEFAULT NULL"
+                );
+            }
+        } catch (SQLException exception) {
+            System.out.println("Ajout colonne price_tnd impossible: " + exception.getMessage());
+        }
+    }
+
+    private BigDecimal normalizePriceTnd(double price) {
+        double bounded = Math.max(MIN_PRICE_TND, Math.min(MAX_PRICE_TND, price));
+        return BigDecimal.valueOf(bounded).setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private String formatPrice(double price) {
+        return BigDecimal.valueOf(price).setScale(3, RoundingMode.HALF_UP).toPlainString();
     }
 
     private Connection requireConnection() {

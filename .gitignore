@@ -26,6 +26,8 @@ build/
 *.tmp
 *.swp
 .DS_Store
+.env.local
+fahamni.local.properties
 
 # Java compiled files
 *.class

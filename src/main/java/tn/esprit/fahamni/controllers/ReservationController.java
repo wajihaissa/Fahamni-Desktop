@@ -72,6 +72,8 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 
 import java.sql.SQLException;
+import java.awt.Desktop;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -186,6 +188,9 @@ public class ReservationController {
 
     @FXML
     private TextField sessionCapacityField;
+
+    @FXML
+    private TextField sessionPriceField;
 
     @FXML
     private CheckBox sessionOnsiteCheckBox;
@@ -464,6 +469,10 @@ public class ReservationController {
             SeanceService.MAX_CAPACITY,
             "La capacite doit etre comprise entre " + SeanceService.MIN_CAPACITY + " et " + SeanceService.MAX_CAPACITY + " participants."
         );
+        double priceTnd = parsePriceTnd(
+            sessionPriceField.getText(),
+            "Renseignez un prix valide en TND. Utilisez 0 pour une seance gratuite."
+        );
         String description = requireMinimumLengthText(
             sessionDescriptionArea.getText(),
             SeanceService.MIN_DESCRIPTION_LENGTH,
@@ -501,6 +510,7 @@ public class ReservationController {
         setStartAtSelection(startAt);
         sessionDurationField.setText(String.valueOf(duration));
         sessionCapacityField.setText(String.valueOf(capacity));
+        sessionPriceField.setText(formatPriceTnd(priceTnd));
         sessionDescriptionArea.setText(description);
         sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(mode));
         updateModePresentation();
@@ -513,6 +523,7 @@ public class ReservationController {
         seance.setStatus(status);
         seance.setDescription(description);
         seance.setTuteurId(tutorId);
+        seance.setPrice(priceTnd);
         seance.setMode(mode);
         seance.setSalleId(salleId);
         seance.setEquipementQuantites(equipementQuantites);
@@ -1635,6 +1646,7 @@ public class ReservationController {
                 + " | " + formatDateTime(seance.getStartAt())
                 + " | " + seance.getDurationMin() + " min"
                 + " | " + seance.getMaxParticipants() + " places"
+                + " | " + formatSessionPrice(seance.getPrice())
                 + " | " + buildInfrastructureSummary(seance)
                 + " | " + formatReservationCount(reservationStats.total())
         );
@@ -4154,6 +4166,7 @@ public class ReservationController {
                 + " | " + formatDateTimeOrPlaceholder(seance.getStartAt())
                 + " | " + seance.getDurationMin() + " min"
                 + " | " + mapModeLabel(seance.getMode())
+                + " | " + formatSessionPrice(seance.getPrice())
                 + " | " + formatAvailableSeats(availableSeats)
                 + " | " + formatReservationCount(reservationStats.total())
         );
@@ -4241,7 +4254,7 @@ public class ReservationController {
     private Button buildRecommendationReserveButton(Seance seance,
                                                     ReservationStats reservationStats,
                                                     Dialog<ButtonType> briefingDialog) {
-        Button reserveButton = new Button("Reserver cette seance");
+        Button reserveButton = new Button(seance.getPrice() > 0.0 ? "Reserver & payer" : "Reserver cette seance");
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
         if (!canReserveAsParticipant(seance)) {
@@ -4335,7 +4348,7 @@ public class ReservationController {
     }
 
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
-        Button reserveButton = new Button("Reserver");
+        Button reserveButton = new Button(seance.getPrice() > 0.0 ? "Reserver & payer" : "Reserver");
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
         if (!canReserveAsParticipant(seance)) {
@@ -4368,10 +4381,28 @@ public class ReservationController {
     }
 
     private void reserveSession(Seance seance) {
-        OperationResult result = reservationService.reserveSeance(seance, getCurrentReservationParticipantId());
+        int participantId = getCurrentReservationParticipantId();
+        ReservationService.ReservationCreationResult result = reservationService.reserveSeanceDetailed(seance, participantId);
+        boolean success = result.success();
+        String message = result.message();
+
+        if (success && result.paymentRequired()) {
+            ReservationService.PaymentLaunchResult paymentLaunchResult =
+                reservationService.startKonnectSandboxPayment(result.reservationId(), participantId);
+            if (paymentLaunchResult.success()) {
+                boolean opened = openExternalUrl(paymentLaunchResult.paymentUrl());
+                message = paymentLaunchResult.message()
+                    + (opened
+                    ? " Revenez ensuite dans Mes reservations pour verifier le statut."
+                    : " Ouvrez manuellement ce lien: " + safeText(paymentLaunchResult.paymentUrl()));
+            } else {
+                message = result.message() + " " + paymentLaunchResult.message();
+            }
+        }
+
         loadSessionDashboard();
         showAvailableSessionsSection();
-        showReservationActionFeedback(result.getMessage(), result.isSuccess());
+        showReservationActionFeedback(message, success);
     }
 
     private void loadStudentReservations() {
@@ -4420,6 +4451,7 @@ public class ReservationController {
                 + " | Seance: " + formatDateTimeOrPlaceholder(reservation.seanceStartAt())
                 + " | " + reservation.durationMin() + " min"
                 + " | " + reservation.maxParticipants() + " places"
+                + " | " + formatSessionPrice(reservation.sessionPriceTnd() == null ? 0.0 : reservation.sessionPriceTnd())
         );
         sessionLabel.setWrapText(true);
         sessionLabel.getStyleClass().add("reservation-section-copy");
@@ -4429,6 +4461,10 @@ public class ReservationController {
         );
         requestLabel.setWrapText(true);
         requestLabel.getStyleClass().add("reservation-section-copy");
+
+        Label paymentLabel = new Label(buildStudentPaymentSummary(reservation));
+        paymentLabel.setWrapText(true);
+        paymentLabel.getStyleClass().add("reservation-section-copy");
 
         Label ratingLabel = new Label(buildStudentRatingSummary(reservation));
         ratingLabel.setWrapText(true);
@@ -4446,6 +4482,23 @@ public class ReservationController {
             actionRow.getChildren().add(ratingButton);
         }
 
+        if (reservation.canLaunchPayment()) {
+            Button payButton = new Button("Payer avec Konnect");
+            payButton.getStyleClass().add("backoffice-primary-button");
+            payButton.setOnAction(event -> handleLaunchReservationPayment(reservation));
+            actionRow.getChildren().add(payButton);
+
+            Button verifyButton = new Button("Verifier paiement");
+            verifyButton.getStyleClass().add("backoffice-secondary-button");
+            verifyButton.setOnAction(event -> handleVerifyReservationPayment(reservation));
+            actionRow.getChildren().add(verifyButton);
+        } else if (reservation.requiresPayment()) {
+            Button verifyButton = new Button("Verifier paiement");
+            verifyButton.getStyleClass().add("backoffice-secondary-button");
+            verifyButton.setOnAction(event -> handleVerifyReservationPayment(reservation));
+            actionRow.getChildren().add(verifyButton);
+        }
+
         if (reservation.isPending()) {
             Button cancelButton = new Button("Annuler ma reservation");
             cancelButton.getStyleClass().addAll("action-button", "danger");
@@ -4453,7 +4506,7 @@ public class ReservationController {
             actionRow.getChildren().add(cancelButton);
         }
 
-        card.getChildren().addAll(headerRow, sessionLabel, requestLabel, ratingLabel, actionRow);
+        card.getChildren().addAll(headerRow, sessionLabel, requestLabel, paymentLabel, ratingLabel, actionRow);
         return card;
     }
 
@@ -4485,6 +4538,66 @@ public class ReservationController {
             return "Evaluation: disponible apres la fin de la seance.";
         }
         return "Evaluation: la note sera ouverte apres acceptation puis apres la fin de la seance.";
+    }
+
+    private String buildStudentPaymentSummary(StudentReservationItem reservation) {
+        if (reservation == null) {
+            return "Paiement: indisponible.";
+        }
+        if (!reservation.requiresPayment()) {
+            return "Paiement: aucun paiement requis pour cette seance.";
+        }
+        if (reservation.isPaymentCompleted()) {
+            String summary = "Paiement: confirme via Konnect Sandbox";
+            if (reservation.paymentCompletedAt() != null) {
+                summary = summary + " le " + formatDateTimeOrPlaceholder(reservation.paymentCompletedAt());
+            }
+            return summary + ".";
+        }
+        if (ReservationService.PAYMENT_STATUS_FAILED.equals(reservation.paymentStatus())) {
+            return "Paiement: tentative echouee. Relancez un nouveau lien Konnect Sandbox.";
+        }
+        if (ReservationService.PAYMENT_STATUS_EXPIRED.equals(reservation.paymentStatus())) {
+            return "Paiement: lien expire. Generez un nouveau lien Konnect Sandbox.";
+        }
+        if (reservation.paymentInitiatedAt() != null) {
+            return "Paiement: en attente depuis le " + formatDateTimeOrPlaceholder(reservation.paymentInitiatedAt())
+                + ". Finalisez le checkout Konnect puis verifiez le statut.";
+        }
+        return "Paiement: en attente d'initialisation Konnect Sandbox.";
+    }
+
+    private void handleLaunchReservationPayment(StudentReservationItem reservation) {
+        if (reservation == null) {
+            return;
+        }
+        ReservationService.PaymentLaunchResult result = reservationService.startKonnectSandboxPayment(
+            reservation.id(),
+            getCurrentReservationParticipantId()
+        );
+        loadStudentReservations();
+        if (result.success()) {
+            boolean opened = openExternalUrl(result.paymentUrl());
+            String message = result.message()
+                + (opened
+                ? " Revenez ensuite ici pour verifier le statut du paiement."
+                : " Ouvrez manuellement ce lien: " + safeText(result.paymentUrl()));
+            showStudentReservationsFeedback(message, true);
+            return;
+        }
+        showStudentReservationsFeedback(result.message(), false);
+    }
+
+    private void handleVerifyReservationPayment(StudentReservationItem reservation) {
+        if (reservation == null) {
+            return;
+        }
+        ReservationService.PaymentVerificationResult result = reservationService.refreshReservationPaymentStatus(
+            reservation.id(),
+            getCurrentReservationParticipantId()
+        );
+        loadStudentReservations();
+        showStudentReservationsFeedback(result.message(), result.success());
     }
 
     private String buildTutorReservationRatingSummary(TutorReservationRequest request) {
@@ -5250,6 +5363,7 @@ public class ReservationController {
         metrics.getChildren().addAll(
             buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "Intervenant"),
             buildDetailMetric("Mode", mapModeLabel(seance.getMode()), "Format choisi"),
+            buildDetailMetric("Prix", formatSessionPrice(seance.getPrice()), "Tarif"),
             buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel")
         );
         if (seance.isPresentiel()) {
@@ -5630,6 +5744,7 @@ public class ReservationController {
         setStartAtSelection(seance.getStartAt());
         sessionDurationField.setText(String.valueOf(seance.getDurationMin()));
         sessionCapacityField.setText(String.valueOf(seance.getMaxParticipants()));
+        sessionPriceField.setText(formatPriceTnd(seance.getPrice()));
         sessionDescriptionArea.setText(seance.getDescription() != null ? seance.getDescription() : "");
         sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(seance.getMode()));
         updateOnsiteOptionsVisibility();
@@ -5819,6 +5934,14 @@ public class ReservationController {
         return availableSeats == 1 ? "1 place disponible" : availableSeats + " places disponibles";
     }
 
+    private String formatSessionPrice(double priceTnd) {
+        return priceTnd <= 0.0 ? "Gratuit" : formatPriceTnd(priceTnd) + " TND";
+    }
+
+    private String formatPriceTnd(double priceTnd) {
+        return String.format(Locale.ROOT, "%.3f", Math.max(0.0, priceTnd));
+    }
+
     private double calculateOccupancyRate(int reservationCount, int capacity) {
         if (reservationCount <= 0 || capacity <= 0) {
             return 0.0;
@@ -5841,6 +5964,22 @@ public class ReservationController {
 
     private String formatDateTime(LocalDateTime value) {
         return value != null ? value.format(DISPLAY_FORMATTER) : "";
+    }
+
+    private boolean openExternalUrl(String url) {
+        String normalizedUrl = normalizeText(url);
+        if (normalizedUrl == null) {
+            return false;
+        }
+        try {
+            if (!Desktop.isDesktopSupported()) {
+                return false;
+            }
+            Desktop.getDesktop().browse(URI.create(normalizedUrl));
+            return true;
+        } catch (Exception exception) {
+            return false;
+        }
     }
 
     private void configureDateTimeInputs() {
@@ -6030,6 +6169,7 @@ public class ReservationController {
         setStartAtSelection(null);
         sessionDurationField.clear();
         sessionCapacityField.clear();
+        sessionPriceField.clear();
         sessionDescriptionArea.clear();
         sessionOnsiteCheckBox.setSelected(false);
         selectedSalleId = null;
@@ -6145,6 +6285,19 @@ public class ReservationController {
         setNodeVisible(matchingSwipeButton, visible);
         if (matchingSwipeButton != null) {
             matchingSwipeButton.setText(UserSession.isCurrentTutor() ? "Inbox matching" : "Matching swipe");
+        }
+    }
+
+    private double parsePriceTnd(String value, String errorMessage) {
+        String candidate = requireText(value, errorMessage).replace(',', '.');
+        try {
+            double parsedValue = Double.parseDouble(candidate);
+            if (parsedValue < SeanceService.MIN_PRICE_TND || parsedValue > SeanceService.MAX_PRICE_TND) {
+                throw new NumberFormatException();
+            }
+            return Math.round(parsedValue * 1000.0) / 1000.0;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(errorMessage);
         }
     }
 

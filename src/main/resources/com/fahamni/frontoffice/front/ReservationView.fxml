@@ -123,6 +123,10 @@
                         <Label text="Participants max *" styleClass="form-label"/>
                         <TextField fx:id="sessionCapacityField" promptText="Entre 1 et 50" styleClass="form-field"/>
                     </VBox>
+                    <VBox spacing="6.0" prefWidth="180.0" HBox.hgrow="ALWAYS">
+                        <Label text="Prix (TND) *" styleClass="form-label"/>
+                        <TextField fx:id="sessionPriceField" promptText="0.000 pour gratuit" styleClass="form-field"/>
+                    </VBox>
                 </HBox>
 
                 <VBox spacing="6.0">

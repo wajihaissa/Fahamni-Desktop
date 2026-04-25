@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLException;
+import tn.esprit.fahamni.utils.LocalConfig;
 
 public class GeminiMatchingAnalysisService {
 
@@ -407,15 +408,7 @@ public class GeminiMatchingAnalysisService {
     }
 
     private String normalizeEnv(String key) {
-        String value = System.getenv(key);
-        if (value == null) {
-            value = System.getProperty(key);
-        }
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim();
-        return normalized.isEmpty() ? null : normalized;
+        return LocalConfig.get(key);
     }
 
     private String extractApiErrorMessage(String responseBody) {
