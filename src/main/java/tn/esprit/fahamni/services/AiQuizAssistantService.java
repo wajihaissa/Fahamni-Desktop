@@ -113,22 +113,12 @@ public class AiQuizAssistantService {
         }
 
         String prompt = buildHintPrompt(quiz, question, selectedChoiceId);
-        String requestBody = """
-                {
-                  "model": "%s",
-                  "messages": [
-                    {
-                      "role": "system",
-                      "content": "You write short, non-revealing quiz hints. Never mention the correct answer. Never rule out answer choices. Never say option, choice, eliminate, or rule out."
-                    },
-                    {
-                      "role": "user",
-                      "content": "%s"
-                    }
-                  ],
-                  "temperature": 0.7
-                }
-                """.formatted(escapeJson(model), escapeJson(prompt));
+        String requestBody = buildChatRequestBody(
+                model,
+                "You write short, non-revealing quiz hints. Never mention the correct answer. Never rule out answer choices. Never say option, choice, eliminate, or rule out.",
+                prompt,
+                0.7
+        );
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.openai.com/v1/chat/completions"))
@@ -171,22 +161,12 @@ public class AiQuizAssistantService {
         }
 
         String prompt = buildQuestionMetadataPrompt(quizKeyword, quizTitle, questionText, choices);
-        String requestBody = """
-                {
-                  "model": "%s",
-                  "messages": [
-                    {
-                      "role": "system",
-                      "content": "You classify quiz questions. Reply using exactly two lines: TOPIC: ... and DIFFICULTY: Easy|Medium|Hard"
-                    },
-                    {
-                      "role": "user",
-                      "content": "%s"
-                    }
-                  ],
-                  "temperature": 0.2
-                }
-                """.formatted(escapeJson(model), escapeJson(prompt));
+        String requestBody = buildChatRequestBody(
+                model,
+                "You classify quiz questions. Reply using exactly two lines: TOPIC: ... and DIFFICULTY: Easy|Medium|Hard",
+                prompt,
+                0.2
+        );
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.openai.com/v1/chat/completions"))
@@ -396,22 +376,12 @@ public class AiQuizAssistantService {
         }
 
         String prompt = buildGenerationPrompt(topic, title, questionCount, difficulty);
-        String requestBody = """
-                {
-                  "model": "%s",
-                  "messages": [
-                    {
-                      "role": "system",
-                      "content": "You generate short educational multiple-choice quizzes. Follow the exact response template."
-                    },
-                    {
-                      "role": "user",
-                      "content": "%s"
-                    }
-                  ],
-                  "temperature": 0.8
-                }
-                """.formatted(escapeJson(model), escapeJson(prompt));
+        String requestBody = buildChatRequestBody(
+                model,
+                "You generate short educational multiple-choice quizzes. Follow the exact response template.",
+                prompt,
+                0.8
+        );
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.openai.com/v1/chat/completions"))
@@ -647,6 +617,30 @@ public class AiQuizAssistantService {
             return matcher.group(1).trim();
         }
         return fallback;
+    }
+
+    private String buildChatRequestBody(String model, String systemPrompt, String userPrompt, double temperature) {
+        return """
+                {
+                  "model": "%s",
+                  "messages": [
+                    {
+                      "role": "system",
+                      "content": "%s"
+                    },
+                    {
+                      "role": "user",
+                      "content": "%s"
+                    }
+                  ],
+                  "temperature": %s
+                }
+                """.formatted(
+                escapeJson(model),
+                escapeJson(systemPrompt),
+                escapeJson(userPrompt),
+                temperature
+        );
     }
 
     private String safeText(String value, String fallback) {
