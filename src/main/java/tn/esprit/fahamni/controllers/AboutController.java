@@ -9,9 +9,9 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import tn.esprit.fahamni.utils.FrontOfficeMotion;
@@ -29,6 +29,9 @@ public class AboutController {
     private FlowPane aboutStatStrip;
 
     @FXML
+    private TilePane aboutInsightGrid;
+
+    @FXML
     private VBox aboutAudienceSection;
 
     @FXML
@@ -38,20 +41,11 @@ public class AboutController {
     private HBox aboutClosingGrid;
 
     @FXML
-    private VBox aboutPortraitCard;
-
-    @FXML
-    private VBox aboutSummaryBanner;
-
-    @FXML
-    private ImageView aboutPortraitImageView;
+    private HBox aboutSummaryBanner;
 
     @FXML
     private void initialize() {
-        Platform.runLater(() -> {
-            FrontOfficeMotion.installInteractiveMotion(aboutContent);
-            FrontOfficeMotion.applyRoundedClip(aboutPortraitImageView, 38);
-        });
+        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(aboutContent));
         playIntroAnimation();
     }
 
@@ -69,13 +63,13 @@ public class AboutController {
 
     private void playIntroAnimation() {
         animateSection(aboutHeroSection, 0);
-        animateSection(aboutStatStrip, 90);
-        animateSection(aboutAudienceSection, 180);
-        animateSection(aboutFeatureSection, 270);
-        animateSection(aboutClosingGrid, 360);
-        animateSection(aboutSummaryBanner, 450);
+        animateSection(aboutInsightGrid, 80);
+        animateSection(aboutStatStrip, 160);
+        animateSection(aboutAudienceSection, 240);
+        animateSection(aboutFeatureSection, 320);
+        animateSection(aboutClosingGrid, 400);
+        animateSection(aboutSummaryBanner, 480);
 
-        FrontOfficeMotion.playFloat(aboutPortraitCard, -2.0, 2.0, -4.0, 4.0, 4.8);
         FrontOfficeMotion.playFloat(aboutSummaryBanner, 0.0, 0.0, -2.0, 3.0, 5.8);
     }
 

@@ -5,12 +5,11 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.TilePane?>
 <?import javafx.scene.layout.VBox?>
 <?import tn.esprit.fahamni.utils.AnimatedSpiderwebPane?>
 
@@ -43,8 +42,8 @@
                     </FlowPane>
                 </VBox>
 
-                <VBox maxWidth="420.0" minWidth="320.0" prefWidth="420.0" spacing="14.0" styleClass="about-side-stack">
-                    <VBox spacing="10.0">
+                <TilePane fx:id="aboutInsightGrid" hgap="16.0" maxWidth="520.0" minWidth="360.0" prefColumns="2" prefTileWidth="248.0" prefWidth="520.0" vgap="16.0" styleClass="about-insight-grid">
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0">
                         <styleClass>
                             <String fx:value="about-side-card"/>
                             <String fx:value="about-side-card-primary"/>
@@ -56,44 +55,34 @@
                                styleClass="about-card-copy" wrapText="true"/>
                     </VBox>
 
-                    <VBox spacing="10.0" styleClass="about-side-card">
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0" styleClass="about-side-card">
                         <Label text="POURQUOI C'EST IMPORTANT" styleClass="about-card-kicker"/>
                         <Label text="Cela reduit la fragmentation entre reservation, etude, communication et infrastructure pour une experience plus calme et plus complete."
                                styleClass="about-card-copy" wrapText="true"/>
                     </VBox>
 
-                    <VBox fx:id="aboutPortraitCard" spacing="12.0" styleClass="about-photo-card">
-                        <StackPane minHeight="240.0" prefHeight="240.0" styleClass="about-photo-image-shell">
-                            <ImageView fx:id="aboutPortraitImageView" fitHeight="240.0" fitWidth="420.0" pickOnBounds="true"
-                                       preserveRatio="false" smooth="true" styleClass="about-photo-image">
-                                <image>
-                                    <Image url="@/com/fahamni/images/frontoffice/tutor-portrait-sarah.png"/>
-                                </image>
-                            </ImageView>
-                            <Label text="TUTEURS DE CONFIANCE" styleClass="about-chip about-photo-chip" StackPane.alignment="TOP_LEFT">
-                                <StackPane.margin>
-                                    <Insets top="14" right="0" bottom="0" left="14"/>
-                                </StackPane.margin>
-                            </Label>
-                        </StackPane>
-                        <VBox spacing="6.0" styleClass="about-photo-copy-block">
-                            <Label text="Un accompagnement humain pour une experience d'apprentissage plus premium."
-                                   styleClass="about-card-title" wrapText="true"/>
-                            <Label text="De vrais profils de tuteurs rendent la plateforme plus guidee, plus credible et moins vide."
-                                   styleClass="about-card-copy" wrapText="true"/>
-                        </VBox>
-                    </VBox>
-
-                    <VBox spacing="10.0" styleClass="about-side-card">
-                        <Label text="STRUCTURE DU PRODUIT" styleClass="about-card-kicker"/>
-                        <FlowPane hgap="8.0" prefWrapLength="320.0" vgap="8.0">
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0" styleClass="about-side-card">
+                        <Label text="ROLES CONNECTES" styleClass="about-card-kicker"/>
+                        <Label text="Etudiants, tuteurs et administrateurs avancent dans un meme produit au lieu d'utiliser des espaces coupes les uns des autres."
+                               styleClass="about-card-copy" wrapText="true"/>
+                        <FlowPane hgap="8.0" prefWrapLength="220.0" vgap="8.0">
                             <Label text="Etudiants" styleClass="about-micro-chip"/>
                             <Label text="Tuteurs" styleClass="about-micro-chip"/>
                             <Label text="Administrateurs" styleClass="about-micro-chip"/>
-                            <Label text="En ligne et presentiel" styleClass="about-micro-chip"/>
                         </FlowPane>
                     </VBox>
-                </VBox>
+
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0" styleClass="about-side-card">
+                        <Label text="SOCLE DU PRODUIT" styleClass="about-card-kicker"/>
+                        <Label text="Tutorat, planner, salles, blog, quiz et messagerie forment un environnement utile avant, pendant et apres la seance."
+                               styleClass="about-card-copy" wrapText="true"/>
+                        <FlowPane hgap="8.0" prefWrapLength="220.0" vgap="8.0">
+                            <Label text="En ligne" styleClass="about-micro-chip"/>
+                            <Label text="Presentiel" styleClass="about-micro-chip"/>
+                            <Label text="Securise" styleClass="about-micro-chip"/>
+                        </FlowPane>
+                    </VBox>
+                </TilePane>
             </HBox>
 
             <FlowPane fx:id="aboutStatStrip" hgap="16.0" prefWrapLength="1180.0" styleClass="about-stat-strip" vgap="16.0">
@@ -131,7 +120,7 @@
                             styleClass="about-soft-button" userData="DASHBOARD"/>
                 </HBox>
 
-                <FlowPane hgap="18.0" prefWrapLength="1180.0" vgap="18.0">
+                <TilePane hgap="18.0" prefColumns="3" prefTileWidth="346.0" prefWidth="1.7976931348623157E308" vgap="18.0" styleClass="about-card-grid">
                     <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
                         <Label text="Etudiants" styleClass="about-audience-title"/>
                         <Label text="Les etudiants peuvent chercher des tuteurs, reserver des seances, organiser leur calendrier, suivre leur planner et garder leurs ressources a portee de main."
@@ -147,7 +136,7 @@
                         <Label text="Les administrateurs supervisent utilisateurs, salles, materiel, contenu et qualite de plateforme, donnant a Fahamni une vraie base operationnelle."
                                styleClass="about-body-copy" wrapText="true"/>
                     </VBox>
-                </FlowPane>
+                </TilePane>
             </VBox>
 
             <VBox fx:id="aboutFeatureSection" spacing="16.0" styleClass="about-section-card">
@@ -162,7 +151,7 @@
                             styleClass="about-soft-button" userData="BLOG"/>
                 </HBox>
 
-                <FlowPane hgap="18.0" prefWrapLength="1180.0" vgap="18.0">
+                <TilePane hgap="18.0" prefColumns="3" prefTileWidth="346.0" prefWidth="1.7976931348623157E308" vgap="18.0" styleClass="about-card-grid">
                     <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
                         <HBox alignment="CENTER_LEFT" spacing="10.0">
                             <Label text="BK" styleClass="about-icon-badge"/>
@@ -217,7 +206,7 @@
                                styleClass="about-body-copy" wrapText="true"/>
                         <Label text="Securite" styleClass="about-feature-tag"/>
                     </VBox>
-                </FlowPane>
+                </TilePane>
             </VBox>
 
             <HBox fx:id="aboutClosingGrid" alignment="TOP_LEFT" spacing="20.0">
@@ -234,21 +223,30 @@
                 </VBox>
             </HBox>
 
-            <VBox fx:id="aboutSummaryBanner" spacing="14.0" styleClass="about-summary-banner">
-                <VBox spacing="10.0" styleClass="about-summary-copy-block">
+            <HBox fx:id="aboutSummaryBanner" alignment="CENTER_LEFT" spacing="24.0" styleClass="about-summary-banner">
+                <VBox maxWidth="1.7976931348623157E308" prefWidth="0.0" spacing="10.0" styleClass="about-summary-copy-block" HBox.hgrow="ALWAYS">
                     <Label text="Fahamni en une phrase" styleClass="about-summary-title"/>
                     <Label text="Une plateforme d'accompagnement qui aide les etudiants a trouver du soutien, aide les tuteurs a organiser leurs seances et aide les administrateurs a gerer l'environnement numerique et physique de l'apprentissage."
                            styleClass="about-summary-copy" wrapText="true"/>
                 </VBox>
-                <FlowPane hgap="10.0" prefWrapLength="920.0" vgap="10.0">
-                    <Label text="Etudiants" styleClass="about-chip"/>
-                    <Label text="Tuteurs" styleClass="about-chip"/>
-                    <Label text="Administrateurs" styleClass="about-chip"/>
-                    <Label text="Seances en ligne" styleClass="about-chip"/>
-                    <Label text="Support en presentiel" styleClass="about-chip"/>
-                    <Label text="Salles et materiel" styleClass="about-chip"/>
-                </FlowPane>
-            </VBox>
+                <VBox minWidth="320.0" prefWidth="360.0" spacing="14.0" styleClass="about-summary-side-block">
+                    <Label text="CE QUE LA PLATEFORME RELIE" styleClass="about-card-kicker"/>
+                    <FlowPane hgap="10.0" prefWrapLength="320.0" vgap="10.0">
+                        <Label text="Etudiants" styleClass="about-chip"/>
+                        <Label text="Tuteurs" styleClass="about-chip"/>
+                        <Label text="Administrateurs" styleClass="about-chip"/>
+                        <Label text="Seances en ligne" styleClass="about-chip"/>
+                        <Label text="Support en presentiel" styleClass="about-chip"/>
+                        <Label text="Salles et materiel" styleClass="about-chip"/>
+                    </FlowPane>
+                    <HBox spacing="10.0">
+                        <Button text="Voir l'accueil" onAction="#handleNavigationAction"
+                                styleClass="about-soft-button" userData="DASHBOARD"/>
+                        <Button text="Trouver un tuteur" onAction="#handleNavigationAction"
+                                styleClass="about-soft-button" userData="RESERVATIONS"/>
+                    </HBox>
+                </VBox>
+            </HBox>
             </VBox>
         </VBox>
     </StackPane>

@@ -66,6 +66,7 @@
 
 #dashboardHomeRoot .dashboard-premium-hero-layout {
     -fx-padding: 32px;
+    -fx-alignment: top-left;
 }
 
 #dashboardHomeRoot .dashboard-premium-page-spiderweb {
@@ -83,7 +84,7 @@
 }
 
 #dashboardHomeRoot .dashboard-premium-hero-copy {
-    -fx-padding: 2px 18px 2px 2px;
+    -fx-padding: 6px 0 6px 2px;
 }
 
 #dashboardHomeRoot .dashboard-premium-eyebrow,
@@ -172,8 +173,12 @@
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-stack {
-    -fx-padding: 2px 0 0 0;
-    -fx-pref-width: 400px;
+    -fx-padding: 4px 0 0 0;
+    -fx-pref-width: 560px;
+}
+
+#dashboardHomeRoot .dashboard-premium-floating-card-grid {
+    -fx-pref-wrap-length: 560px;
 }
 
 #dashboardHomeRoot .dashboard-premium-hero-visual-shell,
@@ -262,11 +267,11 @@
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-card-primary {
-    -fx-translate-x: 0;
+    -fx-pref-width: 320px;
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-card-secondary {
-    -fx-translate-x: 0;
+    -fx-pref-width: 228px;
 }
 
 #dashboardHomeRoot .dashboard-premium-inline-chip,

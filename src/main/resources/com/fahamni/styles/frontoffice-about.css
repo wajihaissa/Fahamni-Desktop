@@ -53,6 +53,12 @@
     -fx-fill-width: true;
 }
 
+#aboutRoot .about-insight-grid,
+#aboutRoot .about-card-grid {
+    -fx-alignment: top-left;
+    -fx-pref-columns: 3;
+}
+
 #aboutRoot .about-page-spiderweb {
     -fx-opacity: 0.42;
 }
@@ -101,13 +107,30 @@
 #aboutRoot .about-audience-card,
 #aboutRoot .about-feature-card,
 #aboutRoot .about-side-card,
-#aboutRoot .about-photo-card,
 #aboutRoot .about-summary-banner {
     -fx-padding: 22px;
 }
 
 #aboutRoot .about-hero {
     -fx-padding: 32px;
+}
+
+#aboutRoot .about-side-card,
+#aboutRoot .about-audience-card,
+#aboutRoot .about-feature-card {
+    -fx-min-height: 168px;
+}
+
+#aboutRoot .about-feature-card {
+    -fx-spacing: 12px;
+}
+
+#aboutRoot .about-insight-grid .about-side-card {
+    -fx-padding: 20px;
+}
+
+#aboutRoot .about-side-card-primary {
+    -fx-border-width: 1px;
 }
 
 .theme-dark #aboutRoot .about-hero {
@@ -235,31 +258,15 @@
     -fx-alignment: center-left;
 }
 
-#aboutRoot .about-photo-card {
-    -fx-padding: 0;
-}
-
-#aboutRoot .about-photo-image-shell,
-#aboutRoot .about-summary-image-shell {
-    -fx-background-color: rgba(8, 15, 24, 0.82);
-    -fx-border-color: rgba(149, 192, 255, 0.12);
-    -fx-border-width: 1px;
-    -fx-background-radius: 26px;
-    -fx-border-radius: 26px;
-    -fx-padding: 0;
-    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.28), 18, 0.16, 0, 6);
-}
-
-#aboutRoot .about-photo-copy-block {
-    -fx-padding: 0 20px 20px 20px;
-}
-
 #aboutRoot .about-summary-copy-block {
     -fx-padding: 4px 0 4px 0;
 }
 
-#aboutRoot .about-photo-chip {
-    -fx-effect: dropshadow(gaussian, rgba(2, 7, 15, 0.24), 12, 0.16, 0, 3);
+#aboutRoot .about-summary-side-block {
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-border-width: 1px;
+    -fx-padding: 18px;
 }
 
 .theme-dark #aboutRoot .about-hero-title,
@@ -330,12 +337,6 @@
     -fx-text-fill: #1d4a74;
 }
 
-.theme-light #aboutRoot .about-photo-image-shell,
-.theme-light #aboutRoot .about-summary-image-shell {
-    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.96) 0%, rgba(246, 250, 253, 0.94) 100%);
-    -fx-border-color: rgba(90, 124, 164, 0.10);
-}
-
 .theme-dark #aboutRoot .about-soft-button {
     -fx-background-color: rgba(255, 255, 255, 0.05);
     -fx-border-color: rgba(255, 255, 255, 0.10);
@@ -361,17 +362,39 @@
 .theme-dark #aboutRoot .about-stat-card,
 .theme-dark #aboutRoot .about-audience-card,
 .theme-dark #aboutRoot .about-feature-card,
-.theme-dark #aboutRoot .about-side-card,
-.theme-dark #aboutRoot .about-photo-card {
+.theme-dark #aboutRoot .about-side-card {
     -fx-background-color: rgba(255, 255, 255, 0.03);
 }
 
 .theme-light #aboutRoot .about-stat-card,
 .theme-light #aboutRoot .about-audience-card,
 .theme-light #aboutRoot .about-feature-card,
-.theme-light #aboutRoot .about-side-card,
-.theme-light #aboutRoot .about-photo-card {
+.theme-light #aboutRoot .about-side-card {
     -fx-background-color: linear-gradient(to bottom, rgba(248, 250, 253, 0.96) 0%, rgba(243, 247, 251, 0.94) 100%);
+}
+
+.theme-dark #aboutRoot .about-side-card-primary {
+    -fx-background-color:
+        radial-gradient(center 18% 15%, radius 52%, rgba(83, 214, 255, 0.18) 0%, rgba(83, 214, 255, 0.00) 74%),
+        linear-gradient(to bottom right, rgba(16, 27, 42, 0.94) 0%, rgba(11, 20, 33, 0.92) 100%);
+    -fx-border-color: rgba(96, 224, 255, 0.20);
+}
+
+.theme-light #aboutRoot .about-side-card-primary {
+    -fx-background-color:
+        radial-gradient(center 18% 15%, radius 52%, rgba(79, 216, 255, 0.14) 0%, rgba(79, 216, 255, 0.00) 74%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.98) 0%, rgba(244, 249, 255, 0.96) 100%);
+    -fx-border-color: rgba(93, 158, 255, 0.18);
+}
+
+.theme-dark #aboutRoot .about-summary-side-block {
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(144, 190, 246, 0.12);
+}
+
+.theme-light #aboutRoot .about-summary-side-block {
+    -fx-background-color: rgba(255, 255, 255, 0.72);
+    -fx-border-color: rgba(90, 124, 164, 0.10);
 }
 
 .theme-dark #aboutRoot .about-summary-banner {
@@ -391,7 +414,6 @@
 .theme-dark #aboutRoot .about-audience-card:hover,
 .theme-dark #aboutRoot .about-feature-card:hover,
 .theme-dark #aboutRoot .about-side-card:hover,
-.theme-dark #aboutRoot .about-photo-card:hover,
 .theme-dark #aboutRoot .about-summary-banner:hover {
     -fx-border-color: rgba(96, 224, 255, 0.24);
 }
@@ -401,7 +423,6 @@
 .theme-light #aboutRoot .about-audience-card:hover,
 .theme-light #aboutRoot .about-feature-card:hover,
 .theme-light #aboutRoot .about-side-card:hover,
-.theme-light #aboutRoot .about-photo-card:hover,
 .theme-light #aboutRoot .about-summary-banner:hover {
     -fx-border-color: rgba(93, 158, 255, 0.18);
     -fx-effect: dropshadow(gaussian, rgba(86, 140, 205, 0.08), 16, 0.14, 0, 6);

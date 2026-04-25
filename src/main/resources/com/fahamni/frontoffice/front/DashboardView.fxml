@@ -28,8 +28,10 @@
             <VBox fx:id="dashboardHomeContent" id="dashboardHomeContent" maxWidth="1.7976931348623157E308" spacing="24.0" styleClass="dashboard-premium-content">
             <StackPane fx:id="heroSection" styleClass="dashboard-premium-hero">
                 <AnimatedSpiderwebPane fx:id="heroSpiderwebPane" styleClass="dashboard-premium-spiderweb" />
-                <FlowPane hgap="24.0" prefWrapLength="1120.0" styleClass="dashboard-premium-hero-layout" vgap="24.0">
-                    <VBox maxWidth="620.0" minWidth="320.0" spacing="18.0" styleClass="dashboard-premium-hero-copy">
+                <HBox alignment="TOP_LEFT" fillHeight="false" maxWidth="1.7976931348623157E308" spacing="32.0"
+                      styleClass="dashboard-premium-hero-layout">
+                    <VBox maxWidth="1.7976931348623157E308" minWidth="320.0" prefWidth="0.0" spacing="18.0"
+                          styleClass="dashboard-premium-hero-copy" HBox.hgrow="ALWAYS">
                         <Label text="PLATEFORME D'APPRENTISSAGE" styleClass="dashboard-premium-eyebrow"/>
                         <Label fx:id="welcomeTitleLabel" text="Apprends mieux avec le bon tuteur, les bons outils et un bon rythme"
                                styleClass="dashboard-premium-hero-title" wrapText="true"/>
@@ -44,15 +46,16 @@
                         </FlowPane>
                     </VBox>
 
-                    <VBox fx:id="floatingStack" maxWidth="420.0" minWidth="320.0" spacing="12.0" styleClass="dashboard-premium-floating-stack">
-                        <StackPane fx:id="heroVisualPane" minHeight="258.0" prefHeight="258.0" styleClass="dashboard-premium-hero-visual-shell">
+                    <VBox fx:id="floatingStack" maxWidth="580.0" minWidth="360.0" prefWidth="560.0" spacing="14.0"
+                          styleClass="dashboard-premium-floating-stack">
+                        <StackPane fx:id="heroVisualPane" minHeight="292.0" prefHeight="292.0" styleClass="dashboard-premium-hero-visual-shell">
                             <Region fx:id="heroGlowOrbOne" managed="false" mouseTransparent="true"
                                     styleClass="dashboard-premium-background-orb dashboard-premium-background-orb-one"
                                     StackPane.alignment="TOP_RIGHT"/>
                             <Region fx:id="heroGlowOrbTwo" managed="false" mouseTransparent="true"
                                     styleClass="dashboard-premium-background-orb dashboard-premium-background-orb-two"
                                     StackPane.alignment="BOTTOM_LEFT"/>
-                            <ImageView fx:id="heroStudyImageView" fitHeight="258.0" fitWidth="420.0" pickOnBounds="true"
+                            <ImageView fx:id="heroStudyImageView" fitHeight="292.0" fitWidth="560.0" pickOnBounds="true"
                                        preserveRatio="false" smooth="true" styleClass="dashboard-premium-hero-image">
                                 <image>
                                     <Image url="@/com/fahamni/images/frontoffice/dashboard-hero-study.png"/>
@@ -60,8 +63,8 @@
                             </ImageView>
                         </StackPane>
 
-                        <VBox spacing="12.0">
-                            <VBox maxWidth="1.7976931348623157E308" spacing="10.0">
+                        <FlowPane hgap="12.0" prefWrapLength="560.0" styleClass="dashboard-premium-floating-card-grid" vgap="12.0">
+                            <VBox maxWidth="1.7976931348623157E308" minWidth="300.0" prefWidth="320.0" spacing="10.0">
                                 <styleClass>
                                     <String fx:value="dashboard-premium-floating-card"/>
                                     <String fx:value="dashboard-premium-floating-card-primary"/>
@@ -75,7 +78,7 @@
                                 <Label text="18:00 / En ligne / 45 min / Confirmee" styleClass="dashboard-premium-floating-copy" wrapText="true"/>
                             </VBox>
 
-                            <VBox maxWidth="1.7976931348623157E308" spacing="10.0">
+                            <VBox maxWidth="1.7976931348623157E308" minWidth="228.0" prefWidth="228.0" spacing="10.0">
                                 <styleClass>
                                     <String fx:value="dashboard-premium-floating-card"/>
                                     <String fx:value="dashboard-premium-floating-card-secondary"/>
@@ -87,9 +90,9 @@
                                        text="Commence par ta prochaine seance, puis garde un rythme stable avec le planner et tes ressources."
                                        styleClass="dashboard-premium-floating-copy" wrapText="true"/>
                             </VBox>
-                        </VBox>
+                        </FlowPane>
                     </VBox>
-                </FlowPane>
+                </HBox>
             </StackPane>
 
             <FlowPane fx:id="statStrip" hgap="16.0" prefWrapLength="1180.0" styleClass="dashboard-premium-stat-strip" vgap="16.0">
