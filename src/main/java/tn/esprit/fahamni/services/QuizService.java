@@ -328,34 +328,16 @@ public class QuizService {
     }
 
     public boolean isQuizStructureValid(Quiz quiz) {
-        if (quiz == null || isBlank(quiz.getTitre()) || isBlank(quiz.getKeyword()) || quiz.getQuestions() == null || quiz.getQuestions().isEmpty()) {
+        if (!hasQuizShell(quiz)) {
             return false;
         }
 
         for (Question question : quiz.getQuestions()) {
-            if (question == null || isBlank(question.getQuestion()) || question.getChoices() == null || question.getChoices().size() < 2) {
+            if (!hasValidQuestionShell(question)) {
                 return false;
             }
 
-            int correctChoices = 0;
-            Set<String> normalizedChoices = new HashSet<>();
-
-            for (Choice choice : question.getChoices()) {
-                if (choice == null || isBlank(choice.getChoice())) {
-                    return false;
-                }
-
-                String normalizedChoice = choice.getChoice().trim().toLowerCase();
-                if (!normalizedChoices.add(normalizedChoice)) {
-                    return false;
-                }
-
-                if (Boolean.TRUE.equals(choice.getIsCorrect())) {
-                    correctChoices++;
-                }
-            }
-
-            if (correctChoices != 1) {
+            if (!hasValidChoiceSet(question.getChoices())) {
                 return false;
             }
         }
@@ -802,6 +784,43 @@ public class QuizService {
                 .filter(choice -> Boolean.TRUE.equals(choice.getIsCorrect()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private boolean hasQuizShell(Quiz quiz) {
+        return quiz != null
+                && !isBlank(quiz.getTitre())
+                && !isBlank(quiz.getKeyword())
+                && quiz.getQuestions() != null
+                && !quiz.getQuestions().isEmpty();
+    }
+
+    private boolean hasValidQuestionShell(Question question) {
+        return question != null
+                && !isBlank(question.getQuestion())
+                && question.getChoices() != null
+                && question.getChoices().size() >= 2;
+    }
+
+    private boolean hasValidChoiceSet(List<Choice> choices) {
+        int correctChoices = 0;
+        Set<String> normalizedChoices = new HashSet<>();
+
+        for (Choice choice : choices) {
+            if (choice == null || isBlank(choice.getChoice())) {
+                return false;
+            }
+
+            String normalizedChoice = choice.getChoice().trim().toLowerCase();
+            if (!normalizedChoices.add(normalizedChoice)) {
+                return false;
+            }
+
+            if (Boolean.TRUE.equals(choice.getIsCorrect())) {
+                correctChoices++;
+            }
+        }
+
+        return correctChoices == 1;
     }
 
     private Integer getNullableInt(ResultSet rs, String column) throws SQLException {
