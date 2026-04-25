@@ -384,11 +384,13 @@ public class BackofficeQuizController {
         String normalizedChoice3 = normalizeText(choice3Field.getText());
         String normalizedChoice4 = normalizeText(choice4Field.getText());
 
-        questionField.setText(normalizedQuestion == null ? "" : normalizedQuestion);
-        choice1Field.setText(normalizedChoice1 == null ? "" : normalizedChoice1);
-        choice2Field.setText(normalizedChoice2 == null ? "" : normalizedChoice2);
-        choice3Field.setText(normalizedChoice3 == null ? "" : normalizedChoice3);
-        choice4Field.setText(normalizedChoice4 == null ? "" : normalizedChoice4);
+        applyNormalizedQuestionEditorValues(
+                normalizedQuestion,
+                normalizedChoice1,
+                normalizedChoice2,
+                normalizedChoice3,
+                normalizedChoice4
+        );
 
         if (normalizedQuestion == null) {
             return "Veuillez entrer une question.";
@@ -585,6 +587,20 @@ public class BackofficeQuizController {
 
         updateQuestionsList();
         clearQuestionEditor();
+    }
+
+    private void applyNormalizedQuestionEditorValues(
+            String normalizedQuestion,
+            String normalizedChoice1,
+            String normalizedChoice2,
+            String normalizedChoice3,
+            String normalizedChoice4
+    ) {
+        questionField.setText(normalizedQuestion == null ? "" : normalizedQuestion);
+        choice1Field.setText(normalizedChoice1 == null ? "" : normalizedChoice1);
+        choice2Field.setText(normalizedChoice2 == null ? "" : normalizedChoice2);
+        choice3Field.setText(normalizedChoice3 == null ? "" : normalizedChoice3);
+        choice4Field.setText(normalizedChoice4 == null ? "" : normalizedChoice4);
     }
 
     private void populateQuestionEditor(int index) {
