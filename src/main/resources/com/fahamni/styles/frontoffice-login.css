@@ -1,15 +1,24 @@
 .login-root {
     -fx-background-color:
-        radial-gradient(center 14% 18%, radius 34%, rgba(87, 127, 255, 0.18) 0%, rgba(87, 127, 255, 0.0) 72%),
-        radial-gradient(center 86% 14%, radius 42%, rgba(86, 161, 255, 0.15) 0%, rgba(86, 161, 255, 0.0) 76%),
-        linear-gradient(to bottom right, #07162f 0%, #0a1d3d 32%, #0f2a56 62%, #123a76 100%);
+        radial-gradient(center 14% 16%, radius 34%, rgba(87, 172, 255, 0.16) 0%, rgba(87, 172, 255, 0.0) 72%),
+        radial-gradient(center 84% 18%, radius 40%, rgba(118, 109, 255, 0.11) 0%, rgba(118, 109, 255, 0.0) 74%),
+        linear-gradient(to bottom right, #07111b 0%, #091522 34%, #0d1b2b 64%, #11223a 100%);
+}
+
+.login-spiderweb-overlay {
+    -fx-opacity: 0.98;
 }
 
 .login-grid-overlay {
     -fx-background-color:
-        linear-gradient(to right, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.0) 97.8%, rgba(139, 184, 255, 0.09) 100%),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.0) 97.8%, rgba(139, 184, 255, 0.09) 100%);
-    -fx-opacity: 0.35;
+        linear-gradient(to right, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.0) 97.8%, rgba(139, 184, 255, 0.08) 100%),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.0) 97.8%, rgba(139, 184, 255, 0.08) 100%);
+    -fx-opacity: 0.26;
+}
+
+.login-vignette {
+    -fx-background-color:
+        radial-gradient(center 50% 40%, radius 72%, rgba(5, 10, 18, 0.0) 48%, rgba(5, 10, 18, 0.18) 100%);
 }
 
 .login-aurora {
@@ -18,16 +27,28 @@
 }
 
 .login-aurora-left {
-    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(72, 116, 230, 0.28) 0%, rgba(72, 116, 230, 0.08) 34%, rgba(72, 116, 230, 0.0) 72%);
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(76, 128, 255, 0.22) 0%, rgba(76, 128, 255, 0.07) 34%, rgba(76, 128, 255, 0.0) 72%);
 }
 
 .login-aurora-right {
-    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(121, 205, 255, 0.16) 0%, rgba(121, 205, 255, 0.06) 32%, rgba(121, 205, 255, 0.0) 72%);
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(121, 205, 255, 0.14) 0%, rgba(121, 205, 255, 0.05) 32%, rgba(121, 205, 255, 0.0) 72%);
+}
+
+.login-orb {
+    -fx-background-radius: 999px;
+}
+
+.login-orb-top {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(106, 95, 255, 0.14) 0%, rgba(106, 95, 255, 0.04) 36%, rgba(106, 95, 255, 0.0) 72%);
+}
+
+.login-orb-bottom {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(89, 225, 255, 0.13) 0%, rgba(89, 225, 255, 0.04) 36%, rgba(89, 225, 255, 0.0) 72%);
 }
 
 .login-horizon-beam {
-    -fx-background-color: linear-gradient(to right, rgba(112, 162, 255, 0.0) 0%, rgba(112, 162, 255, 0.95) 26%, rgba(216, 242, 255, 1.0) 50%, rgba(112, 162, 255, 0.95) 74%, rgba(112, 162, 255, 0.0) 100%);
-    -fx-effect: dropshadow(gaussian, rgba(116, 180, 255, 0.48), 18, 0.28, 0, 0);
+    -fx-background-color: linear-gradient(to right, rgba(112, 162, 255, 0.0) 0%, rgba(112, 162, 255, 0.82) 26%, rgba(216, 242, 255, 0.96) 50%, rgba(112, 162, 255, 0.82) 74%, rgba(112, 162, 255, 0.0) 100%);
+    -fx-effect: dropshadow(gaussian, rgba(116, 180, 255, 0.36), 16, 0.24, 0, 0);
 }
 
 .login-shell {
@@ -93,8 +114,9 @@
 .login-brand-block {
     -fx-padding: 26px 28px 24px 28px;
     -fx-background-color:
+        radial-gradient(center 18% 12%, radius 42%, rgba(90, 175, 255, 0.10) 0%, rgba(90, 175, 255, 0.0) 74%),
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-    -fx-border-color: rgba(145, 183, 255, 0.18);
+    -fx-border-color: rgba(145, 183, 255, 0.16);
     -fx-border-width: 1px;
     -fx-border-radius: 30px;
     -fx-background-radius: 30px;
@@ -107,7 +129,7 @@
 
 .login-brand-chip {
     -fx-background-color: rgba(255, 255, 255, 0.06);
-    -fx-border-color: rgba(139, 184, 255, 0.26);
+    -fx-border-color: rgba(139, 184, 255, 0.24);
     -fx-border-width: 1px;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
@@ -124,7 +146,7 @@
 }
 
 .login-art-image {
-    -fx-effect: dropshadow(gaussian, rgba(30, 106, 255, 0.32), 30, 0.20, 0, 10);
+    -fx-effect: dropshadow(gaussian, rgba(30, 106, 255, 0.28), 28, 0.20, 0, 10);
 }
 
 .login-brand-copy {
@@ -176,8 +198,9 @@
 
 .login-form-card {
     -fx-background-color:
+        radial-gradient(center 88% 12%, radius 38%, rgba(92, 174, 255, 0.10) 0%, rgba(92, 174, 255, 0.0) 100%),
         linear-gradient(to bottom, rgba(8, 23, 49, 0.88) 0%, rgba(14, 34, 69, 0.82) 100%);
-    -fx-border-color: rgba(152, 196, 255, 0.18);
+    -fx-border-color: rgba(152, 196, 255, 0.16);
     -fx-border-width: 1px;
     -fx-border-radius: 32px;
     -fx-background-radius: 32px;
@@ -240,7 +263,7 @@
 .login-input {
     -fx-background-color:
         linear-gradient(to bottom, rgba(10, 24, 48, 0.88) 0%, rgba(12, 29, 58, 0.96) 100%);
-    -fx-border-color: rgba(129, 179, 255, 0.42);
+    -fx-border-color: rgba(129, 179, 255, 0.32);
     -fx-border-width: 1px;
     -fx-background-radius: 18px;
     -fx-border-radius: 18px;
@@ -255,9 +278,8 @@
 .login-input:focused {
     -fx-border-color: #9bd7ff;
     -fx-border-width: 1.4px;
-    -fx-effect: dropshadow(gaussian, rgba(108, 192, 255, 0.34), 16, 0.22, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(108, 192, 255, 0.28), 16, 0.22, 0, 0);
 }
-
 
 .login-root .combo-box.login-input {
     -fx-background-insets: 0;
@@ -361,7 +383,7 @@
 .login-secondary-button {
     -fx-background-color:
         linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.03) 100%);
-    -fx-border-color: rgba(141, 196, 255, 0.32);
+    -fx-border-color: rgba(141, 196, 255, 0.28);
     -fx-border-width: 1px;
     -fx-background-radius: 18px;
     -fx-border-radius: 18px;

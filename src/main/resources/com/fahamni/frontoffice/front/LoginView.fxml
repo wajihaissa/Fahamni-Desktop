@@ -4,31 +4,42 @@
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Hyperlink?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.image.Image?>
+<?import tn.esprit.fahamni.utils.AnimatedSpiderwebPane?>
 
 <AnchorPane fx:id="loginRoot" prefHeight="600.0" prefWidth="900.0" styleClass="login-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.LoginController">
     <children>
+        <AnimatedSpiderwebPane mouseTransparent="true" styleClass="login-spiderweb-overlay"
+                               AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                               AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
         <Region mouseTransparent="true" styleClass="login-grid-overlay"
+                AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+        <Region mouseTransparent="true" styleClass="login-vignette"
                 AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
                 AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
         <Region mouseTransparent="true" prefHeight="480.0" prefWidth="480.0" styleClass="login-aurora login-aurora-left"
                 AnchorPane.leftAnchor="-120.0" AnchorPane.topAnchor="-80.0"/>
         <Region mouseTransparent="true" prefHeight="520.0" prefWidth="520.0" styleClass="login-aurora login-aurora-right"
                 AnchorPane.rightAnchor="-140.0" AnchorPane.bottomAnchor="-110.0"/>
+        <Region mouseTransparent="true" prefHeight="340.0" prefWidth="340.0" styleClass="login-orb login-orb-top"
+                AnchorPane.rightAnchor="120.0" AnchorPane.topAnchor="44.0"/>
+        <Region mouseTransparent="true" prefHeight="280.0" prefWidth="280.0" styleClass="login-orb login-orb-bottom"
+                AnchorPane.leftAnchor="72.0" AnchorPane.bottomAnchor="36.0"/>
         <Region mouseTransparent="true" prefHeight="2.0" styleClass="login-horizon-beam"
                 AnchorPane.leftAnchor="64.0" AnchorPane.rightAnchor="64.0" AnchorPane.topAnchor="108.0"/>
 
@@ -42,7 +53,7 @@
                                 <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="login-brand-chip-row">
                                     <children>
                                         <Label text="FAHAMNI DESKTOP" styleClass="login-brand-chip"/>
-                                        <Label text="Secure Access" styleClass="login-brand-chip login-brand-chip-muted"/>
+                                        <Label text="ACCES SECURISE" styleClass="login-brand-chip login-brand-chip-muted"/>
                                     </children>
                                 </HBox>
 

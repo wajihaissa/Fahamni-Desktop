@@ -97,8 +97,8 @@ public class LoginController {
     @FXML
     public void initialize() {
         if (roleComboBox != null) {
-            roleComboBox.getItems().setAll("Student", "Tutor");
-            roleComboBox.setValue("Student");
+            roleComboBox.getItems().setAll("Etudiant", "Tuteur");
+            roleComboBox.setValue("Etudiant");
         }
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
@@ -262,7 +262,7 @@ public class LoginController {
         registerPasswordField.clear();
         confirmPasswordField.clear();
         if (roleComboBox != null) {
-            roleComboBox.setValue("Student");
+            roleComboBox.setValue("Etudiant");
         }
     }
 
