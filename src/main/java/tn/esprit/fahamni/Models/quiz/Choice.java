@@ -7,6 +7,14 @@ public class Choice {
     private Boolean isCorrect;
     private Question question;
 
+    public Choice() {
+    }
+
+    public Choice(String choice, Boolean isCorrect) {
+        this.choice = choice;
+        this.isCorrect = isCorrect;
+    }
+
     public Long getId() {
         return id;
     }
@@ -23,12 +31,20 @@ public class Choice {
         this.choice = choice;
     }
 
+    public boolean hasChoiceText() {
+        return choice != null && !choice.trim().isEmpty();
+    }
+
     public Boolean getIsCorrect() {
         return isCorrect;
     }
 
     public void setIsCorrect(Boolean isCorrect) {
         this.isCorrect = isCorrect;
+    }
+
+    public boolean isMarkedCorrect() {
+        return Boolean.TRUE.equals(isCorrect);
     }
 
     public Question getQuestion() {

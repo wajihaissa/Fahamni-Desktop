@@ -42,6 +42,10 @@ public class Question {
         this.question = question;
     }
 
+    public boolean hasQuestionText() {
+        return question != null && !question.trim().isEmpty();
+    }
+
     public Quiz getQuiz() {
         return quiz;
     }
@@ -84,6 +88,16 @@ public class Question {
 
     public List<Choice> getChoices() {
         return choices;
+    }
+
+    public boolean hasChoices() {
+        return !choices.isEmpty();
+    }
+
+    public long getCorrectChoiceCount() {
+        return choices.stream()
+                .filter(Choice::isMarkedCorrect)
+                .count();
     }
 
     public void addChoice(Choice choice) {
