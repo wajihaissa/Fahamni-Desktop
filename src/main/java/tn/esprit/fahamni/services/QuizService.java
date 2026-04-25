@@ -201,27 +201,7 @@ public class QuizService {
         try (Statement questionStmt = cnx.createStatement();
              ResultSet questionRs = questionStmt.executeQuery(questionQuery)) {
             while (questionRs.next()) {
-                Question question = new Question();
-                question.setId(questionRs.getLong("id"));
-                question.setSourceQuestionId(resolveSourceQuestionId(questionRs));
-                question.setQuestion(questionRs.getString("question"));
-                question.setTopic(resolveQuestionTopic(questionRs, questionRs.getString("quiz_keyword")));
-                question.setDifficulty(resolveQuestionDifficulty(questionRs));
-
-                try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
-                    choiceStmt.setLong(1, question.getId());
-                    try (ResultSet choiceRs = choiceStmt.executeQuery()) {
-                        while (choiceRs.next()) {
-                            Choice choice = new Choice();
-                            choice.setId(choiceRs.getLong("id"));
-                            choice.setChoice(choiceRs.getString("choice"));
-                            choice.setIsCorrect(choiceRs.getBoolean("is_correct"));
-                            question.addChoice(choice);
-                        }
-                    }
-                }
-
-                questions.add(question);
+                questions.add(loadQuestionBankEntry(questionRs, choiceQuery));
             }
         } catch (SQLException e) {
             System.err.println("Error fetching question bank: " + e.getMessage());
@@ -396,6 +376,26 @@ public class QuizService {
         question.setTopic(resolveQuestionTopic(questionRs, quiz.getKeyword()));
         question.setDifficulty(resolveQuestionDifficulty(questionRs));
         question.setQuiz(quiz);
+
+        try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
+            choiceStmt.setLong(1, question.getId());
+            try (ResultSet choiceRs = choiceStmt.executeQuery()) {
+                while (choiceRs.next()) {
+                    question.addChoice(mapResultSetToChoice(choiceRs));
+                }
+            }
+        }
+
+        return question;
+    }
+
+    private Question loadQuestionBankEntry(ResultSet questionRs, String choiceQuery) throws SQLException {
+        Question question = new Question();
+        question.setId(questionRs.getLong("id"));
+        question.setSourceQuestionId(resolveSourceQuestionId(questionRs));
+        question.setQuestion(questionRs.getString("question"));
+        question.setTopic(resolveQuestionTopic(questionRs, questionRs.getString("quiz_keyword")));
+        question.setDifficulty(resolveQuestionDifficulty(questionRs));
 
         try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
             choiceStmt.setLong(1, question.getId());
