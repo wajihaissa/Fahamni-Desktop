@@ -29,6 +29,7 @@ import tn.esprit.fahamni.services.TutorRecommendationService;
 import tn.esprit.fahamni.services.TutorRecommendationService.RecommendedSession;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+import javafx.application.Platform;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
@@ -1705,8 +1706,8 @@ public class ReservationController {
 
         matchingDialog.setTitle("Matching swipe");
         dialogPane.getButtonTypes().setAll(closeButton);
-        dialogPane.setPrefWidth(940);
-        dialogPane.setPrefHeight(780);
+        dialogPane.setPrefWidth(780);
+        dialogPane.setPrefHeight(620);
         dialogPane.setContent(buildStudentMatchingDialogContent());
         applyCurrentTheme(dialogPane);
         appendDialogStylesheet(dialogPane, MATCHING_DIALOG_STYLESHEET);
@@ -1719,6 +1720,8 @@ public class ReservationController {
         VBox root = new VBox(16.0);
         root.setPadding(new Insets(18.0));
         root.getStyleClass().add("matching-dialog-root");
+
+        ScrollPane scrollPane = new ScrollPane();
 
         ComboBox<String> subjectComboBox = new ComboBox<>();
         subjectComboBox.setEditable(true);
@@ -1785,8 +1788,6 @@ public class ReservationController {
         feedbackLabel.getStyleClass().add("frontoffice-feedback");
         setInlineFeedback(feedbackLabel, null, false);
 
-        VBox landingHero = buildStudentMatchingLandingHero(subjectComboBox.getItems(), subjectComboBox);
-
         Label eyebrowLabel = new Label("MATCHING SWIPE");
         eyebrowLabel.getStyleClass().add("workspace-eyebrow");
 
@@ -1803,9 +1804,6 @@ public class ReservationController {
         Button launchButton = new Button("Lancer le swipe");
         launchButton.getStyleClass().add("backoffice-primary-button");
 
-        VBox formView = new VBox(14.0);
-        formView.getStyleClass().add("matching-stage-shell");
-
         Label formHintLabel = new Label(
             "Prepare la demande, puis laisse le moteur composer un deck de tuteurs compatibles a swiper."
         );
@@ -1816,20 +1814,32 @@ public class ReservationController {
         formActionRow.setAlignment(Pos.CENTER_LEFT);
         formActionRow.getChildren().addAll(launchButton, buildChoiceChip("Deck intelligent"));
 
-        formView.getChildren().addAll(formCard, formHintLabel, formActionRow);
+        VBox formView = new VBox(16.0);
+        formView.getStyleClass().add("matching-stage-shell");
+        formView.setManaged(false);
+        formView.setVisible(false);
+        formView.setMaxWidth(Double.MAX_VALUE);
+        formView.getChildren().addAll(
+            eyebrowLabel,
+            titleLabel,
+            introLabel,
+            formCard,
+            formHintLabel,
+            formActionRow
+        );
 
         VBox resultSummaryCard = new VBox(10.0);
         resultSummaryCard.getStyleClass().addAll("reservation-form-shell", "matching-dialog-panel", "matching-results-panel");
 
-        Label resultKickerLabel = new Label("DECK PERSONNALISE");
+        Label resultKickerLabel = new Label("TUTEUR SUGGERE");
         resultKickerLabel.getStyleClass().add("workspace-eyebrow");
 
-        Label resultTitleLabel = new Label("Profils compatibles prets a swiper");
+        Label resultTitleLabel = new Label("Tuteur compatible pret a valider");
         resultTitleLabel.getStyleClass().add("workspace-title");
         resultTitleLabel.setWrapText(true);
 
         Label resultSummaryLabel = new Label(
-            "Le matching transforme maintenant ta demande en une serie de profils directement exploitables."
+            "Le matching a retenu le profil le plus pertinent pour ce besoin."
         );
         resultSummaryLabel.setWrapText(true);
         resultSummaryLabel.getStyleClass().add("reservation-section-copy");
@@ -1842,9 +1852,7 @@ public class ReservationController {
         Label progressLabel = new Label("Aucune carte de matching n'est encore affichee.");
         progressLabel.getStyleClass().addAll("reservation-section-copy", "matching-dialog-hint");
 
-        Label swipeGuideLabel = new Label(
-            "Glisse une carte a gauche pour passer, a droite pour retenir le profil, ou vers le haut pour le prioriser."
-        );
+        Label swipeGuideLabel = new Label("Choisis simplement passer, interesser ou super match.");
         swipeGuideLabel.setWrapText(true);
         swipeGuideLabel.getStyleClass().addAll("reservation-section-copy", "matching-swipe-guide");
 
@@ -1853,27 +1861,68 @@ public class ReservationController {
         resultToolbar.getStyleClass().add("matching-results-toolbar");
         resultToolbar.getChildren().addAll(editRequestButton, progressLabel);
 
-        Region deckLayerBack = new Region();
-        deckLayerBack.getStyleClass().addAll("matching-deck-layer", "matching-deck-layer-back");
+        VBox quickActionPanel = new VBox(10.0);
+        quickActionPanel.getStyleClass().addAll("matching-dialog-panel", "matching-quick-actions-panel");
+        quickActionPanel.setManaged(false);
+        quickActionPanel.setVisible(false);
 
-        Region deckLayerMiddle = new Region();
-        deckLayerMiddle.getStyleClass().addAll("matching-deck-layer", "matching-deck-layer-middle");
+        Label quickActionTitle = new Label("Action sur ce tuteur");
+        quickActionTitle.getStyleClass().add("matching-quick-actions-title");
+
+        HBox quickActionRow = new HBox(10.0);
+        quickActionRow.getStyleClass().addAll("matching-action-row", "matching-quick-actions-row");
+
+        Button quickPassButton = new Button("Passer");
+        quickPassButton.getStyleClass().addAll(
+            "backoffice-secondary-button",
+            "matching-action-button",
+            "matching-action-pass",
+            "matching-quick-action-button"
+        );
+
+        Button quickInterestedButton = new Button("Interesse");
+        quickInterestedButton.getStyleClass().addAll(
+            "backoffice-primary-button",
+            "matching-action-button",
+            "matching-action-like",
+            "matching-quick-action-button"
+        );
+
+        Button quickSuperMatchButton = new Button("Super match");
+        quickSuperMatchButton.getStyleClass().addAll(
+            "backoffice-edit-button",
+            "matching-action-button",
+            "matching-action-super",
+            "matching-quick-action-button"
+        );
+
+        HBox.setHgrow(quickPassButton, Priority.ALWAYS);
+        HBox.setHgrow(quickInterestedButton, Priority.ALWAYS);
+        HBox.setHgrow(quickSuperMatchButton, Priority.ALWAYS);
+        quickPassButton.setMaxWidth(Double.MAX_VALUE);
+        quickInterestedButton.setMaxWidth(Double.MAX_VALUE);
+        quickSuperMatchButton.setMaxWidth(Double.MAX_VALUE);
+
+        quickActionRow.getChildren().addAll(quickPassButton, quickInterestedButton, quickSuperMatchButton);
+        quickActionPanel.getChildren().addAll(quickActionTitle, quickActionRow);
 
         StackPane cardHost = new StackPane();
         cardHost.getStyleClass().add("matching-card-host");
 
-        StackPane deckHost = new StackPane(deckLayerBack, deckLayerMiddle, cardHost);
-        deckHost.getStyleClass().add("matching-card-deck");
+        VBox cardStage = new VBox(cardHost);
+        cardStage.getStyleClass().add("matching-card-stage");
 
         VBox resultsView = new VBox(14.0);
         resultsView.getStyleClass().add("matching-results-shell");
         resultsView.setManaged(false);
         resultsView.setVisible(false);
+        resultsView.setMaxWidth(Double.MAX_VALUE);
         resultsView.getChildren().addAll(
             resultSummaryCard,
             resultToolbar,
             swipeGuideLabel,
-            deckHost
+            quickActionPanel,
+            cardStage
         );
 
         resultSummaryCard.getChildren().addAll(
@@ -1914,36 +1963,119 @@ public class ReservationController {
                     resultSummaryLabel,
                     resultSignalRow
                 );
-                setInlineFeedback(feedbackLabel, creation.message(), creation.candidates().size() > 0);
-                refreshStudentMatchCard(cardHost, progressLabel, feedbackLabel, swipeGuideLabel, state);
+                setInlineFeedback(feedbackLabel, null, false);
+                refreshStudentMatchCard(
+                    cardHost,
+                    resultSummaryCard,
+                    resultToolbar,
+                    progressLabel,
+                    feedbackLabel,
+                    swipeGuideLabel,
+                    quickActionPanel,
+                    quickActionTitle,
+                    quickPassButton,
+                    quickInterestedButton,
+                    quickSuperMatchButton,
+                    state
+                );
                 animateMatchingWorkspaceSwap(formView, resultsView);
             } catch (IllegalArgumentException exception) {
                 setInlineFeedback(feedbackLabel, exception.getMessage(), false);
             }
         });
 
-        editRequestButton.setOnAction(event -> animateMatchingWorkspaceSwap(resultsView, formView));
-
-        StackPane workspaceHost = new StackPane(formView, resultsView);
-        workspaceHost.getStyleClass().add("matching-workspace-host");
-
-        root.getChildren().addAll(
-            landingHero,
-            eyebrowLabel,
-            titleLabel,
-            introLabel,
+        quickPassButton.setOnAction(event -> handleCurrentStudentMatchingAction(
+            MatchingService.DECISION_PASS,
+            state,
+            cardHost,
+            resultSummaryCard,
+            resultToolbar,
+            progressLabel,
             feedbackLabel,
-            workspaceHost
-        );
+            swipeGuideLabel,
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton
+        ));
+        quickInterestedButton.setOnAction(event -> handleCurrentStudentMatchingAction(
+            MatchingService.DECISION_INTERESTED,
+            state,
+            cardHost,
+            resultSummaryCard,
+            resultToolbar,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton
+        ));
+        quickSuperMatchButton.setOnAction(event -> handleCurrentStudentMatchingAction(
+            MatchingService.DECISION_SUPER,
+            state,
+            cardHost,
+            resultSummaryCard,
+            resultToolbar,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton
+        ));
 
-        ScrollPane scrollPane = new ScrollPane(root);
+        VBox landingView = new VBox();
+        landingView.getStyleClass().add("matching-landing-shell");
+        landingView.setFillWidth(true);
+        landingView.setAlignment(Pos.CENTER);
+        landingView.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        VBox landingHero = buildStudentMatchingLandingHero(subjectComboBox.getItems(), () -> {
+            setInlineFeedback(feedbackLabel, null, false);
+            animateMatchingWorkspaceSwap(landingView, formView);
+            Platform.runLater(() -> {
+                scrollPane.setVvalue(scrollPane.getVmin());
+                subjectComboBox.requestFocus();
+            });
+        }, subjectComboBox);
+        landingHero.setMaxWidth(Double.MAX_VALUE);
+        landingHero.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(landingHero, Priority.ALWAYS);
+        landingView.getChildren().add(landingHero);
+
+        editRequestButton.setOnAction(event -> {
+            setInlineFeedback(feedbackLabel, null, false);
+            animateMatchingWorkspaceSwap(resultsView, formView);
+            Platform.runLater(() -> scrollPane.setVvalue(scrollPane.getVmin()));
+        });
+
+        StackPane workspaceHost = new StackPane(landingView, formView, resultsView);
+        workspaceHost.getStyleClass().add("matching-workspace-host");
+        workspaceHost.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        VBox.setVgrow(workspaceHost, Priority.ALWAYS);
+        root.setFillWidth(true);
+        root.getChildren().addAll(feedbackLabel, workspaceHost);
+
+        scrollPane.setContent(root);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.getStyleClass().add("matching-scroll");
+        scrollPane.viewportBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+            double viewportHeight = Math.max(0.0, newBounds.getHeight());
+            double landingHeight = Math.max(320.0, viewportHeight - 36.0);
+            landingView.setMinHeight(landingHeight);
+            landingHero.setMinHeight(landingHeight);
+        });
         return scrollPane;
     }
 
-    private VBox buildStudentMatchingLandingHero(List<String> subjectSamples, Node focusTarget) {
+    private VBox buildStudentMatchingLandingHero(List<String> subjectSamples, Runnable startAction, Node focusTarget) {
         VBox hero = new VBox(16.0);
         hero.getStyleClass().add("matching-showcase-card");
 
@@ -1966,7 +2098,9 @@ public class ReservationController {
         Button ctaButton = new Button("Commencer le matching");
         ctaButton.getStyleClass().addAll("backoffice-primary-button", "matching-showcase-button");
         ctaButton.setOnAction(event -> {
-            if (focusTarget != null) {
+            if (startAction != null) {
+                startAction.run();
+            } else if (focusTarget != null) {
                 focusTarget.requestFocus();
             }
         });
@@ -1979,7 +2113,17 @@ public class ReservationController {
             buildMatchingShowcaseChip("Creneau cible")
         );
 
-        hero.getChildren().addAll(visualStage, eyebrowLabel, titleLabel, subtitleLabel, ctaButton, chipRow);
+        VBox copyBlock = new VBox(14.0);
+        copyBlock.getStyleClass().add("matching-showcase-copy");
+        copyBlock.getChildren().addAll(eyebrowLabel, titleLabel, subtitleLabel, ctaButton);
+        HBox.setHgrow(copyBlock, Priority.ALWAYS);
+
+        HBox heroBody = new HBox(22.0);
+        heroBody.setAlignment(Pos.CENTER_LEFT);
+        heroBody.getStyleClass().add("matching-showcase-body");
+        heroBody.getChildren().addAll(copyBlock, visualStage);
+
+        hero.getChildren().addAll(heroBody, chipRow);
         return hero;
     }
 
@@ -1993,48 +2137,49 @@ public class ReservationController {
         List<String> showcaseLabels = resolveMatchingShowcaseLabels(subjectSamples);
 
         Pane orbitPane = new Pane();
-        orbitPane.setMinSize(290.0, 240.0);
-        orbitPane.setPrefSize(290.0, 240.0);
-        orbitPane.setMaxSize(290.0, 240.0);
+        orbitPane.setMinSize(248.0, 194.0);
+        orbitPane.setPrefSize(248.0, 194.0);
+        orbitPane.setMaxSize(248.0, 194.0);
         orbitPane.getStyleClass().add("matching-showcase-orbit-pane");
 
         orbitPane.getChildren().addAll(
-            buildMatchingShowcaseOrbit(145.0, 112.0, 42.0, 0.86),
-            buildMatchingShowcaseOrbit(145.0, 112.0, 78.0, 0.60),
-            buildMatchingShowcaseOrbit(145.0, 112.0, 108.0, 0.38)
+            buildMatchingShowcaseOrbit(124.0, 96.0, 30.0, 0.88),
+            buildMatchingShowcaseOrbit(124.0, 96.0, 56.0, 0.62),
+            buildMatchingShowcaseOrbit(124.0, 96.0, 82.0, 0.42)
         );
 
         StackPane centerCore = new StackPane();
         centerCore.getStyleClass().add("matching-showcase-heart-core");
-        centerCore.setPrefSize(58.0, 58.0);
-        centerCore.relocate(116.0, 82.0);
+        centerCore.setPrefSize(52.0, 52.0);
+        centerCore.relocate(98.0, 70.0);
         Label heartLabel = new Label("❤");
         heartLabel.getStyleClass().add("matching-showcase-heart-text");
+        heartLabel.setText("\uD83D\uDCD6");
         centerCore.getChildren().add(heartLabel);
 
-        StackPane avatarOne = buildMatchingShowcaseAvatar(showcaseLabels.get(0), "matching-showcase-avatar-coral", 52.0);
-        avatarOne.relocate(112.0, 6.0);
+        StackPane avatarOne = buildMatchingShowcaseAvatar(showcaseLabels.get(0), "matching-showcase-avatar-coral", 46.0);
+        avatarOne.relocate(101.0, 6.0);
 
-        StackPane avatarTwo = buildMatchingShowcaseAvatar(showcaseLabels.get(1), "matching-showcase-avatar-peach", 60.0);
-        avatarTwo.relocate(26.0, 70.0);
+        StackPane avatarTwo = buildMatchingShowcaseAvatar(showcaseLabels.get(1), "matching-showcase-avatar-peach", 50.0);
+        avatarTwo.relocate(26.0, 52.0);
 
-        StackPane avatarThree = buildMatchingShowcaseAvatar(showcaseLabels.get(2), "matching-showcase-avatar-navy", 68.0);
-        avatarThree.relocate(198.0, 64.0);
+        StackPane avatarThree = buildMatchingShowcaseAvatar(showcaseLabels.get(2), "matching-showcase-avatar-navy", 58.0);
+        avatarThree.relocate(166.0, 46.0);
 
-        StackPane avatarFour = buildMatchingShowcaseAvatar(showcaseLabels.get(3), "matching-showcase-avatar-sunset", 54.0);
-        avatarFour.relocate(58.0, 174.0);
+        StackPane avatarFour = buildMatchingShowcaseAvatar(showcaseLabels.get(3), "matching-showcase-avatar-sunset", 46.0);
+        avatarFour.relocate(58.0, 136.0);
 
-        StackPane avatarFive = buildMatchingShowcaseAvatar(showcaseLabels.get(4), "matching-showcase-avatar-rose", 46.0);
-        avatarFive.relocate(214.0, 170.0);
+        StackPane avatarFive = buildMatchingShowcaseAvatar(showcaseLabels.get(4), "matching-showcase-avatar-rose", 40.0);
+        avatarFive.relocate(186.0, 140.0);
 
         Label bubbleOne = buildMatchingShowcaseBubble("❤");
-        bubbleOne.relocate(10.0, 144.0);
+        bubbleOne.relocate(8.0, 110.0);
 
         Label bubbleTwo = buildMatchingShowcaseBubble("❤");
-        bubbleTwo.relocate(248.0, 26.0);
+        bubbleTwo.relocate(206.0, 16.0);
 
         Label bubbleThree = buildMatchingShowcaseBubble("❤");
-        bubbleThree.relocate(246.0, 190.0);
+        bubbleThree.relocate(206.0, 128.0);
 
         orbitPane.getChildren().addAll(
             centerCore,
@@ -2076,7 +2221,7 @@ public class ReservationController {
     }
 
     private Label buildMatchingShowcaseBubble(String text) {
-        Label bubble = new Label(text);
+        Label bubble = new Label("\uD83D\uDCD8");
         bubble.getStyleClass().add("matching-showcase-bubble");
         return bubble;
     }
@@ -2159,14 +2304,31 @@ public class ReservationController {
     }
 
     private void refreshStudentMatchCard(Pane cardHost,
+                                         Node resultSummaryCard,
+                                         Node resultToolbar,
                                          Label progressLabel,
                                          Label feedbackLabel,
                                          Label swipeGuideLabel,
+                                         Pane quickActionPanel,
+                                         Label quickActionTitle,
+                                         Button quickPassButton,
+                                         Button quickInterestedButton,
+                                         Button quickSuperMatchButton,
                                          StudentMatchingDialogState state) {
+        updateStudentMatchingResultsChrome(resultSummaryCard, resultToolbar, swipeGuideLabel, feedbackLabel);
         cardHost.getChildren().clear();
         if (state.cards.isEmpty()) {
-            progressLabel.setText("Aucun tuteur compatible n'a ete trouve pour le moment.");
-            swipeGuideLabel.setText("Aucun swipe n'est disponible. Modifiez le besoin pour relancer le matching.");
+            progressLabel.setText("Aucun tuteur compatible n'a ete trouve.");
+            swipeGuideLabel.setText("Modifie le besoin puis relance le matching pour obtenir une nouvelle proposition.");
+            updateStudentQuickActionBar(
+                quickActionPanel,
+                quickActionTitle,
+                quickPassButton,
+                quickInterestedButton,
+                quickSuperMatchButton,
+                null,
+                false
+            );
             VBox emptyCard = buildStudentMatchingStateCard(
                 "Aucun profil disponible",
                 "Aucun profil swipeable n'est disponible sur ce creneau. Tu peux changer la date, la duree ou la matiere.",
@@ -2180,13 +2342,22 @@ public class ReservationController {
             int positiveChoices = state.positiveMatches.size();
             progressLabel.setText(
                 positiveChoices > 0
-                    ? "Matching termine. " + positiveChoices + " tuteur(s) retenu(s)."
-                    : "Matching termine."
+                    ? "Matching termine. 1 tuteur retenu."
+                    : "Aucun tuteur retenu."
             );
             swipeGuideLabel.setText(
                 positiveChoices > 0
-                    ? "Les tuteurs retenus verront maintenant ta demande dans leur inbox."
-                    : "Aucun tuteur n'a ete retenu sur ce tour. Tu peux modifier la demande et relancer le matching."
+                    ? "Le tuteur retenu verra maintenant ta demande dans son inbox."
+                    : "Aucun tuteur compatible n'a ete retenu pour ce besoin."
+            );
+            updateStudentQuickActionBar(
+                quickActionPanel,
+                quickActionTitle,
+                quickPassButton,
+                quickInterestedButton,
+                quickSuperMatchButton,
+                null,
+                false
             );
             VBox doneCard = buildStudentMatchingCompletionView(state);
             cardHost.getChildren().add(doneCard);
@@ -2195,17 +2366,31 @@ public class ReservationController {
         }
 
         StudentMatchCard currentCard = state.cards.get(state.currentIndex);
-        progressLabel.setText("Carte " + (state.currentIndex + 1) + " / " + state.cards.size());
-        swipeGuideLabel.setText(
-            "Glisse cette carte pour repondre vite, ou utilise les boutons si tu preferes une validation classique."
+        progressLabel.setText("Tuteur propose");
+        swipeGuideLabel.setText("Valide ce tuteur, ou passe si le profil ne te convient pas.");
+        updateStudentQuickActionBar(
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton,
+            currentCard,
+            !state.animating
         );
         StackPane swipeCard = buildStudentMatchCard(
             currentCard,
             state,
             cardHost,
+            resultSummaryCard,
+            resultToolbar,
             progressLabel,
             feedbackLabel,
-            swipeGuideLabel
+            swipeGuideLabel,
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton
         );
         cardHost.getChildren().add(swipeCard);
         animateMatchingCardEntrance(swipeCard);
@@ -2214,9 +2399,16 @@ public class ReservationController {
     private StackPane buildStudentMatchCard(StudentMatchCard card,
                                             StudentMatchingDialogState state,
                                             Pane cardHost,
+                                            Node resultSummaryCard,
+                                            Node resultToolbar,
                                             Label progressLabel,
                                             Label feedbackLabel,
-                                            Label swipeGuideLabel) {
+                                            Label swipeGuideLabel,
+                                            Pane quickActionPanel,
+                                            Label quickActionTitle,
+                                            Button quickPassButton,
+                                            Button quickInterestedButton,
+                                            Button quickSuperMatchButton) {
         VBox cardBox = new VBox(14.0);
         cardBox.getStyleClass().addAll("reservation-form-shell", "matching-swipe-card");
 
@@ -2268,78 +2460,35 @@ public class ReservationController {
         );
         heroCard.getChildren().addAll(titleRow, heroChipRow, metricRow);
 
-        Label metaLabel = new Label(
-            card.subjectSessions() + " seance(s) deja animee(s) dans la matiere"
-                + " | " + card.totalSessions() + " seance(s) au total"
-                + " | " + card.acceptedReservations() + " reservation(s) acceptee(s)"
+        VBox spotlightPanel = buildMatchingSpotlightPanel(
+            "Resume rapide",
+            buildStudentMatchingSpotlight(card, state.needProfile),
+            "matching-spotlight-panel-student"
         );
-        metaLabel.setWrapText(true);
-        metaLabel.getStyleClass().add("reservation-section-copy");
 
-        FlowPane insightRow = new FlowPane(10.0, 10.0);
-        if (state.needProfile != null && state.needProfile.level() != null && !state.needProfile.level().isBlank()) {
-            insightRow.getChildren().add(buildChoiceChip(state.needProfile.level()));
+        FlowPane signalsRow = new FlowPane(10.0, 10.0);
+        if (state.needProfile != null
+            && state.needProfile.level() != null
+            && !state.needProfile.level().isBlank()
+            && !"Niveau non precise".equalsIgnoreCase(state.needProfile.level())) {
+            signalsRow.getChildren().add(buildChoiceChip(state.needProfile.level()));
         }
         if (state.needProfile != null && state.needProfile.keywords() != null) {
             state.needProfile.keywords().stream()
                 .limit(2)
                 .map(keyword -> buildChoiceChipHighlight("Focus " + keyword))
-                .forEach(insightRow.getChildren()::add);
+                .forEach(signalsRow.getChildren()::add);
         }
-        if (insightRow.getChildren().isEmpty()) {
-            insightRow.getChildren().add(buildChoiceChip("Analyse intelligente active"));
-        }
-
-        VBox spotlightPanel = buildMatchingSpotlightPanel(
-            "Lecture rapide",
-            buildStudentMatchingSpotlight(card, state.needProfile),
-            "matching-spotlight-panel-student"
-        );
-
-        VBox aiPanel = new VBox(8.0);
-        aiPanel.getStyleClass().add("matching-ai-panel");
-
-        Label aiKicker = new Label("Pourquoi ce profil est recommande");
-        aiKicker.getStyleClass().add("reservation-infrastructure-kicker");
-
-        Label aiSummaryLabel = new Label(buildStudentMatchingAiExplanation(card, state.needProfile));
-        aiSummaryLabel.setWrapText(true);
-        aiSummaryLabel.getStyleClass().addAll("reservation-section-copy", "matching-ai-copy");
-
-        aiPanel.getChildren().addAll(aiKicker, aiSummaryLabel);
-
-        Label reasonKicker = new Label("Motif metier retenu");
-        reasonKicker.getStyleClass().add("reservation-infrastructure-kicker");
-
-        Label reasonLabel = new Label(card.reason());
-        reasonLabel.setWrapText(true);
-        reasonLabel.getStyleClass().add("reservation-section-copy");
-
-        FlowPane signalsRow = new FlowPane(10.0, 10.0);
         if (card.matchingModeSessions() > 0) {
-            signalsRow.getChildren().add(buildChoiceChipHighlight("Format coherent"));
+            signalsRow.getChildren().add(buildChoiceChip("Format deja pratique"));
         }
         card.signals().stream()
-            .limit(4)
+            .limit(2)
             .map(this::buildChoiceChip)
             .forEach(signalsRow.getChildren()::add);
-
-        HBox actionRow = new HBox(10.0);
-        actionRow.getStyleClass().add("matching-action-row");
-        Button passButton = new Button("Passer");
-        passButton.getStyleClass().addAll("backoffice-secondary-button", "matching-action-button", "matching-action-pass");
-
-        Button interestedButton = new Button("Interesse");
-        interestedButton.getStyleClass().addAll(
-            "backoffice-primary-button",
-            "matching-action-button",
-            "matching-action-like"
-        );
-
-        Button superMatchButton = new Button("Super match");
-        superMatchButton.getStyleClass().addAll("backoffice-edit-button", "matching-action-button", "matching-action-super");
-
-        actionRow.getChildren().addAll(passButton, interestedButton, superMatchButton);
+        if (signalsRow.getChildren().isEmpty()) {
+            signalsRow.getChildren().add(buildChoiceChip("Profil compatible"));
+        }
 
         Label decisionBadge = new Label("Swipe");
         decisionBadge.getStyleClass().addAll("matching-decision-badge", "matching-decision-neutral");
@@ -2351,62 +2500,108 @@ public class ReservationController {
         StackPane.setAlignment(decisionBadge, Pos.TOP_RIGHT);
         StackPane.setMargin(decisionBadge, new Insets(14.0, 18.0, 0.0, 0.0));
 
-        passButton.setOnAction(event -> handleStudentSwipeDecision(
-            MatchingService.DECISION_PASS,
-            card,
-            state,
-            cardHost,
-            progressLabel,
-            feedbackLabel,
-            swipeGuideLabel,
-            swipeSurface,
-            decisionBadge
-        ));
-        interestedButton.setOnAction(event -> handleStudentSwipeDecision(
-            MatchingService.DECISION_INTERESTED,
-            card,
-            state,
-            cardHost,
-            progressLabel,
-            feedbackLabel,
-            swipeGuideLabel,
-            swipeSurface,
-            decisionBadge
-        ));
-        superMatchButton.setOnAction(event -> handleStudentSwipeDecision(
-            MatchingService.DECISION_SUPER,
-            card,
-            state,
-            cardHost,
-            progressLabel,
-            feedbackLabel,
-            swipeGuideLabel,
-            swipeSurface,
-            decisionBadge
-        ));
-
         cardBox.getChildren().addAll(
             heroCard,
-            metaLabel,
-            insightRow,
             spotlightPanel,
-            aiPanel,
-            reasonKicker,
-            reasonLabel,
-            signalsRow,
-            actionRow
+            signalsRow
         );
         installStudentSwipeInteractions(
             swipeSurface,
             card,
             state,
             cardHost,
+            resultSummaryCard,
+            resultToolbar,
             progressLabel,
             feedbackLabel,
             swipeGuideLabel,
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton,
             decisionBadge
         );
         return swipeSurface;
+    }
+
+    private void handleCurrentStudentMatchingAction(int decision,
+                                                    StudentMatchingDialogState state,
+                                                    Pane cardHost,
+                                                    Node resultSummaryCard,
+                                                    Node resultToolbar,
+                                                    Label progressLabel,
+                                                    Label feedbackLabel,
+                                                    Label swipeGuideLabel,
+                                                    Pane quickActionPanel,
+                                                    Label quickActionTitle,
+                                                    Button quickPassButton,
+                                                    Button quickInterestedButton,
+                                                    Button quickSuperMatchButton) {
+        if (state == null || state.animating || state.cards == null) {
+            return;
+        }
+        if (state.currentIndex < 0 || state.currentIndex >= state.cards.size()) {
+            updateStudentQuickActionBar(
+                quickActionPanel,
+                quickActionTitle,
+                quickPassButton,
+                quickInterestedButton,
+                quickSuperMatchButton,
+                null,
+                false
+            );
+            return;
+        }
+
+        StudentMatchCard currentCard = state.cards.get(state.currentIndex);
+        handleStudentSwipeDecision(
+            decision,
+            currentCard,
+            state,
+            cardHost,
+            resultSummaryCard,
+            resultToolbar,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            quickActionPanel,
+            quickActionTitle,
+            quickPassButton,
+            quickInterestedButton,
+            quickSuperMatchButton,
+            null,
+            null
+        );
+    }
+
+    private void updateStudentQuickActionBar(Pane quickActionPanel,
+                                             Label quickActionTitle,
+                                             Button quickPassButton,
+                                             Button quickInterestedButton,
+                                             Button quickSuperMatchButton,
+                                             StudentMatchCard currentCard,
+                                             boolean enabled) {
+        boolean visible = quickActionPanel != null && currentCard != null;
+        setNodeVisible(quickActionPanel, visible);
+        if (quickActionTitle != null) {
+            quickActionTitle.setText(
+                visible
+                    ? "Valider le profil de " + currentCard.tutorName()
+                    : "Action sur ce tuteur"
+            );
+        }
+
+        boolean disableButtons = !visible || !enabled;
+        if (quickPassButton != null) {
+            quickPassButton.setDisable(disableButtons);
+        }
+        if (quickInterestedButton != null) {
+            quickInterestedButton.setDisable(disableButtons);
+        }
+        if (quickSuperMatchButton != null) {
+            quickSuperMatchButton.setDisable(disableButtons);
+        }
     }
 
     private void openTutorMatchingDialog() {
@@ -2732,38 +2927,27 @@ public class ReservationController {
 
     private String buildStudentMatchingSpotlight(StudentMatchCard card, MatchingNeedProfile needProfile) {
         if (card == null) {
-            return "Le matching a repere un profil exploitable pour continuer le deck.";
+            return "Le matching a repere un profil exploitable pour continuer.";
         }
 
-        List<String> visibleSignals = card.signals() == null
-            ? List.of()
-            : card.signals().stream()
-                .filter(Objects::nonNull)
-                .map(this::normalizeText)
-                .filter(Objects::nonNull)
-                .distinct()
-                .limit(2)
-                .toList();
-
-        StringBuilder summary = new StringBuilder();
         String needSummary = needProfile == null ? null : normalizeText(needProfile.summary());
+        List<String> fragments = new ArrayList<>();
         if (needSummary != null) {
-            summary.append(needSummary).append(" ");
+            fragments.add(needSummary);
         }
-        summary.append(card.tutorName())
-            .append(" ressort avec ")
-            .append(card.subjectSessions())
-            .append(" seance(s) pertinentes");
+        fragments.add(
+            card.tutorName()
+                + " a deja anime "
+                + card.subjectSessions()
+                + " seance(s) dans cette matiere"
+        );
         if (card.matchingModeSessions() > 0) {
-            summary.append(" et un historique deja coherent sur ce format");
+            fragments.add("format deja pratique");
         }
-        if (!visibleSignals.isEmpty()) {
-            summary.append(". Signaux dominants: ").append(String.join(", ", visibleSignals));
-        } else {
-            summary.append(". Le profil reste lisible et directement exploitable pour une decision rapide");
+        if (card.acceptedReservations() > 0) {
+            fragments.add(card.acceptedReservations() + " reservation(s) deja acceptee(s)");
         }
-        summary.append(".");
-        return summary.toString();
+        return String.join(". ", fragments) + ".";
     }
 
     private String buildTutorMatchingHeroSubtitle(TutorMatchInboxItem item) {
@@ -2935,8 +3119,13 @@ public class ReservationController {
                                                      Label titleLabel,
                                                      Label summaryLabel,
                                                      FlowPane signalRow) {
+        boolean hasCandidate = creation != null && creation.candidates() != null && !creation.candidates().isEmpty();
         if (titleLabel != null) {
-            titleLabel.setText("Profils compatibles pour " + safeText(draft.subject()));
+            titleLabel.setText(
+                hasCandidate
+                    ? "Tuteur compatible pour " + safeText(draft.subject())
+                    : "Aucun tuteur compatible pour " + safeText(draft.subject())
+            );
         }
 
         if (summaryLabel != null) {
@@ -2951,7 +3140,7 @@ public class ReservationController {
                 .append(formatMatchingVisibility(draft.visibilityScope()))
                 .append(". ");
 
-            summary.append(buildStudentMatchingRequestSummary(creation.needProfile(), creation.candidates().size()));
+            summary.append(buildStudentMatchingRequestSummary(creation.needProfile(), hasCandidate ? 1 : 0));
             summaryLabel.setText(summary.toString());
         }
 
@@ -2959,16 +3148,14 @@ public class ReservationController {
             signalRow.getChildren().clear();
             signalRow.getChildren().add(buildChoiceChip(safeText(draft.subject())));
             signalRow.getChildren().add(buildChoiceChip(mapModeLabel(draft.mode())));
-            signalRow.getChildren().add(buildChoiceChip(formatMatchingVisibility(draft.visibilityScope())));
             signalRow.getChildren().add(
-                creation.candidates().isEmpty()
-                    ? buildChoiceChip("0 profil")
-                    : buildChoiceChipHighlight(creation.candidates().size() + " profils")
+                hasCandidate
+                    ? buildChoiceChipHighlight("1 tuteur")
+                    : buildChoiceChip("Aucun tuteur")
             );
-            if (creation.needProfile() != null) {
-                signalRow.getChildren().add(buildChoiceChip(creation.needProfile().level()));
+            if (creation != null && creation.needProfile() != null && creation.needProfile().keywords() != null) {
                 creation.needProfile().keywords().stream()
-                    .limit(3)
+                    .limit(1)
                     .map(keyword -> buildChoiceChipHighlight("Focus " + keyword))
                     .forEach(signalRow.getChildren()::add);
             }
@@ -2997,7 +3184,7 @@ public class ReservationController {
         if (state == null || state.positiveMatches.isEmpty()) {
             return buildStudentMatchingStateCard(
                 "Aucun tuteur retenu",
-                "Le tour est termine, mais aucun profil n'a ete conserve. Modifie la demande puis relance le matching si tu veux affiner le resultat.",
+                "Aucun tuteur compatible n'a ete retenu pour ce besoin. Modifie la demande puis relance le matching pour essayer avec un autre creneau ou une autre formulation.",
                 "matching-state-card"
             );
         }
@@ -3006,53 +3193,58 @@ public class ReservationController {
         shell.getStyleClass().add("matching-results-finale");
         shell.setMaxWidth(620.0);
 
-        Label eyebrowLabel = new Label("IT'S A MATCH");
+        Label eyebrowLabel = new Label("MATCH CONFIRME");
         eyebrowLabel.getStyleClass().add("matching-results-finale-eyebrow");
 
-        Label titleLabel = new Label("Tes matchs favoris sont prets");
+        Label titleLabel = new Label("Tuteur retenu");
         titleLabel.getStyleClass().add("matching-results-finale-title");
 
         String needSummary = state.needProfile == null ? null : normalizeText(state.needProfile.summary());
         Label subtitleLabel = new Label(
             needSummary != null
-                ? needSummary + " Les tuteurs retenus ont maintenant recu ta demande."
-                : "Les tuteurs retenus ont maintenant recu ta demande."
+                ? needSummary + " Le tuteur retenu a maintenant recu ta demande."
+                : "Le tuteur retenu a maintenant recu ta demande."
         );
         subtitleLabel.setWrapText(true);
         subtitleLabel.getStyleClass().add("matching-results-finale-copy");
 
         FlowPane matchGrid = new FlowPane(16.0, 16.0);
         matchGrid.getStyleClass().add("matching-match-grid");
-        state.positiveMatches.stream()
-            .map(this::buildStudentPositiveMatchCard)
-            .forEach(matchGrid.getChildren()::add);
+        matchGrid.setAlignment(Pos.TOP_CENTER);
+        matchGrid.setMaxWidth(Double.MAX_VALUE);
+        buildStudentPositiveMatchCard(state.positiveMatches.get(0))
+            .ifPresent(matchGrid.getChildren()::add);
 
         shell.getChildren().addAll(eyebrowLabel, titleLabel, subtitleLabel, matchGrid);
         return shell;
     }
 
-    private VBox buildStudentPositiveMatchCard(StudentPositiveMatch positiveMatch) {
+    private Optional<VBox> buildStudentPositiveMatchCard(StudentPositiveMatch positiveMatch) {
+        if (positiveMatch == null || positiveMatch.card() == null) {
+            return Optional.empty();
+        }
         String studentName = safeText(UserSession.getDisplayName());
-        String tutorName = positiveMatch != null && positiveMatch.card() != null
-            ? safeText(positiveMatch.card().tutorName())
-            : "Tuteur Fahamni";
+        String tutorName = safeText(positiveMatch.card().tutorName());
 
         VBox card = new VBox(14.0);
         card.getStyleClass().add("matching-match-card");
-        if (positiveMatch != null && positiveMatch.decision() == MatchingService.DECISION_SUPER) {
+        if (positiveMatch.decision() == MatchingService.DECISION_SUPER) {
             card.getStyleClass().add("matching-match-card-super");
         }
         card.setPrefWidth(272.0);
 
         Label toneChip = new Label(
-            positiveMatch != null && positiveMatch.decision() == MatchingService.DECISION_SUPER
+            positiveMatch.decision() == MatchingService.DECISION_SUPER
                 ? "Super match"
                 : "Match envoye"
         );
         toneChip.getStyleClass().add("matching-match-chip");
+        HBox toneChipRow = new HBox(toneChip);
+        toneChipRow.setAlignment(Pos.CENTER);
 
-        StackPane portraitStage = new StackPane();
+        HBox portraitStage = new HBox(24.0);
         portraitStage.getStyleClass().add("matching-match-portrait-stage");
+        portraitStage.setAlignment(Pos.CENTER);
 
         StackPane studentAvatar = buildMatchingAvatarBadge(studentName, "matching-avatar-badge-student");
         studentAvatar.getStyleClass().addAll("matching-match-avatar", "matching-match-avatar-student");
@@ -3061,10 +3253,8 @@ public class ReservationController {
         tutorAvatar.getStyleClass().addAll("matching-match-avatar", "matching-match-avatar-tutor");
 
         portraitStage.getChildren().addAll(studentAvatar, tutorAvatar);
-        StackPane.setAlignment(studentAvatar, Pos.CENTER_LEFT);
-        StackPane.setAlignment(tutorAvatar, Pos.CENTER_RIGHT);
-        StackPane.setMargin(studentAvatar, new Insets(0.0, 0.0, 12.0, 6.0));
-        StackPane.setMargin(tutorAvatar, new Insets(18.0, 6.0, 0.0, 0.0));
+        HBox.setMargin(studentAvatar, new Insets(0.0, 0.0, 12.0, 0.0));
+        HBox.setMargin(tutorAvatar, new Insets(18.0, 0.0, 0.0, 0.0));
 
         Label namesLabel = new Label(studentName + "\n&\n" + tutorName);
         namesLabel.setWrapText(true);
@@ -3078,15 +3268,15 @@ public class ReservationController {
         detailLabel.setWrapText(true);
         detailLabel.getStyleClass().add("matching-match-detail");
 
-        card.getChildren().addAll(toneChip, portraitStage, namesLabel, copyLabel, detailLabel);
-        return card;
+        card.getChildren().addAll(toneChipRow, portraitStage, namesLabel, copyLabel, detailLabel);
+        return Optional.of(card);
     }
 
     private String buildStudentPositiveMatchCopy(StudentPositiveMatch positiveMatch) {
         if (positiveMatch != null && positiveMatch.decision() == MatchingService.DECISION_SUPER) {
-            return "Ton interet prioritaire a ete transmis a ce tuteur.";
+            return "Ce tuteur a recu ta demande avec une priorite elevee.";
         }
-        return "Ton interet a ete transmis a ce tuteur.";
+        return "Ce tuteur a recu ta demande.";
     }
 
     private String buildStudentPositiveMatchDetail(StudentPositiveMatch positiveMatch) {
@@ -3163,9 +3353,16 @@ public class ReservationController {
                                             StudentMatchCard card,
                                             StudentMatchingDialogState state,
                                             Pane cardHost,
+                                            Node resultSummaryCard,
+                                            Node resultToolbar,
                                             Label progressLabel,
                                             Label feedbackLabel,
                                             Label swipeGuideLabel,
+                                            Pane quickActionPanel,
+                                            Label quickActionTitle,
+                                            Button quickPassButton,
+                                            Button quickInterestedButton,
+                                            Button quickSuperMatchButton,
                                             StackPane swipeSurface,
                                             Label decisionBadge) {
         if (state == null || state.animating) {
@@ -3180,7 +3377,7 @@ public class ReservationController {
         String message = decision == MatchingService.DECISION_SUPER
             ? "Super match envoye. " + result.getMessage()
             : result.getMessage();
-        setInlineFeedback(feedbackLabel, message, result.isSuccess());
+        setInlineFeedback(feedbackLabel, result.isSuccess() ? null : message, false);
         if (!result.isSuccess()) {
             if (swipeSurface != null && decisionBadge != null) {
                 animateStudentSwipeReset(swipeSurface, decisionBadge);
@@ -3192,7 +3389,20 @@ public class ReservationController {
         swipeGuideLabel.setText(resolveMatchingGuideCopy(decision, true));
         if (swipeSurface == null || decisionBadge == null) {
             state.currentIndex++;
-            refreshStudentMatchCard(cardHost, progressLabel, feedbackLabel, swipeGuideLabel, state);
+            refreshStudentMatchCard(
+                cardHost,
+                resultSummaryCard,
+                resultToolbar,
+                progressLabel,
+                feedbackLabel,
+                swipeGuideLabel,
+                quickActionPanel,
+                quickActionTitle,
+                quickPassButton,
+                quickInterestedButton,
+                quickSuperMatchButton,
+                state
+            );
             return;
         }
 
@@ -3200,7 +3410,20 @@ public class ReservationController {
         animateStudentSwipeOut(swipeSurface, decisionBadge, decision, () -> {
             state.currentIndex++;
             state.animating = false;
-            refreshStudentMatchCard(cardHost, progressLabel, feedbackLabel, swipeGuideLabel, state);
+            refreshStudentMatchCard(
+                cardHost,
+                resultSummaryCard,
+                resultToolbar,
+                progressLabel,
+                feedbackLabel,
+                swipeGuideLabel,
+                quickActionPanel,
+                quickActionTitle,
+                quickPassButton,
+                quickInterestedButton,
+                quickSuperMatchButton,
+                state
+            );
         });
     }
 
@@ -3208,9 +3431,16 @@ public class ReservationController {
                                                  StudentMatchCard card,
                                                  StudentMatchingDialogState state,
                                                  Pane cardHost,
+                                                 Node resultSummaryCard,
+                                                 Node resultToolbar,
                                                  Label progressLabel,
                                                  Label feedbackLabel,
                                                  Label swipeGuideLabel,
+                                                 Pane quickActionPanel,
+                                                 Label quickActionTitle,
+                                                 Button quickPassButton,
+                                                 Button quickInterestedButton,
+                                                 Button quickSuperMatchButton,
                                                  Label decisionBadge) {
         final double[] dragAnchor = new double[2];
 
@@ -3262,9 +3492,16 @@ public class ReservationController {
                 card,
                 state,
                 cardHost,
+                resultSummaryCard,
+                resultToolbar,
                 progressLabel,
                 feedbackLabel,
                 swipeGuideLabel,
+                quickActionPanel,
+                quickActionTitle,
+                quickPassButton,
+                quickInterestedButton,
+                quickSuperMatchButton,
                 swipeSurface,
                 decisionBadge
             );
@@ -3458,18 +3695,18 @@ public class ReservationController {
     private String resolveMatchingGuideCopy(int decision, boolean committed) {
         if (decision == MatchingService.DECISION_PASS) {
             return committed
-                ? "Profil ignore. La carte suivante arrive."
-                : "Relache pour ecarter ce profil de la short-list.";
+                ? "Profil ignore."
+                : "Relache pour ignorer ce profil.";
         }
         if (decision == MatchingService.DECISION_INTERESTED) {
             return committed
-                ? "Interet positif enregistre. Le tuteur verra la demande si son inbox reste libre."
-                : "Relache pour retenir ce profil dans le matching.";
+                ? "Interet enregistre. Le tuteur verra ta demande."
+                : "Relache pour retenir ce tuteur.";
         }
         if (decision == MatchingService.DECISION_SUPER) {
             return committed
-                ? "Priorite elevee envoyee. Le tuteur verra un signal fort dans son inbox."
-                : "Relache pour envoyer un super match prioritaire.";
+                ? "Priorite elevee envoyee au tuteur."
+                : "Relache pour envoyer un super match.";
         }
         return "Glisse a gauche pour passer, a droite pour retenir, ou vers le haut pour envoyer un super match.";
     }
@@ -5925,6 +6162,20 @@ public class ReservationController {
         }
         node.setManaged(visible);
         node.setVisible(visible);
+    }
+
+    private void updateStudentMatchingResultsChrome(Node resultSummaryCard,
+                                                    Node resultToolbar,
+                                                    Label swipeGuideLabel,
+                                                    Label feedbackLabel) {
+        boolean feedbackVisible = feedbackLabel != null
+            && feedbackLabel.getText() != null
+            && !feedbackLabel.getText().isBlank()
+            && feedbackLabel.getStyleClass().contains("error");
+        setNodeVisible(resultSummaryCard, false);
+        setNodeVisible(resultToolbar, false);
+        setNodeVisible(swipeGuideLabel, false);
+        setNodeVisible(feedbackLabel, feedbackVisible);
     }
 
     private void setInlineFeedback(Label label, String message, boolean success) {

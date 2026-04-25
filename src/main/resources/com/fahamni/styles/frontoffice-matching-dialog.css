@@ -1,8 +1,8 @@
 .matching-dialog-root {
     -fx-background-color:
-        radial-gradient(center 16% 4%, radius 40%, rgba(255, 195, 160, 0.22) 0%, rgba(255, 195, 160, 0.00) 74%),
-        radial-gradient(center 88% 10%, radius 34%, rgba(255, 126, 148, 0.14) 0%, rgba(255, 126, 148, 0.00) 76%),
-        linear-gradient(to bottom, #fff8f4 0%, #fff5f5 42%, #fef4ff 100%);
+        radial-gradient(center 16% 4%, radius 42%, rgba(110, 151, 255, 0.16) 0%, rgba(110, 151, 255, 0.00) 76%),
+        radial-gradient(center 88% 10%, radius 36%, rgba(184, 207, 247, 0.20) 0%, rgba(184, 207, 247, 0.00) 78%),
+        linear-gradient(to bottom, #fbfdff 0%, #f7faff 46%, #f3f7ff 100%);
     -fx-background-radius: 28px;
 }
 
@@ -18,20 +18,31 @@
 
 .matching-showcase-card {
     -fx-background-color:
-        radial-gradient(center 14% 0%, radius 42%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.00) 72%),
-        linear-gradient(to bottom, #fff8f1 0%, #fff6f7 52%, #fff0fa 100%);
-    -fx-border-color: rgba(249, 191, 166, 0.76);
+        radial-gradient(center 14% 0%, radius 44%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0.00) 74%),
+        linear-gradient(to bottom, #ffffff 0%, #f7faff 54%, #eef4ff 100%);
+    -fx-border-color: rgba(220, 231, 248, 0.94);
     -fx-border-width: 1px;
     -fx-background-radius: 30px;
     -fx-border-radius: 30px;
-    -fx-padding: 22px 22px 20px 22px;
-    -fx-spacing: 10px;
-    -fx-effect: dropshadow(gaussian, rgba(227, 126, 106, 0.16), 28, 0.18, 0, 8);
+    -fx-padding: 18px 20px 16px 20px;
+    -fx-spacing: 8px;
+    -fx-alignment: center-left;
+    -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.10), 24, 0.18, 0, 7);
+}
+
+.matching-showcase-body {
+    -fx-alignment: center-left;
+}
+
+.matching-showcase-copy {
+    -fx-spacing: 12px;
 }
 
 .matching-showcase-stage {
-    -fx-alignment: center;
-    -fx-padding: 4px 0 2px 0;
+    -fx-alignment: center-right;
+    -fx-padding: 0;
+    -fx-min-width: 270px;
+    -fx-pref-width: 270px;
 }
 
 .matching-showcase-orbit-pane {
@@ -39,22 +50,23 @@
 }
 
 .matching-showcase-orbit {
-    -fx-stroke: rgba(235, 146, 132, 0.72);
+    -fx-stroke: rgba(110, 151, 255, 0.52);
     -fx-stroke-width: 1.4px;
 }
 
 .matching-showcase-heart-core {
-    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fff6f6 100%);
-    -fx-border-color: rgba(247, 158, 142, 0.76);
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f3f8ff 100%);
+    -fx-border-color: rgba(189, 207, 241, 0.96);
     -fx-border-width: 1px;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
-    -fx-effect: dropshadow(gaussian, rgba(230, 113, 90, 0.18), 16, 0.18, 0, 5);
+    -fx-effect: dropshadow(gaussian, rgba(44, 76, 146, 0.12), 16, 0.18, 0, 5);
 }
 
 .matching-showcase-heart-text {
-    -fx-text-fill: #ff6a63;
-    -fx-font-size: 24px;
+    -fx-text-fill: #5a80f4;
+    -fx-font-size: 22px;
+    -fx-font-family: "Segoe UI Emoji";
 }
 
 .matching-showcase-avatar {
@@ -62,31 +74,31 @@
     -fx-border-width: 2px;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
-    -fx-effect: dropshadow(gaussian, rgba(128, 82, 87, 0.14), 16, 0.18, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(32, 61, 122, 0.14), 16, 0.18, 0, 4);
 }
 
 .matching-showcase-avatar-coral {
-    -fx-background-color: linear-gradient(to bottom right, #ff9378 0%, #ff6d66 100%);
+    -fx-background-color: linear-gradient(to bottom right, #87abff 0%, #5a80f4 100%);
     -fx-border-color: rgba(255, 255, 255, 0.82);
 }
 
 .matching-showcase-avatar-peach {
-    -fx-background-color: linear-gradient(to bottom right, #f6c17b 0%, #f49d62 100%);
+    -fx-background-color: linear-gradient(to bottom right, #aec5ff 0%, #7e9cf3 100%);
     -fx-border-color: rgba(255, 255, 255, 0.82);
 }
 
 .matching-showcase-avatar-navy {
-    -fx-background-color: linear-gradient(to bottom right, #5669d8 0%, #454fa8 100%);
+    -fx-background-color: linear-gradient(to bottom right, #597ccf 0%, #36589c 100%);
     -fx-border-color: rgba(255, 255, 255, 0.82);
 }
 
 .matching-showcase-avatar-sunset {
-    -fx-background-color: linear-gradient(to bottom right, #ff9b9b 0%, #ff7b8a 100%);
+    -fx-background-color: linear-gradient(to bottom right, #8fb1d0 0%, #6d8faf 100%);
     -fx-border-color: rgba(255, 255, 255, 0.82);
 }
 
 .matching-showcase-avatar-rose {
-    -fx-background-color: linear-gradient(to bottom right, #ffb1c8 0%, #ff8aa8 100%);
+    -fx-background-color: linear-gradient(to bottom right, #d9c59a 0%, #c5a86d 100%);
     -fx-border-color: rgba(255, 255, 255, 0.82);
 }
 
@@ -97,61 +109,72 @@
 }
 
 .matching-showcase-bubble {
-    -fx-background-color: rgba(255, 255, 255, 0.88);
-    -fx-border-color: rgba(248, 174, 161, 0.88);
+    -fx-background-color: rgba(255, 255, 255, 0.96);
+    -fx-border-color: rgba(210, 223, 245, 0.96);
     -fx-border-width: 1px;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
     -fx-padding: 5px 8px;
-    -fx-text-fill: #ff7170;
-    -fx-font-size: 11px;
+    -fx-text-fill: #5a80f4;
+    -fx-font-size: 13px;
     -fx-font-weight: 800;
+    -fx-font-family: "Segoe UI Emoji";
 }
 
 .matching-showcase-eyebrow {
-    -fx-text-fill: #ff7c72;
+    -fx-text-fill: #4a6ea9;
     -fx-font-size: 11px;
     -fx-font-weight: 800;
     -fx-letter-spacing: 0.7px;
 }
 
 .matching-showcase-title {
-    -fx-text-fill: #1d2530;
-    -fx-font-size: 32px;
+    -fx-text-fill: #173b74;
+    -fx-font-size: 29px;
     -fx-font-weight: 900;
 }
 
 .matching-showcase-subtitle {
-    -fx-text-fill: #7b6c73;
+    -fx-text-fill: #6d82a0;
     -fx-font-size: 12px;
     -fx-line-spacing: 1px;
 }
 
 .matching-showcase-button {
-    -fx-background-color: linear-gradient(to right, #ff8c61 0%, #ff6f7a 100%);
+    -fx-background-color: linear-gradient(to bottom, #6e97ff 0%, #5a80f4 100%);
     -fx-text-fill: white;
     -fx-font-weight: 800;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
     -fx-padding: 11px 24px;
-    -fx-effect: dropshadow(gaussian, rgba(231, 104, 96, 0.20), 18, 0.20, 0, 5);
+    -fx-effect: dropshadow(gaussian, rgba(23, 52, 110, 0.22), 16, 0.20, 0, 5);
 }
 
 .matching-showcase-chip-row {
     -fx-hgap: 8px;
     -fx-vgap: 8px;
+    -fx-padding: 2px 0 0 0;
 }
 
 .matching-showcase-chip {
-    -fx-background-color: rgba(255, 255, 255, 0.76);
-    -fx-border-color: rgba(249, 197, 184, 0.92);
+    -fx-background-color: rgba(255, 255, 255, 0.92);
+    -fx-border-color: rgba(220, 231, 248, 0.98);
     -fx-border-width: 1px;
     -fx-background-radius: 999px;
     -fx-border-radius: 999px;
     -fx-padding: 7px 12px;
-    -fx-text-fill: #8a6264;
+    -fx-text-fill: #5f738d;
     -fx-font-size: 11px;
     -fx-font-weight: 700;
+}
+
+.matching-intake-shell {
+    -fx-spacing: 16px;
+}
+
+.matching-landing-shell {
+    -fx-alignment: center;
+    -fx-fill-width: true;
 }
 
 .matching-dialog-panel {
@@ -172,7 +195,8 @@
 }
 
 .matching-workspace-host {
-    -fx-padding: 2px 0 6px 0;
+    -fx-alignment: center;
+    -fx-padding: 0;
 }
 
 .matching-stage-shell,
@@ -191,6 +215,10 @@
 
 .matching-results-toolbar {
     -fx-alignment: center-left;
+}
+
+.matching-card-stage {
+    -fx-alignment: top-center;
 }
 
 .matching-card-deck {
@@ -312,9 +340,9 @@
 }
 
 .matching-decision-super {
-    -fx-background-color: rgba(109, 77, 198, 0.16);
-    -fx-border-color: rgba(109, 77, 198, 0.42);
-    -fx-text-fill: #5e3ec2;
+    -fx-background-color: rgba(68, 130, 219, 0.18);
+    -fx-border-color: rgba(68, 130, 219, 0.40);
+    -fx-text-fill: #2f67d8;
 }
 
 .matching-hero-card {
@@ -496,8 +524,8 @@
 .matching-spotlight-panel-priority {
     -fx-background-color:
         radial-gradient(center 14% 0%, radius 48%, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.00) 74%),
-        linear-gradient(to bottom, #fbf8ff 0%, #f2ecff 100%);
-    -fx-border-color: #d9cdfc;
+        linear-gradient(to bottom, #f7fbff 0%, #edf4ff 100%);
+    -fx-border-color: #d6e3f8;
 }
 
 .matching-spotlight-title {
@@ -515,6 +543,26 @@
 .matching-action-row {
     -fx-alignment: center-left;
     -fx-padding: 2px 0 0 0;
+}
+
+.matching-quick-actions-panel {
+    -fx-spacing: 10px;
+    -fx-padding: 14px 16px;
+}
+
+.matching-quick-actions-title {
+    -fx-text-fill: #4a6ea9;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+.matching-quick-actions-row {
+    -fx-alignment: center-left;
+}
+
+.matching-quick-action-button {
+    -fx-min-height: 42px;
+    -fx-pref-height: 42px;
 }
 
 .matching-action-button {
@@ -542,8 +590,8 @@
 }
 
 .matching-action-super {
-    -fx-background-color: linear-gradient(to bottom, #876cf4 0%, #705ae2 100%);
-    -fx-border-color: rgba(110, 85, 216, 0.38);
+    -fx-background-color: linear-gradient(to bottom, #5f9cf4 0%, #447de2 100%);
+    -fx-border-color: rgba(72, 129, 220, 0.40);
     -fx-border-width: 1px;
     -fx-text-fill: white;
 }
@@ -562,17 +610,17 @@
 .matching-results-finale {
     -fx-background-color:
         radial-gradient(center 18% 4%, radius 40%, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0.00) 72%),
-        linear-gradient(to bottom right, #fff7f4 0%, #fffdfd 44%, #f8f3ff 100%);
-    -fx-border-color: rgba(248, 189, 176, 0.54);
+        linear-gradient(to bottom right, #ffffff 0%, #f9fbff 46%, #eef4ff 100%);
+    -fx-border-color: rgba(185, 208, 241, 0.82);
     -fx-border-width: 1px;
     -fx-background-radius: 28px;
     -fx-border-radius: 28px;
     -fx-padding: 22px 22px 20px 22px;
-    -fx-effect: dropshadow(gaussian, rgba(193, 100, 92, 0.14), 26, 0.18, 0, 8);
+    -fx-effect: dropshadow(gaussian, rgba(58, 103, 173, 0.14), 26, 0.18, 0, 8);
 }
 
 .matching-results-finale-eyebrow {
-    -fx-text-fill: #f26b5f;
+    -fx-text-fill: #4d79d8;
     -fx-font-size: 11px;
     -fx-font-weight: 800;
     -fx-letter-spacing: 0.8px;
@@ -599,25 +647,25 @@
     -fx-alignment: top-center;
     -fx-background-color:
         radial-gradient(center 14% 0%, radius 46%, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0.00) 72%),
-        linear-gradient(to bottom right, #ffffff 0%, #fff9f8 58%, #fef4ff 100%);
-    -fx-border-color: rgba(244, 208, 202, 0.92);
+        linear-gradient(to bottom right, #ffffff 0%, #f9fbff 58%, #eef4ff 100%);
+    -fx-border-color: rgba(197, 215, 242, 0.94);
     -fx-border-width: 1px;
     -fx-background-radius: 24px;
     -fx-border-radius: 24px;
     -fx-padding: 16px 16px 18px 16px;
     -fx-spacing: 10px;
-    -fx-effect: dropshadow(gaussian, rgba(170, 116, 109, 0.12), 20, 0.18, 0, 6);
+    -fx-effect: dropshadow(gaussian, rgba(67, 103, 160, 0.12), 20, 0.18, 0, 6);
 }
 
 .matching-match-card-super {
     -fx-background-color:
         radial-gradient(center 15% 0%, radius 48%, rgba(255, 255, 255, 0.44) 0%, rgba(255, 255, 255, 0.00) 74%),
-        linear-gradient(to bottom right, #fff6fb 0%, #fff7f3 44%, #f5edff 100%);
-    -fx-border-color: rgba(223, 174, 255, 0.92);
+        linear-gradient(to bottom right, #f8fbff 0%, #f1f7ff 44%, #e6f1ff 100%);
+    -fx-border-color: rgba(122, 170, 235, 0.92);
 }
 
 .matching-match-chip {
-    -fx-background-color: linear-gradient(to right, #ff7d68 0%, #ff685f 100%);
+    -fx-background-color: linear-gradient(to right, #5f8ff0 0%, #4f79dc 100%);
     -fx-text-fill: white;
     -fx-font-size: 11px;
     -fx-font-weight: 800;
@@ -627,10 +675,12 @@
 }
 
 .matching-match-card-super .matching-match-chip {
-    -fx-background-color: linear-gradient(to right, #a364ff 0%, #ff6e86 100%);
+    -fx-background-color: linear-gradient(to right, #4f9cf0 0%, #2f67d8 100%);
 }
 
 .matching-match-portrait-stage {
+    -fx-alignment: center;
+    -fx-spacing: 24px;
     -fx-min-height: 118px;
     -fx-pref-height: 118px;
     -fx-max-width: Infinity;
@@ -649,7 +699,7 @@
 }
 
 .matching-match-avatar-student {
-    -fx-effect: dropshadow(gaussian, rgba(241, 117, 98, 0.24), 18, 0.22, 0, 6);
+    -fx-effect: dropshadow(gaussian, rgba(95, 143, 240, 0.24), 18, 0.22, 0, 6);
 }
 
 .matching-match-avatar-tutor {

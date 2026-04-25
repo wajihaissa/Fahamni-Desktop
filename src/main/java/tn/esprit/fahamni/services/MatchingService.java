@@ -72,13 +72,13 @@ public class MatchingService {
         String normalizedMode = normalizeMode(draft.mode());
         String normalizedVisibility = normalizeVisibility(draft.visibilityScope());
         String normalizedObjective = normalizeOptionalText(draft.objectiveText());
-        List<RawTutorCandidate> candidates = loadCompatibleTutors(
+        List<RawTutorCandidate> candidates = retainTopTutorOnly(loadCompatibleTutors(
             normalizedSubject,
             draft.startAt(),
             draft.durationMin(),
             normalizedMode,
             needProfile
-        );
+        ));
 
         String insertRequestSql = """
             INSERT INTO matching_request (
@@ -120,7 +120,7 @@ public class MatchingService {
             List<StudentMatchCard> cards = insertCandidates(requestId, candidates);
             String message = cards.isEmpty()
                 ? "Aucun tuteur compatible n'est disponible sur ce creneau pour le moment. Votre demande a bien ete enregistree."
-                : cards.size() + " profil(s) compatible(s) sont prets pour le swipe.";
+                : "1 tuteur compatible est pret pour le swipe.";
             return new MatchingRequestCreation(requestId, true, message, needProfile, cards);
         } catch (SQLException e) {
             logMatchingError("Creation du matching impossible", e);
@@ -703,6 +703,13 @@ public class MatchingService {
                 .thenComparing(RawTutorCandidate::tutorId)
         );
         return compatibleTutors;
+    }
+
+    private List<RawTutorCandidate> retainTopTutorOnly(List<RawTutorCandidate> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return List.of();
+        }
+        return List.of(candidates.get(0));
     }
 
     private void logMatchingError(String context, Exception exception) {
