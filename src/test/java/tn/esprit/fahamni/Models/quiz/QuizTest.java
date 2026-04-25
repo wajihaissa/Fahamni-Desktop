@@ -28,4 +28,28 @@ class QuizTest {
         assertTrue(quiz.getQuizResults().isEmpty());
         assertNull(result.getQuiz());
     }
+
+    @Test
+    void aggregateHelpersExposeTheCurrentQuizState() {
+        Quiz quiz = new Quiz();
+        quiz.setTitre("Java Basics");
+        quiz.setKeyword("Java");
+
+        Question question = new Question();
+        QuizResult result = new QuizResult();
+        result.setScore(4);
+        result.setPercentage(80.0);
+        result.setPassed(true);
+
+        quiz.addQuestion(question);
+        quiz.addQuizResult(result);
+
+        assertTrue(quiz.hasTitle());
+        assertTrue(quiz.hasKeyword());
+        assertEquals(1, quiz.getQuestionCount());
+        assertEquals(1, quiz.getResultCount());
+        assertTrue(result.hasScore());
+        assertTrue(result.hasPercentage());
+        assertTrue(result.isPassed());
+    }
 }
