@@ -1,16 +1,25 @@
 package tn.esprit.fahamni.services;
 
-import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
+import tn.esprit.fahamni.Models.quiz.Choice;
+import tn.esprit.fahamni.Models.quiz.Question;
 import tn.esprit.fahamni.Models.quiz.Quiz;
 import tn.esprit.fahamni.Models.quiz.QuizResult;
-import tn.esprit.fahamni.Models.quiz.Question;
 import tn.esprit.fahamni.utils.MyDataBase;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,14 +31,12 @@ public class QuizService {
     private final Connection cnx;
 
     public QuizService() {
-        // Use Singleton instance
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
-    // CREATE
     public Quiz createQuiz(Quiz quiz) {
         String quizQuery = "INSERT INTO quiz (titre, keyword, created_at) VALUES (?, ?, ?)";
-        String questionQuery = "INSERT INTO question (question, quiz_id) VALUES (?, ?)";
+        String questionQuery = buildQuestionInsertQuery();
         String choiceQuery = "INSERT INTO choice (choice, is_correct, question_id) VALUES (?, ?, ?)";
 
         if (!isQuizStructureValid(quiz)) {
@@ -37,96 +44,77 @@ public class QuizService {
         }
 
         try {
-            cnx.setAutoCommit(false); // Start transaction
+            cnx.setAutoCommit(false);
             Instant createdAt = Instant.now();
 
-            // 1. Insert Quiz
             try (PreparedStatement quizStmt = cnx.prepareStatement(quizQuery, Statement.RETURN_GENERATED_KEYS)) {
                 quizStmt.setString(1, quiz.getTitre());
                 quizStmt.setString(2, quiz.getKeyword());
                 quizStmt.setTimestamp(3, Timestamp.from(createdAt));
 
-                int rowsAffected = quizStmt.executeUpdate();
-
-                if (rowsAffected > 0) {
-                    ResultSet rs = quizStmt.getGeneratedKeys();
-                    if (rs.next()) {
-                        quiz.setId(rs.getLong(1));
-                        quiz.setCreatedAt(createdAt);
-                    }
-                }
-            }
-
-            // 2. Insert Questions and their Choices
-            if (quiz.getId() != null && quiz.getQuestions() != null) {
-                try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery, Statement.RETURN_GENERATED_KEYS);
-                     PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery, Statement.RETURN_GENERATED_KEYS)) {
-
-                    for (Question question : quiz.getQuestions()) {
-                        // Insert Question
-                        questionStmt.setString(1, question.getQuestion());
-                        questionStmt.setLong(2, quiz.getId());
-
-                        int questionRows = questionStmt.executeUpdate();
-
-                        if (questionRows > 0) {
-                            ResultSet qRs = questionStmt.getGeneratedKeys();
-                            if (qRs.next()) {
-                                question.setId(qRs.getLong(1));
-                                question.setQuiz(quiz);
-                            }
-
-                            // Insert Choices for this Question
-                            if (question.getChoices() != null && !question.getChoices().isEmpty()) {
-                                for (Choice choice : question.getChoices()) {
-                                    choiceStmt.setString(1, choice.getChoice());
-                                    choiceStmt.setBoolean(2, choice.getIsCorrect() != null ? choice.getIsCorrect() : false);
-                                    choiceStmt.setLong(3, question.getId());
-                                    choiceStmt.executeUpdate();
-
-                                    try (ResultSet choiceRs = choiceStmt.getGeneratedKeys()) {
-                                        if (choiceRs.next()) {
-                                            choice.setId(choiceRs.getLong(1));
-                                        }
-                                    }
-
-                                    choice.setQuestion(question);
-                                }
-                            }
+                if (quizStmt.executeUpdate() > 0) {
+                    try (ResultSet rs = quizStmt.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            quiz.setId(rs.getLong(1));
+                            quiz.setCreatedAt(createdAt);
                         }
                     }
                 }
             }
 
-            cnx.commit(); // Commit transaction
-            return quiz;
+            if (quiz.getId() != null && quiz.getQuestions() != null) {
+                try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery, Statement.RETURN_GENERATED_KEYS);
+                     PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery, Statement.RETURN_GENERATED_KEYS)) {
+                    for (Question question : quiz.getQuestions()) {
+                        bindQuestionStatement(questionStmt, question, quiz);
+                        int questionRows = questionStmt.executeUpdate();
 
-        } catch (SQLException e) {
-            try {
-                cnx.rollback(); // Rollback on error
-                System.err.println("Transaction rolled back");
-            } catch (SQLException ex) {
-                System.err.println("Error during rollback: " + ex.getMessage());
+                        if (questionRows <= 0) {
+                            continue;
+                        }
+
+                        try (ResultSet qRs = questionStmt.getGeneratedKeys()) {
+                            if (qRs.next()) {
+                                question.setId(qRs.getLong(1));
+                                question.setQuiz(quiz);
+                            }
+                        }
+
+                        for (Choice choice : question.getChoices()) {
+                            choiceStmt.setString(1, choice.getChoice());
+                            choiceStmt.setBoolean(2, choice.getIsCorrect() != null ? choice.getIsCorrect() : false);
+                            choiceStmt.setLong(3, question.getId());
+                            choiceStmt.executeUpdate();
+
+                            try (ResultSet choiceRs = choiceStmt.getGeneratedKeys()) {
+                                if (choiceRs.next()) {
+                                    choice.setId(choiceRs.getLong(1));
+                                }
+                            }
+
+                            choice.setQuestion(question);
+                        }
+                    }
+                }
             }
+
+            cnx.commit();
+            return quiz;
+        } catch (SQLException e) {
+            rollbackQuietly();
             System.err.println("Error creating quiz: " + e.getMessage());
             return null;
         } finally {
-            try {
-                cnx.setAutoCommit(true); // Reset auto-commit to default
-            } catch (SQLException e) {
-                System.err.println("Error resetting auto-commit: " + e.getMessage());
-            }
+            resetAutoCommitQuietly();
         }
     }
 
-    // READ - All
     public List<Quiz> getAllQuizzes() {
         List<Quiz> quizzes = new ArrayList<>();
         String query = "SELECT * FROM quiz";
 
         try (Statement stmt = cnx.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
-
             while (rs.next()) {
                 Quiz quiz = mapResultSetToQuiz(rs);
                 loadQuizQuestions(quiz);
@@ -140,19 +128,18 @@ public class QuizService {
         return quizzes;
     }
 
-    // READ - By ID
     public Quiz getQuizById(Long id) {
         String query = "SELECT * FROM quiz WHERE id = ?";
 
         try (PreparedStatement stmt = cnx.prepareStatement(query)) {
             stmt.setLong(1, id);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                Quiz quiz = mapResultSetToQuiz(rs);
-                loadQuizQuestions(quiz);
-                loadQuizResults(quiz);
-                return quiz;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Quiz quiz = mapResultSetToQuiz(rs);
+                    loadQuizQuestions(quiz);
+                    loadQuizResults(quiz);
+                    return quiz;
+                }
             }
         } catch (SQLException e) {
             System.err.println("Error fetching quiz: " + e.getMessage());
@@ -161,7 +148,6 @@ public class QuizService {
         return null;
     }
 
-    // UPDATE
     public Quiz updateQuiz(Long id, Quiz updatedQuiz) {
         String query = "UPDATE quiz SET titre = ?, keyword = ? WHERE id = ?";
 
@@ -178,7 +164,6 @@ public class QuizService {
                 stmt.setLong(3, id);
 
                 int rowsAffected = stmt.executeUpdate();
-
                 if (rowsAffected == 0) {
                     cnx.rollback();
                     return null;
@@ -191,20 +176,26 @@ public class QuizService {
         } catch (SQLException e) {
             rollbackQuietly();
             System.err.println("Error updating quiz: " + e.getMessage());
+            return null;
         } finally {
             resetAutoCommitQuietly();
         }
-
-        return null;
     }
 
-    // DELETE
     public boolean deleteQuiz(Long id) {
+        String deleteAttemptsQuery = "DELETE qaa FROM quiz_answer_attempt qaa INNER JOIN quiz_result qr ON qaa.quiz_result_id = qr.id WHERE qr.quiz_id = ?";
         String deleteResultsQuery = "DELETE FROM quiz_result WHERE quiz_id = ?";
         String deleteQuizQuery = "DELETE FROM quiz WHERE id = ?";
 
         try {
             cnx.setAutoCommit(false);
+
+            if (tableExists("quiz_answer_attempt")) {
+                try (PreparedStatement deleteAttemptsStmt = cnx.prepareStatement(deleteAttemptsQuery)) {
+                    deleteAttemptsStmt.setLong(1, id);
+                    deleteAttemptsStmt.executeUpdate();
+                }
+            }
 
             try (PreparedStatement deleteResultsStmt = cnx.prepareStatement(deleteResultsQuery);
                  PreparedStatement deleteQuizStmt = cnx.prepareStatement(deleteQuizQuery)) {
@@ -228,15 +219,12 @@ public class QuizService {
         }
     }
 
-    // Get quizzes with results
     public List<Quiz> getRecentResults() {
         List<Quiz> quizzes = new ArrayList<>();
-        String query = "SELECT DISTINCT q.* FROM quiz q " +
-                "INNER JOIN quiz_result qr ON q.id = qr.quiz_id";
+        String query = "SELECT DISTINCT q.* FROM quiz q INNER JOIN quiz_result qr ON q.id = qr.quiz_id";
 
         try (Statement stmt = cnx.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
-
             while (rs.next()) {
                 Quiz quiz = mapResultSetToQuiz(rs);
                 loadQuizResults(quiz);
@@ -249,89 +237,41 @@ public class QuizService {
         return quizzes;
     }
 
-    // Helper to map ResultSet to Quiz
-    private Quiz mapResultSetToQuiz(ResultSet rs) throws SQLException {
-        Quiz quiz = new Quiz();
-        quiz.setId(rs.getLong("id"));
-        quiz.setTitre(rs.getString("titre"));
-        quiz.setKeyword(rs.getString("keyword"));
-        Timestamp createdAt = rs.getTimestamp("created_at");
-        quiz.setCreatedAt(createdAt != null ? createdAt.toInstant() : null);
-        return quiz;
-    }
-
-    // Load questions for a quiz
-    private void loadQuizQuestions(Quiz quiz) {
-        // Query for questions
-        String questionQuery = "SELECT * FROM question WHERE quiz_id = ?";
-        // Query for choices of a specific question
+    public List<Question> getAllQuestionsFromBank() {
+        List<Question> questions = new ArrayList<>();
+        String questionQuery = buildQuestionBankQuery();
         String choiceQuery = "SELECT * FROM choice WHERE question_id = ?";
 
-        try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery)) {
-            questionStmt.setLong(1, quiz.getId());
-            ResultSet questionRs = questionStmt.executeQuery();
-
+        try (Statement questionStmt = cnx.createStatement();
+             ResultSet questionRs = questionStmt.executeQuery(questionQuery)) {
             while (questionRs.next()) {
-                Question q = new Question();
-                q.setId(questionRs.getLong("id"));
-                q.setQuestion(questionRs.getString("question"));
-                q.setQuiz(quiz); // Set the bidirectional relationship
+                Question question = new Question();
+                question.setId(questionRs.getLong("id"));
+                question.setSourceQuestionId(resolveSourceQuestionId(questionRs));
+                question.setQuestion(questionRs.getString("question"));
+                question.setTopic(resolveQuestionTopic(questionRs, questionRs.getString("quiz_keyword")));
+                question.setDifficulty(resolveQuestionDifficulty(questionRs));
 
-                // Load choices for this question
                 try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
-                    choiceStmt.setLong(1, q.getId());
-                    ResultSet choiceRs = choiceStmt.executeQuery();
-
-                    while (choiceRs.next()) {
-                        Choice c = new Choice();
-                        c.setId(choiceRs.getLong("id"));
-                        c.setChoice(choiceRs.getString("choice"));
-                        c.setIsCorrect(choiceRs.getBoolean("is_correct"));
-
-                        // This automatically sets the bidirectional relationship
-                        q.addChoice(c);
+                    choiceStmt.setLong(1, question.getId());
+                    try (ResultSet choiceRs = choiceStmt.executeQuery()) {
+                        while (choiceRs.next()) {
+                            Choice choice = new Choice();
+                            choice.setId(choiceRs.getLong("id"));
+                            choice.setChoice(choiceRs.getString("choice"));
+                            choice.setIsCorrect(choiceRs.getBoolean("is_correct"));
+                            question.addChoice(choice);
+                        }
                     }
                 }
 
-                quiz.addQuestion(q);
+                questions.add(question);
             }
         } catch (SQLException e) {
-            System.err.println("Error loading questions: " + e.getMessage());
+            System.err.println("Error fetching question bank: " + e.getMessage());
         }
-    }
-    // Load results for a quiz
-    private void loadQuizResults(Quiz quiz) {
-        String query = "SELECT * FROM quiz_result WHERE quiz_id = ?";
 
-        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
-            stmt.setLong(1, quiz.getId());
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                QuizResult result = new QuizResult();
-                result.setId(rs.getLong("id"));
-                result.setScore(rs.getInt("score"));
-                result.setTotalQuestions(getNullableInt(rs, "total_questions"));
-                result.setPercentage(getNullableDouble(rs, "percentage"));
-                result.setPassed(getNullableBoolean(rs, "passed"));
-
-                Timestamp completedAt = rs.getTimestamp("completed_at");
-                result.setCompletedAt(completedAt != null ? completedAt.toInstant() : null);
-
-                if (hasColumn(rs, "user_email")) {
-                    String email = rs.getString("user_email");
-                    if (email != null && !email.isBlank()) {
-                        String fullName = hasColumn(rs, "user_full_name") ? rs.getString("user_full_name") : email;
-                        Long userId = getNullableLong(rs, "user_id");
-                        result.setUser(new User(userId, fullName, email, "", UserRole.USER));
-                    }
-                }
-
-                quiz.addQuizResult(result);
-            }
-        } catch (SQLException e) {
-            System.err.println("Error loading results: " + e.getMessage());
-        }
+        return questions;
     }
 
     public Integer getLastScore(Quiz quiz) {
@@ -346,6 +286,17 @@ public class QuizService {
                 .orElse(null);
     }
 
+    public List<String> getSourceQuizTitlesForQuiz(Long quizId) {
+        if (quizId == null || !hasQuestionColumn("source_question_id")) {
+            return List.of();
+        }
+        Set<String> titles = new LinkedHashSet<>(loadSourceQuizTitles(quizId, true));
+        if (titles.isEmpty()) {
+            titles.addAll(loadSourceQuizTitles(quizId, false));
+        }
+        return new ArrayList<>(titles);
+    }
+
     public QuizResult submitQuiz(Long quizId, Map<Long, Long> selectedChoiceIdsByQuestionId, User user) {
         Quiz quiz = getQuizById(quizId);
         if (quiz == null || !isQuizStructureValid(quiz)) {
@@ -355,12 +306,28 @@ public class QuizService {
         QuizResult result = evaluateQuiz(quiz, selectedChoiceIdsByQuestionId);
         result.setUser(user);
 
-        QuizResult persistedResult = saveQuizResult(quiz, result);
-        if (persistedResult != null) {
-            quiz.addQuizResult(persistedResult);
-        }
+        try {
+            cnx.setAutoCommit(false);
+            QuizResult persistedResult = saveQuizResult(quiz, result);
+            if (persistedResult == null) {
+                cnx.rollback();
+                return null;
+            }
 
-        return persistedResult;
+            if (tableExists("quiz_answer_attempt")) {
+                saveAnswerAttempts(persistedResult, quiz, selectedChoiceIdsByQuestionId);
+            }
+
+            cnx.commit();
+            quiz.addQuizResult(persistedResult);
+            return persistedResult;
+        } catch (SQLException e) {
+            rollbackQuietly();
+            System.err.println("Error submitting quiz: " + e.getMessage());
+            return null;
+        } finally {
+            resetAutoCommitQuietly();
+        }
     }
 
     public QuizResult evaluateQuiz(Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) {
@@ -434,21 +401,120 @@ public class QuizService {
         return true;
     }
 
+    public Question copyQuestionForQuiz(Question source, Quiz quizShell) {
+        Question copy = new Question();
+        copy.setSourceQuestionId(source.getSourceQuestionId() != null ? source.getSourceQuestionId() : source.getId());
+        copy.setQuestion(source.getQuestion());
+        copy.setTopic(source.getTopic());
+        copy.setDifficulty(source.getDifficulty());
+        copy.setHint(source.getHint());
+        copy.setExplanation(source.getExplanation());
+        copy.setQuiz(quizShell);
+
+        for (Choice sourceChoice : source.getChoices()) {
+            Choice choiceCopy = new Choice();
+            choiceCopy.setChoice(sourceChoice.getChoice());
+            choiceCopy.setIsCorrect(sourceChoice.getIsCorrect());
+            copy.addChoice(choiceCopy);
+        }
+
+        return copy;
+    }
+
+    private Quiz mapResultSetToQuiz(ResultSet rs) throws SQLException {
+        Quiz quiz = new Quiz();
+        quiz.setId(rs.getLong("id"));
+        quiz.setTitre(rs.getString("titre"));
+        quiz.setKeyword(rs.getString("keyword"));
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        quiz.setCreatedAt(createdAt != null ? createdAt.toInstant() : null);
+        return quiz;
+    }
+
+    private void loadQuizQuestions(Quiz quiz) {
+        String questionQuery = "SELECT * FROM question WHERE quiz_id = ?";
+        String choiceQuery = "SELECT * FROM choice WHERE question_id = ?";
+
+        try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery)) {
+            questionStmt.setLong(1, quiz.getId());
+            try (ResultSet questionRs = questionStmt.executeQuery()) {
+                while (questionRs.next()) {
+                    Question q = new Question();
+                    q.setId(questionRs.getLong("id"));
+                    q.setSourceQuestionId(resolveSourceQuestionId(questionRs));
+                    q.setQuestion(questionRs.getString("question"));
+                    q.setTopic(resolveQuestionTopic(questionRs, quiz.getKeyword()));
+                    q.setDifficulty(resolveQuestionDifficulty(questionRs));
+                    q.setQuiz(quiz);
+
+                    try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
+                        choiceStmt.setLong(1, q.getId());
+                        try (ResultSet choiceRs = choiceStmt.executeQuery()) {
+                            while (choiceRs.next()) {
+                                Choice c = new Choice();
+                                c.setId(choiceRs.getLong("id"));
+                                c.setChoice(choiceRs.getString("choice"));
+                                c.setIsCorrect(choiceRs.getBoolean("is_correct"));
+                                q.addChoice(c);
+                            }
+                        }
+                    }
+
+                    quiz.addQuestion(q);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading questions: " + e.getMessage());
+        }
+    }
+
+    private void loadQuizResults(Quiz quiz) {
+        String query = "SELECT * FROM quiz_result WHERE quiz_id = ? ORDER BY completed_at DESC, id DESC";
+
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            stmt.setLong(1, quiz.getId());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    QuizResult result = new QuizResult();
+                    result.setId(rs.getLong("id"));
+                    result.setScore(rs.getInt("score"));
+                    result.setTotalQuestions(getNullableInt(rs, "total_questions"));
+                    result.setPercentage(getNullableDouble(rs, "percentage"));
+                    result.setPassed(getNullableBoolean(rs, "passed"));
+
+                    Timestamp completedAt = rs.getTimestamp("completed_at");
+                    result.setCompletedAt(completedAt != null ? completedAt.toInstant() : null);
+
+                    if (hasColumn(rs, "user_email")) {
+                        String email = rs.getString("user_email");
+                        if (email != null && !email.isBlank()) {
+                            String fullName = hasColumn(rs, "user_full_name") ? rs.getString("user_full_name") : email;
+                            Long userId = getNullableLong(rs, "user_id");
+                            result.setUser(new User(userId, fullName, email, "", UserRole.USER));
+                        }
+                    }
+
+                    quiz.addQuizResult(result);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading results: " + e.getMessage());
+        }
+    }
+
     private void replaceQuizQuestions(Long quizId, List<Question> questions) throws SQLException {
         deleteQuizQuestions(quizId);
 
         Quiz quizShell = new Quiz();
         quizShell.setId(quizId);
 
-        String questionQuery = "INSERT INTO question (question, quiz_id) VALUES (?, ?)";
+        String questionQuery = buildQuestionInsertQuery();
         String choiceQuery = "INSERT INTO choice (choice, is_correct, question_id) VALUES (?, ?, ?)";
 
         try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery, Statement.RETURN_GENERATED_KEYS);
              PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery, Statement.RETURN_GENERATED_KEYS)) {
-
             for (Question question : questions) {
-                questionStmt.setString(1, question.getQuestion());
-                questionStmt.setLong(2, quizId);
+                bindQuestionStatement(questionStmt, question, quizShell);
                 questionStmt.executeUpdate();
 
                 try (ResultSet questionKeys = questionStmt.getGeneratedKeys()) {
@@ -478,6 +544,14 @@ public class QuizService {
     }
 
     private void deleteQuizQuestions(Long quizId) throws SQLException {
+        if (tableExists("quiz_answer_attempt")) {
+            String deleteAttemptsQuery = "DELETE qaa FROM quiz_answer_attempt qaa INNER JOIN question q ON qaa.question_id = q.id WHERE q.quiz_id = ?";
+            try (PreparedStatement deleteAttemptsStmt = cnx.prepareStatement(deleteAttemptsQuery)) {
+                deleteAttemptsStmt.setLong(1, quizId);
+                deleteAttemptsStmt.executeUpdate();
+            }
+        }
+
         String deleteChoicesQuery = "DELETE c FROM choice c INNER JOIN question q ON c.question_id = q.id WHERE q.quiz_id = ?";
         String deleteQuestionsQuery = "DELETE FROM question WHERE quiz_id = ?";
 
@@ -546,6 +620,36 @@ public class QuizService {
         }
     }
 
+    private void saveAnswerAttempts(QuizResult result, Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) throws SQLException {
+        String query = """
+                INSERT INTO quiz_answer_attempt (quiz_result_id, question_id, selected_choice_id, is_correct, answered_at)
+                VALUES (?, ?, ?, ?, ?)
+                """;
+
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            for (Question question : quiz.getQuestions()) {
+                Choice correctChoice = getCorrectChoice(question);
+                Long selectedChoiceId = selectedChoiceIdsByQuestionId != null
+                        ? selectedChoiceIdsByQuestionId.get(question.getId())
+                        : null;
+                boolean isCorrect = correctChoice != null && selectedChoiceId != null && selectedChoiceId.equals(correctChoice.getId());
+
+                stmt.setLong(1, result.getId());
+                stmt.setLong(2, question.getId());
+                if (selectedChoiceId != null) {
+                    stmt.setLong(3, selectedChoiceId);
+                } else {
+                    stmt.setNull(3, Types.BIGINT);
+                }
+                stmt.setBoolean(4, isCorrect);
+                stmt.setTimestamp(5, Timestamp.from(result.getCompletedAt() != null ? result.getCompletedAt() : Instant.now()));
+                stmt.addBatch();
+            }
+
+            stmt.executeBatch();
+        }
+    }
+
     private String buildQuizResultInsertQuery() {
         List<String> columns = new ArrayList<>();
         List<String> placeholders = new ArrayList<>();
@@ -588,6 +692,114 @@ public class QuizService {
         }
 
         return "INSERT INTO quiz_result (" + String.join(", ", columns) + ") VALUES (" + String.join(", ", placeholders) + ")";
+    }
+
+    private String buildQuestionInsertQuery() {
+        List<String> columns = new ArrayList<>();
+        List<String> placeholders = new ArrayList<>();
+
+        columns.add("question");
+        placeholders.add("?");
+
+        if (hasQuestionColumn("topic")) {
+            columns.add("topic");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("difficulty")) {
+            columns.add("difficulty");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("source_question_id")) {
+            columns.add("source_question_id");
+            placeholders.add("?");
+        }
+
+        columns.add("quiz_id");
+        placeholders.add("?");
+
+        return "INSERT INTO question (" + String.join(", ", columns) + ") VALUES (" + String.join(", ", placeholders) + ")";
+    }
+
+    private void bindQuestionStatement(PreparedStatement statement, Question question, Quiz quiz) throws SQLException {
+        int index = 1;
+        statement.setString(index++, question.getQuestion());
+
+        if (hasQuestionColumn("topic")) {
+            String topic = !isBlank(question.getTopic()) ? question.getTopic() : quiz.getKeyword();
+            statement.setString(index++, topic);
+        }
+
+        if (hasQuestionColumn("difficulty")) {
+            String difficulty = !isBlank(question.getDifficulty()) ? question.getDifficulty() : "Medium";
+            statement.setString(index++, difficulty);
+        }
+
+        if (hasQuestionColumn("source_question_id")) {
+            if (question.getSourceQuestionId() != null) {
+                statement.setLong(index++, question.getSourceQuestionId());
+            } else {
+                statement.setNull(index++, Types.BIGINT);
+            }
+        }
+
+        statement.setLong(index, quiz.getId());
+    }
+
+    private String buildQuestionBankQuery() {
+        StringBuilder query = new StringBuilder("SELECT q.*, quiz.keyword AS quiz_keyword FROM question q INNER JOIN quiz ON quiz.id = q.quiz_id");
+        if (hasQuestionColumn("source_question_id")) {
+            query.append(" WHERE q.source_question_id IS NULL");
+        } else {
+            query.append(" WHERE quiz.keyword NOT LIKE 'adaptive-%'");
+            query.append(" AND quiz.titre NOT LIKE 'Adaptive Quiz - %'");
+        }
+        return query.toString();
+    }
+
+    private List<String> loadSourceQuizTitles(Long quizId, boolean preferDirectSourceLink) {
+        String query = preferDirectSourceLink
+                ? """
+                SELECT DISTINCT source_quiz.titre
+                FROM question adaptive_question
+                INNER JOIN question source_question ON source_question.id = adaptive_question.source_question_id
+                INNER JOIN quiz source_quiz ON source_quiz.id = source_question.quiz_id
+                WHERE adaptive_question.quiz_id = ?
+                ORDER BY source_quiz.titre ASC
+                """
+                : """
+                SELECT DISTINCT source_quiz.titre
+                FROM question adaptive_question
+                INNER JOIN question source_question
+                    ON source_question.question = adaptive_question.question
+                    AND source_question.id <> adaptive_question.id
+                    AND source_question.source_question_id IS NULL
+                INNER JOIN quiz source_quiz ON source_quiz.id = source_question.quiz_id
+                WHERE adaptive_question.quiz_id = ?
+                    AND adaptive_question.source_question_id IS NULL
+                    AND source_quiz.keyword NOT LIKE 'adaptive-%'
+                    AND source_quiz.titre NOT LIKE 'Adaptive Quiz - %'
+                ORDER BY source_quiz.titre ASC
+                """;
+
+        Set<String> titles = new LinkedHashSet<>();
+
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            stmt.setLong(1, quizId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String title = rs.getString("titre");
+                    if (!isBlank(title)) {
+                        titles.add(title.trim());
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching source quiz titles: " + e.getMessage());
+        }
+
+        return new ArrayList<>(titles);
     }
 
     private Choice getCorrectChoice(Question question) {
@@ -645,14 +857,61 @@ public class QuizService {
     }
 
     private boolean hasQuizResultColumn(String columnName) {
+        return hasTableColumn("quiz_result", columnName);
+    }
+
+    private boolean hasQuestionColumn(String columnName) {
+        return hasTableColumn("question", columnName);
+    }
+
+    private boolean hasTableColumn(String tableName, String columnName) {
         try {
             DatabaseMetaData metaData = cnx.getMetaData();
-            try (ResultSet columns = metaData.getColumns(cnx.getCatalog(), null, "quiz_result", columnName)) {
+            try (ResultSet columns = metaData.getColumns(cnx.getCatalog(), null, tableName, columnName)) {
                 return columns.next();
             }
         } catch (SQLException e) {
             return false;
         }
+    }
+
+    private boolean tableExists(String tableName) {
+        try {
+            DatabaseMetaData metaData = cnx.getMetaData();
+            try (ResultSet tables = metaData.getTables(cnx.getCatalog(), null, tableName, new String[]{"TABLE"})) {
+                return tables.next();
+            }
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    private String resolveQuestionTopic(ResultSet rs, String fallback) throws SQLException {
+        if (hasColumn(rs, "topic")) {
+            String topic = rs.getString("topic");
+            if (!isBlank(topic)) {
+                return topic;
+            }
+        }
+        return fallback;
+    }
+
+    private String resolveQuestionDifficulty(ResultSet rs) throws SQLException {
+        if (hasColumn(rs, "difficulty")) {
+            String difficulty = rs.getString("difficulty");
+            if (!isBlank(difficulty)) {
+                return difficulty;
+            }
+        }
+        return "Medium";
+    }
+
+    private Long resolveSourceQuestionId(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "source_question_id")) {
+            return null;
+        }
+        long sourceQuestionId = rs.getLong("source_question_id");
+        return rs.wasNull() ? null : sourceQuestionId;
     }
 
     private void rollbackQuietly() {
