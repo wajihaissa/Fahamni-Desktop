@@ -46,6 +46,10 @@ public class QuizResult {
         this.score = score;
     }
 
+    public boolean hasScore() {
+        return score != null;
+    }
+
     public Integer getTotalQuestions() {
         return totalQuestions;
     }
@@ -62,12 +66,20 @@ public class QuizResult {
         this.percentage = percentage;
     }
 
+    public boolean hasPercentage() {
+        return percentage != null;
+    }
+
     public Boolean getPassed() {
         return passed;
     }
 
     public void setPassed(Boolean passed) {
         this.passed = passed;
+    }
+
+    public boolean isPassed() {
+        return Boolean.TRUE.equals(passed);
     }
 
     public Instant getCompletedAt() {

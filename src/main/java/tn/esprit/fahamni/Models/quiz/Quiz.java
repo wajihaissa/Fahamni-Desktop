@@ -66,12 +66,20 @@ public class Quiz {
         this.titre.set(titre != null ? titre : "");
     }
 
+    public boolean hasTitle() {
+        return !getTitre().isBlank();
+    }
+
     public String getKeyword() {
         return keyword.get();
     }
 
     public void setKeyword(String keyword) {
         this.keyword.set(keyword != null ? keyword : "");
+    }
+
+    public boolean hasKeyword() {
+        return !getKeyword().isBlank();
     }
 
     public Instant getCreatedAt() {
@@ -84,6 +92,10 @@ public class Quiz {
 
     public List<Question> getQuestions() {
         return questions;
+    }
+
+    public int getQuestionCount() {
+        return questions.size();
     }
 
     public void addQuestion(Question question) {
@@ -101,6 +113,10 @@ public class Quiz {
 
     public List<QuizResult> getQuizResults() {
         return quizResults;
+    }
+
+    public int getResultCount() {
+        return quizResults.size();
     }
 
     public void addQuizResult(QuizResult quizResult) {
