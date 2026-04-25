@@ -241,7 +241,7 @@ public class Seance {
         if (displayTutorName != null && !displayTutorName.isBlank()) {
             return displayTutorName;
         }
-        return tuteurId > 0 ? "Tuteur #" + tuteurId : "Tuteur non defini";
+        return "Tuteur non defini";
     }
 
     public void setTutorName(String tutorName) {

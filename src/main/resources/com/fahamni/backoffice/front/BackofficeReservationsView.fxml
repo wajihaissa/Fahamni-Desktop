@@ -29,7 +29,7 @@
         <VBox spacing="10.0">
             <Label text="Filtres de consultation" styleClass="backoffice-section-title"/>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <TextField fx:id="searchField" promptText="Rechercher par etudiant, seance, statut ou ID" prefWidth="360.0" styleClass="backoffice-form-input"/>
+                <TextField fx:id="searchField" promptText="Rechercher par etudiant, seance ou statut" prefWidth="360.0" styleClass="backoffice-form-input"/>
                 <ComboBox fx:id="statusFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
                 <DatePicker fx:id="reservationDatePicker" promptText="Date de demande" prefWidth="170.0" styleClass="backoffice-form-input"/>
                 <Button onAction="#handleResetReservationFilters" text="Reinitialiser" styleClass="backoffice-secondary-button"/>
@@ -45,7 +45,6 @@
 
         <TableView fx:id="reservationsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
             <columns>
-                <TableColumn fx:id="reservationIdColumn" prefWidth="70.0" text="ID"/>
                 <TableColumn fx:id="studentColumn" prefWidth="220.0" text="Etudiant"/>
                 <TableColumn fx:id="sessionColumn" prefWidth="320.0" text="Seance"/>
                 <TableColumn fx:id="requestDateColumn" prefWidth="180.0" text="Date de demande"/>

@@ -77,6 +77,7 @@
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label text="Rechercher dans les seances en base" styleClass="reservation-search-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="matchingSwipeButton" text="Matching swipe" onAction="#handleOpenMatchingWorkspace" styleClass="backoffice-primary-button"/>
                 <Button fx:id="recommendationBriefingButton" text="Analyse personnalisee" onAction="#handleOpenRecommendationBriefing" styleClass="backoffice-secondary-button"/>
             </HBox>
             <Label text="Le catalogue reste neutre. Ouvrez l analyse personnalisee pour consulter des seances recommandees selon plusieurs orientations: priorite generale, disponibilite immediate, continuite ou diversification." styleClass="reservation-section-copy"/>

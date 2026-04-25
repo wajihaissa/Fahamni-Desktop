@@ -1,0 +1,165 @@
+.matching-dialog-root {
+    -fx-background-color: linear-gradient(to bottom, #f8fbff 0%, #eef4fb 100%);
+    -fx-background-radius: 28px;
+}
+
+.matching-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+}
+
+.matching-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.matching-dialog-panel {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8fbff 100%);
+    -fx-border-color: #d6e0eb;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 18px;
+}
+
+.matching-dialog-hint {
+    -fx-text-fill: #5f738d;
+    -fx-font-size: 12px;
+}
+
+.matching-workspace-host {
+    -fx-padding: 2px 0 6px 0;
+}
+
+.matching-stage-shell,
+.matching-results-shell {
+    -fx-spacing: 14px;
+}
+
+.matching-stage-panel {
+    -fx-padding: 20px;
+}
+
+.matching-results-panel {
+    -fx-padding: 18px 20px;
+    -fx-spacing: 8px;
+}
+
+.matching-results-toolbar {
+    -fx-alignment: center-left;
+}
+
+.matching-card-deck {
+    -fx-padding: 26px 18px 18px 18px;
+    -fx-min-height: 520px;
+    -fx-pref-height: 520px;
+}
+
+.matching-deck-layer {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.92) 0%, rgba(245, 249, 255, 0.98) 100%);
+    -fx-border-color: rgba(214, 224, 235, 0.85);
+    -fx-border-width: 1px;
+    -fx-background-radius: 28px;
+    -fx-border-radius: 28px;
+    -fx-min-height: 430px;
+    -fx-pref-height: 430px;
+    -fx-max-width: 720px;
+}
+
+.matching-deck-layer-back {
+    -fx-translate-y: 18px;
+    -fx-scale-x: 0.93;
+    -fx-scale-y: 0.93;
+    -fx-opacity: 0.55;
+}
+
+.matching-deck-layer-middle {
+    -fx-translate-y: 9px;
+    -fx-scale-x: 0.965;
+    -fx-scale-y: 0.965;
+    -fx-opacity: 0.82;
+}
+
+.matching-card-host {
+    -fx-padding: 6px 0 10px 0;
+}
+
+.matching-swipe-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f9fbff 100%);
+    -fx-border-color: #d9e2f0;
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(gaussian, rgba(39, 73, 128, 0.12), 28, 0.22, 0, 10);
+}
+
+.matching-swipe-surface {
+    -fx-padding: 8px 8px 12px 8px;
+}
+
+.matching-state-card {
+    -fx-max-width: 700px;
+}
+
+.matching-state-card-success {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f3f8ff 100%);
+    -fx-border-color: #cddcf7;
+}
+
+.matching-swipe-guide {
+    -fx-text-fill: #5a6782;
+    -fx-font-size: 12px;
+}
+
+.matching-ai-panel {
+    -fx-background-color: linear-gradient(to bottom, #f5f8ff 0%, #edf3ff 100%);
+    -fx-border-color: #d7e3f6;
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 14px 16px;
+    -fx-spacing: 6px;
+}
+
+.matching-ai-copy {
+    -fx-text-fill: #2e405f;
+}
+
+.matching-ai-secondary-copy {
+    -fx-text-fill: #6e4fd4;
+    -fx-font-weight: 700;
+}
+
+.matching-decision-badge {
+    -fx-padding: 8px 14px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+    -fx-letter-spacing: 0.7px;
+}
+
+.matching-decision-neutral {
+    -fx-background-color: rgba(79, 98, 130, 0.10);
+    -fx-border-color: rgba(79, 98, 130, 0.18);
+    -fx-text-fill: #4f6282;
+}
+
+.matching-decision-pass {
+    -fx-background-color: rgba(225, 91, 126, 0.14);
+    -fx-border-color: rgba(225, 91, 126, 0.40);
+    -fx-text-fill: #be466b;
+}
+
+.matching-decision-like {
+    -fx-background-color: rgba(93, 95, 239, 0.14);
+    -fx-border-color: rgba(93, 95, 239, 0.38);
+    -fx-text-fill: #4b4fd8;
+}
+
+.matching-decision-super {
+    -fx-background-color: rgba(109, 77, 198, 0.16);
+    -fx-border-color: rgba(109, 77, 198, 0.42);
+    -fx-text-fill: #5e3ec2;
+}

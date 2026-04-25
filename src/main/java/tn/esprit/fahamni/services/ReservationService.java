@@ -122,6 +122,9 @@ public class ReservationService {
                       AND accepted_reservation.cancell_at IS NULL
                       AND accepted_reservation.status IN (1, 2)
                 ) AS accepted_reservations,
+                r.student_rating,
+                r.student_review,
+                r.rated_at,
                 u.full_name AS participant_name,
                 u.email AS participant_email
             FROM reservation r
@@ -150,7 +153,10 @@ public class ReservationService {
                         rs.getInt("participant_id"),
                         rs.getString("participant_name"),
                         rs.getString("participant_email"),
-                        rs.getInt("accepted_reservations")
+                        rs.getInt("accepted_reservations"),
+                        getNullableInteger(rs, "student_rating"),
+                        rs.getString("student_review"),
+                        readDateTime(rs, "rated_at")
                     ));
                 }
             }
@@ -588,6 +594,54 @@ public class ReservationService {
         }
     }
 
+    public List<SessionEvaluationItem> getSessionEvaluations(int seanceId) {
+        List<SessionEvaluationItem> evaluations = new ArrayList<>();
+        if (seanceId <= 0 || cnx == null) {
+            return evaluations;
+        }
+
+        String sql = """
+            SELECT
+                r.participant_id,
+                COALESCE(NULLIF(TRIM(u.full_name), ''), 'Etudiant') AS participant_name,
+                r.student_rating,
+                r.student_review,
+                r.rated_at
+            FROM reservation r
+            INNER JOIN user u ON u.id = r.participant_id
+            WHERE r.seance_id = ?
+              AND r.cancell_at IS NULL
+              AND r.status IN (?, ?)
+              AND r.student_rating BETWEEN ? AND ?
+            ORDER BY r.rated_at DESC, r.reserved_at DESC
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, seanceId);
+            pst.setInt(2, STATUS_ACCEPTED);
+            pst.setInt(3, LEGACY_ACCEPTED_STATUS);
+            pst.setInt(4, MIN_STUDENT_RATING);
+            pst.setInt(5, MAX_STUDENT_RATING);
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    Integer rating = getNullableInteger(rs, "student_rating");
+                    if (rating == null) {
+                        continue;
+                    }
+                    evaluations.add(new SessionEvaluationItem(
+                        rs.getInt("participant_id"),
+                        rs.getString("participant_name"),
+                        rating,
+                        rs.getString("student_review"),
+                        readDateTime(rs, "rated_at")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Erreur chargement evaluations seance: " + e.getMessage());
+        }
+        return evaluations;
+    }
+
     public record TutorReservationRequest(
         int id,
         int status,
@@ -601,7 +655,10 @@ public class ReservationService {
         int participantId,
         String participantName,
         String participantEmail,
-        int acceptedReservations
+        int acceptedReservations,
+        Integer studentRating,
+        String studentReview,
+        LocalDateTime ratedAt
     ) {
         public boolean isPending() {
             return status == STATUS_PENDING;
@@ -617,6 +674,12 @@ public class ReservationService {
 
         public boolean isSessionCapacityReached() {
             return availableAcceptedSeats() <= 0;
+        }
+
+        public boolean hasRating() {
+            return studentRating != null
+                && studentRating >= MIN_STUDENT_RATING
+                && studentRating <= MAX_STUDENT_RATING;
         }
     }
 
@@ -670,6 +733,18 @@ public class ReservationService {
     public record ReservationStats(int total, int pending, int accepted, int refused) {
         public static ReservationStats empty() {
             return new ReservationStats(0, 0, 0, 0);
+        }
+    }
+
+    public record SessionEvaluationItem(
+        int participantId,
+        String participantName,
+        int rating,
+        String review,
+        LocalDateTime ratedAt
+    ) {
+        public boolean hasReview() {
+            return review != null && !review.isBlank();
         }
     }
 

@@ -1,0 +1,72 @@
+.calendar-review-dialog {
+    -fx-background-color: transparent;
+}
+
+.calendar-review-dialog > .content {
+    -fx-padding: 10px 12px 12px 12px;
+}
+
+.calendar-review-dialog .button-bar .button {
+    -fx-background-color: linear-gradient(to right, #6d5bd1 0%, #5b76d6 100%);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 9px 18px;
+    -fx-cursor: hand;
+}
+
+.calendar-review-root {
+    -fx-background-color:
+        radial-gradient(center 10% 0%, radius 68%, rgba(138, 121, 238, 0.18) 0%, rgba(138, 121, 238, 0.0) 72%),
+        linear-gradient(to bottom, #fcfbff 0%, #f5f7ff 100%);
+    -fx-border-color: #ddd8f4;
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+}
+
+.calendar-review-shell {
+    -fx-background-color: rgba(255, 255, 255, 0.74);
+    -fx-border-color: rgba(226, 224, 244, 0.92);
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(69, 54, 133, 0.09), 16, 0.16, 0, 5);
+}
+
+.calendar-review-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #34295f;
+}
+
+.calendar-review-subtitle,
+.calendar-review-empty {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6f6d8f;
+}
+
+.calendar-review-summary-chip {
+    -fx-background-color: linear-gradient(to right, #fef3cf 0%, #ffe5a8 100%);
+    -fx-border-color: #e8c96a;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8c5a08;
+}
+
+.calendar-review-scroll,
+.calendar-review-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.calendar-review-scroll {
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}

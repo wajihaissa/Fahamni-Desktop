@@ -6,9 +6,19 @@ import tn.esprit.fahamni.Models.SalleEquipement;
 import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.MatchingService;
+import tn.esprit.fahamni.services.MatchingService.MatchingAcceptanceResult;
+import tn.esprit.fahamni.services.MatchingService.MatchingDraft;
+import tn.esprit.fahamni.services.MatchingService.MatchingNeedProfile;
+import tn.esprit.fahamni.services.MatchingService.MatchingPlanContext;
+import tn.esprit.fahamni.services.MatchingService.MatchingRequestCreation;
+import tn.esprit.fahamni.services.MatchingService.SessionVisibility;
+import tn.esprit.fahamni.services.MatchingService.StudentMatchCard;
+import tn.esprit.fahamni.services.MatchingService.TutorMatchInboxItem;
 import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
+import tn.esprit.fahamni.services.ReservationService.SessionEvaluationItem;
 import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
 import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SalleEquipementService;
@@ -19,6 +29,11 @@ import tn.esprit.fahamni.services.TutorRecommendationService;
 import tn.esprit.fahamni.services.TutorRecommendationService.RecommendedSession;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
@@ -40,6 +55,7 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.Node;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
@@ -63,11 +79,14 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 import javafx.scene.input.MouseEvent;
 
@@ -75,6 +94,8 @@ public class ReservationController {
 
     private static final DateTimeFormatter DISPLAY_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final String RATING_DIALOG_STYLESHEET = "/com/fahamni/styles/frontoffice-rating-dialog.css";
+    private static final String MATCHING_DIALOG_STYLESHEET = "/com/fahamni/styles/frontoffice-matching-dialog.css";
+    private static final String SESSION_EVALUATIONS_STYLESHEET = "/com/fahamni/styles/frontoffice-session-evaluations.css";
     private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
     private static final String SECTION_ADD_SESSION = "Ajouter une seance";
     private static final String SECTION_MY_RESERVATIONS = "Mes reservations";
@@ -87,6 +108,9 @@ public class ReservationController {
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final int STUDENT_REVIEW_MAX_LENGTH = 1000;
     private static final int STUDENT_REVIEW_SOFT_LIMIT = 850;
+    private static final double MATCHING_SWIPE_HORIZONTAL_THRESHOLD = 150.0;
+    private static final double MATCHING_SWIPE_SUPER_THRESHOLD = 120.0;
+    private static final double MATCHING_SWIPE_ROTATION_FACTOR = 0.055;
     private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
         .mapToObj(value -> String.format("%02d", value))
@@ -102,6 +126,7 @@ public class ReservationController {
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final TutorRecommendationService tutorRecommendationService = new TutorRecommendationService();
+    private final MatchingService matchingService = new MatchingService();
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
@@ -111,6 +136,7 @@ public class ReservationController {
     private Integer selectedSalleId;
     private Integer editingSessionId;
     private int currentSessionPage = 1;
+    private PendingMatchingPlan pendingMatchingPlan;
 
     @FXML
     private Label publishedSessionsCountLabel;
@@ -138,6 +164,9 @@ public class ReservationController {
 
     @FXML
     private Button recommendationBriefingButton;
+
+    @FXML
+    private Button matchingSwipeButton;
 
     @FXML
     private TextField sessionSubjectField;
@@ -286,6 +315,7 @@ public class ReservationController {
         sessionsPerPageComboBox.getItems().setAll(SESSION_PAGE_SIZE_OPTIONS);
         sessionsPerPageComboBox.setValue(DEFAULT_SESSION_PAGE_SIZE);
         updateRecommendationBriefingAvailability();
+        updateMatchingWorkspaceAvailability();
 
         resetEditMode();
         hideFeedback();
@@ -330,6 +360,11 @@ public class ReservationController {
     }
 
     @FXML
+    private void handleOpenMatchingWorkspace() {
+        openMatchingWorkspace();
+    }
+
+    @FXML
     private void handlePreviousSessionsPage() {
         if (currentSessionPage > 1) {
             currentSessionPage--;
@@ -366,6 +401,7 @@ public class ReservationController {
 
     @FXML
     private void handleClearSessionForm() {
+        pendingMatchingPlan = null;
         clearSessionForm();
         resetEditMode();
         hideFeedback();
@@ -386,13 +422,27 @@ public class ReservationController {
                 seanceService.add(seance);
             }
 
+            String finalMessage = editing ? "La seance a ete modifiee avec succes." : successMessage;
+            if (!editing && pendingMatchingPlan != null) {
+                OperationResult matchingLinkResult = matchingService.linkPlannedSession(
+                    pendingMatchingPlan.requestId(),
+                    pendingMatchingPlan.participantId(),
+                    pendingMatchingPlan.visibilityScope(),
+                    seance.getId()
+                );
+                if (matchingLinkResult.isSuccess()) {
+                    finalMessage = finalMessage + " " + matchingLinkResult.getMessage();
+                } else {
+                    finalMessage = finalMessage + " La liaison du matching n'a pas pu etre finalisee: "
+                        + matchingLinkResult.getMessage();
+                }
+                pendingMatchingPlan = null;
+            }
+
             clearSessionForm();
             resetEditMode();
             loadSessionDashboard();
-            showSessionListFeedback(
-                editing ? "La seance a ete modifiee avec succes." : successMessage,
-                true
-            );
+            showSessionListFeedback(finalMessage, true);
         } catch (RuntimeException exception) {
             showFeedback(exception.getMessage(), false);
         }
@@ -1511,7 +1561,7 @@ public class ReservationController {
     }
 
     private void loadSessionDashboard() {
-        List<Seance> allSessions = seanceService.getAll();
+        List<Seance> allSessions = filterVisibleSessions(seanceService.getAll());
         long publishedCount = allSessions.stream().filter(seance -> seance.getStatus() == 1).count();
         long draftCount = allSessions.stream().filter(seance -> seance.getStatus() == 0).count();
 
@@ -1522,12 +1572,12 @@ public class ReservationController {
 
     private void applySessionFilters() {
         recentSessionsContainer.getChildren().clear();
-        List<Seance> filteredSessions = seanceService.search(
+        List<Seance> filteredSessions = filterVisibleSessions(seanceService.search(
             sessionSearchField.getText(),
             sessionSearchModeComboBox.getValue(),
             0
-        );
-        boolean hasSessionsInDatabase = !seanceService.getAll().isEmpty();
+        ));
+        boolean hasSessionsInDatabase = !filterVisibleSessions(seanceService.getAll()).isEmpty();
 
         if (filteredSessions.isEmpty() && !hasSessionsInDatabase) {
             Label emptyLabel = new Label("Aucune seance en base de donnees n'est disponible pour le moment.");
@@ -1599,9 +1649,6 @@ public class ReservationController {
         descriptionLabel.getStyleClass().add("reservation-section-copy");
 
         HBox actionRow = new HBox(10.0);
-        Label idChip = new Label("Seance #" + seance.getId());
-        idChip.getStyleClass().add("workspace-chip");
-
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
 
@@ -1619,7 +1666,7 @@ public class ReservationController {
         deleteButton.getStyleClass().add("backoffice-danger-button");
         deleteButton.setOnAction(event -> confirmDeleteSession(seance));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer);
+        actionRow.getChildren().add(actionSpacer);
         if (canReserveAsParticipant(seance)) {
             actionRow.getChildren().add(reserveButton);
         }
@@ -1630,7 +1677,1402 @@ public class ReservationController {
 
         card.getChildren().addAll(headerRow, metaLabel, descriptionLabel);
         card.getChildren().add(actionRow);
+        configureSessionCardDoubleClick(card, seance, reservationStats);
         return card;
+    }
+
+    private void openMatchingWorkspace() {
+        if (UserSession.isCurrentStudent()) {
+            openStudentMatchingDialog();
+            return;
+        }
+        if (UserSession.isCurrentTutor()) {
+            openTutorMatchingDialog();
+            return;
+        }
+
+        showAvailableSessionsSection();
+        showReservationActionFeedback(
+            "Connectez-vous avec un compte etudiant ou tuteur pour utiliser le matching.",
+            false
+        );
+    }
+
+    private void openStudentMatchingDialog() {
+        Dialog<ButtonType> matchingDialog = new Dialog<>();
+        DialogPane dialogPane = matchingDialog.getDialogPane();
+        ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        matchingDialog.setTitle("Matching swipe");
+        dialogPane.getButtonTypes().setAll(closeButton);
+        dialogPane.setPrefWidth(940);
+        dialogPane.setPrefHeight(780);
+        dialogPane.setContent(buildStudentMatchingDialogContent());
+        applyCurrentTheme(dialogPane);
+        appendDialogStylesheet(dialogPane, MATCHING_DIALOG_STYLESHEET);
+        matchingDialog.showAndWait();
+    }
+
+    private ScrollPane buildStudentMatchingDialogContent() {
+        StudentMatchingDialogState state = new StudentMatchingDialogState();
+
+        VBox root = new VBox(16.0);
+        root.setPadding(new Insets(18.0));
+        root.getStyleClass().add("matching-dialog-root");
+
+        Label eyebrowLabel = new Label("MATCHING INTELLIGENT");
+        eyebrowLabel.getStyleClass().add("workspace-eyebrow");
+
+        Label titleLabel = new Label("Trouver un tuteur quand le catalogue ne suffit pas");
+        titleLabel.getStyleClass().add("workspace-title");
+        titleLabel.setWrapText(true);
+
+        Label introLabel = new Label(
+            "Decris le besoin, lance le matching, puis swipe les tuteurs compatibles. "
+                + "Les profils affiches ont deja anime cette matiere et restent libres sur le creneau vise."
+        );
+        introLabel.setWrapText(true);
+        introLabel.getStyleClass().add("reservation-section-copy");
+
+        ComboBox<String> subjectComboBox = new ComboBox<>();
+        subjectComboBox.setEditable(true);
+        subjectComboBox.setPromptText("Matiere visee");
+        subjectComboBox.getItems().setAll(
+            seanceService.getSubjects().stream()
+                .filter(Objects::nonNull)
+                .filter(subject -> !seanceService.getDefaultSubject().equals(subject))
+                .toList()
+        );
+        subjectComboBox.getStyleClass().add("filter-combo");
+
+        DatePicker datePicker = new DatePicker(LocalDate.now().plusDays(1));
+        datePicker.setPromptText("Choisir une date");
+
+        ComboBox<String> hourComboBox = new ComboBox<>();
+        hourComboBox.getItems().setAll(HOUR_OPTIONS);
+        hourComboBox.setValue("18");
+        hourComboBox.setPrefWidth(110.0);
+        hourComboBox.getStyleClass().add("filter-combo");
+
+        ComboBox<String> minuteComboBox = new ComboBox<>();
+        minuteComboBox.getItems().setAll(MINUTE_OPTIONS);
+        minuteComboBox.setValue("00");
+        minuteComboBox.setPrefWidth(110.0);
+        minuteComboBox.getStyleClass().add("filter-combo");
+
+        TextField durationField = new TextField("60");
+        durationField.setPromptText("Duree en minutes");
+        durationField.getStyleClass().add("form-field");
+
+        ComboBox<String> modeComboBox = new ComboBox<>();
+        modeComboBox.getItems().setAll(MODE_ONLINE_LABEL, MODE_ONSITE_LABEL);
+        modeComboBox.setValue(MODE_ONLINE_LABEL);
+        modeComboBox.getStyleClass().add("filter-combo");
+
+        ComboBox<String> visibilityComboBox = new ComboBox<>();
+        visibilityComboBox.getItems().setAll("Seance individuelle", "Seance ouverte");
+        visibilityComboBox.setValue("Seance individuelle");
+        visibilityComboBox.getStyleClass().add("filter-combo");
+
+        TextArea objectiveArea = new TextArea();
+        objectiveArea.setPromptText(
+            "Ex: J'ai besoin d'une revision en Java sur les exceptions avec des exercices pratiques."
+        );
+        objectiveArea.setWrapText(true);
+        objectiveArea.setPrefRowCount(4);
+        objectiveArea.getStyleClass().add("text-area");
+
+        VBox formCard = new VBox(12.0);
+        formCard.getStyleClass().addAll("reservation-form-shell", "matching-dialog-panel", "matching-stage-panel");
+        formCard.getChildren().addAll(
+            buildMatchingFieldBlock("Matiere souhaitee", subjectComboBox),
+            buildMatchingDateTimeRow(datePicker, hourComboBox, minuteComboBox, durationField),
+            buildMatchingTwinFieldRow(
+                buildMatchingFieldBlock("Format souhaite", modeComboBox),
+                buildMatchingFieldBlock("Type de seance", visibilityComboBox)
+            ),
+            buildMatchingFieldBlock("Decris ton besoin", objectiveArea)
+        );
+
+        Label feedbackLabel = new Label();
+        feedbackLabel.setWrapText(true);
+        feedbackLabel.getStyleClass().add("frontoffice-feedback");
+        setInlineFeedback(feedbackLabel, null, false);
+
+        Button launchButton = new Button("Lancer le swipe");
+        launchButton.getStyleClass().add("backoffice-primary-button");
+
+        VBox formView = new VBox(14.0);
+        formView.getStyleClass().add("matching-stage-shell");
+
+        Label formHintLabel = new Label(
+            "Prepare la demande, puis laisse le moteur composer un deck de tuteurs compatibles a swiper."
+        );
+        formHintLabel.setWrapText(true);
+        formHintLabel.getStyleClass().addAll("reservation-section-copy", "matching-dialog-hint");
+
+        HBox formActionRow = new HBox(12.0);
+        formActionRow.setAlignment(Pos.CENTER_LEFT);
+        formActionRow.getChildren().addAll(launchButton, buildChoiceChip("Deck intelligent"));
+
+        formView.getChildren().addAll(formCard, formHintLabel, formActionRow);
+
+        VBox resultSummaryCard = new VBox(10.0);
+        resultSummaryCard.getStyleClass().addAll("reservation-form-shell", "matching-dialog-panel", "matching-results-panel");
+
+        Label resultKickerLabel = new Label("DECK PERSONNALISE");
+        resultKickerLabel.getStyleClass().add("workspace-eyebrow");
+
+        Label resultTitleLabel = new Label("Profils compatibles prets a swiper");
+        resultTitleLabel.getStyleClass().add("workspace-title");
+        resultTitleLabel.setWrapText(true);
+
+        Label resultSummaryLabel = new Label(
+            "Le matching transforme maintenant ta demande en une serie de profils directement exploitables."
+        );
+        resultSummaryLabel.setWrapText(true);
+        resultSummaryLabel.getStyleClass().add("reservation-section-copy");
+
+        FlowPane resultSignalRow = new FlowPane(10.0, 10.0);
+
+        Button editRequestButton = new Button("Modifier la demande");
+        editRequestButton.getStyleClass().add("backoffice-secondary-button");
+
+        Label progressLabel = new Label("Aucune carte de matching n'est encore affichee.");
+        progressLabel.getStyleClass().addAll("reservation-section-copy", "matching-dialog-hint");
+
+        Label swipeGuideLabel = new Label(
+            "Glisse une carte a gauche pour passer, a droite pour retenir le profil, ou vers le haut pour le prioriser."
+        );
+        swipeGuideLabel.setWrapText(true);
+        swipeGuideLabel.getStyleClass().addAll("reservation-section-copy", "matching-swipe-guide");
+
+        HBox resultToolbar = new HBox(12.0);
+        resultToolbar.setAlignment(Pos.CENTER_LEFT);
+        resultToolbar.getStyleClass().add("matching-results-toolbar");
+        resultToolbar.getChildren().addAll(editRequestButton, progressLabel);
+
+        Region deckLayerBack = new Region();
+        deckLayerBack.getStyleClass().addAll("matching-deck-layer", "matching-deck-layer-back");
+
+        Region deckLayerMiddle = new Region();
+        deckLayerMiddle.getStyleClass().addAll("matching-deck-layer", "matching-deck-layer-middle");
+
+        StackPane cardHost = new StackPane();
+        cardHost.getStyleClass().add("matching-card-host");
+
+        StackPane deckHost = new StackPane(deckLayerBack, deckLayerMiddle, cardHost);
+        deckHost.getStyleClass().add("matching-card-deck");
+
+        VBox resultsView = new VBox(14.0);
+        resultsView.getStyleClass().add("matching-results-shell");
+        resultsView.setManaged(false);
+        resultsView.setVisible(false);
+        resultsView.getChildren().addAll(
+            resultSummaryCard,
+            resultToolbar,
+            swipeGuideLabel,
+            deckHost
+        );
+
+        resultSummaryCard.getChildren().addAll(
+            resultKickerLabel,
+            resultTitleLabel,
+            resultSummaryLabel,
+            resultSignalRow
+        );
+
+        launchButton.setOnAction(event -> {
+            try {
+                MatchingDraft draft = buildStudentMatchingDraft(
+                    subjectComboBox,
+                    datePicker,
+                    hourComboBox,
+                    minuteComboBox,
+                    durationField,
+                    modeComboBox,
+                    visibilityComboBox,
+                    objectiveArea
+                );
+                MatchingRequestCreation creation = matchingService.createMatchingRequest(draft);
+                if (!creation.success()) {
+                    setInlineFeedback(feedbackLabel, creation.message(), false);
+                    return;
+                }
+
+                state.requestId = creation.requestId();
+                state.cards = new ArrayList<>(creation.candidates());
+                state.currentIndex = 0;
+                state.needProfile = creation.needProfile();
+
+                updateStudentMatchingResultsSummary(
+                    draft,
+                    creation,
+                    resultTitleLabel,
+                    resultSummaryLabel,
+                    resultSignalRow
+                );
+                setInlineFeedback(feedbackLabel, creation.message(), creation.candidates().size() > 0);
+                refreshStudentMatchCard(cardHost, progressLabel, feedbackLabel, swipeGuideLabel, state);
+                animateMatchingWorkspaceSwap(formView, resultsView);
+            } catch (IllegalArgumentException exception) {
+                setInlineFeedback(feedbackLabel, exception.getMessage(), false);
+            }
+        });
+
+        editRequestButton.setOnAction(event -> animateMatchingWorkspaceSwap(resultsView, formView));
+
+        StackPane workspaceHost = new StackPane(formView, resultsView);
+        workspaceHost.getStyleClass().add("matching-workspace-host");
+
+        root.getChildren().addAll(
+            eyebrowLabel,
+            titleLabel,
+            introLabel,
+            feedbackLabel,
+            workspaceHost
+        );
+
+        ScrollPane scrollPane = new ScrollPane(root);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("matching-scroll");
+        return scrollPane;
+    }
+
+    private MatchingDraft buildStudentMatchingDraft(ComboBox<String> subjectComboBox,
+                                                    DatePicker datePicker,
+                                                    ComboBox<String> hourComboBox,
+                                                    ComboBox<String> minuteComboBox,
+                                                    TextField durationField,
+                                                    ComboBox<String> modeComboBox,
+                                                    ComboBox<String> visibilityComboBox,
+                                                    TextArea objectiveArea) {
+        String rawSubject = subjectComboBox.getEditor() != null
+            ? subjectComboBox.getEditor().getText()
+            : subjectComboBox.getValue();
+        if ((rawSubject == null || rawSubject.isBlank()) && subjectComboBox.getValue() != null) {
+            rawSubject = subjectComboBox.getValue();
+        }
+
+        String subject = requireText(rawSubject, "Renseignez la matiere recherchee.");
+        if (datePicker.getValue() == null) {
+            throw new IllegalArgumentException("Choisissez la date souhaitee.");
+        }
+
+        String hour = requireText(hourComboBox.getValue(), "Choisissez l'heure souhaitee.");
+        String minute = requireText(minuteComboBox.getValue(), "Choisissez la minute souhaitee.");
+        int duration = parseBoundedInt(
+            durationField.getText(),
+            SeanceService.MIN_DURATION_MINUTES,
+            SeanceService.MAX_DURATION_MINUTES,
+            "La duree du matching doit etre comprise entre " + SeanceService.MIN_DURATION_MINUTES
+                + " et " + SeanceService.MAX_DURATION_MINUTES + " minutes."
+        );
+
+        LocalDateTime startAt = LocalDateTime.of(
+            datePicker.getValue(),
+            LocalTime.of(Integer.parseInt(hour), Integer.parseInt(minute))
+        );
+        if (startAt.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Le matching doit viser un creneau futur.");
+        }
+
+        String mode = MODE_ONSITE_LABEL.equals(modeComboBox.getValue()) ? Seance.MODE_ONSITE : Seance.MODE_ONLINE;
+        String visibility = visibilityComboBox.getValue() != null && visibilityComboBox.getValue().toLowerCase().contains("individ")
+            ? MatchingService.VISIBILITY_PRIVATE
+            : MatchingService.VISIBILITY_PUBLIC;
+
+        return new MatchingDraft(
+            getCurrentReservationParticipantId(),
+            subject,
+            startAt,
+            duration,
+            mode,
+            visibility,
+            objectiveArea == null ? null : objectiveArea.getText()
+        );
+    }
+
+    private void refreshStudentMatchCard(Pane cardHost,
+                                         Label progressLabel,
+                                         Label feedbackLabel,
+                                         Label swipeGuideLabel,
+                                         StudentMatchingDialogState state) {
+        cardHost.getChildren().clear();
+        if (state.cards.isEmpty()) {
+            progressLabel.setText("Aucun tuteur compatible n'a ete trouve pour le moment.");
+            swipeGuideLabel.setText("Aucun swipe n'est disponible. Modifiez le besoin pour relancer le matching.");
+            VBox emptyCard = buildStudentMatchingStateCard(
+                "Aucun profil disponible",
+                "Aucun profil swipeable n'est disponible sur ce creneau. Tu peux changer la date, la duree ou la matiere.",
+                "matching-state-card"
+            );
+            cardHost.getChildren().add(emptyCard);
+            return;
+        }
+
+        if (state.currentIndex >= state.cards.size()) {
+            long positiveChoices = state.cards.stream()
+                .filter(Objects::nonNull)
+                .filter(card -> card.candidateId() > 0)
+                .count();
+            progressLabel.setText("Swipe termine. La demande est transmise aux tuteurs interesses.");
+            swipeGuideLabel.setText("Le tour de cartes est termine. Attends maintenant la reponse des tuteurs.");
+            VBox doneCard = buildStudentMatchingStateCard(
+                "Deck traite",
+                positiveChoices + " profil(s) ont ete traites. Les tuteurs likes verront maintenant la demande dans leur inbox.",
+                "matching-state-card-success"
+            );
+            cardHost.getChildren().add(doneCard);
+            return;
+        }
+
+        StudentMatchCard currentCard = state.cards.get(state.currentIndex);
+        progressLabel.setText("Carte " + (state.currentIndex + 1) + " / " + state.cards.size());
+        swipeGuideLabel.setText(
+            "Glisse cette carte pour repondre vite, ou utilise les boutons si tu preferes une validation classique."
+        );
+        StackPane swipeCard = buildStudentMatchCard(
+            currentCard,
+            state,
+            cardHost,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel
+        );
+        cardHost.getChildren().add(swipeCard);
+        animateMatchingCardEntrance(swipeCard);
+    }
+
+    private StackPane buildStudentMatchCard(StudentMatchCard card,
+                                            StudentMatchingDialogState state,
+                                            Pane cardHost,
+                                            Label progressLabel,
+                                            Label feedbackLabel,
+                                            Label swipeGuideLabel) {
+        VBox cardBox = new VBox(14.0);
+        cardBox.getStyleClass().addAll("reservation-form-shell", "matching-swipe-card");
+
+        HBox titleRow = new HBox(10.0);
+        Label tutorNameLabel = new Label(card.tutorName());
+        tutorNameLabel.getStyleClass().add("subsection-title");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        titleRow.getChildren().addAll(
+            tutorNameLabel,
+            spacer,
+            buildChoiceChip(resolveMatchingConfidenceLabel(card.score())),
+            buildChoiceChipHighlight(Math.round(card.score()) + "/100")
+        );
+
+        Label metaLabel = new Label(
+            card.subjectSessions() + " seance(s) deja animee(s) dans la matiere"
+                + " | " + card.totalSessions() + " seance(s) au total"
+                + " | " + card.acceptedReservations() + " reservation(s) acceptee(s)"
+        );
+        metaLabel.setWrapText(true);
+        metaLabel.getStyleClass().add("reservation-section-copy");
+
+        FlowPane insightRow = new FlowPane(10.0, 10.0);
+        if (state.needProfile != null && state.needProfile.level() != null && !state.needProfile.level().isBlank()) {
+            insightRow.getChildren().add(buildChoiceChip(state.needProfile.level()));
+        }
+        if (state.needProfile != null && state.needProfile.keywords() != null) {
+            state.needProfile.keywords().stream()
+                .limit(2)
+                .map(keyword -> buildChoiceChipHighlight("Focus " + keyword))
+                .forEach(insightRow.getChildren()::add);
+        }
+
+        VBox aiPanel = new VBox(8.0);
+        aiPanel.getStyleClass().add("matching-ai-panel");
+
+        Label aiKicker = new Label("Pourquoi ce profil est recommande");
+        aiKicker.getStyleClass().add("reservation-infrastructure-kicker");
+
+        Label aiSummaryLabel = new Label(buildStudentMatchingAiExplanation(card, state.needProfile));
+        aiSummaryLabel.setWrapText(true);
+        aiSummaryLabel.getStyleClass().addAll("reservation-section-copy", "matching-ai-copy");
+
+        aiPanel.getChildren().addAll(aiKicker, aiSummaryLabel);
+
+        Label reasonKicker = new Label("Motif metier retenu");
+        reasonKicker.getStyleClass().add("reservation-infrastructure-kicker");
+
+        Label reasonLabel = new Label(card.reason());
+        reasonLabel.setWrapText(true);
+        reasonLabel.getStyleClass().add("reservation-section-copy");
+
+        FlowPane signalsRow = new FlowPane(10.0, 10.0);
+        if (card.matchingModeSessions() > 0) {
+            signalsRow.getChildren().add(buildChoiceChipHighlight("Format coherent"));
+        }
+        card.signals().stream()
+            .limit(4)
+            .map(this::buildChoiceChip)
+            .forEach(signalsRow.getChildren()::add);
+
+        HBox actionRow = new HBox(10.0);
+        Button passButton = new Button("Passer");
+        passButton.getStyleClass().add("backoffice-secondary-button");
+
+        Button interestedButton = new Button("Interesse");
+        interestedButton.getStyleClass().add("backoffice-primary-button");
+
+        Button superMatchButton = new Button("Super match");
+        superMatchButton.getStyleClass().add("backoffice-edit-button");
+
+        actionRow.getChildren().addAll(passButton, interestedButton, superMatchButton);
+
+        Label decisionBadge = new Label("Swipe");
+        decisionBadge.getStyleClass().addAll("matching-decision-badge", "matching-decision-neutral");
+        decisionBadge.setManaged(false);
+        decisionBadge.setVisible(false);
+
+        StackPane swipeSurface = new StackPane(cardBox, decisionBadge);
+        swipeSurface.getStyleClass().add("matching-swipe-surface");
+        StackPane.setAlignment(decisionBadge, Pos.TOP_RIGHT);
+        StackPane.setMargin(decisionBadge, new Insets(14.0, 18.0, 0.0, 0.0));
+
+        passButton.setOnAction(event -> handleStudentSwipeDecision(
+            MatchingService.DECISION_PASS,
+            card,
+            state,
+            cardHost,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            swipeSurface,
+            decisionBadge
+        ));
+        interestedButton.setOnAction(event -> handleStudentSwipeDecision(
+            MatchingService.DECISION_INTERESTED,
+            card,
+            state,
+            cardHost,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            swipeSurface,
+            decisionBadge
+        ));
+        superMatchButton.setOnAction(event -> handleStudentSwipeDecision(
+            MatchingService.DECISION_SUPER,
+            card,
+            state,
+            cardHost,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            swipeSurface,
+            decisionBadge
+        ));
+
+        cardBox.getChildren().addAll(titleRow, metaLabel, insightRow, aiPanel, reasonKicker, reasonLabel, signalsRow, actionRow);
+        installStudentSwipeInteractions(
+            swipeSurface,
+            card,
+            state,
+            cardHost,
+            progressLabel,
+            feedbackLabel,
+            swipeGuideLabel,
+            decisionBadge
+        );
+        return swipeSurface;
+    }
+
+    private void openTutorMatchingDialog() {
+        Dialog<ButtonType> matchingDialog = new Dialog<>();
+        DialogPane dialogPane = matchingDialog.getDialogPane();
+        ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        matchingDialog.setTitle("Demandes de matching");
+        dialogPane.getButtonTypes().setAll(closeButton);
+        dialogPane.setPrefWidth(940);
+        dialogPane.setPrefHeight(760);
+        dialogPane.setContent(buildTutorMatchingDialogContent(matchingDialog));
+        applyCurrentTheme(dialogPane);
+        appendDialogStylesheet(dialogPane, MATCHING_DIALOG_STYLESHEET);
+        matchingDialog.showAndWait();
+    }
+
+    private ScrollPane buildTutorMatchingDialogContent(Dialog<ButtonType> matchingDialog) {
+        TutorMatchingDialogState state = new TutorMatchingDialogState();
+        state.cards = new ArrayList<>(matchingService.getTutorPendingMatches(getCurrentTutorId()));
+
+        VBox root = new VBox(16.0);
+        root.setPadding(new Insets(18.0));
+        root.getStyleClass().add("matching-dialog-root");
+
+        Label eyebrowLabel = new Label("INBOX TUTEUR");
+        eyebrowLabel.getStyleClass().add("workspace-eyebrow");
+
+        Label titleLabel = new Label("Demandes de matching pre-qualifiees");
+        titleLabel.getStyleClass().add("workspace-title");
+        titleLabel.setWrapText(true);
+
+        Label introLabel = new Label(
+            "Chaque carte provient d'un etudiant qui a deja swipe ce profil. "
+                + "Accepte pour passer directement a la planification, ou refuse pour laisser tourner l'inbox."
+        );
+        introLabel.setWrapText(true);
+        introLabel.getStyleClass().add("reservation-section-copy");
+
+        Label progressLabel = new Label();
+        progressLabel.getStyleClass().addAll("reservation-section-copy", "matching-dialog-hint");
+
+        Label feedbackLabel = new Label();
+        feedbackLabel.setWrapText(true);
+        feedbackLabel.getStyleClass().add("frontoffice-feedback");
+        setInlineFeedback(feedbackLabel, null, false);
+
+        VBox cardHost = new VBox(12.0);
+        cardHost.getStyleClass().add("matching-card-host");
+
+        refreshTutorMatchCard(cardHost, progressLabel, feedbackLabel, state, matchingDialog);
+
+        root.getChildren().addAll(eyebrowLabel, titleLabel, introLabel, progressLabel, feedbackLabel, cardHost);
+
+        ScrollPane scrollPane = new ScrollPane(root);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("matching-scroll");
+        return scrollPane;
+    }
+
+    private void refreshTutorMatchCard(VBox cardHost,
+                                       Label progressLabel,
+                                       Label feedbackLabel,
+                                       TutorMatchingDialogState state,
+                                       Dialog<ButtonType> matchingDialog) {
+        cardHost.getChildren().clear();
+        if (state.cards.isEmpty()) {
+            progressLabel.setText("Aucune demande de matching n'est en attente.");
+            Label emptyLabel = new Label(
+                "Les prochains swipes positifs des etudiants apparaitront ici des qu'un besoin compatible sera detecte."
+            );
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("reservation-section-copy");
+            cardHost.getChildren().add(emptyLabel);
+            return;
+        }
+
+        if (state.currentIndex >= state.cards.size()) {
+            progressLabel.setText("Toutes les demandes de matching affichees ont ete traitees.");
+            Label doneLabel = new Label("Reviens plus tard pour consulter les nouveaux profils compatibles.");
+            doneLabel.setWrapText(true);
+            doneLabel.getStyleClass().add("reservation-section-copy");
+            cardHost.getChildren().add(doneLabel);
+            return;
+        }
+
+        TutorMatchInboxItem item = state.cards.get(state.currentIndex);
+        progressLabel.setText("Demande " + (state.currentIndex + 1) + " / " + state.cards.size());
+        VBox tutorCard = buildTutorMatchCard(item, state, cardHost, progressLabel, feedbackLabel, matchingDialog);
+        cardHost.getChildren().add(tutorCard);
+        animateMatchingCardEntrance(tutorCard);
+    }
+
+    private VBox buildTutorMatchCard(TutorMatchInboxItem item,
+                                     TutorMatchingDialogState state,
+                                     VBox cardHost,
+                                     Label progressLabel,
+                                     Label feedbackLabel,
+                                     Dialog<ButtonType> matchingDialog) {
+        VBox card = new VBox(14.0);
+        card.getStyleClass().addAll("reservation-form-shell", "matching-swipe-card");
+
+        HBox titleRow = new HBox(10.0);
+        Label subjectLabel = new Label(safeText(item.subject()));
+        subjectLabel.getStyleClass().add("subsection-title");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        titleRow.getChildren().addAll(
+            subjectLabel,
+            spacer,
+            item.studentDecision() == MatchingService.DECISION_SUPER
+                ? buildChoiceChipHighlight("Super match")
+                : buildChoiceChip("Interesse"),
+            buildChoiceChipHighlight(Math.round(item.compatibilityScore()) + "/100")
+        );
+
+        Label metaLabel = new Label(
+            "Etudiant: " + item.participantName()
+                + " | " + formatDateTimeOrPlaceholder(item.requestedStartAt())
+                + " | " + item.durationMin() + " min"
+                + " | " + mapModeLabel(item.mode())
+                + " | " + formatMatchingVisibility(item.visibilityScope())
+        );
+        metaLabel.setWrapText(true);
+        metaLabel.getStyleClass().add("reservation-section-copy");
+
+        VBox aiPanel = new VBox(8.0);
+        aiPanel.getStyleClass().add("matching-ai-panel");
+
+        Label aiKicker = new Label("Pourquoi cette demande vous correspond");
+        aiKicker.getStyleClass().add("reservation-infrastructure-kicker");
+
+        Label aiSummaryLabel = new Label(buildTutorMatchingAiExplanation(item));
+        aiSummaryLabel.setWrapText(true);
+        aiSummaryLabel.getStyleClass().addAll("reservation-section-copy", "matching-ai-copy");
+
+        Label aiDecisionLabel = new Label(buildTutorMatchingActionHint(item));
+        aiDecisionLabel.setWrapText(true);
+        aiDecisionLabel.getStyleClass().addAll("reservation-section-copy", "matching-ai-secondary-copy");
+        aiPanel.getChildren().addAll(aiKicker, aiSummaryLabel, aiDecisionLabel);
+
+        Label summaryLabel = new Label(buildTutorMatchingRequestSummary(item));
+        summaryLabel.setWrapText(true);
+        summaryLabel.getStyleClass().add("reservation-section-copy");
+
+        FlowPane keywordsRow = new FlowPane(10.0, 10.0);
+        keywordsRow.getChildren().add(buildChoiceChip(resolveMatchingConfidenceLabel(item.compatibilityScore())));
+        keywordsRow.getChildren().add(buildChoiceChip(item.requestedLevel()));
+        item.keywords().stream()
+            .limit(4)
+            .map(this::buildChoiceChip)
+            .forEach(keywordsRow.getChildren()::add);
+        item.signals().stream()
+            .limit(3)
+            .map(this::buildChoiceChipHighlight)
+            .forEach(keywordsRow.getChildren()::add);
+
+        Label detailLabel = new Label(
+            buildTutorMatchingRequestDetail(item)
+        );
+        detailLabel.setWrapText(true);
+        detailLabel.getStyleClass().add("reservation-section-copy");
+
+        HBox actionRow = new HBox(10.0);
+        Button refuseButton = new Button("Refuser");
+        refuseButton.getStyleClass().add("backoffice-secondary-button");
+        refuseButton.setOnAction(event -> {
+            OperationResult result = matchingService.refuseTutorMatch(item.candidateId(), getCurrentTutorId());
+            setInlineFeedback(feedbackLabel, result.getMessage(), result.isSuccess());
+            if (result.isSuccess()) {
+                state.currentIndex++;
+                refreshTutorMatchCard(cardHost, progressLabel, feedbackLabel, state, matchingDialog);
+            }
+        });
+
+        Button acceptButton = new Button("Accepter et planifier");
+        acceptButton.getStyleClass().add("backoffice-primary-button");
+        acceptButton.setOnAction(event -> {
+            MatchingAcceptanceResult result = matchingService.acceptTutorMatch(item.candidateId(), getCurrentTutorId());
+            setInlineFeedback(feedbackLabel, result.message(), result.success());
+            if (!result.success() || result.planContext() == null) {
+                return;
+            }
+
+            matchingDialog.close();
+            prepareMatchingSessionPlanning(result.planContext());
+        });
+
+        actionRow.getChildren().addAll(refuseButton, acceptButton);
+        card.getChildren().addAll(titleRow, metaLabel, aiPanel, summaryLabel, keywordsRow, detailLabel, actionRow);
+        return card;
+    }
+
+    private void prepareMatchingSessionPlanning(MatchingPlanContext planContext) {
+        if (planContext == null) {
+            return;
+        }
+
+        pendingMatchingPlan = new PendingMatchingPlan(
+            planContext.requestId(),
+            planContext.participantId(),
+            planContext.participantName(),
+            planContext.visibilityScope()
+        );
+
+        clearSessionForm();
+        resetEditMode();
+        hideFeedback();
+
+        sessionSubjectField.setText(safeText(planContext.subject()));
+        setStartAtSelection(planContext.requestedStartAt());
+        sessionDurationField.setText(String.valueOf(planContext.durationMin()));
+        sessionCapacityField.setText(
+            MatchingService.VISIBILITY_PRIVATE.equals(planContext.visibilityScope()) ? "1" : "8"
+        );
+        sessionDescriptionArea.setText(buildMatchingPlanDescription(planContext));
+        sessionOnsiteCheckBox.setSelected(Seance.MODE_ONSITE.equals(planContext.mode()));
+        updateOnsiteOptionsVisibility();
+
+        showAddSessionSection();
+        sessionFormTitleLabel.setText("Planifier la seance issue du matching");
+        sessionFormModeChipLabel.setText("Matching");
+        editingSessionLabel.setText(
+            "Matching accepte pour " + safeText(planContext.participantName())
+                + ". Finalisez la planification puis publiez la seance."
+        );
+        editingSessionLabel.setManaged(true);
+        editingSessionLabel.setVisible(true);
+        showFeedback(
+            MatchingService.VISIBILITY_PRIVATE.equals(planContext.visibilityScope())
+                ? "Seance individuelle pre-remplie. Si elle est publiee, elle restera visible uniquement pour l'etudiant concerne."
+                : "Seance publique pre-remplie a partir du matching. Publiez-la pour l'ouvrir au catalogue.",
+            true
+        );
+    }
+
+    private String buildMatchingPlanDescription(MatchingPlanContext planContext) {
+        List<String> fragments = new ArrayList<>();
+        fragments.add("Demande issue du matching pour " + safeText(planContext.participantName()) + ".");
+        if (planContext.objectiveSummary() != null && !planContext.objectiveSummary().isBlank()) {
+            fragments.add(planContext.objectiveSummary());
+        }
+        if (planContext.objectiveText() != null && !planContext.objectiveText().isBlank()) {
+            fragments.add("Besoin detaille: " + planContext.objectiveText());
+        }
+        return String.join(" ", fragments);
+    }
+
+    private VBox buildMatchingFieldBlock(String labelText, Node field) {
+        VBox block = new VBox(6.0);
+        Label label = new Label(labelText);
+        label.getStyleClass().add("form-label");
+        block.getChildren().addAll(label, field);
+        return block;
+    }
+
+    private HBox buildMatchingDateTimeRow(DatePicker datePicker,
+                                          ComboBox<String> hourComboBox,
+                                          ComboBox<String> minuteComboBox,
+                                          TextField durationField) {
+        HBox row = new HBox(12.0);
+        row.getChildren().addAll(
+            buildMatchingFieldBlock("Date souhaitee", datePicker),
+            buildMatchingFieldBlock("Heure", hourComboBox),
+            buildMatchingFieldBlock("Minute", minuteComboBox),
+            buildMatchingFieldBlock("Duree", durationField)
+        );
+        HBox.setHgrow(datePicker, Priority.ALWAYS);
+        HBox.setHgrow(durationField, Priority.ALWAYS);
+        return row;
+    }
+
+    private HBox buildMatchingTwinFieldRow(VBox leftBlock, VBox rightBlock) {
+        HBox row = new HBox(12.0);
+        HBox.setHgrow(leftBlock, Priority.ALWAYS);
+        HBox.setHgrow(rightBlock, Priority.ALWAYS);
+        row.getChildren().addAll(leftBlock, rightBlock);
+        return row;
+    }
+
+    private void updateStudentMatchingResultsSummary(MatchingDraft draft,
+                                                     MatchingRequestCreation creation,
+                                                     Label titleLabel,
+                                                     Label summaryLabel,
+                                                     FlowPane signalRow) {
+        if (titleLabel != null) {
+            titleLabel.setText("Profils compatibles pour " + safeText(draft.subject()));
+        }
+
+        if (summaryLabel != null) {
+            StringBuilder summary = new StringBuilder()
+                .append("Demande du ")
+                .append(formatDateTimeOrPlaceholder(draft.startAt()))
+                .append(" | ")
+                .append(draft.durationMin())
+                .append(" min | ")
+                .append(mapModeLabel(draft.mode()))
+                .append(" | ")
+                .append(formatMatchingVisibility(draft.visibilityScope()))
+                .append(". ");
+
+            summary.append(buildStudentMatchingRequestSummary(creation.needProfile(), creation.candidates().size()));
+            summaryLabel.setText(summary.toString());
+        }
+
+        if (signalRow != null) {
+            signalRow.getChildren().clear();
+            signalRow.getChildren().add(buildChoiceChip(safeText(draft.subject())));
+            signalRow.getChildren().add(buildChoiceChip(mapModeLabel(draft.mode())));
+            signalRow.getChildren().add(buildChoiceChip(formatMatchingVisibility(draft.visibilityScope())));
+            signalRow.getChildren().add(
+                creation.candidates().isEmpty()
+                    ? buildChoiceChip("0 profil")
+                    : buildChoiceChipHighlight(creation.candidates().size() + " profils")
+            );
+            if (creation.needProfile() != null) {
+                signalRow.getChildren().add(buildChoiceChip(creation.needProfile().level()));
+                creation.needProfile().keywords().stream()
+                    .limit(3)
+                    .map(keyword -> buildChoiceChipHighlight("Focus " + keyword))
+                    .forEach(signalRow.getChildren()::add);
+            }
+        }
+    }
+
+    private VBox buildStudentMatchingStateCard(String title, String body, String toneClass) {
+        VBox card = new VBox(10.0);
+        card.getStyleClass().addAll("reservation-form-shell", "matching-swipe-card", "matching-state-card");
+        if (toneClass != null && !toneClass.isBlank()) {
+            card.getStyleClass().add(toneClass);
+        }
+
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("subsection-title");
+
+        Label bodyLabel = new Label(body);
+        bodyLabel.setWrapText(true);
+        bodyLabel.getStyleClass().add("reservation-section-copy");
+
+        card.getChildren().addAll(titleLabel, bodyLabel);
+        return card;
+    }
+
+    private void animateMatchingWorkspaceSwap(Node outgoing, Node incoming) {
+        if (incoming == null) {
+            return;
+        }
+        if (outgoing == null || !outgoing.isVisible()) {
+            incoming.setManaged(true);
+            incoming.setVisible(true);
+            animateMatchingCardEntrance(incoming);
+            return;
+        }
+
+        outgoing.setDisable(true);
+        incoming.setManaged(true);
+        incoming.setVisible(true);
+        incoming.setOpacity(0.0);
+        incoming.setTranslateY(28.0);
+        incoming.setScaleX(0.985);
+        incoming.setScaleY(0.985);
+
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(170), outgoing);
+        fadeOut.setToValue(0.0);
+        fadeOut.setInterpolator(Interpolator.EASE_BOTH);
+
+        TranslateTransition slideOut = new TranslateTransition(Duration.millis(190), outgoing);
+        slideOut.setToY(-18.0);
+        slideOut.setInterpolator(Interpolator.EASE_BOTH);
+
+        ParallelTransition exit = new ParallelTransition(fadeOut, slideOut);
+        exit.setOnFinished(event -> {
+            outgoing.setVisible(false);
+            outgoing.setManaged(false);
+            outgoing.setDisable(false);
+            outgoing.setOpacity(1.0);
+            outgoing.setTranslateY(0.0);
+
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(220), incoming);
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+            fadeIn.setInterpolator(Interpolator.EASE_OUT);
+
+            TranslateTransition slideIn = new TranslateTransition(Duration.millis(240), incoming);
+            slideIn.setFromY(28.0);
+            slideIn.setToY(0.0);
+            slideIn.setInterpolator(Interpolator.EASE_OUT);
+
+            ScaleTransition scaleIn = new ScaleTransition(Duration.millis(220), incoming);
+            scaleIn.setFromX(0.985);
+            scaleIn.setFromY(0.985);
+            scaleIn.setToX(1.0);
+            scaleIn.setToY(1.0);
+            scaleIn.setInterpolator(Interpolator.EASE_OUT);
+
+            new ParallelTransition(fadeIn, slideIn, scaleIn).play();
+        });
+        exit.play();
+    }
+
+    private void handleStudentSwipeDecision(int decision,
+                                            StudentMatchCard card,
+                                            StudentMatchingDialogState state,
+                                            Pane cardHost,
+                                            Label progressLabel,
+                                            Label feedbackLabel,
+                                            Label swipeGuideLabel,
+                                            StackPane swipeSurface,
+                                            Label decisionBadge) {
+        if (state == null || state.animating) {
+            return;
+        }
+
+        OperationResult result = matchingService.recordStudentDecision(
+            card.candidateId(),
+            getCurrentReservationParticipantId(),
+            decision
+        );
+        String message = decision == MatchingService.DECISION_SUPER
+            ? "Super match envoye. " + result.getMessage()
+            : result.getMessage();
+        setInlineFeedback(feedbackLabel, message, result.isSuccess());
+        if (!result.isSuccess()) {
+            if (swipeSurface != null && decisionBadge != null) {
+                animateStudentSwipeReset(swipeSurface, decisionBadge);
+            }
+            return;
+        }
+
+        swipeGuideLabel.setText(resolveMatchingGuideCopy(decision, true));
+        if (swipeSurface == null || decisionBadge == null) {
+            state.currentIndex++;
+            refreshStudentMatchCard(cardHost, progressLabel, feedbackLabel, swipeGuideLabel, state);
+            return;
+        }
+
+        state.animating = true;
+        animateStudentSwipeOut(swipeSurface, decisionBadge, decision, () -> {
+            state.currentIndex++;
+            state.animating = false;
+            refreshStudentMatchCard(cardHost, progressLabel, feedbackLabel, swipeGuideLabel, state);
+        });
+    }
+
+    private void installStudentSwipeInteractions(StackPane swipeSurface,
+                                                 StudentMatchCard card,
+                                                 StudentMatchingDialogState state,
+                                                 Pane cardHost,
+                                                 Label progressLabel,
+                                                 Label feedbackLabel,
+                                                 Label swipeGuideLabel,
+                                                 Label decisionBadge) {
+        final double[] dragAnchor = new double[2];
+
+        swipeSurface.setOnMousePressed(event -> {
+            if (state.animating || isSwipeGestureIgnored(event)) {
+                return;
+            }
+            dragAnchor[0] = event.getSceneX() - swipeSurface.getTranslateX();
+            dragAnchor[1] = event.getSceneY() - swipeSurface.getTranslateY();
+        });
+
+        swipeSurface.setOnMouseDragged(event -> {
+            if (state.animating || isSwipeGestureIgnored(event)) {
+                return;
+            }
+
+            double offsetX = event.getSceneX() - dragAnchor[0];
+            double offsetY = event.getSceneY() - dragAnchor[1];
+            swipeSurface.setTranslateX(offsetX);
+            swipeSurface.setTranslateY(offsetY);
+            swipeSurface.setRotate(offsetX * MATCHING_SWIPE_ROTATION_FACTOR);
+
+            int hoverDecision = resolveMatchingSwipeDecision(offsetX, offsetY);
+            double emphasis = Math.min(
+                1.0,
+                Math.max(Math.abs(offsetX) / MATCHING_SWIPE_HORIZONTAL_THRESHOLD,
+                    Math.abs(offsetY) / MATCHING_SWIPE_SUPER_THRESHOLD)
+            );
+            updateMatchingDecisionBadge(decisionBadge, hoverDecision, emphasis);
+            swipeGuideLabel.setText(resolveMatchingGuideCopy(hoverDecision, false));
+        });
+
+        swipeSurface.setOnMouseReleased(event -> {
+            if (state.animating || isSwipeGestureIgnored(event)) {
+                return;
+            }
+
+            int decision = resolveMatchingSwipeDecision(swipeSurface.getTranslateX(), swipeSurface.getTranslateY());
+            if (decision == 0) {
+                animateStudentSwipeReset(swipeSurface, decisionBadge);
+                swipeGuideLabel.setText(
+                    "Glisse a gauche pour passer, a droite pour retenir, ou vers le haut pour envoyer un super match."
+                );
+                return;
+            }
+
+            handleStudentSwipeDecision(
+                decision,
+                card,
+                state,
+                cardHost,
+                progressLabel,
+                feedbackLabel,
+                swipeGuideLabel,
+                swipeSurface,
+                decisionBadge
+            );
+        });
+    }
+
+    private boolean isSwipeGestureIgnored(MouseEvent event) {
+        Object target = event == null ? null : event.getTarget();
+        Node node = target instanceof Node ? (Node) target : null;
+        while (node != null) {
+            if (node instanceof Button) {
+                return true;
+            }
+            node = node.getParent();
+        }
+        return false;
+    }
+
+    private void animateMatchingCardEntrance(Node node) {
+        if (node == null) {
+            return;
+        }
+
+        node.setOpacity(0.0);
+        node.setTranslateY(26.0);
+        node.setScaleX(0.97);
+        node.setScaleY(0.97);
+
+        FadeTransition fade = new FadeTransition(Duration.millis(220), node);
+        fade.setFromValue(0.0);
+        fade.setToValue(1.0);
+        fade.setInterpolator(Interpolator.EASE_OUT);
+
+        TranslateTransition slide = new TranslateTransition(Duration.millis(260), node);
+        slide.setFromY(26.0);
+        slide.setToY(0.0);
+        slide.setInterpolator(Interpolator.EASE_OUT);
+
+        ScaleTransition scale = new ScaleTransition(Duration.millis(240), node);
+        scale.setFromX(0.97);
+        scale.setFromY(0.97);
+        scale.setToX(1.0);
+        scale.setToY(1.0);
+        scale.setInterpolator(Interpolator.EASE_OUT);
+
+        new ParallelTransition(fade, slide, scale).play();
+    }
+
+    private void animateStudentSwipeReset(StackPane swipeSurface, Label decisionBadge) {
+        if (swipeSurface == null) {
+            return;
+        }
+
+        TranslateTransition translate = new TranslateTransition(Duration.millis(190), swipeSurface);
+        translate.setToX(0.0);
+        translate.setToY(0.0);
+        translate.setInterpolator(Interpolator.EASE_BOTH);
+
+        javafx.animation.Timeline rotateReset = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(
+                Duration.millis(190),
+                new javafx.animation.KeyValue(swipeSurface.rotateProperty(), 0.0, Interpolator.EASE_BOTH)
+            )
+        );
+
+        ParallelTransition reset = new ParallelTransition(translate, rotateReset);
+        reset.setOnFinished(event -> updateMatchingDecisionBadge(decisionBadge, 0, 0.0));
+        reset.play();
+    }
+
+    private void animateStudentSwipeOut(StackPane swipeSurface,
+                                        Label decisionBadge,
+                                        int decision,
+                                        Runnable onFinished) {
+        if (swipeSurface == null) {
+            if (onFinished != null) {
+                onFinished.run();
+            }
+            return;
+        }
+
+        double targetX = 0.0;
+        double targetY = 0.0;
+        double targetRotation = 0.0;
+
+        if (decision == MatchingService.DECISION_PASS) {
+            targetX = -520.0;
+            targetY = 48.0;
+            targetRotation = -20.0;
+        } else if (decision == MatchingService.DECISION_INTERESTED) {
+            targetX = 520.0;
+            targetY = 32.0;
+            targetRotation = 20.0;
+        } else if (decision == MatchingService.DECISION_SUPER) {
+            targetY = -360.0;
+            targetRotation = 0.0;
+        }
+
+        updateMatchingDecisionBadge(decisionBadge, decision, 1.0);
+
+        TranslateTransition translate = new TranslateTransition(Duration.millis(250), swipeSurface);
+        translate.setToX(targetX);
+        translate.setToY(targetY);
+        translate.setInterpolator(Interpolator.EASE_IN);
+
+        FadeTransition fade = new FadeTransition(Duration.millis(220), swipeSurface);
+        fade.setToValue(0.0);
+        fade.setInterpolator(Interpolator.EASE_IN);
+
+        ScaleTransition scale = new ScaleTransition(Duration.millis(220), swipeSurface);
+        scale.setToX(0.93);
+        scale.setToY(0.93);
+        scale.setInterpolator(Interpolator.EASE_IN);
+
+        javafx.animation.Timeline rotate = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(
+                Duration.millis(250),
+                new javafx.animation.KeyValue(swipeSurface.rotateProperty(), targetRotation, Interpolator.EASE_IN)
+            )
+        );
+
+        ParallelTransition transition = new ParallelTransition(translate, fade, scale, rotate);
+        transition.setOnFinished(event -> {
+            if (onFinished != null) {
+                onFinished.run();
+            }
+        });
+        transition.play();
+    }
+
+    private int resolveMatchingSwipeDecision(double translateX, double translateY) {
+        if (Math.abs(translateY) > Math.abs(translateX) && translateY <= -MATCHING_SWIPE_SUPER_THRESHOLD) {
+            return MatchingService.DECISION_SUPER;
+        }
+        if (translateX >= MATCHING_SWIPE_HORIZONTAL_THRESHOLD) {
+            return MatchingService.DECISION_INTERESTED;
+        }
+        if (translateX <= -MATCHING_SWIPE_HORIZONTAL_THRESHOLD) {
+            return MatchingService.DECISION_PASS;
+        }
+        return 0;
+    }
+
+    private void updateMatchingDecisionBadge(Label badge, int decision, double emphasis) {
+        if (badge == null) {
+            return;
+        }
+
+        badge.getStyleClass().removeAll(
+            "matching-decision-neutral",
+            "matching-decision-pass",
+            "matching-decision-like",
+            "matching-decision-super"
+        );
+        badge.getStyleClass().add("matching-decision-badge");
+
+        if (decision == 0) {
+            badge.setText("Swipe");
+            badge.getStyleClass().add("matching-decision-neutral");
+            badge.setVisible(false);
+            badge.setOpacity(0.0);
+            return;
+        }
+
+        badge.setText(resolveMatchingDecisionLabel(decision));
+        badge.setVisible(true);
+        badge.setManaged(false);
+        badge.setOpacity(Math.max(0.35, Math.min(1.0, emphasis)));
+        if (decision == MatchingService.DECISION_PASS) {
+            badge.getStyleClass().add("matching-decision-pass");
+        } else if (decision == MatchingService.DECISION_INTERESTED) {
+            badge.getStyleClass().add("matching-decision-like");
+        } else {
+            badge.getStyleClass().add("matching-decision-super");
+        }
+    }
+
+    private String resolveMatchingDecisionLabel(int decision) {
+        if (decision == MatchingService.DECISION_PASS) {
+            return "Passer";
+        }
+        if (decision == MatchingService.DECISION_INTERESTED) {
+            return "Interesse";
+        }
+        if (decision == MatchingService.DECISION_SUPER) {
+            return "Super match";
+        }
+        return "Swipe";
+    }
+
+    private String resolveMatchingGuideCopy(int decision, boolean committed) {
+        if (decision == MatchingService.DECISION_PASS) {
+            return committed
+                ? "Profil ignore. La carte suivante arrive."
+                : "Relache pour ecarter ce profil de la short-list.";
+        }
+        if (decision == MatchingService.DECISION_INTERESTED) {
+            return committed
+                ? "Interet positif enregistre. Le tuteur verra la demande si son inbox reste libre."
+                : "Relache pour retenir ce profil dans le matching.";
+        }
+        if (decision == MatchingService.DECISION_SUPER) {
+            return committed
+                ? "Priorite elevee envoyee. Le tuteur verra un signal fort dans son inbox."
+                : "Relache pour envoyer un super match prioritaire.";
+        }
+        return "Glisse a gauche pour passer, a droite pour retenir, ou vers le haut pour envoyer un super match.";
+    }
+
+    private String resolveMatchingConfidenceLabel(double score) {
+        if (score >= 85.0) {
+            return "Confiance IA tres forte";
+        }
+        if (score >= 72.0) {
+            return "Confiance IA forte";
+        }
+        if (score >= 58.0) {
+            return "Confiance IA solide";
+        }
+        return "Confiance IA moderee";
+    }
+
+    private String buildStudentMatchingAiExplanation(StudentMatchCard card, MatchingNeedProfile needProfile) {
+        List<String> fragments = new ArrayList<>();
+        String needContext = buildStudentNeedContextLabel(needProfile);
+        if (needContext != null) {
+            fragments.add("Ce profil correspond bien a " + needContext + ".");
+        }
+
+        fragments.add(
+            card.tutorName() + " ressort ici car ce tuteur a deja anime "
+                + card.subjectSessions() + " seance(s) pertinentes dans la matiere."
+        );
+
+        if (card.matchingModeSessions() > 0) {
+            fragments.add("Le format souhaite fait deja partie de ses seances habituelles, ce qui renforce la pertinence de la proposition.");
+        } else {
+            fragments.add("Le format reste compatible avec votre demande et sa disponibilite a bien ete confirmee.");
+        }
+
+        if (card.acceptedReservations() > 0) {
+            fragments.add(
+                card.acceptedReservations() + " reservation(s) acceptee(s) renforcent aussi la fiabilite de ce profil."
+            );
+        }
+        return String.join(" ", fragments);
+    }
+
+    private String buildStudentMatchingRequestSummary(MatchingNeedProfile needProfile, int candidateCount) {
+        StringBuilder summary = new StringBuilder("Analyse personnalisee finalisee.");
+        String needContext = buildStudentNeedContextLabel(needProfile);
+        if (needContext != null) {
+            summary.append(" La recherche a ete orientee vers ").append(needContext).append(".");
+        }
+        if (candidateCount > 0) {
+            summary.append(" ").append(candidateCount).append(candidateCount > 1 ? " profils compatibles ont ete identifies." : " profil compatible a ete identifie.");
+        } else {
+            summary.append(" Aucun profil compatible n'a pu etre retenu pour le moment.");
+        }
+        return summary.toString();
+    }
+
+    private String buildStudentNeedContextLabel(MatchingNeedProfile needProfile) {
+        if (needProfile == null) {
+            return null;
+        }
+
+        List<String> fragments = new ArrayList<>();
+        if (needProfile.level() != null
+            && !needProfile.level().isBlank()
+            && !"Niveau non precise".equalsIgnoreCase(needProfile.level())) {
+            fragments.add("un accompagnement de niveau " + needProfile.level().toLowerCase());
+        }
+
+        List<String> visibleKeywords = needProfile.keywords() == null
+            ? List.of()
+            : needProfile.keywords().stream()
+                .filter(Objects::nonNull)
+                .map(this::normalizeText)
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(2)
+                .toList();
+        if (!visibleKeywords.isEmpty()) {
+            fragments.add("un focus sur " + String.join(" et ", visibleKeywords));
+        }
+
+        if (fragments.isEmpty()) {
+            return null;
+        }
+        return String.join(" avec ", fragments);
+    }
+
+    private String buildTutorMatchingAiExplanation(TutorMatchInboxItem item) {
+        List<String> fragments = new ArrayList<>();
+        String needContext = buildTutorNeedContextLabel(item);
+        if (needContext != null) {
+            fragments.add("La demande porte sur " + needContext + ".");
+        }
+        fragments.add("Votre profil ressort ici car votre experience et votre disponibilite correspondent deja a ce creneau.");
+        if (item.reason() != null && !item.reason().isBlank()) {
+            fragments.add(item.reason());
+        }
+        return String.join(" ", fragments);
+    }
+
+    private String buildTutorMatchingRequestSummary(TutorMatchInboxItem item) {
+        if (item == null) {
+            return "Demande de seance en attente de consultation.";
+        }
+
+        StringBuilder summary = new StringBuilder("Demande preparee pour une seance de ")
+            .append(item.durationMin())
+            .append(" min en ")
+            .append(mapModeLabel(item.mode()))
+            .append(", au format ")
+            .append(formatMatchingVisibility(item.visibilityScope()).toLowerCase())
+            .append(".");
+
+        String needContext = buildTutorNeedContextLabel(item);
+        if (needContext != null) {
+            summary.append(" Le besoin vise ").append(needContext).append(".");
+        }
+        return summary.toString();
+    }
+
+    private String buildTutorMatchingRequestDetail(TutorMatchInboxItem item) {
+        if (item == null) {
+            return "Aucun detail complementaire n'est disponible pour cette demande.";
+        }
+
+        List<String> visibleKeywords = item.keywords() == null
+            ? List.of()
+            : item.keywords().stream()
+                .filter(Objects::nonNull)
+                .map(this::normalizeText)
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(3)
+                .toList();
+        if (!visibleKeywords.isEmpty()) {
+            return "Points d'attention annonces: " + String.join(", ", visibleKeywords) + ".";
+        }
+        return "Le besoin a ete qualifie automatiquement a partir de la demande et reste coherent avec le creneau propose.";
+    }
+
+    private String buildTutorNeedContextLabel(TutorMatchInboxItem item) {
+        if (item == null) {
+            return null;
+        }
+
+        List<String> fragments = new ArrayList<>();
+        String normalizedSubject = normalizeText(item.subject());
+        if (normalizedSubject != null) {
+            fragments.add("un besoin en " + normalizedSubject);
+        }
+        if (item.requestedLevel() != null
+            && !item.requestedLevel().isBlank()
+            && !"Niveau non precise".equalsIgnoreCase(item.requestedLevel())) {
+            fragments.add("de niveau " + item.requestedLevel().toLowerCase());
+        }
+
+        List<String> visibleKeywords = item.keywords() == null
+            ? List.of()
+            : item.keywords().stream()
+                .filter(Objects::nonNull)
+                .map(this::normalizeText)
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(2)
+                .toList();
+        if (!visibleKeywords.isEmpty()) {
+            fragments.add("avec un focus sur " + String.join(" et ", visibleKeywords));
+        }
+
+        if (fragments.isEmpty()) {
+            return null;
+        }
+        return String.join(" ", fragments);
+    }
+
+    private String buildTutorMatchingActionHint(TutorMatchInboxItem item) {
+        if (item.studentDecision() == MatchingService.DECISION_SUPER) {
+            return "Cette demande est prioritaire. Une acceptation ouvre directement la planification de la seance.";
+        }
+        return "Cette demande presente un interet confirme. Acceptez pour poursuivre vers la planification de la seance.";
     }
 
     private void openRecommendationBriefing() {
@@ -1669,11 +3111,11 @@ public class ReservationController {
     }
 
     private List<Seance> buildRecommendationCandidateSessions() {
-        return seanceService.search(
+        return filterVisibleSessions(seanceService.search(
             sessionSearchField.getText(),
             sessionSearchModeComboBox.getValue(),
             0
-        ).stream()
+        )).stream()
             .filter(Objects::nonNull)
             .filter(seance -> seance.getStatus() == 1)
             .filter(seance -> seance.getStartAt() != null && !seance.getStartAt().isBefore(LocalDateTime.now()))
@@ -1926,6 +3368,7 @@ public class ReservationController {
         }
 
         card.getChildren().addAll(titleRow, metaLabel, signalRow, reasonKicker, reasonLabel, actionRow);
+        configureSessionCardDoubleClick(card, seance, reservationStats);
         return card;
     }
 
@@ -2010,6 +3453,35 @@ public class ReservationController {
             && seance.getTuteurId() == getCurrentTutorId();
     }
 
+    private List<Seance> filterVisibleSessions(List<Seance> sessions) {
+        if (sessions == null || sessions.isEmpty()) {
+            return List.of();
+        }
+
+        List<Integer> seanceIds = sessions.stream()
+            .filter(Objects::nonNull)
+            .map(Seance::getId)
+            .filter(id -> id > 0)
+            .distinct()
+            .toList();
+        Map<Integer, SessionVisibility> visibilityBySeanceId = matchingService.getSessionVisibilityBySeanceIds(seanceIds);
+
+        return sessions.stream()
+            .filter(Objects::nonNull)
+            .filter(seance -> canCurrentUserViewSession(seance, visibilityBySeanceId.get(seance.getId())))
+            .toList();
+    }
+
+    private boolean canCurrentUserViewSession(Seance seance, SessionVisibility visibility) {
+        if (seance == null) {
+            return false;
+        }
+        if (visibility == null || !visibility.isPrivate()) {
+            return true;
+        }
+        return UserSession.isCurrentTutor() && seance.getTuteurId() == getCurrentTutorId();
+    }
+
     private boolean canReserveAsParticipant(Seance seance) {
         if (UserSession.isCurrentStudent()) {
             return true;
@@ -2025,6 +3497,12 @@ public class ReservationController {
 
     private int getCurrentTutorId() {
         return UserSession.isCurrentTutor() ? UserSession.getCurrentUserId() : 0;
+    }
+
+    private String formatMatchingVisibility(String visibilityScope) {
+        return MatchingService.VISIBILITY_PRIVATE.equals(visibilityScope)
+            ? "Seance individuelle"
+            : "Seance ouverte";
     }
 
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
@@ -2119,8 +3597,6 @@ public class ReservationController {
 
         Label requestLabel = new Label(
             "Reservation envoyee: " + formatDateTimeOrPlaceholder(reservation.reservedAt())
-                + " | ID reservation #" + reservation.id()
-                + " | Seance #" + reservation.seanceId()
         );
         requestLabel.setWrapText(true);
         requestLabel.getStyleClass().add("reservation-section-copy");
@@ -2130,11 +3606,9 @@ public class ReservationController {
         ratingLabel.getStyleClass().add("reservation-section-copy");
 
         HBox actionRow = new HBox(10.0);
-        Label idChip = new Label("Reservation #" + reservation.id());
-        idChip.getStyleClass().add("workspace-chip");
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
-        actionRow.getChildren().addAll(idChip, actionSpacer);
+        actionRow.getChildren().add(actionSpacer);
 
         if (canCurrentUserRateReservation(reservation)) {
             Button ratingButton = new Button("Noter la seance");
@@ -2182,6 +3656,29 @@ public class ReservationController {
             return "Evaluation: disponible apres la fin de la seance.";
         }
         return "Evaluation: la note sera ouverte apres acceptation puis apres la fin de la seance.";
+    }
+
+    private String buildTutorReservationRatingSummary(TutorReservationRequest request) {
+        if (request == null) {
+            return "Evaluation recue: indisponible.";
+        }
+        if (request.hasRating()) {
+            StringBuilder summary = new StringBuilder("Evaluation recue: " + request.studentRating() + "/5");
+            if (request.ratedAt() != null) {
+                summary.append(" | Notee le ").append(formatDateTimeOrPlaceholder(request.ratedAt()));
+            }
+            if (request.studentReview() != null && !request.studentReview().isBlank()) {
+                summary.append(" | Avis: ").append(request.studentReview());
+            }
+            return summary.toString();
+        }
+        if (request.status() == ReservationService.STATUS_ACCEPTED) {
+            return "Evaluation recue: disponible apres la fin de la seance.";
+        }
+        if (request.isRefused()) {
+            return "Evaluation recue: aucune, la reservation a ete refusee.";
+        }
+        return "Evaluation recue: en attente d'une reservation acceptee puis terminee.";
     }
 
     private void openStudentRatingDialog(StudentReservationItem reservation) {
@@ -2245,7 +3742,7 @@ public class ReservationController {
         card.setMaxWidth(420.0);
         card.getStyleClass().add("rating-dialog-card");
 
-        Label titleLabel = new Label("Please rate your experience");
+        Label titleLabel = new Label("Veuillez noter votre experience");
         titleLabel.getStyleClass().add("rating-dialog-main-title");
 
         Label subtitleLabel = new Label("Votre retour compte vraiment.");
@@ -2767,14 +4264,15 @@ public class ReservationController {
                 + " | " + request.durationMin() + " min"
                 + " | " + request.acceptedReservations() + "/" + request.maxParticipants() + " acceptee(s)"
                 + " | " + formatAvailableSeats(request.availableAcceptedSeats())
-                + " | ID reservation #" + request.id()
         );
         sessionLabel.setWrapText(true);
         sessionLabel.getStyleClass().add("reservation-section-copy");
 
+        Label ratingLabel = new Label(buildTutorReservationRatingSummary(request));
+        ratingLabel.setWrapText(true);
+        ratingLabel.getStyleClass().add("reservation-section-copy");
+
         HBox actionRow = new HBox(10.0);
-        Label idChip = new Label("Seance #" + request.seanceId());
-        idChip.getStyleClass().add("workspace-chip");
         Region actionSpacer = new Region();
         HBox.setHgrow(actionSpacer, Priority.ALWAYS);
 
@@ -2786,7 +4284,7 @@ public class ReservationController {
         refuseButton.getStyleClass().addAll("action-button", "danger");
         refuseButton.setOnAction(event -> confirmRefuseTutorReservationRequest(request));
 
-        actionRow.getChildren().addAll(idChip, actionSpacer);
+        actionRow.getChildren().add(actionSpacer);
         if (request.isPending()) {
             if (request.isSessionCapacityReached()) {
                 Button fullButton = new Button("Capacite atteinte");
@@ -2798,7 +4296,7 @@ public class ReservationController {
             }
         }
 
-        card.getChildren().addAll(headerRow, studentLabel, sessionLabel, actionRow);
+        card.getChildren().addAll(headerRow, studentLabel, sessionLabel, ratingLabel, actionRow);
         return card;
     }
 
@@ -2853,19 +4351,25 @@ public class ReservationController {
         Dialog<ButtonType> detailsDialog = new Dialog<>();
         ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
         DialogPane dialogPane = detailsDialog.getDialogPane();
+        VBox content = buildSessionDetailsContent(seance, reservationStats, detailsDialog);
 
         detailsDialog.setTitle("Detail de la seance");
         dialogPane.getButtonTypes().setAll(closeButton);
-        dialogPane.setContent(buildSessionDetailsContent(seance, reservationStats, detailsDialog));
+        dialogPane.setContent(content);
         dialogPane.setPrefWidth(720);
         dialogPane.getStyleClass().add("session-detail-dialog");
         applyCurrentTheme(dialogPane);
+        appendDialogStylesheet(dialogPane, SESSION_EVALUATIONS_STYLESHEET);
+        detailsDialog.setOnShown(event -> animateSessionDetailsEntrance(content));
         detailsDialog.showAndWait();
     }
 
     private VBox buildSessionDetailsContent(Seance seance, ReservationStats reservationStats, Dialog<ButtonType> detailsDialog) {
         boolean canManageCurrentSession = canManageSession(seance);
         int reservationTotal = reservationStats != null ? reservationStats.total() : 0;
+        List<SessionEvaluationItem> sessionEvaluations = canManageCurrentSession
+            ? reservationService.getSessionEvaluations(seance.getId())
+            : List.of();
         LocalDateTime endAt = seance.getStartAt() != null
             ? seance.getStartAt().plusMinutes(seance.getDurationMin())
             : null;
@@ -2915,7 +4419,7 @@ public class ReservationController {
             metrics.getChildren().add(buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"));
         }
         metrics.getChildren().addAll(
-            buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "ID " + seance.getTuteurId()),
+            buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "Intervenant"),
             buildDetailMetric("Mode", mapModeLabel(seance.getMode()), "Format choisi"),
             buildDetailMetric("Salle", resolveSalleName(seance.getSalleId()), "Presentiel")
         );
@@ -2963,6 +4467,8 @@ public class ReservationController {
         descriptionText.getStyleClass().add("session-detail-description-text");
         descriptionBox.getChildren().addAll(descriptionTitle, descriptionText);
 
+        VBox evaluationsBox = buildSessionEvaluationsSection(sessionEvaluations);
+
         HBox footer = new HBox(10.0);
         footer.getStyleClass().add("session-detail-footer");
         footer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -2989,9 +4495,221 @@ public class ReservationController {
         root.getChildren().addAll(header, metrics);
         if (canManageCurrentSession) {
             root.getChildren().add(occupancyCard);
+            root.getChildren().add(evaluationsBox);
         }
         root.getChildren().addAll(descriptionBox, footer);
         return root;
+    }
+
+    private void configureSessionCardDoubleClick(VBox card, Seance seance, ReservationStats reservationStats) {
+        if (card == null || seance == null) {
+            return;
+        }
+        card.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+            if (event.getClickCount() < 2 || isSessionCardInteractiveTarget(event.getTarget())) {
+                return;
+            }
+            showSessionDetails(seance, reservationStats);
+        });
+    }
+
+    private boolean isSessionCardInteractiveTarget(Object target) {
+        Node current = target instanceof Node node ? node : null;
+        while (current != null) {
+            if (current instanceof Button) {
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
+    }
+
+    private VBox buildSessionEvaluationsSection(List<SessionEvaluationItem> evaluations) {
+        VBox section = new VBox(12.0);
+        section.getStyleClass().add("session-detail-evaluations-card");
+
+        HBox header = new HBox(10.0);
+        header.getStyleClass().add("session-detail-evaluations-header");
+
+        VBox titleBlock = new VBox(4.0);
+        Label title = new Label("Evaluations recues");
+        title.getStyleClass().add("session-detail-section-title");
+        Label subtitle = new Label(
+            evaluations == null || evaluations.isEmpty()
+                ? "Les avis des etudiants apparaitront ici des qu'une seance acceptee sera notee."
+                : "Les derniers retours envoyes par les etudiants apres la seance."
+        );
+        subtitle.setWrapText(true);
+        subtitle.getStyleClass().add("session-detail-evaluation-subtitle");
+        titleBlock.getChildren().addAll(title, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label summaryChip = new Label(buildSessionEvaluationsSummary(evaluations));
+        summaryChip.getStyleClass().add("session-detail-evaluation-summary");
+        header.getChildren().addAll(titleBlock, spacer, summaryChip);
+
+        VBox content = new VBox(10.0);
+        List<Node> animatedCards = new ArrayList<>();
+        if (evaluations == null || evaluations.isEmpty()) {
+            Label emptyLabel = new Label("Aucune evaluation enregistree pour cette seance pour le moment.");
+            emptyLabel.setWrapText(true);
+            emptyLabel.getStyleClass().add("session-detail-evaluation-empty");
+            content.getChildren().add(emptyLabel);
+            animatedCards.add(emptyLabel);
+        } else {
+            evaluations.stream()
+                .limit(4)
+                .map(this::buildSessionEvaluationCard)
+                .forEach(card -> {
+                    content.getChildren().add(card);
+                    animatedCards.add(card);
+                });
+
+            if (evaluations.size() > 4) {
+                Label moreLabel = new Label(
+                    (evaluations.size() - 4) + " autre(s) avis sont deja enregistres pour cette seance."
+                );
+                moreLabel.setWrapText(true);
+                moreLabel.getStyleClass().add("session-detail-evaluation-empty");
+                content.getChildren().add(moreLabel);
+                animatedCards.add(moreLabel);
+            }
+        }
+
+        section.getProperties().put("session-detail-stagger-children", animatedCards);
+        section.getChildren().addAll(header, content);
+        return section;
+    }
+
+    private VBox buildSessionEvaluationCard(SessionEvaluationItem evaluation) {
+        VBox card = new VBox(8.0);
+        card.getStyleClass().add("session-detail-evaluation-card");
+
+        HBox header = new HBox(10.0);
+        header.getStyleClass().add("session-detail-evaluation-header");
+
+        VBox identityBlock = new VBox(3.0);
+        Label authorLabel = new Label(formatSessionEvaluationAuthor(evaluation));
+        authorLabel.getStyleClass().add("session-detail-evaluation-author");
+        Label dateLabel = new Label(
+            evaluation != null && evaluation.ratedAt() != null
+                ? "Notee le " + formatDateTimeOrPlaceholder(evaluation.ratedAt())
+                : "Note envoyee recemment"
+        );
+        dateLabel.getStyleClass().add("session-detail-evaluation-date");
+        identityBlock.getChildren().addAll(authorLabel, dateLabel);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Label starsLabel = new Label(buildRatingStars(evaluation != null ? evaluation.rating() : 0));
+        starsLabel.getStyleClass().add("session-detail-evaluation-stars");
+        Label scoreLabel = new Label((evaluation != null ? evaluation.rating() : 0) + "/5");
+        scoreLabel.getStyleClass().add("session-detail-evaluation-score");
+
+        header.getChildren().addAll(identityBlock, spacer, starsLabel, scoreLabel);
+
+        Label reviewLabel = new Label(
+            evaluation != null && evaluation.hasReview()
+                ? evaluation.review()
+                : "Aucun commentaire detaille, mais la note a bien ete partagee."
+        );
+        reviewLabel.setWrapText(true);
+        reviewLabel.getStyleClass().add("session-detail-evaluation-review");
+
+        card.getChildren().addAll(header, reviewLabel);
+        return card;
+    }
+
+    private String buildSessionEvaluationsSummary(List<SessionEvaluationItem> evaluations) {
+        if (evaluations == null || evaluations.isEmpty()) {
+            return "0 avis";
+        }
+
+        double averageRating = evaluations.stream()
+            .mapToInt(SessionEvaluationItem::rating)
+            .average()
+            .orElse(0.0);
+        return formatAverageRating(averageRating) + "/5  |  " + evaluations.size() + " avis";
+    }
+
+    private String formatAverageRating(double value) {
+        return String.format(Locale.US, "%.1f", value).replace('.', ',');
+    }
+
+    private String formatSessionEvaluationAuthor(SessionEvaluationItem evaluation) {
+        if (evaluation == null) {
+            return "Etudiant Fahamni";
+        }
+        String normalizedValue = normalizeText(evaluation.participantName());
+        return normalizedValue != null ? normalizedValue : "Etudiant Fahamni";
+    }
+
+    private String buildRatingStars(int rating) {
+        int normalizedRating = Math.max(0, Math.min(ReservationService.MAX_STUDENT_RATING, rating));
+        return "★".repeat(normalizedRating)
+            + "☆".repeat(Math.max(0, ReservationService.MAX_STUDENT_RATING - normalizedRating));
+    }
+
+    private void animateSessionDetailsEntrance(VBox root) {
+        if (root == null) {
+            return;
+        }
+
+        List<Node> sections = new ArrayList<>(root.getChildren());
+        double delay = 0.0;
+        for (Node section : sections) {
+            animateSessionDetailNode(section, delay);
+            delay += 55.0;
+
+            Object staggerChildren = section.getProperties().get("session-detail-stagger-children");
+            if (staggerChildren instanceof List<?> childNodes) {
+                double childDelay = delay + 40.0;
+                for (Object childNode : childNodes) {
+                    if (childNode instanceof Node animatedChild) {
+                        animateSessionDetailNode(animatedChild, childDelay);
+                        childDelay += 70.0;
+                    }
+                }
+            }
+        }
+    }
+
+    private void animateSessionDetailNode(Node node, double delayMillis) {
+        if (node == null) {
+            return;
+        }
+
+        node.setOpacity(0.0);
+        node.setTranslateY(18.0);
+        node.setScaleX(0.98);
+        node.setScaleY(0.98);
+
+        Duration delay = Duration.millis(delayMillis);
+
+        FadeTransition fade = new FadeTransition(Duration.millis(240), node);
+        fade.setDelay(delay);
+        fade.setFromValue(0.0);
+        fade.setToValue(1.0);
+        fade.setInterpolator(Interpolator.EASE_OUT);
+
+        TranslateTransition slide = new TranslateTransition(Duration.millis(280), node);
+        slide.setDelay(delay);
+        slide.setFromY(18.0);
+        slide.setToY(0.0);
+        slide.setInterpolator(Interpolator.EASE_OUT);
+
+        ScaleTransition scale = new ScaleTransition(Duration.millis(240), node);
+        scale.setDelay(delay);
+        scale.setFromX(0.98);
+        scale.setFromY(0.98);
+        scale.setToX(1.0);
+        scale.setToY(1.0);
+        scale.setInterpolator(Interpolator.EASE_OUT);
+
+        new ParallelTransition(fade, slide, scale).play();
     }
 
     private VBox buildDetailMetric(String label, String value, String hint) {
@@ -3077,6 +4795,7 @@ public class ReservationController {
     }
 
     private void startEditingSession(Seance seance) {
+        pendingMatchingPlan = null;
         editingSessionId = seance.getId();
         sessionSubjectField.setText(seance.getMatiere());
         setStartAtSelection(seance.getStartAt());
@@ -3505,6 +5224,7 @@ public class ReservationController {
             sectionMenuComboBox.setValue(SECTION_AVAILABLE_SESSIONS);
         }
         updateRecommendationBriefingAvailability();
+        updateMatchingWorkspaceAvailability();
         setSectionVisible(sessionSearchPanel, true);
         setSectionVisible(sessionListPanel, true);
         setSectionVisible(sessionFormPanel, false);
@@ -3592,6 +5312,14 @@ public class ReservationController {
         setNodeVisible(recommendationBriefingButton, UserSession.isCurrentStudent());
     }
 
+    private void updateMatchingWorkspaceAvailability() {
+        boolean visible = UserSession.isCurrentStudent() || UserSession.isCurrentTutor();
+        setNodeVisible(matchingSwipeButton, visible);
+        if (matchingSwipeButton != null) {
+            matchingSwipeButton.setText(UserSession.isCurrentTutor() ? "Inbox matching" : "Matching swipe");
+        }
+    }
+
     private void setInfrastructureSectionVisible(HBox section, boolean visible) {
         if (section == null) {
             return;
@@ -3606,6 +5334,21 @@ public class ReservationController {
         }
         node.setManaged(visible);
         node.setVisible(visible);
+    }
+
+    private void setInlineFeedback(Label label, String message, boolean success) {
+        if (label == null) {
+            return;
+        }
+
+        boolean visible = message != null && !message.isBlank();
+        label.setText(visible ? message : "");
+        label.getStyleClass().removeAll("success", "error");
+        if (visible) {
+            label.getStyleClass().add(success ? "success" : "error");
+        }
+        label.setManaged(visible);
+        label.setVisible(visible);
     }
 
     private void setSeparatorVisible(Separator separator, boolean visible) {
@@ -3701,6 +5444,25 @@ public class ReservationController {
         if (!dialogPane.getStylesheets().contains(stylesheet)) {
             dialogPane.getStylesheets().add(stylesheet);
         }
+    }
+
+    private static final class StudentMatchingDialogState {
+        private int requestId;
+        private int currentIndex;
+        private boolean animating;
+        private MatchingNeedProfile needProfile;
+        private List<StudentMatchCard> cards = List.of();
+    }
+
+    private static final class TutorMatchingDialogState {
+        private int currentIndex;
+        private List<TutorMatchInboxItem> cards = List.of();
+    }
+
+    private record PendingMatchingPlan(int requestId,
+                                       int participantId,
+                                       String participantName,
+                                       String visibilityScope) {
     }
 
     private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card, boolean selectable) {
