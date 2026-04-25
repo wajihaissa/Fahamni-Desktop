@@ -1903,6 +1903,7 @@ public class ReservationController {
                 state.requestId = creation.requestId();
                 state.cards = new ArrayList<>(creation.candidates());
                 state.currentIndex = 0;
+                state.positiveMatches.clear();
                 state.needProfile = creation.needProfile();
 
                 updateStudentMatchingResultsSummary(
@@ -2013,18 +2014,20 @@ public class ReservationController {
         }
 
         if (state.currentIndex >= state.cards.size()) {
-            long positiveChoices = state.cards.stream()
-                .filter(Objects::nonNull)
-                .filter(card -> card.candidateId() > 0)
-                .count();
-            progressLabel.setText("Swipe termine. La demande est transmise aux tuteurs interesses.");
-            swipeGuideLabel.setText("Le tour de cartes est termine. Attends maintenant la reponse des tuteurs.");
-            VBox doneCard = buildStudentMatchingStateCard(
-                "Deck traite",
-                positiveChoices + " profil(s) ont ete traites. Les tuteurs likes verront maintenant la demande dans leur inbox.",
-                "matching-state-card-success"
+            int positiveChoices = state.positiveMatches.size();
+            progressLabel.setText(
+                positiveChoices > 0
+                    ? "Matching termine. " + positiveChoices + " tuteur(s) retenu(s)."
+                    : "Matching termine."
             );
+            swipeGuideLabel.setText(
+                positiveChoices > 0
+                    ? "Les tuteurs retenus verront maintenant ta demande dans leur inbox."
+                    : "Aucun tuteur n'a ete retenu sur ce tour. Tu peux modifier la demande et relancer le matching."
+            );
+            VBox doneCard = buildStudentMatchingCompletionView(state);
             cardHost.getChildren().add(doneCard);
+            animateMatchingCardEntrance(doneCard);
             return;
         }
 
@@ -2827,6 +2830,115 @@ public class ReservationController {
         return card;
     }
 
+    private VBox buildStudentMatchingCompletionView(StudentMatchingDialogState state) {
+        if (state == null || state.positiveMatches.isEmpty()) {
+            return buildStudentMatchingStateCard(
+                "Aucun tuteur retenu",
+                "Le tour est termine, mais aucun profil n'a ete conserve. Modifie la demande puis relance le matching si tu veux affiner le resultat.",
+                "matching-state-card"
+            );
+        }
+
+        VBox shell = new VBox(16.0);
+        shell.getStyleClass().add("matching-results-finale");
+        shell.setMaxWidth(620.0);
+
+        Label eyebrowLabel = new Label("IT'S A MATCH");
+        eyebrowLabel.getStyleClass().add("matching-results-finale-eyebrow");
+
+        Label titleLabel = new Label("Tes matchs favoris sont prets");
+        titleLabel.getStyleClass().add("matching-results-finale-title");
+
+        String needSummary = state.needProfile == null ? null : normalizeText(state.needProfile.summary());
+        Label subtitleLabel = new Label(
+            needSummary != null
+                ? needSummary + " Les tuteurs retenus ont maintenant recu ta demande."
+                : "Les tuteurs retenus ont maintenant recu ta demande."
+        );
+        subtitleLabel.setWrapText(true);
+        subtitleLabel.getStyleClass().add("matching-results-finale-copy");
+
+        FlowPane matchGrid = new FlowPane(16.0, 16.0);
+        matchGrid.getStyleClass().add("matching-match-grid");
+        state.positiveMatches.stream()
+            .map(this::buildStudentPositiveMatchCard)
+            .forEach(matchGrid.getChildren()::add);
+
+        shell.getChildren().addAll(eyebrowLabel, titleLabel, subtitleLabel, matchGrid);
+        return shell;
+    }
+
+    private VBox buildStudentPositiveMatchCard(StudentPositiveMatch positiveMatch) {
+        String studentName = safeText(UserSession.getDisplayName());
+        String tutorName = positiveMatch != null && positiveMatch.card() != null
+            ? safeText(positiveMatch.card().tutorName())
+            : "Tuteur Fahamni";
+
+        VBox card = new VBox(14.0);
+        card.getStyleClass().add("matching-match-card");
+        if (positiveMatch != null && positiveMatch.decision() == MatchingService.DECISION_SUPER) {
+            card.getStyleClass().add("matching-match-card-super");
+        }
+        card.setPrefWidth(272.0);
+
+        Label toneChip = new Label(
+            positiveMatch != null && positiveMatch.decision() == MatchingService.DECISION_SUPER
+                ? "Super match"
+                : "Match envoye"
+        );
+        toneChip.getStyleClass().add("matching-match-chip");
+
+        StackPane portraitStage = new StackPane();
+        portraitStage.getStyleClass().add("matching-match-portrait-stage");
+
+        StackPane studentAvatar = buildMatchingAvatarBadge(studentName, "matching-avatar-badge-student");
+        studentAvatar.getStyleClass().addAll("matching-match-avatar", "matching-match-avatar-student");
+
+        StackPane tutorAvatar = buildMatchingAvatarBadge(tutorName, "matching-avatar-badge-tutor");
+        tutorAvatar.getStyleClass().addAll("matching-match-avatar", "matching-match-avatar-tutor");
+
+        portraitStage.getChildren().addAll(studentAvatar, tutorAvatar);
+        StackPane.setAlignment(studentAvatar, Pos.CENTER_LEFT);
+        StackPane.setAlignment(tutorAvatar, Pos.CENTER_RIGHT);
+        StackPane.setMargin(studentAvatar, new Insets(0.0, 0.0, 12.0, 6.0));
+        StackPane.setMargin(tutorAvatar, new Insets(18.0, 6.0, 0.0, 0.0));
+
+        Label namesLabel = new Label(studentName + "\n&\n" + tutorName);
+        namesLabel.setWrapText(true);
+        namesLabel.getStyleClass().add("matching-match-names");
+
+        Label copyLabel = new Label(buildStudentPositiveMatchCopy(positiveMatch));
+        copyLabel.setWrapText(true);
+        copyLabel.getStyleClass().add("matching-match-copy");
+
+        Label detailLabel = new Label(buildStudentPositiveMatchDetail(positiveMatch));
+        detailLabel.setWrapText(true);
+        detailLabel.getStyleClass().add("matching-match-detail");
+
+        card.getChildren().addAll(toneChip, portraitStage, namesLabel, copyLabel, detailLabel);
+        return card;
+    }
+
+    private String buildStudentPositiveMatchCopy(StudentPositiveMatch positiveMatch) {
+        if (positiveMatch != null && positiveMatch.decision() == MatchingService.DECISION_SUPER) {
+            return "Ton interet prioritaire a ete transmis a ce tuteur.";
+        }
+        return "Ton interet a ete transmis a ce tuteur.";
+    }
+
+    private String buildStudentPositiveMatchDetail(StudentPositiveMatch positiveMatch) {
+        if (positiveMatch == null || positiveMatch.card() == null) {
+            return "Le tuteur verra maintenant ta demande dans son inbox.";
+        }
+
+        StudentMatchCard card = positiveMatch.card();
+        return safeText(card.tutorName())
+            + " a deja anime "
+            + card.subjectSessions()
+            + " seance(s) dans cette matiere"
+            + (positiveMatch.decision() == MatchingService.DECISION_SUPER ? ". Priorite elevee envoyee." : ".");
+    }
+
     private void animateMatchingWorkspaceSwap(Node outgoing, Node incoming) {
         if (incoming == null) {
             return;
@@ -2913,6 +3025,7 @@ public class ReservationController {
             return;
         }
 
+        rememberStudentPositiveMatch(state, card, decision);
         swipeGuideLabel.setText(resolveMatchingGuideCopy(decision, true));
         if (swipeSurface == null || decisionBadge == null) {
             state.currentIndex++;
@@ -3196,6 +3309,20 @@ public class ReservationController {
                 : "Relache pour envoyer un super match prioritaire.";
         }
         return "Glisse a gauche pour passer, a droite pour retenir, ou vers le haut pour envoyer un super match.";
+    }
+
+    private void rememberStudentPositiveMatch(StudentMatchingDialogState state,
+                                              StudentMatchCard card,
+                                              int decision) {
+        if (state == null || card == null || decision == MatchingService.DECISION_PASS) {
+            return;
+        }
+        boolean alreadyStored = state.positiveMatches.stream()
+            .filter(Objects::nonNull)
+            .anyMatch(match -> match.card() != null && match.card().candidateId() == card.candidateId());
+        if (!alreadyStored) {
+            state.positiveMatches.add(new StudentPositiveMatch(card, decision));
+        }
     }
 
     private String resolveMatchingConfidenceLabel(double score) {
@@ -5275,8 +5402,7 @@ public class ReservationController {
     }
 
     private String resolveMessage(Exception exception) {
-        String message = exception.getMessage();
-        return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
+        return "Veuillez reessayer dans un instant.";
     }
 
     private String formatReservationCount(int reservationCount) {
@@ -5754,11 +5880,15 @@ public class ReservationController {
         private boolean animating;
         private MatchingNeedProfile needProfile;
         private List<StudentMatchCard> cards = List.of();
+        private List<StudentPositiveMatch> positiveMatches = new ArrayList<>();
     }
 
     private static final class TutorMatchingDialogState {
         private int currentIndex;
         private List<TutorMatchInboxItem> cards = List.of();
+    }
+
+    private record StudentPositiveMatch(StudentMatchCard card, int decision) {
     }
 
     private record PendingMatchingPlan(int requestId,

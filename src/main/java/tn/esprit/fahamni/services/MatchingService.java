@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,6 +36,14 @@ public class MatchingService {
     private static final String REQUEST_STATUS_ACCEPTED = "accepted";
     private static final String REQUEST_STATUS_PLANNED = "planned";
     private static final String REQUEST_STATUS_REFUSED = "refused";
+    private static final String GENERIC_SERVICE_UNAVAILABLE_MESSAGE =
+        "Le service est temporairement indisponible. Veuillez reessayer dans un instant.";
+    private static final String SESSION_RECONNECT_MESSAGE =
+        "Votre session n'est plus valide. Veuillez vous reconnecter.";
+    private static final String MATCHING_PROPOSAL_UNAVAILABLE_MESSAGE =
+        "Cette proposition n'est plus disponible. Actualisez le matching puis reessayez.";
+    private static final String MATCHING_REQUEST_UNAVAILABLE_MESSAGE =
+        "Cette demande n'est plus disponible. Actualisez la liste puis reessayez.";
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final GroqMatchingAnalysisService groqMatchingAnalysisService = new GroqMatchingAnalysisService();
@@ -46,7 +55,7 @@ public class MatchingService {
 
     public MatchingRequestCreation createMatchingRequest(MatchingDraft draft) {
         if (cnx == null) {
-            return MatchingRequestCreation.failure("Connexion a la base indisponible.");
+            return MatchingRequestCreation.failure(GENERIC_SERVICE_UNAVAILABLE_MESSAGE);
         }
 
         String validationError = validateDraft(draft);
@@ -111,26 +120,27 @@ public class MatchingService {
 
             List<StudentMatchCard> cards = insertCandidates(requestId, candidates);
             String message = cards.isEmpty()
-                ? "Aucun tuteur compatible n'est libre sur ce creneau. La demande reste sauvegardee."
-                : cards.size() + " tuteur(s) compatible(s) ont ete prepares pour le swipe.";
+                ? "Aucun tuteur compatible n'est disponible sur ce creneau pour le moment. Votre demande a bien ete enregistree."
+                : cards.size() + " profil(s) compatible(s) sont prets pour le swipe.";
             return new MatchingRequestCreation(requestId, true, message, needProfile, cards);
         } catch (SQLException e) {
-            return MatchingRequestCreation.failure("Creation du matching impossible: " + e.getMessage());
+            logMatchingError("Creation du matching impossible", e);
+            return MatchingRequestCreation.failure("Votre demande n'a pas pu etre enregistree pour le moment.");
         }
     }
 
     public OperationResult recordStudentDecision(int candidateId, int participantId, int decision) {
         if (cnx == null) {
-            return OperationResult.failure("Connexion a la base indisponible.");
+            return OperationResult.failure(GENERIC_SERVICE_UNAVAILABLE_MESSAGE);
         }
         if (candidateId <= 0) {
-            return OperationResult.failure("Candidat de matching invalide.");
+            return OperationResult.failure(MATCHING_PROPOSAL_UNAVAILABLE_MESSAGE);
         }
         if (participantId <= 0) {
-            return OperationResult.failure("Etudiant invalide pour cette action.");
+            return OperationResult.failure(SESSION_RECONNECT_MESSAGE);
         }
         if (decision != DECISION_PASS && decision != DECISION_INTERESTED && decision != DECISION_SUPER) {
-            return OperationResult.failure("Decision de matching invalide.");
+            return OperationResult.failure("Cette action n'est pas disponible pour le moment.");
         }
 
         String selectSql = """
@@ -145,15 +155,16 @@ public class MatchingService {
             pst.setInt(2, participantId);
             try (ResultSet rs = pst.executeQuery()) {
                 if (!rs.next()) {
-                    return OperationResult.failure("Aucun matching correspondant a cet etudiant.");
+                    return OperationResult.failure(MATCHING_PROPOSAL_UNAVAILABLE_MESSAGE);
                 }
                 String requestStatus = normalizeStatus(rs.getString("status"));
                 if (REQUEST_STATUS_ACCEPTED.equals(requestStatus) || REQUEST_STATUS_PLANNED.equals(requestStatus)) {
-                    return OperationResult.failure("Ce matching est deja verrouille par une decision tuteur.");
+                    return OperationResult.failure(MATCHING_PROPOSAL_UNAVAILABLE_MESSAGE);
                 }
             }
         } catch (SQLException e) {
-            return OperationResult.failure("Verification du matching impossible: " + e.getMessage());
+            logMatchingError("Verification du matching impossible", e);
+            return OperationResult.failure("Votre choix n'a pas pu etre traite pour le moment.");
         }
 
         String updateCandidateSql = """
@@ -168,11 +179,12 @@ public class MatchingService {
             pst.setInt(3, candidateId);
             int updatedRows = pst.executeUpdate();
             if (updatedRows == 0) {
-                return OperationResult.failure("Aucune decision de matching enregistree.");
+                return OperationResult.failure(MATCHING_PROPOSAL_UNAVAILABLE_MESSAGE);
             }
-            return OperationResult.success("Votre choix a ete pris en compte.");
+            return OperationResult.success("Votre choix a bien ete enregistre.");
         } catch (SQLException e) {
-            return OperationResult.failure("Enregistrement du swipe impossible: " + e.getMessage());
+            logMatchingError("Enregistrement du swipe impossible", e);
+            return OperationResult.failure("Votre choix n'a pas pu etre enregistre pour le moment.");
         }
     }
 
@@ -249,18 +261,18 @@ public class MatchingService {
 
     public MatchingAcceptanceResult acceptTutorMatch(int candidateId, int tutorId) {
         if (cnx == null) {
-            return MatchingAcceptanceResult.failure("Connexion a la base indisponible.");
+            return MatchingAcceptanceResult.failure(GENERIC_SERVICE_UNAVAILABLE_MESSAGE);
         }
         if (candidateId <= 0) {
-            return MatchingAcceptanceResult.failure("Candidat de matching invalide.");
+            return MatchingAcceptanceResult.failure(MATCHING_REQUEST_UNAVAILABLE_MESSAGE);
         }
         if (tutorId <= 0) {
-            return MatchingAcceptanceResult.failure("Tuteur invalide pour cette action.");
+            return MatchingAcceptanceResult.failure(SESSION_RECONNECT_MESSAGE);
         }
 
         TutorMatchInboxItem item = loadTutorMatchCandidate(candidateId, tutorId);
         if (item == null) {
-            return MatchingAcceptanceResult.failure("Demande de matching introuvable pour ce tuteur.");
+            return MatchingAcceptanceResult.failure(MATCHING_REQUEST_UNAVAILABLE_MESSAGE);
         }
 
         String updateCandidateSql = """
@@ -292,7 +304,7 @@ public class MatchingService {
 
             return new MatchingAcceptanceResult(
                 true,
-                "Le match est accepte. Passez a la planification de la seance.",
+                "La demande a ete acceptee. Vous pouvez maintenant planifier la seance.",
                 new MatchingPlanContext(
                     item.requestId(),
                     item.participantId(),
@@ -307,19 +319,20 @@ public class MatchingService {
                 )
             );
         } catch (SQLException e) {
-            return MatchingAcceptanceResult.failure("Acceptation du matching impossible: " + e.getMessage());
+            logMatchingError("Acceptation du matching impossible", e);
+            return MatchingAcceptanceResult.failure("La demande n'a pas pu etre acceptee pour le moment.");
         }
     }
 
     public OperationResult refuseTutorMatch(int candidateId, int tutorId) {
         if (cnx == null) {
-            return OperationResult.failure("Connexion a la base indisponible.");
+            return OperationResult.failure(GENERIC_SERVICE_UNAVAILABLE_MESSAGE);
         }
         if (candidateId <= 0) {
-            return OperationResult.failure("Candidat de matching invalide.");
+            return OperationResult.failure(MATCHING_REQUEST_UNAVAILABLE_MESSAGE);
         }
         if (tutorId <= 0) {
-            return OperationResult.failure("Tuteur invalide pour cette action.");
+            return OperationResult.failure(SESSION_RECONNECT_MESSAGE);
         }
 
         String sql = """
@@ -338,7 +351,8 @@ public class MatchingService {
                 }
             }
         } catch (SQLException e) {
-            return OperationResult.failure("Verification du matching impossible: " + e.getMessage());
+            logMatchingError("Verification du matching impossible", e);
+            return OperationResult.failure("La demande n'a pas pu etre verifiee pour le moment.");
         }
 
         try (PreparedStatement pst = cnx.prepareStatement(sql)) {
@@ -348,14 +362,15 @@ public class MatchingService {
             pst.setInt(4, tutorId);
             int updatedRows = pst.executeUpdate();
             if (updatedRows == 0) {
-                return OperationResult.failure("Aucune demande de matching mise a jour.");
+                return OperationResult.failure(MATCHING_REQUEST_UNAVAILABLE_MESSAGE);
             }
             if (requestId != null && requestId > 0) {
                 refreshRequestStatusAfterTutorDecision(requestId);
             }
-            return OperationResult.success("La demande de matching a ete refusee.");
+            return OperationResult.success("La demande a ete refusee.");
         } catch (SQLException e) {
-            return OperationResult.failure("Refus du matching impossible: " + e.getMessage());
+            logMatchingError("Refus du matching impossible", e);
+            return OperationResult.failure("La demande n'a pas pu etre refusee pour le moment.");
         }
     }
 
@@ -364,10 +379,10 @@ public class MatchingService {
                                               String visibilityScope,
                                               int seanceId) {
         if (cnx == null) {
-            return OperationResult.failure("Connexion a la base indisponible.");
+            return OperationResult.failure(GENERIC_SERVICE_UNAVAILABLE_MESSAGE);
         }
         if (requestId <= 0 || participantId <= 0 || seanceId <= 0) {
-            return OperationResult.failure("Association du matching impossible.");
+            return OperationResult.failure("La planification n'a pas pu etre finalisee pour le moment.");
         }
 
         String normalizedVisibility = normalizeVisibility(visibilityScope);
@@ -431,7 +446,8 @@ public class MatchingService {
             } catch (SQLException rollbackException) {
                 System.out.println("Rollback matching impossible: " + rollbackException.getMessage());
             }
-            return OperationResult.failure("Liaison de la seance au matching impossible: " + e.getMessage());
+            logMatchingError("Liaison de la seance au matching impossible", e);
+            return OperationResult.failure("La planification n'a pas pu etre finalisee pour le moment.");
         } finally {
             try {
                 cnx.setAutoCommit(initialAutoCommit);
@@ -542,7 +558,7 @@ public class MatchingService {
                                                       int participantId,
                                                       LocalDateTime now) throws SQLException {
         if (!participantExists(participantId)) {
-            return OperationResult.failure("Etudiant introuvable pour finaliser la reservation issue du matching.");
+            return OperationResult.failure("La reservation automatique n'a pas pu etre finalisee pour le moment.");
         }
 
         String selectExistingSql = """
@@ -690,6 +706,14 @@ public class MatchingService {
         return compatibleTutors;
     }
 
+    private void logMatchingError(String context, Exception exception) {
+        if (exception == null) {
+            System.out.println(context + ".");
+            return;
+        }
+        System.out.println(context + ": " + exception.getMessage());
+    }
+
     private TutorMatchInboxItem loadTutorMatchCandidate(int candidateId, int tutorId) {
         List<TutorMatchInboxItem> inbox = getTutorPendingMatches(tutorId);
         return inbox.stream()
@@ -748,29 +772,37 @@ public class MatchingService {
             return AnalysisResolution.failure("Le besoin etudiant doit etre renseigne pour lancer l'analyse IA.");
         }
 
-        GroqMatchingAnalysisService.MatchingAiAttempt attempt = groqMatchingAnalysisService.analyzeNeed(
-            new GroqMatchingAnalysisService.MatchingAiContext(
-                safeText(normalizeSubject(draft.subject()), "Matiere non precise"),
-                normalizedText,
-                normalizeMode(draft.mode()),
-                normalizeVisibility(draft.visibilityScope()),
-                draft.durationMin()
-            )
-        );
-        if (!attempt.success() || attempt.analysis() == null) {
-            return AnalysisResolution.failure(
-                safeText(attempt.errorMessage(), "L'analyse IA du matching est indisponible.")
+        GroqMatchingAnalysisService.MatchingAiAttempt attempt = null;
+        if (groqMatchingAnalysisService.isConfigured()) {
+            attempt = groqMatchingAnalysisService.analyzeNeed(
+                new GroqMatchingAnalysisService.MatchingAiContext(
+                    safeText(normalizeSubject(draft.subject()), "Matiere non precise"),
+                    normalizedText,
+                    normalizeMode(draft.mode()),
+                    normalizeVisibility(draft.visibilityScope()),
+                    draft.durationMin()
+                )
             );
         }
 
-        GroqMatchingAnalysisService.MatchingAiAnalysis analysis = attempt.analysis();
-        MatchingNeedProfile needProfile = new MatchingNeedProfile(
-            safeText(normalizeOptionalText(analysis.summary()), "Analyse IA indisponible."),
-            safeText(normalizeOptionalText(analysis.level()), "Niveau non precise"),
-            normalizeExternalAiKeywords(analysis.keywords()),
-            safeText(normalizeOptionalText(analysis.source()), "IA externe")
-        );
-        return AnalysisResolution.success(needProfile);
+        if (attempt != null && attempt.success() && attempt.analysis() != null) {
+            GroqMatchingAnalysisService.MatchingAiAnalysis analysis = attempt.analysis();
+            MatchingNeedProfile needProfile = new MatchingNeedProfile(
+                safeText(normalizeOptionalText(analysis.summary()), "Analyse IA indisponible."),
+                safeText(normalizeOptionalText(analysis.level()), "Niveau non precise"),
+                normalizeExternalAiKeywords(analysis.keywords()),
+                safeText(normalizeOptionalText(analysis.source()), "IA externe")
+            );
+            return AnalysisResolution.success(needProfile);
+        }
+
+        if (attempt != null && attempt.errorMessage() != null && !attempt.errorMessage().isBlank()) {
+            System.out.println("Matching AI fallback active: " + attempt.errorMessage());
+        } else if (!groqMatchingAnalysisService.isConfigured()) {
+            System.out.println("Matching AI fallback active: GROQ_API_KEY non configuree.");
+        }
+
+        return AnalysisResolution.success(buildLocalNeedProfile(draft, normalizedText));
     }
 
     private List<String> normalizeExternalAiKeywords(List<String> rawKeywords) {
@@ -789,6 +821,144 @@ public class MatchingService {
             }
         }
         return normalizedKeywords.isEmpty() ? List.of("matching cible") : normalizedKeywords;
+    }
+
+    private MatchingNeedProfile buildLocalNeedProfile(MatchingDraft draft, String normalizedText) {
+        String normalizedSubject = safeText(normalizeSubject(draft == null ? null : draft.subject()), "Matiere non precise");
+        String level = inferLocalLevel(normalizedText);
+        List<String> keywords = extractLocalKeywords(normalizedSubject, normalizedText, draft);
+        String summary = buildLocalSummary(normalizedSubject, draft, level, keywords);
+
+        return new MatchingNeedProfile(
+            summary,
+            level,
+            keywords,
+            "Analyse locale"
+        );
+    }
+
+    private String buildLocalSummary(String normalizedSubject,
+                                     MatchingDraft draft,
+                                     String level,
+                                     List<String> keywords) {
+        List<String> fragments = new ArrayList<>();
+        fragments.add("Besoin en " + safeText(normalizedSubject, "matiere non precise").toLowerCase(Locale.ROOT));
+
+        if (level != null && !"Niveau non precise".equalsIgnoreCase(level)) {
+            fragments.add("niveau " + level.toLowerCase(Locale.ROOT));
+        }
+
+        fragments.add(Seance.MODE_ONSITE.equals(normalizeMode(draft == null ? null : draft.mode()))
+            ? "format presentiel"
+            : "format en ligne");
+        fragments.add(VISIBILITY_PRIVATE.equals(normalizeVisibility(draft == null ? null : draft.visibilityScope()))
+            ? "suivi individuel"
+            : "seance ouverte");
+
+        String summary = String.join(", ", fragments) + ".";
+        if (keywords != null && !keywords.isEmpty()) {
+            summary += " Focus: " + String.join(", ", keywords.stream().limit(3).toList()) + ".";
+        }
+        return summary;
+    }
+
+    private String inferLocalLevel(String objectiveText) {
+        String normalized = objectiveText == null ? "" : objectiveText.toLowerCase(Locale.ROOT);
+        if (containsAny(normalized, "avance", "avancee", "avancees", "approfond", "expert", "complexe", "concours")) {
+            return "Avance";
+        }
+        if (containsAny(normalized, "debut", "debutant", "debutante", "initiation", "commencer", "bases", "base")) {
+            return "Debutant";
+        }
+        if (containsAny(normalized, "intermediaire", "revision", "revisions", "renforcement", "pratique", "application")) {
+            return "Intermediaire";
+        }
+        return "Niveau non precise";
+    }
+
+    private List<String> extractLocalKeywords(String normalizedSubject, String objectiveText, MatchingDraft draft) {
+        LinkedHashSet<String> keywords = new LinkedHashSet<>();
+
+        String subjectKeyword = normalizeOptionalText(normalizedSubject);
+        if (subjectKeyword != null && !"Matiere non precise".equalsIgnoreCase(subjectKeyword)) {
+            keywords.add(subjectKeyword);
+        }
+
+        String normalized = objectiveText == null ? "" : objectiveText.toLowerCase(Locale.ROOT);
+        for (String boostedKeyword : List.of(
+            "revision", "exercices", "examens", "compréhension", "methodologie",
+            "algorithme", "programmation", "analyse", "problemes", "logique"
+        )) {
+            if (normalized.contains(boostedKeyword.toLowerCase(Locale.ROOT))) {
+                keywords.add(capitalizeKeyword(boostedKeyword));
+            }
+            if (keywords.size() >= 5) {
+                return new ArrayList<>(keywords);
+            }
+        }
+
+        String[] tokens = normalized.split("[^\\p{L}\\p{Nd}#+]+");
+        for (String token : tokens) {
+            String normalizedToken = normalizeOptionalText(token);
+            if (normalizedToken == null) {
+                continue;
+            }
+
+            String lowered = normalizedToken.toLowerCase(Locale.ROOT);
+            if (lowered.length() < 4 || isLocalKeywordStopWord(lowered)) {
+                continue;
+            }
+
+            keywords.add(capitalizeKeyword(lowered));
+            if (keywords.size() >= 5) {
+                return new ArrayList<>(keywords);
+            }
+        }
+
+        keywords.add(Seance.MODE_ONSITE.equals(normalizeMode(draft == null ? null : draft.mode())) ? "Presentiel" : "En ligne");
+        if (keywords.size() < 5) {
+            keywords.add(VISIBILITY_PRIVATE.equals(normalizeVisibility(draft == null ? null : draft.visibilityScope()))
+                ? "Suivi individuel"
+                : "Session ouverte");
+        }
+        if (keywords.size() < 3) {
+            keywords.add("Accompagnement");
+        }
+        if (keywords.size() < 3) {
+            keywords.add("Progression");
+        }
+        return new ArrayList<>(keywords).subList(0, Math.min(5, keywords.size()));
+    }
+
+    private boolean isLocalKeywordStopWord(String token) {
+        return Arrays.asList(
+            "avec", "pour", "dans", "cette", "besoin", "avoir", "etre", "tres", "plus", "moins",
+            "seance", "cours", "aider", "aide", "aides", "faire", "mieux", "niveau", "student",
+            "etudiant", "etudiante", "ligne", "presentiel", "individuelle", "publique", "objectif",
+            "souhaite", "souhaiter", "sujet", "matiere", "demande", "besoins", "comment", "quand",
+            "parce", "aussi", "alors", "donc", "mais", "sans", "chez", "cela", "cette", "ceux",
+            "leurs", "leurs", "tutorat", "matching", "propose", "proposer", "trouver"
+        ).contains(token);
+    }
+
+    private String capitalizeKeyword(String value) {
+        String normalized = normalizeOptionalText(value);
+        if (normalized == null) {
+            return "Matching cible";
+        }
+        return normalized.substring(0, 1).toUpperCase(Locale.ROOT) + normalized.substring(1);
+    }
+
+    private boolean containsAny(String text, String... fragments) {
+        if (text == null || text.isBlank() || fragments == null) {
+            return false;
+        }
+        for (String fragment : fragments) {
+            if (fragment != null && !fragment.isBlank() && text.contains(fragment.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<String> buildSignals(int subjectSessions,

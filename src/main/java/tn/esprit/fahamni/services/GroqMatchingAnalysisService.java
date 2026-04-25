@@ -35,10 +35,10 @@ public class GroqMatchingAnalysisService {
     public MatchingAiAttempt analyzeNeed(MatchingAiContext context) {
         String apiKey = normalizeEnv("GROQ_API_KEY");
         if (apiKey == null) {
-            return MatchingAiAttempt.failure("La variable d'environnement GROQ_API_KEY est introuvable.");
+            return MatchingAiAttempt.failure("Le service d'analyse assistee n'est pas disponible pour le moment.");
         }
         if (context == null || context.objectiveText() == null || context.objectiveText().isBlank()) {
-            return MatchingAiAttempt.failure("Le besoin etudiant doit etre renseigne pour lancer l'analyse Groq.");
+            return MatchingAiAttempt.failure("Veuillez decrire votre besoin pour lancer le matching.");
         }
 
         String model = resolveModel();
@@ -66,7 +66,7 @@ public class GroqMatchingAnalysisService {
             String outputJson = extractOutputJson(response.body());
             if (outputJson == null) {
                 System.out.println("Groq matching analysis unavailable: response parsing failed.");
-                return MatchingAiAttempt.failure("La reponse Groq n'a pas pu etre interpretee pour le matching.");
+                return MatchingAiAttempt.failure("L'analyse assistee n'a pas pu aboutir pour le moment.");
             }
 
             String summary = extractStringField(outputJson, "summary");
@@ -74,7 +74,7 @@ public class GroqMatchingAnalysisService {
             List<String> keywords = extractStringArrayField(outputJson, "keywords");
             if (summary == null || level == null || keywords.isEmpty()) {
                 System.out.println("Groq matching analysis unavailable: structured payload incomplete.");
-                return MatchingAiAttempt.failure("La reponse Groq est incomplete pour cette analyse de matching.");
+                return MatchingAiAttempt.failure("L'analyse assistee n'a pas pu aboutir pour le moment.");
             }
 
             return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Groq externe"));
@@ -83,7 +83,7 @@ public class GroqMatchingAnalysisService {
                 Thread.currentThread().interrupt();
             }
             System.out.println("Groq matching analysis unavailable: " + e.getMessage());
-            return MatchingAiAttempt.failure("L'analyse Groq est momentanement indisponible: " + e.getMessage());
+            return MatchingAiAttempt.failure("Le service d'analyse assistee est temporairement indisponible.");
         }
     }
 
@@ -379,15 +379,8 @@ public class GroqMatchingAnalysisService {
 
     private String resolveHttpFailureMessage(int statusCode, String errorDetail) {
         return switch (statusCode) {
-            case 400 -> errorDetail != null
-                ? "La requete envoyee a Groq est invalide: " + errorDetail
-                : "La requete envoyee a Groq est invalide. Verifiez le modele et le schema JSON transmis.";
-            case 401 -> "L'appel Groq a ete refuse. Verifiez la cle API configuree.";
-            case 403 -> "L'appel Groq est interdit pour ce projet ou cette organisation.";
-            case 429 -> "La limite Groq est atteinte temporairement. Reessayez dans un instant.";
-            default -> errorDetail != null
-                ? "Groq a retourne une erreur HTTP " + statusCode + " pendant l'analyse du matching: " + errorDetail
-                : "Groq a retourne une erreur HTTP " + statusCode + " pendant l'analyse du matching.";
+            case 429 -> "Le service d'analyse assistee est temporairement surcharge. Veuillez reessayer dans un instant.";
+            default -> "Le service d'analyse assistee est temporairement indisponible.";
         };
     }
 
