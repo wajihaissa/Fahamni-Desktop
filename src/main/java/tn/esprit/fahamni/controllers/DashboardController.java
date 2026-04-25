@@ -78,29 +78,21 @@ public class DashboardController {
     private ImageView tutorPortraitImageView;
 
     @FXML
-    private ImageView campusRoomImageView;
-
-    @FXML
-    private StackPane campusVisualPane;
-
-    @FXML
     private void initialize() {
-        welcomeTitleLabel.setText("Learn better with the right tutor, tools, and study flow");
+        welcomeTitleLabel.setText("Apprends mieux avec le bon tuteur, les bons outils et un bon rythme");
         welcomeSubtitleLabel.setText(
-            "Welcome back, " + UserSession.getDisplayName()
-                + ". Book tutoring sessions, manage your calendar, and stay focused from one clean workspace.");
+            "Bon retour, " + UserSession.getDisplayName()
+                + ". Reserve des seances, organise ton calendrier et reste concentre depuis un espace clair.");
         accountNameLabel.setText(UserSession.getDisplayName());
-        accountEmailLabel.setText(UserSession.hasCurrentUser() ? UserSession.getCurrentUser().getEmail() : "No email available");
+        accountEmailLabel.setText(UserSession.hasCurrentUser() ? UserSession.getCurrentUser().getEmail() : "Aucun e-mail disponible");
         accountRoleLabel.setText(UserSession.getRoleLabel());
-        focusTitleLabel.setText("Priority for today");
+        focusTitleLabel.setText("Priorite du jour");
         focusCopyLabel.setText(
-            "Start with your next session, then keep the week steady with planner blocks and resource check-ins.");
+            "Commence par ta prochaine seance, puis garde un rythme stable avec le planner et les ressources.");
         Platform.runLater(() -> {
             FrontOfficeMotion.installInteractiveMotion(dashboardHomeContent);
             FrontOfficeMotion.applyRoundedClip(heroStudyImageView, 38);
             FrontOfficeMotion.applyRoundedClip(tutorPortraitImageView, 28);
-            FrontOfficeMotion.applyRoundedClip(campusRoomImageView, 24);
-            FrontOfficeMotion.bindImageToRegion(campusRoomImageView, campusVisualPane, 8.0, 8.0);
         });
         playIntroAnimation();
     }

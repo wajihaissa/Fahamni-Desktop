@@ -115,7 +115,7 @@
                 </center>
 
                 <right>
-                    <Button text="Logout" onAction="#handleLogout" styleClass="front-navbar-logout" BorderPane.alignment="CENTER_RIGHT"/>
+                    <Button text="Deconnexion" onAction="#handleLogout" styleClass="front-navbar-logout" BorderPane.alignment="CENTER_RIGHT"/>
                 </right>
             </BorderPane>
 

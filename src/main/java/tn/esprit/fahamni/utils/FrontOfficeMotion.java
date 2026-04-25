@@ -31,8 +31,7 @@ public final class FrontOfficeMotion {
         ".about-section-card",
         ".about-audience-card",
         ".about-feature-card",
-        ".about-side-card",
-        ".dashboard-premium-campus-visual-shell"
+        ".about-side-card"
     };
 
     private FrontOfficeMotion() {

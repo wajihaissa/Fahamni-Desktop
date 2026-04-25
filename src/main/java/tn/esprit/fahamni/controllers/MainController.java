@@ -228,15 +228,15 @@ public class MainController {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         String countText = unreadCount > 0
-                ? unreadCount + " unread"
-                : (notifications.isEmpty() ? "Empty" : notifications.size() + " total");
+                ? unreadCount + " non lues"
+                : (notifications.isEmpty() ? "Aucune" : notifications.size() + " au total");
         Label countLabel = new Label(countText);
         countLabel.setStyle("-fx-font-size: 11; -fx-text-fill: " + (lightTheme ? "#6d8198;" : "#92a7bf;"));
         header.getChildren().addAll(titleLabel, spacer, countLabel);
         container.getChildren().add(header);
 
         if (notifications.isEmpty()) {
-            Label emptyLabel = new Label("No notifications for now.");
+            Label emptyLabel = new Label("Aucune notification pour le moment.");
             emptyLabel.setPadding(new Insets(24, 16, 24, 16));
             emptyLabel.setStyle("-fx-text-fill: " + (lightTheme ? "#7288a0;" : "#8fa6bf;") + "-fx-font-size: 12;");
             container.getChildren().add(emptyLabel);
@@ -284,7 +284,7 @@ public class MainController {
                 HBox rightBox = new HBox(4);
                 rightBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
                 if (isUnread) {
-                    Label badge = new Label("New");
+                    Label badge = new Label("Nouveau");
                     badge.setStyle("-fx-background-color: rgba(79,216,255,0.18); -fx-text-fill: #c6f7ff;" +
                             "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;" +
                             "-fx-padding: 1 5;");
@@ -309,7 +309,7 @@ public class MainController {
             container.getChildren().add(scroll);
 
             if (unreadCount > 0 && userId > 0) {
-                Button markReadButton = new Button("Mark all as read");
+                Button markReadButton = new Button("Tout marquer comme lu");
                 markReadButton.setMaxWidth(Double.MAX_VALUE);
                 markReadButton.setStyle(
                     "-fx-background-color: rgba(255,255,255,0.04); -fx-text-fill: #d6e7f8;" +
@@ -384,7 +384,7 @@ public class MainController {
             displayView(view, title);
         } catch (Exception e) {
             e.printStackTrace();
-            Label placeholder = new Label("View not implemented yet: " + fxmlFile);
+            Label placeholder = new Label("Vue non implemente encore : " + fxmlFile);
             placeholder.getStyleClass().add("content-placeholder");
             displayView(placeholder, title);
         }
@@ -448,7 +448,7 @@ public class MainController {
         boolean lightMode = FrontOfficeThemePreference.isLightMode();
         if (themeToggleButton != null) {
             themeToggleButton.setText("");
-            themeToggleButton.setAccessibleText(lightMode ? "Switch to dark mode" : "Switch to light mode");
+            themeToggleButton.setAccessibleText(lightMode ? "Passer en mode sombre" : "Passer en mode clair");
         }
         if (themeToggleIcon != null) {
             themeToggleIcon.setContent(lightMode ? THEME_MOON_ICON : THEME_SUN_ICON);

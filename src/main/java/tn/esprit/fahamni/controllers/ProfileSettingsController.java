@@ -423,20 +423,20 @@ public class ProfileSettingsController {
 
         switch (section) {
             case PERSONAL_INFO -> {
-                contentTitleLabel.setText("Personal Info");
-                contentSubtitleLabel.setText("Update your personal details and profile information.");
+                contentTitleLabel.setText("Informations personnelles");
+                contentSubtitleLabel.setText("Mets a jour tes informations personnelles et ton profil.");
             }
             case ACCOUNT_SETTINGS -> {
-                contentTitleLabel.setText("Account Settings");
-                contentSubtitleLabel.setText("These values are managed from the backoffice by administrators only.");
+                contentTitleLabel.setText("Parametres du compte");
+                contentSubtitleLabel.setText("Ces valeurs sont gerees uniquement depuis le backoffice par les administrateurs.");
             }
             case CERTIFICATIONS -> {
-                contentTitleLabel.setText("Certifications & Credentials");
-                contentSubtitleLabel.setText("Prepare your certifications area now. The backend hookup can come later.");
+                contentTitleLabel.setText("Certifications et justificatifs");
+                contentSubtitleLabel.setText("Prepare cette section maintenant. Le branchement backend pourra venir plus tard.");
             }
             case SECURITY -> {
-                contentTitleLabel.setText("Security Settings");
-                contentSubtitleLabel.setText("The action buttons are ready. We will connect the security APIs when you ask for them.");
+                contentTitleLabel.setText("Parametres de securite");
+                contentSubtitleLabel.setText("Les boutons d'action sont prets. Nous pourrons brancher les API de securite ensuite.");
             }
         }
     }
@@ -525,17 +525,17 @@ public class ProfileSettingsController {
             faceEnrollmentStatusLabel.setText(faceStatus.faceStatus());
         }
         if (faceEnrolledAtLabel != null) {
-            faceEnrolledAtLabel.setText("Saved on: " + faceStatus.enrolledAt());
+            faceEnrolledAtLabel.setText("Enregistre le : " + faceStatus.enrolledAt());
         }
     }
 
     private void refreshTwoFactorStatus() {
         TwoFactorAuthService.TwoFactorStatus status = twoFactorAuthService.getCurrentStatus();
         if (twoFactorStatusLabel != null) {
-            twoFactorStatusLabel.setText(status.enabled() ? "Status: Enabled" : "Status: Disabled");
+            twoFactorStatusLabel.setText(status.enabled() ? "Statut : Active" : "Statut : Desactivee");
         }
         if (twoFactorConfirmedAtLabel != null) {
-            twoFactorConfirmedAtLabel.setText("Confirmed on: " + status.confirmedAt());
+            twoFactorConfirmedAtLabel.setText("Confirmee le : " + status.confirmedAt());
         }
 
         if (status.setupPending() && status.pendingPayload() != null) {
@@ -568,7 +568,7 @@ public class ProfileSettingsController {
             twoFactorQrImageView.setImage(null);
         }
         if (twoFactorSecretLabel != null) {
-            twoFactorSecretLabel.setText("No secret generated yet.");
+            twoFactorSecretLabel.setText("Aucun secret genere pour le moment.");
         }
         if (twoFactorSetupBox != null) {
             twoFactorSetupBox.setManaged(false);
