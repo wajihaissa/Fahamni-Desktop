@@ -165,14 +165,16 @@ public class AdaptiveQuizService {
             }
 
             int currentTopicUsage = topicUsage.getOrDefault(topic, 0);
-            if (currentTopicUsage >= maxPerTopic && hasAlternativeTopic(rankedCandidates, usedQuestionIds, topic, targetDifficultyDistribution, difficultyUsage)) {
+            if (topicQuotaReached(currentTopicUsage, maxPerTopic)
+                    && hasAlternativeTopic(rankedCandidates, usedQuestionIds, topic, targetDifficultyDistribution, difficultyUsage)) {
                 usedQuestionIds.remove(question.getId());
                 continue;
             }
 
             int difficultyTarget = targetDifficultyDistribution.getOrDefault(difficulty, 0);
             int currentDifficultyUsage = difficultyUsage.getOrDefault(difficulty, 0);
-            if (difficultyTarget > 0 && currentDifficultyUsage >= difficultyTarget && hasAlternativeDifficulty(rankedCandidates, usedQuestionIds, difficulty, targetDifficultyDistribution, difficultyUsage)) {
+            if (difficultyQuotaReached(currentDifficultyUsage, difficultyTarget)
+                    && hasAlternativeDifficulty(rankedCandidates, usedQuestionIds, difficulty, targetDifficultyDistribution, difficultyUsage)) {
                 usedQuestionIds.remove(question.getId());
                 continue;
             }
@@ -245,6 +247,14 @@ public class AdaptiveQuizService {
             }
         }
         return false;
+    }
+
+    private boolean topicQuotaReached(int currentTopicUsage, int maxPerTopic) {
+        return currentTopicUsage >= maxPerTopic;
+    }
+
+    private boolean difficultyQuotaReached(int currentDifficultyUsage, int difficultyTarget) {
+        return difficultyTarget > 0 && currentDifficultyUsage >= difficultyTarget;
     }
 
     private Quiz persistAdaptiveQuiz(User user, List<Question> selectedQuestions, QuizUserInsight insight) {
