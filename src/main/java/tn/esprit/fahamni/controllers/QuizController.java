@@ -112,12 +112,7 @@ public class QuizController {
             return;
         }
 
-        if (showingAll) {
-            quizResultsSummaryLabel.setText(resultCount + " quiz available");
-            return;
-        }
-
-        quizResultsSummaryLabel.setText(resultCount + " quiz match your search");
+        quizResultsSummaryLabel.setText(buildQuizResultsSummaryText(resultCount, showingAll));
     }
 
     private Comparator<Quiz> resolveQuizComparator() {
@@ -698,6 +693,13 @@ public class QuizController {
     private String buildAttemptCountLabel(Quiz quiz) {
         int attemptCount = quiz.getQuizResults().size();
         return attemptCount == 1 ? "1 recorded attempt" : attemptCount + " recorded attempts";
+    }
+
+    private String buildQuizResultsSummaryText(int resultCount, boolean showingAll) {
+        if (showingAll) {
+            return resultCount + " quiz available";
+        }
+        return resultCount + " quiz match your search";
     }
 
     private String formatPercentage(double value) {
