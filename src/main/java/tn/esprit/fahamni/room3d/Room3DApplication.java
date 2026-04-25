@@ -265,7 +265,7 @@ public class Room3DApplication extends SimpleApplication {
         attachLights();
         positionCamera(metrics);
 
-        titleText.setText("");
+        titleText.setText(buildHeadlineText());
         summaryText.setText(buildDefaultSummary());
         selectionText.setText(buildDefaultSelectionText());
         selectionText.setColor(createHudNeutralColor());
@@ -333,14 +333,32 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private void updateHudPositions() {
-        if (selectionText == null || interactionHintText == null || hoverText == null) {
+        if (titleText == null || summaryText == null || selectionText == null || legendText == null || interactionHintText == null || hoverText == null) {
             return;
         }
 
-        if (selectionText.getCullHint() != Spatial.CullHint.Always) {
-            selectionText.setLocalTranslation(18f, cam.getHeight() - 22f, 0f);
+        float topY = cam.getHeight() - 18f;
+        if (titleText.getCullHint() != Spatial.CullHint.Always) {
+            titleText.setLocalTranslation(18f, topY, 0f);
+            topY -= estimateTextBlockHeight(titleText.getText(), titleText.getLineHeight()) + 8f;
         }
-        interactionHintText.setLocalTranslation(18f, 24f + interactionHintText.getLineHeight(), 0f);
+        if (summaryText.getCullHint() != Spatial.CullHint.Always) {
+            summaryText.setLocalTranslation(18f, topY, 0f);
+            topY -= estimateTextBlockHeight(summaryText.getText(), summaryText.getLineHeight()) + 10f;
+        }
+        if (selectionText.getCullHint() != Spatial.CullHint.Always) {
+            selectionText.setLocalTranslation(18f, topY, 0f);
+        }
+
+        float interactionBaseline = 24f + interactionHintText.getLineHeight();
+        interactionHintText.setLocalTranslation(18f, interactionBaseline, 0f);
+        if (legendText.getCullHint() != Spatial.CullHint.Always) {
+            legendText.setLocalTranslation(
+                18f,
+                interactionBaseline + estimateTextBlockHeight(legendText.getText(), legendText.getLineHeight()) + 16f,
+                0f
+            );
+        }
         updateCameraPresetButtonPositions();
         updateHoverTextPosition();
     }
@@ -2266,22 +2284,76 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private String buildDefaultSummary() {
-        return "";
+        if (previewData == null) {
+            return "";
+        }
+        if (previewData.summaryNote() != null) {
+            return previewData.summaryNote();
+        }
+
+        StringBuilder builder = new StringBuilder();
+        if (previewData.isDesignReview()) {
+            builder.append("Mode conception AI | ");
+        }
+        builder.append(previewData.summaryLine());
+        builder.append("\nDisposition: ").append(previewData.disposition());
+        builder.append(" | Accessibilite: ").append(previewData.accessible() ? "oui" : "non");
+        return builder.toString();
     }
 
     private String buildDefaultSelectionText() {
-        return "";
+        if (previewData == null) {
+            return "";
+        }
+        if (previewData.supportsSeatSelection()) {
+            return "Choisissez une place disponible dans la salle.";
+        }
+        if (previewData.isDesignReview()) {
+            return "Inspectez la proposition 3D puis revenez dans le backoffice pour confirmer ou relancer l'AI.";
+        }
+        return "Cliquez une place pour consulter son emplacement dans la salle.";
     }
 
     private String buildLegendText() {
-        return "";
+        if (previewData == null) {
+            return "";
+        }
+        if (previewData.legendNote() != null) {
+            return previewData.legendNote();
+        }
+        if (previewData.supportsSeatSelection()) {
+            return "Disponibles: " + countSeats(RoomSeatVisualState.AVAILABLE)
+                + " | Reservees: " + countSeats(RoomSeatVisualState.RESERVED)
+                + " | Maintenance: " + countSeats(RoomSeatVisualState.MAINTENANCE);
+        }
+        return "Capacite simulee: " + previewData.seatCount() + "/" + previewData.capacity()
+            + " places | Etat: " + previewData.roomStatus();
     }
 
     private String buildInteractionHintText() {
+        if (previewData != null && previewData.isDesignReview()) {
+            return "Guide: glisser pour deplacer la camera | boutons camera | ZQSD/WASD | validation dans le backoffice";
+        }
         if (previewData.supportsSeatSelection()) {
             return "Guide: clic pour choisir | glisser pour deplacer la camera | boutons camera | ZQSD/WASD";
         }
         return "Guide: clic pour voir une place | glisser pour deplacer la camera | boutons camera | ZQSD/WASD";
+    }
+
+    private String buildHeadlineText() {
+        if (previewData == null) {
+            return "";
+        }
+        if (previewData.headline() != null) {
+            return previewData.headline();
+        }
+        if (previewData.isDesignReview()) {
+            return "Conception 3D | " + previewData.roomName();
+        }
+        if (previewData.supportsSeatSelection()) {
+            return "Selection 3D | " + previewData.roomName();
+        }
+        return "Apercu 3D | " + previewData.roomName();
     }
 
     private int countSeats(RoomSeatVisualState state) {

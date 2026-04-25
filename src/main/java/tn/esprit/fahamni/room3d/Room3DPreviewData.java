@@ -12,7 +12,10 @@ public record Room3DPreviewData(
     int capacity,
     boolean accessible,
     Room3DViewMode viewMode,
-    List<SeatPreview> seats
+    List<SeatPreview> seats,
+    String headline,
+    String summaryNote,
+    String legendNote
 ) {
     public Room3DPreviewData(
         String roomName,
@@ -25,7 +28,22 @@ public record Room3DPreviewData(
         boolean accessible,
         List<SeatPreview> seats
     ) {
-        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, Room3DViewMode.PREVIEW, seats);
+        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, Room3DViewMode.PREVIEW, seats, null, null, null);
+    }
+
+    public Room3DPreviewData(
+        String roomName,
+        String building,
+        String location,
+        String roomType,
+        String disposition,
+        String roomStatus,
+        int capacity,
+        boolean accessible,
+        Room3DViewMode viewMode,
+        List<SeatPreview> seats
+    ) {
+        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, viewMode, seats, null, null, null);
     }
 
     public Room3DPreviewData {
@@ -38,10 +56,17 @@ public record Room3DPreviewData(
         capacity = Math.max(0, capacity);
         viewMode = viewMode == null ? Room3DViewMode.PREVIEW : viewMode;
         seats = seats == null ? List.of() : List.copyOf(seats);
+        headline = normalizeOptionalText(headline);
+        summaryNote = normalizeOptionalText(summaryNote);
+        legendNote = normalizeOptionalText(legendNote);
     }
 
     public boolean supportsSeatSelection() {
         return viewMode.supportsSeatSelection();
+    }
+
+    public boolean isDesignReview() {
+        return viewMode.isDesignReview();
     }
 
     public int seatCount() {
@@ -97,11 +122,38 @@ public record Room3DPreviewData(
             + " places";
     }
 
+    public Room3DPreviewData withAnnotations(String headline, String summaryNote, String legendNote) {
+        return new Room3DPreviewData(
+            roomName,
+            building,
+            location,
+            roomType,
+            disposition,
+            roomStatus,
+            capacity,
+            accessible,
+            viewMode,
+            seats,
+            headline,
+            summaryNote,
+            legendNote
+        );
+    }
+
     private static String normalizeText(String value, String fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
         }
         return value.trim();
+    }
+
+    private static String normalizeOptionalText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     public record SeatPreview(int seatId, int number, int row, int column, RoomSeatVisualState state, boolean selectable) {

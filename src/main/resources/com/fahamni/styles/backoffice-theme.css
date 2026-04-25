@@ -2388,6 +2388,70 @@
             -fx-effect: dropshadow(gaussian, rgba(24, 63, 130, 0.10), 20, 0.18, 0, 8);
         }
 
+        .ai-dialog-hero {
+            -fx-background-color:
+                linear-gradient(to right, rgba(255, 255, 255, 0.96) 0%, rgba(244, 249, 255, 0.92) 100%);
+            -fx-border-color: rgba(173, 199, 238, 0.85);
+            -fx-border-width: 1px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-padding: 18px 18px 16px 18px;
+        }
+
+        .ai-dialog-hero-title {
+            -fx-font-size: 24px;
+            -fx-text-fill: #173b74;
+        }
+
+        .ai-dialog-hero-copy {
+            -fx-text-fill: #5d7396;
+            -fx-font-size: 13px;
+            -fx-line-spacing: 1px;
+        }
+
+        .ai-dialog-prompt-card,
+        .ai-dialog-form-section {
+            -fx-background-color: rgba(255, 255, 255, 0.92);
+            -fx-border-color: rgba(214, 226, 244, 0.95);
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 16px;
+        }
+
+        .ai-dialog-prompt-copy {
+            -fx-text-fill: #5f789d;
+        }
+
+        .ai-dialog-prompt-actions {
+            -fx-alignment: center-right;
+        }
+
+        .ai-dialog-section-title {
+            -fx-text-fill: #234774;
+        }
+
+        .button.ai-dialog-generate-button {
+            -fx-background-color: linear-gradient(to bottom, #fffdfb 0%, #f3ddd0 100%);
+            -fx-border-color: #d8ae96;
+            -fx-text-fill: #8a5a45;
+            -fx-effect: dropshadow(gaussian, rgba(176, 124, 95, 0.14), 10, 0.18, 0, 3);
+        }
+
+        .button.ai-dialog-generate-button:hover {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7e7dd 100%);
+            -fx-border-color: #ca9a80;
+            -fx-text-fill: #7b4f3d;
+            -fx-effect: dropshadow(gaussian, rgba(176, 124, 95, 0.20), 12, 0.20, 0, 4);
+        }
+
+        .button.ai-dialog-generate-button:pressed {
+            -fx-background-color: linear-gradient(to bottom, #efd8cb 0%, #e4c1ae 100%);
+            -fx-border-color: #b98569;
+            -fx-text-fill: #6f4534;
+            -fx-effect: none;
+        }
+
         .backoffice-room-equipment-dialog-title {
             -fx-text-fill: #173b74;
             -fx-font-size: 22px;

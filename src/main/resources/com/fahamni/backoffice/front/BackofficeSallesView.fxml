@@ -119,6 +119,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="12.0">
                         <Label text="Fiche salle" styleClass="backoffice-section-title"/>
                         <Region HBox.hgrow="ALWAYS"/>
+                        <Button onAction="#handleDesignSalleWithAi" text="Concevoir avec AI" styleClass="backoffice-primary-button"/>
                         <Button onAction="#handlePreviewSalle3D" text="Apercu 3D" styleClass="backoffice-room-preview-button"/>
                     </HBox>
 

@@ -191,6 +191,9 @@ public final class Room3DViewerLauncher {
         if (previewData != null && previewData.supportsSeatSelection()) {
             return "Fahamni - Selection 3D de place";
         }
+        if (previewData != null && previewData.isDesignReview()) {
+            return "Fahamni - Conception 3D de salle";
+        }
         return "Fahamni - Apercu 3D de salle";
     }
 }

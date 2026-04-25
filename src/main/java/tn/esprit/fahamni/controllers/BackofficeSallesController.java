@@ -28,10 +28,14 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import tn.esprit.fahamni.Models.AiRoomDesignProposal;
+import tn.esprit.fahamni.Models.AiRoomDesignRequest;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.room3d.Room3DPreviewData;
 import tn.esprit.fahamni.room3d.Room3DPreviewService;
 import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
+import tn.esprit.fahamni.services.AiRoomDesignService;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.SalleEquipementService;
@@ -40,6 +44,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -146,6 +151,7 @@ public class BackofficeSallesController {
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
+    private final AiRoomDesignService aiRoomDesignService = new AiRoomDesignService(salleService);
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipementCatalog = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
@@ -182,7 +188,7 @@ public class BackofficeSallesController {
         hideFeedback();
 
         try {
-            Salle salle = buildSalle(0, null);
+            Salle salle = buildSalleFromControls(mainFormControls(), 0, null);
             salleService.add(salle);
 
             if (!loadSalles()) {
@@ -206,7 +212,7 @@ public class BackofficeSallesController {
         }
 
         try {
-            Salle salle = buildSalle(selectedSalle.getIdSalle(), selectedSalle.getDateDerniereMaintenance());
+            Salle salle = buildSalleFromControls(mainFormControls(), selectedSalle.getIdSalle(), selectedSalle.getDateDerniereMaintenance());
             if (!hasSalleDataChanged(selectedSalle, salle)) {
                 showFeedback("Aucune modification detectee pour cette salle.", true);
                 return;
@@ -261,6 +267,17 @@ public class BackofficeSallesController {
         sallesTable.getSelectionModel().clearSelection();
         clearForm();
         hideFeedback();
+    }
+
+    @FXML
+    private void handleDesignSalleWithAi() {
+        hideFeedback();
+
+        if (!loadEquipementCatalog()) {
+            return;
+        }
+
+        openAiRoomDesignDialog();
     }
 
     @FXML
@@ -365,12 +382,12 @@ public class BackofficeSallesController {
 
         try {
             Salle selectedSalle = sallesTable == null ? null : sallesTable.getSelectionModel().getSelectedItem();
-            Salle previewSalle = buildSalle(
+            Salle previewSalle = buildSalleFromControls(
+                mainFormControls(),
                 selectedSalle == null ? 0 : selectedSalle.getIdSalle(),
                 selectedSalle == null ? null : selectedSalle.getDateDerniereMaintenance()
             );
             boolean preferGeneratedLayout = selectedSalle == null || hasSalleDataChanged(selectedSalle, previewSalle);
-
             Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(previewSalle, preferGeneratedLayout));
             showFeedback("L'apercu 3D a ete ouvert ou actualise dans une fenetre dediee.", true);
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -458,19 +475,8 @@ public class BackofficeSallesController {
             return;
         }
 
-        nomField.setText(salle.getNom());
-        capaciteSpinner.getValueFactory().setValue(salle.getCapacite());
-        localisationField.setText(salle.getLocalisation());
-        batimentComboBox.setValue(normalizeBatimentValue(salle.getBatiment()));
-        typeComboBox.setValue(salle.getTypeSalle());
-        etatComboBox.setValue(salle.getEtat());
-        etageComboBox.setValue(normalizeEtageValue(salle.getEtage()));
-        refreshDispositionOptions(salle.getTypeSalle(), salle.getTypeDisposition());
-        accesHandicapeCheckBox.setSelected(salle.isAccesHandicape());
-        statutDetailleField.setText(defaultString(salle.getStatutDetaille()));
-        descriptionArea.setText(defaultString(salle.getDescription()));
+        applySalleDraftToControls(salle, mainFormControls());
         updateFixedEquipmentSummary(salle.getIdSalle());
-
         updateSelectionBadge(salle);
     }
 
@@ -491,16 +497,54 @@ public class BackofficeSallesController {
         updateSelectionBadge(null);
     }
 
-    private void refreshDispositionOptions(String typeSalle, String preferredDisposition) {
-        if (dispositionComboBox == null) {
+    private SalleFormControls mainFormControls() {
+        return new SalleFormControls(
+            nomField,
+            capaciteSpinner,
+            localisationField,
+            batimentComboBox,
+            typeComboBox,
+            etatComboBox,
+            etageComboBox,
+            dispositionComboBox,
+            accesHandicapeCheckBox,
+            statutDetailleField,
+            descriptionArea
+        );
+    }
+
+    private void applySalleDraftToControls(Salle salle, SalleFormControls controls) {
+        if (salle == null) {
             return;
         }
 
-        dispositionComboBox.getItems().setAll(salleService.getAvailableDispositionsForType(typeSalle));
-        dispositionComboBox.setDisable(dispositionComboBox.getItems().size() <= 1);
+        controls.nomField().setText(defaultString(salle.getNom()));
+        controls.capaciteSpinner().getValueFactory().setValue(Math.max(1, salle.getCapacite()));
+        controls.localisationField().setText(defaultString(salle.getLocalisation()));
+        controls.batimentComboBox().setValue(resolveAllowedValue(controls.batimentComboBox(), salle.getBatiment()));
+        controls.typeComboBox().setValue(resolveAllowedValue(controls.typeComboBox(), salle.getTypeSalle()));
+        controls.etatComboBox().setValue(resolveAllowedValue(controls.etatComboBox(), salle.getEtat()));
+        controls.etageComboBox().setValue(resolveAllowedValue(controls.etageComboBox(), normalizeEtageValue(salle.getEtage())));
+        refreshDispositionOptions(controls.dispositionComboBox(), salle.getTypeSalle(), salle.getTypeDisposition());
+        controls.accesHandicapeCheckBox().setSelected(salle.isAccesHandicape());
+        controls.statutDetailleField().setText(defaultString(salle.getStatutDetaille()));
+        controls.descriptionArea().setText(defaultString(salle.getDescription()));
+    }
+
+    private void refreshDispositionOptions(String typeSalle, String preferredDisposition) {
+        refreshDispositionOptions(dispositionComboBox, typeSalle, preferredDisposition);
+    }
+
+    private void refreshDispositionOptions(ComboBox<String> targetComboBox, String typeSalle, String preferredDisposition) {
+        if (targetComboBox == null) {
+            return;
+        }
+
+        targetComboBox.getItems().setAll(salleService.getAvailableDispositionsForType(typeSalle));
+        targetComboBox.setDisable(targetComboBox.getItems().size() <= 1);
 
         String resolvedDisposition = salleService.resolveDispositionForType(typeSalle, preferredDisposition);
-        dispositionComboBox.setValue(resolvedDisposition);
+        targetComboBox.setValue(resolvedDisposition);
     }
 
     private void applyFilter(String filterText) {
@@ -529,14 +573,17 @@ public class BackofficeSallesController {
             || contains(salle.getEtat(), filterText);
     }
 
-    private Salle buildSalle(int idSalle, LocalDate maintenanceDate) {
-        String nom = requireText(nomField.getText(), "Le nom de la salle est obligatoire.");
-        int capacite = parsePositiveInteger(capaciteSpinner.getEditor().getText(), "La capacite doit etre un entier positif.");
-        String localisation = requireText(localisationField.getText(), "La localisation est obligatoire.");
-        String batiment = requireText(batimentComboBox.getValue(), "Le batiment est obligatoire.");
-        String typeSalle = requireText(typeComboBox.getValue(), "Le type de salle est obligatoire.");
-        String etat = requireText(etatComboBox.getValue(), "L'etat de la salle est obligatoire.");
-        String disposition = salleService.resolveDispositionForType(typeSalle, dispositionComboBox.getValue());
+    private Salle buildSalleFromControls(SalleFormControls controls, int idSalle, LocalDate maintenanceDate) {
+        String nom = requireText(controls.nomField().getText(), "Le nom de la salle est obligatoire.");
+        int capacite = parsePositiveInteger(
+            controls.capaciteSpinner().getEditor().getText(),
+            "La capacite doit etre un entier positif."
+        );
+        String localisation = requireText(controls.localisationField().getText(), "La localisation est obligatoire.");
+        String batiment = requireText(controls.batimentComboBox().getValue(), "Le batiment est obligatoire.");
+        String typeSalle = requireText(controls.typeComboBox().getValue(), "Le type de salle est obligatoire.");
+        String etat = requireText(controls.etatComboBox().getValue(), "L'etat de la salle est obligatoire.");
+        String disposition = salleService.resolveDispositionForType(typeSalle, controls.dispositionComboBox().getValue());
 
         return new Salle(
             idSalle,
@@ -545,12 +592,12 @@ public class BackofficeSallesController {
             localisation,
             typeSalle,
             etat,
-            trimToNull(descriptionArea.getText()),
+            trimToNull(controls.descriptionArea().getText()),
             batiment,
-            etageComboBox.getValue(),
+            controls.etageComboBox().getValue(),
             disposition,
-            accesHandicapeCheckBox.isSelected(),
-            trimToNull(statutDetailleField.getText()),
+            controls.accesHandicapeCheckBox().isSelected(),
+            trimToNull(controls.statutDetailleField().getText()),
             maintenanceDate
         );
     }
@@ -674,12 +721,11 @@ public class BackofficeSallesController {
         return etage;
     }
 
-    private String normalizeBatimentValue(String batiment) {
-        String normalizedBatiment = trimToNull(batiment);
-        if (normalizedBatiment == null || !batimentComboBox.getItems().contains(normalizedBatiment)) {
+    private <T> T resolveAllowedValue(ComboBox<T> comboBox, T value) {
+        if (comboBox == null || value == null || !comboBox.getItems().contains(value)) {
             return null;
         }
-        return normalizedBatiment;
+        return value;
     }
 
     private boolean loadEquipementCatalog() {
@@ -875,6 +921,432 @@ public class BackofficeSallesController {
         if (manageFixedEquipementsButton != null) {
             manageFixedEquipementsButton.setDisable(salleId == null || salleId <= 0);
         }
+    }
+
+    private VBox labelledField(String labelText, Node field) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("backoffice-form-label");
+
+        VBox wrapper = new VBox(6.0, label, field);
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(wrapper, Priority.ALWAYS);
+        return wrapper;
+    }
+
+    private String defaultAiBrief() {
+        String type = trimToNull(typeComboBox == null ? null : typeComboBox.getValue());
+        String disposition = trimToNull(dispositionComboBox == null ? null : dispositionComboBox.getValue());
+        int capacity = resolveCurrentCapacityDraft();
+
+        StringBuilder builder = new StringBuilder("Je veux une salle");
+        if (type != null) {
+            builder.append(" de type ").append(type);
+        }
+        builder.append(" pour ").append(capacity).append(" places");
+        if (disposition != null) {
+            builder.append(" avec une disposition ").append(disposition);
+        }
+        builder.append(".");
+        return builder.toString();
+    }
+
+    private int resolveCurrentCapacityDraft() {
+        return resolveCapacityDraft(capaciteSpinner);
+    }
+
+    private void openAiRoomDesignDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Conception AI de salle");
+        dialog.setHeaderText(null);
+        dialog.setResizable(true);
+
+        ButtonType previewButtonType = new ButtonType("Apercu 3D", ButtonBar.ButtonData.LEFT);
+        ButtonType createButtonType = new ButtonType("Creer la salle", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL, previewButtonType, createButtonType);
+        applyCurrentTheme(dialog.getDialogPane());
+        dialog.getDialogPane().getStyleClass().add("backoffice-room-equipment-dialog");
+
+        TextArea briefArea = new TextArea(defaultAiBrief());
+        briefArea.setPromptText("Ex: Je veux une salle de conference pour 30 personnes, en U, avec projecteur et acces handicape.");
+        briefArea.setWrapText(true);
+        briefArea.setPrefRowCount(5);
+        briefArea.getStyleClass().add("backoffice-form-textarea");
+
+        Button generateProposalButton = new Button("Construction intelligente \u2728");
+        generateProposalButton.setMaxWidth(Region.USE_PREF_SIZE);
+        generateProposalButton.getStyleClass().addAll("backoffice-room-preview-button", "ai-dialog-generate-button");
+
+        Label dialogFeedbackLabel = new Label();
+        dialogFeedbackLabel.setWrapText(true);
+        dialogFeedbackLabel.setManaged(false);
+        dialogFeedbackLabel.setVisible(false);
+        dialogFeedbackLabel.getStyleClass().add("backoffice-feedback");
+
+        SalleFormControls dialogControls = createAiDialogFormControls();
+        initializeAiDialogFormControls(dialogControls);
+        AiDesignDialogState dialogState = new AiDesignDialogState();
+
+        Label dialogTitle = new Label("Concevoir une salle avec assistance intelligente");
+        dialogTitle.getStyleClass().addAll("backoffice-room-equipment-dialog-title", "ai-dialog-hero-title");
+
+        Label dialogSubtitle = buildDialogIntro(
+            "Racontez l'espace voulu, laissez l'intelligence proposer une base, puis ajustez-la avant l'aperçu 3D."
+        );
+        dialogSubtitle.getStyleClass().add("ai-dialog-hero-copy");
+
+        VBox heroBlock = new VBox(8.0, dialogTitle, dialogSubtitle);
+        heroBlock.getStyleClass().add("ai-dialog-hero");
+
+        Label formSectionTitle = new Label("Ajustez les champs avant creation");
+        formSectionTitle.getStyleClass().addAll("backoffice-section-title", "ai-dialog-section-title");
+
+        VBox formContent = new VBox(
+            16.0,
+            heroBlock,
+            buildAiDialogPromptSection(briefArea, generateProposalButton),
+            formSectionTitle,
+            buildAiDialogFormContent(dialogControls),
+            dialogFeedbackLabel
+        );
+        formContent.setFillWidth(true);
+        formContent.getStyleClass().add("backoffice-room-equipment-dialog-content");
+
+        ScrollPane scrollPane = new ScrollPane(formContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setPrefViewportHeight(640.0);
+        scrollPane.getStyleClass().addAll("reservation-choice-scroll", "backoffice-room-equipment-dialog-scroll");
+
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.getDialogPane().setPrefWidth(780.0);
+        dialog.getDialogPane().setPrefHeight(Region.USE_COMPUTED_SIZE);
+        dialog.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+        generateProposalButton.setDefaultButton(true);
+        generateProposalButton.setDisable(trimToNull(briefArea.getText()) == null);
+        briefArea.textProperty().addListener((obs, oldValue, newValue) ->
+            generateProposalButton.setDisable(trimToNull(newValue) == null)
+        );
+
+        Button previewButton = (Button) dialog.getDialogPane().lookupButton(previewButtonType);
+        if (previewButton != null) {
+            previewButton.getStyleClass().addAll("backoffice-room-preview-button");
+            previewButton.setDisable(true);
+        }
+
+        Button createButton = (Button) dialog.getDialogPane().lookupButton(createButtonType);
+        if (createButton != null) {
+            createButton.getStyleClass().addAll("backoffice-primary-button", "backoffice-dialog-save-button");
+            createButton.setDisable(true);
+        }
+
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().addAll("backoffice-secondary-button", "backoffice-dialog-cancel-button");
+            cancelButton.setCancelButton(true);
+        }
+
+        generateProposalButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            hideDialogFeedback(dialogFeedbackLabel);
+
+            try {
+                showDialogFeedback(dialogFeedbackLabel, "Conception intelligente en cours...", true);
+                AiRoomDesignRequest request = buildAiDesignRequest(briefArea, dialogControls, dialogState.nextVariantIndex());
+                AiRoomDesignProposal proposal = aiRoomDesignService.generateDesign(request, List.copyOf(equipementCatalog));
+                dialogState.setProposal(proposal);
+                dialogState.setNextVariantIndex(proposal.variantIndex() + 1);
+                applySalleDraftToControls(proposal.salle(), dialogControls);
+
+                if (previewButton != null) {
+                    previewButton.setDisable(false);
+                }
+                if (createButton != null) {
+                    createButton.setDisable(false);
+                    createButton.setDefaultButton(true);
+                }
+                generateProposalButton.setDefaultButton(false);
+                showDialogFeedback(
+                    dialogFeedbackLabel,
+                    "Proposition prete. Ajustez les champs, visualisez la salle en 3D puis confirmez la creation.",
+                    true
+                );
+            } catch (IllegalArgumentException | IllegalStateException exception) {
+                showDialogFeedback(dialogFeedbackLabel, "Conception impossible : " + resolveMessage(exception), false);
+            }
+        });
+
+        if (previewButton != null) {
+            previewButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                event.consume();
+                hideDialogFeedback(dialogFeedbackLabel);
+
+                try {
+                    Salle draftSalle = buildSalleFromControls(dialogControls, 0, null);
+                    showAiDialogPreview(draftSalle, dialogState.proposal());
+                    showDialogFeedback(dialogFeedbackLabel, "L'apercu 3D de la proposition a ete ouvert.", true);
+                } catch (IllegalArgumentException | IllegalStateException exception) {
+                    showDialogFeedback(dialogFeedbackLabel, "Apercu 3D impossible : " + resolveMessage(exception), false);
+                }
+            });
+        }
+
+        if (createButton != null) {
+            createButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                hideDialogFeedback(dialogFeedbackLabel);
+
+                try {
+                    Salle salle = buildSalleFromControls(dialogControls, 0, null);
+                    salleService.add(salle);
+                    String aiEquipmentMessage = applyAiSuggestedEquipementsIfNeeded(salle.getIdSalle(), dialogState.proposal());
+
+                    if (!loadSalles()) {
+                        showFeedback("La salle a ete creee, mais la liste n'a pas pu etre rechargee automatiquement.", true);
+                    } else {
+                        selectSalleById(salle.getIdSalle());
+                        showFeedback(
+                            aiEquipmentMessage == null
+                                ? "La salle creee depuis la proposition intelligente a ete enregistree avec succes."
+                                : "La salle creee depuis la proposition intelligente a ete enregistree avec succes. " + aiEquipmentMessage,
+                            true
+                        );
+                    }
+                } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
+                    event.consume();
+                    showDialogFeedback(dialogFeedbackLabel, "Creation impossible : " + resolveMessage(exception), false);
+                }
+            });
+        }
+
+        dialog.showAndWait();
+    }
+
+    private VBox buildAiDialogPromptSection(TextArea briefArea, Button generateProposalButton) {
+        Label promptTitle = new Label("Prompt de conception");
+        promptTitle.getStyleClass().addAll("backoffice-section-title", "ai-dialog-section-title");
+
+        Label promptHint = buildDialogIntro(
+            "Decrivez simplement l'ambiance, le type de salle, la capacite ou les contraintes importantes."
+        );
+        promptHint.getStyleClass().add("ai-dialog-prompt-copy");
+
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+        HBox actionsRow = new HBox(12.0, actionSpacer, generateProposalButton);
+        actionsRow.setFillHeight(true);
+        actionsRow.getStyleClass().add("ai-dialog-prompt-actions");
+
+        VBox promptSection = new VBox(10.0, promptTitle, promptHint, briefArea, actionsRow);
+        promptSection.getStyleClass().add("ai-dialog-prompt-card");
+        return promptSection;
+    }
+
+    private VBox buildAiDialogFormContent(SalleFormControls controls) {
+        VBox content = new VBox(
+            12.0,
+            buildDialogFormRow(
+                labelledField("Nom de la salle *", controls.nomField()),
+                labelledField("Capacite *", controls.capaciteSpinner())
+            ),
+            buildDialogFormRow(
+                labelledField("Localisation *", controls.localisationField()),
+                labelledField("Batiment *", controls.batimentComboBox())
+            ),
+            buildDialogFormRow(
+                labelledField("Type de salle *", controls.typeComboBox()),
+                labelledField("Etat *", controls.etatComboBox())
+            ),
+            buildDialogFormRow(
+                labelledField("Etage", controls.etageComboBox()),
+                labelledField("Disposition", controls.dispositionComboBox())
+            ),
+            labelledField("Statut detaille", controls.statutDetailleField()),
+            labelledField("Description", controls.descriptionArea())
+        );
+        content.getChildren().add(4, buildDialogField("Accessibilite", controls.accesHandicapeCheckBox()));
+        content.getStyleClass().add("ai-dialog-form-section");
+        return content;
+    }
+
+    private HBox buildDialogFormRow(VBox leftField, VBox rightField) {
+        leftField.setMaxWidth(Double.MAX_VALUE);
+        rightField.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(leftField, Priority.ALWAYS);
+        HBox.setHgrow(rightField, Priority.ALWAYS);
+
+        HBox row = new HBox(12.0, leftField, rightField);
+        row.setFillHeight(true);
+        return row;
+    }
+
+    private VBox buildDialogField(String labelText, Node field) {
+        return labelledField(labelText, field);
+    }
+
+    private SalleFormControls createAiDialogFormControls() {
+        TextField dialogNomField = new TextField();
+        dialogNomField.setPromptText("Ex: Salle Atlas");
+        dialogNomField.getStyleClass().add("backoffice-form-input");
+
+        Spinner<Integer> dialogCapaciteSpinner = new Spinner<>();
+        dialogCapaciteSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 5000, resolveCurrentCapacityDraft()));
+        dialogCapaciteSpinner.setEditable(true);
+        dialogCapaciteSpinner.getStyleClass().add("backoffice-form-spinner");
+
+        TextField dialogLocalisationField = new TextField();
+        dialogLocalisationField.setPromptText("Ex: Bloc B - Aile Est");
+        dialogLocalisationField.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogBatimentComboBox = new ComboBox<>();
+        dialogBatimentComboBox.getItems().setAll(salleService.getAvailableBatiments());
+        dialogBatimentComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogTypeComboBox = new ComboBox<>();
+        dialogTypeComboBox.getItems().setAll(salleService.getAvailableTypes());
+        dialogTypeComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogEtatComboBox = new ComboBox<>();
+        dialogEtatComboBox.getItems().setAll(salleService.getAvailableEtats());
+        dialogEtatComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<Integer> dialogEtageComboBox = new ComboBox<>();
+        dialogEtageComboBox.getItems().setAll(0, 1, 2, 3, 4);
+        dialogEtageComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogDispositionComboBox = new ComboBox<>();
+        dialogDispositionComboBox.getStyleClass().add("backoffice-form-input");
+
+        CheckBox dialogAccesCheckBox = new CheckBox("Acces handicape");
+        dialogAccesCheckBox.getStyleClass().add("backoffice-check");
+
+        TextField dialogStatutDetailleField = new TextField();
+        dialogStatutDetailleField.setPromptText("Ex: Projecteur en revision ou salle reservee");
+        dialogStatutDetailleField.getStyleClass().add("backoffice-form-input");
+
+        TextArea dialogDescriptionArea = new TextArea();
+        dialogDescriptionArea.setPromptText("Ex: Salle de conference lumineuse pour 30 places.");
+        dialogDescriptionArea.setPrefRowCount(3);
+        dialogDescriptionArea.setWrapText(true);
+        dialogDescriptionArea.getStyleClass().add("backoffice-form-textarea");
+
+        dialogTypeComboBox.valueProperty().addListener((obs, oldValue, newValue) ->
+            refreshDispositionOptions(dialogDispositionComboBox, newValue, dialogDispositionComboBox.getValue())
+        );
+
+        return new SalleFormControls(
+            dialogNomField,
+            dialogCapaciteSpinner,
+            dialogLocalisationField,
+            dialogBatimentComboBox,
+            dialogTypeComboBox,
+            dialogEtatComboBox,
+            dialogEtageComboBox,
+            dialogDispositionComboBox,
+            dialogAccesCheckBox,
+            dialogStatutDetailleField,
+            dialogDescriptionArea
+        );
+    }
+
+    private void initializeAiDialogFormControls(SalleFormControls controls) {
+        controls.nomField().setText(defaultString(trimToNull(nomField.getText())));
+        controls.capaciteSpinner().getValueFactory().setValue(resolveCurrentCapacityDraft());
+        controls.localisationField().setText(defaultString(trimToNull(localisationField.getText())));
+        controls.batimentComboBox().setValue(resolveAllowedValue(controls.batimentComboBox(), batimentComboBox.getValue()));
+
+        String preferredType = resolveAllowedValue(controls.typeComboBox(), typeComboBox.getValue());
+        if (preferredType == null && !controls.typeComboBox().getItems().isEmpty()) {
+            preferredType = controls.typeComboBox().getItems().get(0);
+        }
+        controls.typeComboBox().setValue(preferredType);
+
+        String preferredEtat = resolveAllowedValue(controls.etatComboBox(), etatComboBox.getValue());
+        if (preferredEtat == null && !controls.etatComboBox().getItems().isEmpty()) {
+            preferredEtat = controls.etatComboBox().getItems().get(0);
+        }
+        controls.etatComboBox().setValue(preferredEtat);
+        controls.etageComboBox().setValue(resolveAllowedValue(controls.etageComboBox(), etageComboBox.getValue()));
+        refreshDispositionOptions(controls.dispositionComboBox(), preferredType, dispositionComboBox.getValue());
+        controls.accesHandicapeCheckBox().setSelected(accesHandicapeCheckBox.isSelected());
+        controls.statutDetailleField().setText(defaultString(trimToNull(statutDetailleField.getText())));
+        controls.descriptionArea().setText(defaultString(trimToNull(descriptionArea.getText())));
+    }
+
+    private AiRoomDesignRequest buildAiDesignRequest(TextArea briefArea, SalleFormControls controls, int variantIndex) {
+        return new AiRoomDesignRequest(
+            requireText(briefArea.getText(), "Le prompt AI est obligatoire."),
+            trimToNull(controls.nomField().getText()),
+            controls.batimentComboBox().getValue(),
+            trimToNull(controls.localisationField().getText()),
+            resolveCapacityDraft(controls.capaciteSpinner()),
+            controls.typeComboBox().getValue(),
+            controls.dispositionComboBox().getValue(),
+            controls.accesHandicapeCheckBox().isSelected(),
+            null,
+            variantIndex
+        );
+    }
+
+    private int resolveCapacityDraft(Spinner<Integer> spinner) {
+        try {
+            return parsePositiveInteger(spinner.getEditor().getText(), "Capacite invalide");
+        } catch (IllegalArgumentException exception) {
+            Integer fallbackValue = spinner.getValue();
+            return fallbackValue == null || fallbackValue <= 0 ? 24 : fallbackValue;
+        }
+    }
+
+    private void showAiDialogPreview(Salle salle, AiRoomDesignProposal proposal) {
+        Room3DPreviewData previewData = room3DPreviewService.buildPreview(salle, true);
+        if (proposal != null) {
+            previewData = previewData.withAnnotations(
+                "Apercu 3D | " + salle.getNom(),
+                buildAiDialogPreviewSummary(salle, proposal),
+                buildAiDialogPreviewLegend(proposal)
+            );
+        }
+        Room3DViewerLauncher.showPreview(previewData);
+    }
+
+    private String buildAiDialogPreviewSummary(Salle salle, AiRoomDesignProposal proposal) {
+        String disposition = trimToNull(salle == null ? null : salle.getTypeDisposition());
+        return "Source AI: " + proposal.sourceLabelOrDefault() + "."
+            + "\nDisposition: " + (disposition == null ? "non renseignee" : disposition)
+            + " | Capacite: " + (salle == null ? 0 : salle.getCapacite()) + " places"
+            + " | Accessibilite: " + (salle != null && salle.isAccesHandicape() ? "oui" : "non")
+            + "\nMateriel suggere: " + proposal.fixedEquipmentSummaryOrDefault();
+    }
+
+    private String buildAiDialogPreviewLegend(AiRoomDesignProposal proposal) {
+        return proposal.adminSummaryOrDefault()
+            + "\nAucune sauvegarde automatique tant que vous n'avez pas confirme la creation.";
+    }
+
+    private String applyAiSuggestedEquipementsIfNeeded(int salleId, AiRoomDesignProposal proposal) {
+        if (proposal == null || !proposal.hasSuggestedFixedEquipements() || salleId <= 0) {
+            return null;
+        }
+
+        try {
+            salleEquipementService.replaceEquipementsForSalle(salleId, proposal.suggestedFixedEquipements());
+            return "Le materiel fixe suggere par l'AI a aussi ete applique. Vous pourrez le modifier ensuite.";
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            return "La salle est enregistree, mais le materiel fixe suggere n'a pas pu etre applique : " + resolveMessage(exception);
+        }
+    }
+
+    private void showDialogFeedback(Label feedbackLabel, String message, boolean success) {
+        feedbackLabel.setText(message);
+        feedbackLabel.getStyleClass().setAll("backoffice-feedback", success ? "success" : "error");
+        feedbackLabel.setManaged(true);
+        feedbackLabel.setVisible(true);
+    }
+
+    private void hideDialogFeedback(Label feedbackLabel) {
+        feedbackLabel.setText("");
+        feedbackLabel.getStyleClass().setAll("backoffice-feedback");
+        feedbackLabel.setManaged(false);
+        feedbackLabel.setVisible(false);
     }
 
     private Label buildDialogIntro(String text) {
@@ -1116,7 +1588,47 @@ public class BackofficeSallesController {
         feedbackLabel.setVisible(false);
     }
 
-    private record FixedEquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card,
-                                                  boolean selectable) {
+    private record SalleFormControls(
+        TextField nomField,
+        Spinner<Integer> capaciteSpinner,
+        TextField localisationField,
+        ComboBox<String> batimentComboBox,
+        ComboBox<String> typeComboBox,
+        ComboBox<String> etatComboBox,
+        ComboBox<Integer> etageComboBox,
+        ComboBox<String> dispositionComboBox,
+        CheckBox accesHandicapeCheckBox,
+        TextField statutDetailleField,
+        TextArea descriptionArea
+    ) {
+    }
+
+    private static final class AiDesignDialogState {
+        private AiRoomDesignProposal proposal;
+        private int nextVariantIndex = 1;
+
+        public AiRoomDesignProposal proposal() {
+            return proposal;
+        }
+
+        public void setProposal(AiRoomDesignProposal proposal) {
+            this.proposal = proposal;
+        }
+
+        public int nextVariantIndex() {
+            return nextVariantIndex;
+        }
+
+        public void setNextVariantIndex(int nextVariantIndex) {
+            this.nextVariantIndex = Math.max(1, nextVariantIndex);
+        }
+    }
+
+    private record FixedEquipmentSelectionControls(
+        CheckBox checkBox,
+        Spinner<Integer> quantitySpinner,
+        VBox card,
+        boolean selectable
+    ) {
     }
 }
