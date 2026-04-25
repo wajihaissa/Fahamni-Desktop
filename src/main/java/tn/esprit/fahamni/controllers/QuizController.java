@@ -29,8 +29,12 @@ import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.quiz.Question;
 import tn.esprit.fahamni.Models.quiz.Quiz;
+import tn.esprit.fahamni.Models.quiz.QuizLeaderboardEntry;
 import tn.esprit.fahamni.Models.quiz.QuizResult;
+import tn.esprit.fahamni.Models.quiz.QuizUserInsight;
+import tn.esprit.fahamni.services.AdaptiveQuizService;
 import tn.esprit.fahamni.services.AiQuizAssistantService;
+import tn.esprit.fahamni.services.QuizAnalyticsService;
 import tn.esprit.fahamni.services.QuizService;
 
 import java.text.NumberFormat;
@@ -49,12 +53,16 @@ public class QuizController {
     @FXML private Label averageScoreValue;
     @FXML private Label subjectsMasteredValue;
     @FXML private Label quizResultsSummaryLabel;
+    @FXML private Label quizPageStatusLabel;
     @FXML private CheckBox attemptedOnlyCheckBox;
     @FXML private ComboBox<String> quizSortCombo;
     @FXML private TextField quizSearchField;
 
     private final QuizService quizService = new QuizService();
+    private final QuizAnalyticsService quizAnalyticsService = new QuizAnalyticsService();
+    private final AdaptiveQuizService adaptiveQuizService = new AdaptiveQuizService();
     private final AiQuizAssistantService aiQuizAssistantService = new AiQuizAssistantService();
+    private final Map<Long, List<String>> adaptiveQuizSourceCache = new HashMap<>();
     // Static test user used while the user session system is being integrated.
     private static final User TEST_USER = new User(1L, "Quiz Tester", "quiz.tester@fahamni.tn", "", UserRole.USER);
     private List<Quiz> allQuizzes = List.of();
@@ -197,7 +205,7 @@ public class QuizController {
         Label infoLabel = new Label(quiz.getQuestions().size() + " questions | " + resultStatus);
         infoLabel.getStyleClass().add("quiz-info");
 
-        Label descriptionLabel = new Label("A quick knowledge check about '" + quiz.getKeyword() + "'.");
+        Label descriptionLabel = new Label(buildQuizDescription(quiz));
         descriptionLabel.setWrapText(true);
         descriptionLabel.getStyleClass().add("quiz-description");
 
@@ -326,7 +334,7 @@ public class QuizController {
         ButtonType nextButtonType = new ButtonType("Next", ButtonBar.ButtonData.OTHER);
         ButtonType finishButtonType = new ButtonType("Finish Quiz", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(backButtonType, nextButtonType, finishButtonType, ButtonType.CANCEL);
-        dialog.getDialogPane().getStyleClass().add("quiz-dialog-pane");
+        dialog.getDialogPane().getStyleClass().addAll("quiz-dialog-pane", "quiz-experience-dialog");
         dialog.getDialogPane().setPrefWidth(700);
         applyCurrentTheme(dialog.getDialogPane());
 
@@ -345,7 +353,7 @@ public class QuizController {
         titleLabel.getStyleClass().add("quiz-dialog-title");
         titleLabel.setWrapText(true);
 
-        Label subtitleLabel = new Label("Answer one question at a time and move through the quiz at your own pace.");
+        Label subtitleLabel = new Label(buildQuizStartSubtitle(quiz));
         subtitleLabel.getStyleClass().add("quiz-dialog-subtitle");
         subtitleLabel.setWrapText(true);
 
@@ -392,10 +400,10 @@ public class QuizController {
         Button finishButton = (Button) dialog.getDialogPane().lookupButton(finishButtonType);
         Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
 
-        backButton.getStyleClass().add("review-button");
-        nextButton.getStyleClass().add("start-quiz-button");
-        finishButton.getStyleClass().add("start-quiz-button");
-        cancelButton.getStyleClass().add("review-button");
+        backButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
+        nextButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+        finishButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+        cancelButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
 
         Runnable refreshControls = () -> updateQuizStepState(
                 quiz,
@@ -520,7 +528,7 @@ public class QuizController {
             Map<Long, ToggleGroup> answers,
             Runnable onAnswerChanged
     ) {
-        VBox questionBox = new VBox(14);
+        VBox questionBox = new VBox(16);
         questionBox.getStyleClass().addAll("quiz-question-box", "quiz-question-stage-card");
 
         HBox questionMeta = new HBox(10);
@@ -540,7 +548,7 @@ public class QuizController {
 
         ToggleGroup group = answers.computeIfAbsent(question.getId(), ignored -> new ToggleGroup());
 
-        VBox choicesBox = new VBox(10);
+        VBox choicesBox = new VBox(12);
         for (Choice currentChoice : question.getChoices()) {
             RadioButton radioButton = new RadioButton(currentChoice.getChoice());
             radioButton.setToggleGroup(group);
@@ -559,7 +567,7 @@ public class QuizController {
         hintLabel.setManaged(false);
 
         Button hintButton = new Button("Get AI Hint");
-        hintButton.getStyleClass().add("quiz-hint-button");
+        hintButton.getStyleClass().addAll("quiz-hint-button", "review-button");
         hintButton.setOnAction(event -> {
             Toggle selectedToggle = group.getSelectedToggle();
             Long selectedChoiceId = selectedToggle != null ? (Long) selectedToggle.getUserData() : null;
@@ -569,7 +577,10 @@ public class QuizController {
             hintLabel.setManaged(true);
         });
 
-        questionBox.getChildren().addAll(questionMeta, questionLabel, choicesBox, hintButton, hintLabel);
+        VBox utilityBox = new VBox(10, hintButton, hintLabel);
+        utilityBox.getStyleClass().add("quiz-utility-box");
+
+        questionBox.getChildren().addAll(questionMeta, questionLabel, choicesBox, utilityBox);
         return questionBox;
     }
 
@@ -602,6 +613,15 @@ public class QuizController {
         summaryLabel.getStyleClass().add("quiz-dialog-subtitle");
         summaryLabel.setWrapText(true);
 
+        List<String> sourceTitles = getAdaptiveSourceQuizTitles(quiz);
+        Label sourceLabel = new Label(sourceTitles.isEmpty()
+                ? ""
+                : "Built from: " + joinSourceTitles(sourceTitles));
+        sourceLabel.getStyleClass().add("quiz-dialog-subtitle");
+        sourceLabel.setWrapText(true);
+        sourceLabel.setManaged(!sourceTitles.isEmpty());
+        sourceLabel.setVisible(!sourceTitles.isEmpty());
+
         VBox scoreHero = new VBox(4);
         scoreHero.getStyleClass().add("quiz-result-hero");
 
@@ -613,13 +633,21 @@ public class QuizController {
         scoreHero.getChildren().addAll(scoreLabel, percentageLabel);
 
         HBox statsRow = new HBox(12);
+        QuizUserInsight insight = TEST_USER.getId() != null ? quizAnalyticsService.getUserInsight(TEST_USER.getId()) : null;
+        String recommendation = insight != null
+                ? insight.getRecommendedDifficulty() + " focus"
+                : "Medium focus";
+        String weakestTopic = insight != null && !insight.getWeakestTopics().isEmpty()
+                ? insight.getWeakestTopics().get(0)
+                : (quiz.getKeyword().isBlank() ? "General" : quiz.getKeyword());
         statsRow.getChildren().addAll(
                 buildResultStat("Topic", quiz.getKeyword().isBlank() ? "General" : quiz.getKeyword()),
                 buildResultStat("Questions", String.valueOf(result.getTotalQuestions())),
-                buildResultStat("Saved", "Yes")
+                buildResultStat("Saved", "Yes"),
+                buildResultStat("Next Focus", weakestTopic + " / " + recommendation)
         );
 
-        content.getChildren().addAll(statusBadge, titleLabel, summaryLabel, scoreHero, statsRow);
+        content.getChildren().addAll(statusBadge, titleLabel, summaryLabel, sourceLabel, scoreHero, statsRow);
         dialog.getDialogPane().setContent(content);
         dialog.showAndWait();
     }
@@ -679,6 +707,22 @@ public class QuizController {
         return percentFormat.format(value / 100.0);
     }
 
+    private void showPageStatus(String message, String styleClass) {
+        if (quizPageStatusLabel == null) {
+            return;
+        }
+
+        quizPageStatusLabel.setText(message == null ? "" : message);
+        quizPageStatusLabel.getStyleClass().removeAll(
+                "quiz-page-status-success",
+                "quiz-page-status-info",
+                "quiz-page-status-error"
+        );
+        quizPageStatusLabel.getStyleClass().add(styleClass);
+        quizPageStatusLabel.setVisible(message != null && !message.isBlank());
+        quizPageStatusLabel.setManaged(message != null && !message.isBlank());
+    }
+
     private void showAlert(Alert.AlertType type, String title, String header) {
         showAlert(type, title, header, null);
     }
@@ -693,43 +737,178 @@ public class QuizController {
 
     @FXML
     private void handleShowLeaderboard() {
-        List<QuizResult> topResults = quizService.getAllQuizzes().stream()
-                .flatMap(quiz -> quiz.getQuizResults().stream())
-                .sorted(Comparator.comparingInt((QuizResult result) -> result.getScore() != null ? result.getScore() : 0).reversed())
-                .limit(5)
-                .toList();
-
-        if (topResults.isEmpty()) {
-            showAlert(Alert.AlertType.INFORMATION, "Leaderboard", "No quiz results are available yet.", null);
+        List<QuizLeaderboardEntry> leaderboardEntries = quizAnalyticsService.getLeaderboardEntries(5);
+        if (leaderboardEntries.isEmpty()) {
+            showPageStatus("No leaderboard data yet. Complete a quiz first.", "quiz-page-status-info");
             return;
         }
 
-        StringBuilder content = new StringBuilder();
-        for (int index = 0; index < topResults.size(); index++) {
-            QuizResult result = topResults.get(index);
-            content.append(index + 1)
-                    .append(". ")
-                    .append(result.getQuiz() != null ? result.getQuiz().getTitre() : "Unknown quiz")
-                    .append(" - ")
-                    .append(result.getScore())
-                    .append("/")
-                    .append(result.getTotalQuestions())
-                    .append(" (")
-                    .append(formatPercentage(result.getPercentage() != null ? result.getPercentage() : 0.0))
-                    .append(")");
-            if (result.getUser() != null) {
-                content.append(" - ").append(result.getUser().getFullName());
-            }
-            content.append("\n");
-        }
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Leaderboard");
+        dialog.setHeaderText(null);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.getDialogPane().getStyleClass().addAll("quiz-dialog-pane", "leaderboard-dialog-pane");
+        applyCurrentTheme(dialog.getDialogPane());
 
-        showAlert(Alert.AlertType.INFORMATION, "Leaderboard", "Top 5 scores", content.toString());
+        VBox content = new VBox(18);
+        content.getStyleClass().addAll("quiz-dialog-shell", "leaderboard-shell");
+        content.setPadding(new Insets(20));
+        content.setPrefWidth(640);
+
+        Label eyebrowLabel = new Label("Quiz Leaderboard");
+        eyebrowLabel.getStyleClass().add("quiz-dialog-eyebrow");
+
+        Label titleLabel = new Label("Top weighted performers");
+        titleLabel.getStyleClass().add("quiz-dialog-title");
+
+        Label subtitleLabel = new Label("A blended ranking based on average score, best score, pass rate, consistency, and improvement.");
+        subtitleLabel.getStyleClass().add("quiz-dialog-subtitle");
+        subtitleLabel.setWrapText(true);
+
+        HBox leaderboardStats = new HBox(12,
+                buildResultStat("Players", String.valueOf(leaderboardEntries.size())),
+                buildResultStat("Top Score", String.valueOf(Math.round(leaderboardEntries.get(0).getWeightedScore()))),
+                buildResultStat("Best Avg", formatPercentage(
+                        leaderboardEntries.stream()
+                                .mapToDouble(QuizLeaderboardEntry::getAveragePercentage)
+                                .max()
+                                .orElse(0.0)
+                ))
+        );
+        leaderboardStats.getStyleClass().add("leaderboard-stats-row");
+
+        VBox entryList = new VBox(12);
+        entryList.getStyleClass().add("leaderboard-entry-list");
+        leaderboardEntries.forEach(entry -> entryList.getChildren().add(buildLeaderboardCard(entry)));
+
+        content.getChildren().addAll(eyebrowLabel, titleLabel, subtitleLabel, leaderboardStats, entryList);
+        dialog.getDialogPane().setContent(content);
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+
+        dialog.showAndWait();
+    }
+
+    private HBox buildLeaderboardCard(QuizLeaderboardEntry entry) {
+        HBox card = new HBox(16);
+        card.getStyleClass().add("leaderboard-card");
+        card.setAlignment(Pos.CENTER_LEFT);
+
+        Label rankBadge = new Label("#" + entry.getRank());
+        rankBadge.getStyleClass().add("leaderboard-rank-badge");
+        rankBadge.setMinWidth(64);
+        rankBadge.setAlignment(Pos.CENTER);
+
+        VBox body = new VBox(6);
+        body.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(body, Priority.ALWAYS);
+
+        Label nameLabel = new Label(entry.getUserName());
+        nameLabel.getStyleClass().add("leaderboard-name");
+
+        Label summaryLabel = new Label(
+                "Weighted " + Math.round(entry.getWeightedScore())
+                        + "  |  Avg " + formatPercentage(entry.getAveragePercentage())
+                        + "  |  Best " + formatPercentage(entry.getBestPercentage())
+        );
+        summaryLabel.getStyleClass().add("leaderboard-summary");
+        summaryLabel.setWrapText(true);
+
+        Label metaLabel = new Label(
+                "Pass " + formatPercentage(entry.getPassRate())
+                        + "  |  Attempts " + entry.getAttempts()
+                        + "  |  Consistency " + Math.round(entry.getConsistencyScore())
+        );
+        metaLabel.getStyleClass().add("leaderboard-meta");
+        metaLabel.setWrapText(true);
+
+        body.getChildren().addAll(nameLabel, summaryLabel, metaLabel);
+
+        VBox scoreBox = new VBox(4);
+        scoreBox.getStyleClass().add("leaderboard-score-box");
+        scoreBox.setAlignment(Pos.CENTER_RIGHT);
+
+        Label weightedValue = new Label(String.valueOf(Math.round(entry.getWeightedScore())));
+        weightedValue.getStyleClass().add("leaderboard-score-value");
+
+        Label weightedLabel = new Label("Weighted");
+        weightedLabel.getStyleClass().add("leaderboard-score-label");
+
+        scoreBox.getChildren().addAll(weightedValue, weightedLabel);
+
+        card.getChildren().addAll(rankBadge, body, scoreBox);
+        return card;
     }
 
     @FXML
     private void handleRefreshQuizzes() {
         refreshQuizData();
-        showAlert(Alert.AlertType.INFORMATION, "Refresh complete", "The quiz list has been refreshed.", null);
+        showPageStatus("Quiz list refreshed successfully.", "quiz-page-status-success");
+    }
+
+    @FXML
+    private void handleGenerateAdaptiveQuiz() {
+        Quiz adaptiveQuiz = adaptiveQuizService.generateAdaptiveQuizForUser(TEST_USER, 5);
+        if (adaptiveQuiz == null) {
+            showPageStatus(
+                    "Complete a couple of quizzes first so adaptive mode can learn your weak topics.",
+                    "quiz-page-status-info"
+            );
+            return;
+        }
+
+        refreshQuizData();
+        adaptiveQuizSourceCache.remove(adaptiveQuiz.getId());
+        showPageStatus(
+                "Adaptive quiz ready: "
+                        + (adaptiveQuiz.getKeyword().isBlank() ? "General" : adaptiveQuiz.getKeyword())
+                        + " focus added to your list.",
+                "quiz-page-status-success"
+        );
+    }
+
+    private String buildQuizDescription(Quiz quiz) {
+        if (quiz == null) {
+            return "A quick knowledge check.";
+        }
+
+        String topic = quiz.getKeyword().isBlank() ? "General" : quiz.getKeyword();
+        List<String> sourceTitles = getAdaptiveSourceQuizTitles(quiz);
+        if (!sourceTitles.isEmpty()) {
+            return "An adaptive quiz on '" + topic + "' built from: " + joinSourceTitles(sourceTitles) + ".";
+        }
+        return "A quick knowledge check about '" + topic + "'.";
+    }
+
+    private String buildQuizStartSubtitle(Quiz quiz) {
+        List<String> sourceTitles = getAdaptiveSourceQuizTitles(quiz);
+        if (!sourceTitles.isEmpty()) {
+            return "Answer one question at a time. This adaptive set pulls from: " + joinSourceTitles(sourceTitles) + ".";
+        }
+        return "Answer one question at a time and move through the quiz at your own pace.";
+    }
+
+    private List<String> getAdaptiveSourceQuizTitles(Quiz quiz) {
+        if (quiz == null || quiz.getId() == null || !quiz.getKeyword().startsWith("adaptive-")) {
+            return List.of();
+        }
+        return adaptiveQuizSourceCache.computeIfAbsent(quiz.getId(), quizService::getSourceQuizTitlesForQuiz);
+    }
+
+    private String joinSourceTitles(List<String> sourceTitles) {
+        if (sourceTitles == null || sourceTitles.isEmpty()) {
+            return "";
+        }
+        if (sourceTitles.size() == 1) {
+            return sourceTitles.get(0);
+        }
+        if (sourceTitles.size() == 2) {
+            return sourceTitles.get(0) + " and " + sourceTitles.get(1);
+        }
+        return String.join(", ", sourceTitles.subList(0, sourceTitles.size() - 1))
+                + ", and "
+                + sourceTitles.get(sourceTitles.size() - 1);
     }
 
     private void showResultDetails(QuizResult result) {

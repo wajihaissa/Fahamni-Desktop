@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
@@ -14,17 +15,41 @@
             <Insets top="20" right="20" bottom="20" left="20"/>
         </padding>
 
-        <HBox spacing="15.0" alignment="CENTER_LEFT">
+        <HBox spacing="15.0" alignment="TOP_LEFT">
             <VBox spacing="15.0" styleClass="quiz-header">
                 <Label text="Available Quizzes" styleClass="section-title"/>
                 <Label text="Test your knowledge with our comprehensive quiz collection." styleClass="section-subtitle"/>
             </VBox>
             <Pane HBox.hgrow="ALWAYS"/>
-            <TextField fx:id="quizSearchField" promptText="Search quizzes by title or topic" styleClass="search-field" prefWidth="250.0"/>
-            <ComboBox fx:id="quizSortCombo" prefWidth="150.0" styleClass="filter-combo"/>
-            <CheckBox fx:id="attemptedOnlyCheckBox" text="Attempted only" styleClass="form-label"/>
-            <Button text="Refresh" styleClass="action-button secondary" onAction="#handleRefreshQuizzes"/>
-            <Button text="Leaderboard" styleClass="action-button secondary" onAction="#handleShowLeaderboard"/>
+            <VBox spacing="8.0" alignment="TOP_RIGHT">
+                <HBox spacing="12.0" alignment="CENTER_RIGHT">
+                    <TextField fx:id="quizSearchField" promptText="Search quizzes by title or topic" styleClass="search-field" prefWidth="250.0"/>
+                    <ComboBox fx:id="quizSortCombo" prefWidth="150.0" styleClass="filter-combo"/>
+                    <CheckBox fx:id="attemptedOnlyCheckBox" text="Attempted only" styleClass="form-label"/>
+                    <Button text="Refresh" onAction="#handleRefreshQuizzes">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                    <Button text="Adaptive Quiz" onAction="#handleGenerateAdaptiveQuiz">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                    <Button text="Leaderboard" onAction="#handleShowLeaderboard">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                </HBox>
+                <Label fx:id="quizPageStatusLabel" managed="false" visible="false" text="" styleClass="quiz-page-status quiz-page-status-success"/>
+            </VBox>
         </HBox>
 
         <HBox spacing="20.0" styleClass="quiz-stats">
