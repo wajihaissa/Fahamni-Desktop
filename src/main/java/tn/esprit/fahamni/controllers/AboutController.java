@@ -11,6 +11,7 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import tn.esprit.fahamni.utils.FrontOfficeMotion;
@@ -22,7 +23,7 @@ public class AboutController {
     private VBox aboutContent;
 
     @FXML
-    private FlowPane aboutHeroSection;
+    private HBox aboutHeroSection;
 
     @FXML
     private FlowPane aboutStatStrip;
@@ -34,7 +35,7 @@ public class AboutController {
     private VBox aboutFeatureSection;
 
     @FXML
-    private FlowPane aboutClosingGrid;
+    private HBox aboutClosingGrid;
 
     @FXML
     private VBox aboutPortraitCard;

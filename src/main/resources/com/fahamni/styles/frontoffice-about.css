@@ -49,6 +49,10 @@
     -fx-background-color: transparent;
 }
 
+#aboutRoot .about-content {
+    -fx-fill-width: true;
+}
+
 #aboutRoot .about-page-spiderweb {
     -fx-opacity: 0.42;
 }
@@ -219,7 +223,7 @@
 }
 
 #aboutRoot .about-side-card-primary {
-    -fx-translate-x: -8px;
+    -fx-translate-x: 0;
 }
 
 #aboutRoot .about-stat-card {

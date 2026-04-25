@@ -26,8 +26,8 @@
             </padding>
 
             <VBox fx:id="aboutContent" maxWidth="1.7976931348623157E308" spacing="24.0" styleClass="about-content">
-            <FlowPane fx:id="aboutHeroSection" hgap="24.0" prefWrapLength="1120.0" styleClass="about-hero" vgap="24.0">
-                <VBox maxWidth="620.0" minWidth="320.0" spacing="18.0" styleClass="about-hero-copy">
+            <HBox fx:id="aboutHeroSection" alignment="TOP_LEFT" spacing="24.0" styleClass="about-hero">
+                <VBox maxWidth="1.7976931348623157E308" minWidth="320.0" prefWidth="0.0" spacing="18.0" styleClass="about-hero-copy" HBox.hgrow="ALWAYS">
                     <Label text="A PROPOS DE FAHAMNI" styleClass="about-eyebrow"/>
                     <Label text="Une plateforme educative intelligente ou etudiants, tuteurs et administrateurs evoluent dans un seul ecosysteme d'apprentissage."
                            styleClass="about-hero-title" wrapText="true"/>
@@ -43,7 +43,7 @@
                     </FlowPane>
                 </VBox>
 
-                <VBox maxWidth="420.0" minWidth="320.0" spacing="14.0" styleClass="about-side-stack">
+                <VBox maxWidth="420.0" minWidth="320.0" prefWidth="420.0" spacing="14.0" styleClass="about-side-stack">
                     <VBox spacing="10.0">
                         <styleClass>
                             <String fx:value="about-side-card"/>
@@ -94,7 +94,7 @@
                         </FlowPane>
                     </VBox>
                 </VBox>
-            </FlowPane>
+            </HBox>
 
             <FlowPane fx:id="aboutStatStrip" hgap="16.0" prefWrapLength="1180.0" styleClass="about-stat-strip" vgap="16.0">
                 <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
@@ -220,19 +220,19 @@
                 </FlowPane>
             </VBox>
 
-            <FlowPane fx:id="aboutClosingGrid" hgap="20.0" prefWrapLength="1180.0" vgap="20.0">
-                <VBox minWidth="340.0" prefWidth="620.0" spacing="14.0" styleClass="about-section-card">
+            <HBox fx:id="aboutClosingGrid" alignment="TOP_LEFT" spacing="20.0">
+                <VBox maxWidth="1.7976931348623157E308" minWidth="340.0" prefWidth="0.0" spacing="14.0" styleClass="about-section-card" HBox.hgrow="ALWAYS">
                     <Label text="Ce qui rend Fahamni different" styleClass="about-section-title"/>
                     <Label text="Fahamni n'est pas seulement un espace d'apprentissage ni seulement une application de reservation. C'est un produit hybride qui rassemble tutorat, planification, communication, contenu et administration dans une meme experience."
                            styleClass="about-body-copy" wrapText="true"/>
                 </VBox>
 
-                <VBox minWidth="340.0" prefWidth="620.0" spacing="14.0" styleClass="about-section-card">
+                <VBox maxWidth="1.7976931348623157E308" minWidth="340.0" prefWidth="0.0" spacing="14.0" styleClass="about-section-card" HBox.hgrow="ALWAYS">
                     <Label text="Vision du produit" styleClass="about-section-title"/>
                     <Label text="L'objectif est d'offrir aux etudiants une maniere plus simple de trouver de l'aide, aux tuteurs une gestion plus structuree des seances et aux administrateurs de vrais outils de pilotage."
                            styleClass="about-body-copy" wrapText="true"/>
                 </VBox>
-            </FlowPane>
+            </HBox>
 
             <VBox fx:id="aboutSummaryBanner" spacing="14.0" styleClass="about-summary-banner">
                 <VBox spacing="10.0" styleClass="about-summary-copy-block">
