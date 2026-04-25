@@ -94,7 +94,7 @@
                             <Label text="Adresse e-mail" styleClass="form-label"/>
                             <TextField fx:id="emailField" editable="false" promptText="Adresse e-mail"
                                        styleClass="form-field profile-readonly-field"/>
-                            <Label text="L'e-mail ne peut pas encore etre modifie depuis le front office." styleClass="profile-inline-note"/>
+                            <Label text="L'adresse e-mail reste synchronisee avec le compte connecte." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <VBox spacing="8.0">
@@ -106,7 +106,7 @@
                             <Label text="Bio / A propos de toi" styleClass="form-label"/>
                             <TextArea fx:id="bioArea" prefRowCount="5" promptText="Parle-nous de toi, de ton expertise et de tes objectifs d'apprentissage..."
                                       styleClass="text-area"/>
-                            <Label text="Le telephone et la bio sont prets pour la suite. L'upload d'avatar est deja connecte a un stockage stable."
+                            <Label text="Le telephone, la bio et la photo de profil sont maintenant enregistres sur ton compte."
                                    styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
@@ -176,14 +176,14 @@
 
                         <VBox spacing="6.0">
                             <Label text="Mot de passe" styleClass="form-label"/>
-                            <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Changer le mot de passe"/>
+                            <Button onAction="#handleChangePassword" styleClass="profile-accent-button" text="Changer le mot de passe"/>
                             <Label text="Utilise un mot de passe fort pour proteger ton compte." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <VBox spacing="6.0">
                             <Label text="Face ID / Passkey" styleClass="form-label"/>
-                            <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Activer la connexion Face ID"/>
-                            <Label text="Enregistrera plus tard une passkey securisee sur cet appareil." styleClass="profile-inline-note"/>
+                            <Button onAction="#handleEnrollFaceId" styleClass="profile-accent-button" text="Activer ou mettre a jour Face ID"/>
+                            <Label text="Cette action relance la capture webcam pour activer ou remplacer la connexion Face ID." styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
                         <VBox spacing="6.0">

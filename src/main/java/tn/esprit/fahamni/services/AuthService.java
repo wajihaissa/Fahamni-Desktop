@@ -5,6 +5,7 @@ import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.utils.JwtService;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.PasswordSecurity;
 import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
@@ -49,7 +50,7 @@ public class AuthService {
                             String roleStr = rs.getString(roleCol);
                             String dbPassword = rs.getString("password");
 
-                            if (!passwordMatches(password, dbPassword)) {
+                            if (!PasswordSecurity.matches(password, dbPassword)) {
                                 lastAuthenticationError = "Email ou mot de passe invalide.";
                                 return null;
                             }
@@ -66,7 +67,7 @@ public class AuthService {
 
                             UserRole role = mapRole(roleStr);
                             System.out.println("AuthService: connexion BD reussie pour " + normalizedEmail + " (id=" + userId + ")");
-                            return new User(userId, fullName, normalizedEmail, password, role);
+                            return new User(userId, fullName, normalizedEmail, dbPassword, role);
                         }
                     }
                 } catch (SQLException ignored) {
@@ -129,7 +130,7 @@ public class AuthService {
         String insertQuery = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
         try (PreparedStatement statement = connection.prepareStatement(insertQuery)) {
             statement.setString(1, normalizedEmail);
-            statement.setString(2, password);
+            statement.setString(2, PasswordSecurity.hashPassword(password));
             statement.setString(3, normalizedFullName);
             statement.setString(4, mapRegistrationRole(role));
             statement.setBoolean(5, true);
@@ -157,20 +158,6 @@ public class AuthService {
             System.out.println("Error checking email: " + e.getMessage());
             return false;
         }
-    }
-
-    private boolean passwordMatches(String input, String stored) {
-        if (stored == null) {
-            return false;
-        }
-        if (stored.equals(input)) {
-            return true;
-        }
-        if (stored.startsWith("$2")) {
-            System.out.println("AuthService: mot de passe BCrypt detecte, verification simplifiee.");
-            return true;
-        }
-        return false;
     }
 
     private boolean isBlank(String value) {

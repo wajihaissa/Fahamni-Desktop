@@ -136,7 +136,7 @@ public class TwoFactorAuthService {
 
         PendingTwoFactorSetup pendingSetup = PENDING_SETUPS.get(currentUser.getId());
         if (pendingSetup == null) {
-            return new SetupConfirmResult(false, "Aucune configuration 2FA en attente. Cliquez d'abord sur Start 2FA Setup.", Collections.emptyList());
+            return new SetupConfirmResult(false, "Aucune configuration 2FA en attente. Lancez d'abord la configuration 2FA.", Collections.emptyList());
         }
         if (!AppConfig.isAppSecretConfigured()) {
             return new SetupConfirmResult(false, "APP_SECRET est requis pour finaliser et enregistrer la 2FA.", Collections.emptyList());
@@ -183,7 +183,7 @@ public class TwoFactorAuthService {
     public TwoFactorStatus getCurrentStatus() {
         User currentUser = UserSession.getCurrentUser();
         if (currentUser == null || currentUser.getId() <= 0 || connection == null) {
-            return new TwoFactorStatus(false, "Never", false, null);
+            return new TwoFactorStatus(false, "Jamais", false, null);
         }
 
         PendingTwoFactorSetup pendingSetup = PENDING_SETUPS.get(currentUser.getId());
@@ -196,11 +196,11 @@ public class TwoFactorAuthService {
                 statement.setInt(1, currentUser.getId());
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (!resultSet.next()) {
-                        return new TwoFactorStatus(false, "Never", pendingSetup != null, payload);
+                        return new TwoFactorStatus(false, "Jamais", pendingSetup != null, payload);
                     }
                     return new TwoFactorStatus(
                         resultSet.getBoolean("two_factor_enabled"),
-                        valueOrDefault(resultSet.getString("two_factor_confirmed_at"), "Never"),
+                        valueOrDefault(resultSet.getString("two_factor_confirmed_at"), "Jamais"),
                         pendingSetup != null,
                         payload
                     );
@@ -208,7 +208,7 @@ public class TwoFactorAuthService {
             }
         } catch (SQLException exception) {
             System.out.println("TwoFactorAuthService status SQL error: " + exception.getMessage());
-            return new TwoFactorStatus(false, "Unknown", pendingSetup != null, payload);
+            return new TwoFactorStatus(false, "Inconnu", pendingSetup != null, payload);
         }
     }
 

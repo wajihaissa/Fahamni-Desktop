@@ -2,6 +2,7 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.PasswordSecurity;
 import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.nio.charset.StandardCharsets;
@@ -215,7 +216,7 @@ public class PasswordResetService {
     private void updateUserPassword(int userId, String newPassword) throws SQLException {
         String query = "UPDATE user SET password = ? WHERE id = ?";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, newPassword);
+            statement.setString(1, PasswordSecurity.hashPassword(newPassword));
             statement.setInt(2, userId);
             statement.executeUpdate();
         }

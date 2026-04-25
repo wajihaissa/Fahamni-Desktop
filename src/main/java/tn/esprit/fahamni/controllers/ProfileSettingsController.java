@@ -5,7 +5,10 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -13,6 +16,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.TwoFactorAuthService;
@@ -228,6 +232,8 @@ public class ProfileSettingsController {
         OperationResult result = accountService.updateCurrentUser(
             fullName,
             emailField.getText(),
+            phoneField.getText(),
+            bioArea.getText(),
             "",
             ""
         );
@@ -238,8 +244,7 @@ public class ProfileSettingsController {
         }
 
         refreshViewFromSession();
-        String message = result.getMessage() + " Les champs photo, telephone et bio restent des elements UI pour l'instant.";
-        showFeedback(message, true);
+        showFeedback(result.getMessage(), true);
 
         if (onProfileUpdated != null) {
             onProfileUpdated.accept(UserSession.getCurrentUser());
@@ -254,7 +259,12 @@ public class ProfileSettingsController {
 
     @FXML
     private void handleSaveCertifications() {
-        showFeedback("La section certifications est prete cote interface. Le branchement API viendra plus tard.", true);
+        hideFeedback();
+        OperationResult result = accountService.updateCurrentCertifications(certificationsArea.getText());
+        if (result.isSuccess()) {
+            refreshViewFromSession();
+        }
+        showFeedback(result.getMessage(), result.isSuccess());
     }
 
     @FXML
@@ -287,8 +297,18 @@ public class ProfileSettingsController {
     }
 
     @FXML
-    private void handleSecurityPlaceholderAction() {
-        showFeedback("Les actions de securite sont affichees cote interface. Nous brancherons l'API plus tard.", true);
+    private void handleChangePassword() {
+        hideFeedback();
+
+        Dialog<PasswordChangePayload> dialog = createChangePasswordDialog();
+        Optional<PasswordChangePayload> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+
+        PasswordChangePayload payload = result.get();
+        OperationResult updateResult = accountService.updateCurrentPassword(payload.newPassword(), payload.confirmPassword());
+        showFeedback(updateResult.getMessage(), updateResult.isSuccess());
     }
 
     @FXML
@@ -380,6 +400,7 @@ public class ProfileSettingsController {
             emailField.clear();
             phoneField.clear();
             bioArea.clear();
+            certificationsArea.clear();
             roleField.clear();
             applyAccountOverview(new UserAccountService.AccountOverview("Inconnu", "Aucun role", "Non disponible", "Non disponible"));
             refreshFaceStatus();
@@ -397,6 +418,11 @@ public class ProfileSettingsController {
         emailField.setText(currentUser.getEmail());
         roleField.setText(UserSession.getRoleLabel());
         profilePictureStatusLabel.setText(accountService.getCurrentAvatarStatus());
+
+        UserAccountService.ProfileDetails profileDetails = accountService.getCurrentProfileDetails();
+        phoneField.setText(profileDetails.phoneNumber());
+        bioArea.setText(profileDetails.bio());
+        certificationsArea.setText(profileDetails.certifications());
 
         applyAccountOverview(accountService.getCurrentAccountOverview());
         refreshFaceStatus();
@@ -432,11 +458,11 @@ public class ProfileSettingsController {
             }
             case CERTIFICATIONS -> {
                 contentTitleLabel.setText("Certifications et justificatifs");
-                contentSubtitleLabel.setText("Prepare cette section maintenant. Le branchement backend pourra venir plus tard.");
+                contentSubtitleLabel.setText("Enregistre tes certifications et pieces utiles directement sur ton profil.");
             }
             case SECURITY -> {
                 contentTitleLabel.setText("Parametres de securite");
-                contentSubtitleLabel.setText("Les boutons d'action sont prets. Nous pourrons brancher les API de securite ensuite.");
+                contentSubtitleLabel.setText("Gere Face ID, la 2FA et le mot de passe depuis un seul espace.");
             }
         }
     }
@@ -514,6 +540,38 @@ public class ProfileSettingsController {
         alert.setHeaderText(header);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private Dialog<PasswordChangePayload> createChangePasswordDialog() {
+        Dialog<PasswordChangePayload> dialog = new Dialog<>();
+        dialog.setTitle("Changer le mot de passe");
+        dialog.setHeaderText("Choisissez un nouveau mot de passe");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButtonType = new ButtonType("Mettre a jour", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().setAll(cancelButtonType, confirmButtonType);
+
+        Label firstLabel = new Label("Nouveau mot de passe");
+        PasswordField firstField = new PasswordField();
+        firstField.setPromptText("Nouveau mot de passe");
+
+        Label secondLabel = new Label("Confirmer le mot de passe");
+        PasswordField secondField = new PasswordField();
+        secondField.setPromptText("Confirmer le mot de passe");
+
+        VBox content = new VBox(10.0, firstLabel, firstField, secondLabel, secondField);
+        dialogPane.setContent(content);
+        dialog.setResultConverter(buttonType ->
+            buttonType == confirmButtonType ? new PasswordChangePayload(firstField.getText(), secondField.getText()) : null
+        );
+
+        Window owner = profileAvatarLabel != null && profileAvatarLabel.getScene() != null ? profileAvatarLabel.getScene().getWindow() : null;
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+
+        return dialog;
     }
 
     private void refreshFaceStatus() {
@@ -607,5 +665,8 @@ public class ProfileSettingsController {
 
         label.setText("");
         label.setGraphic(imageView);
+    }
+
+    private record PasswordChangePayload(String newPassword, String confirmPassword) {
     }
 }

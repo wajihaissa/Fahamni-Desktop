@@ -6,6 +6,7 @@ import tn.esprit.fahamni.Models.AdminUser;
 import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.PasswordSecurity;
 import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
@@ -123,7 +124,7 @@ public class AdminUserService implements IServices<AdminUser> {
         String query = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, normalizedEmail);
-            statement.setString(2, password);
+            statement.setString(2, PasswordSecurity.hashPassword(password));
             statement.setString(3, normalizedFullName);
             statement.setString(4, mapRoleToDatabaseValue(normalizedRole));
             statement.setBoolean(5, toDatabaseStatus(normalizedStatus));

@@ -292,11 +292,11 @@ public class FaceRecognitionService {
     }
 
     public FaceStatus getCurrentFaceStatus() {
-        String engineStatus = isConfigured() ? "Face engine: Connected" : "Face engine: Missing config";
+        String engineStatus = isConfigured() ? "Moteur Face ID : Connecte" : "Moteur Face ID : Configuration manquante";
         User currentUser = UserSession.getCurrentUser();
 
         if (currentUser == null || currentUser.getId() <= 0 || connection == null) {
-            return new FaceStatus(engineStatus, "Status: Not enrolled", false, "Never");
+            return new FaceStatus(engineStatus, "Statut : Non enrole", false, "Jamais");
         }
 
         try {
@@ -306,22 +306,22 @@ public class FaceRecognitionService {
                 statement.setInt(1, currentUser.getId());
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (!resultSet.next()) {
-                        return new FaceStatus(engineStatus, "Status: Not enrolled", false, "Never");
+                        return new FaceStatus(engineStatus, "Statut : Non enrole", false, "Jamais");
                     }
 
                     boolean enabled = resultSet.getBoolean("face_id_enabled");
                     String enrolledAt = resultSet.getString("face_id_enrolled_at");
                     return new FaceStatus(
                         engineStatus,
-                        enabled ? "Status: Face ID enabled" : "Status: Not enrolled",
+                        enabled ? "Statut : Face ID active" : "Statut : Non enrole",
                         enabled,
-                        enrolledAt == null ? "Never" : enrolledAt
+                        enrolledAt == null ? "Jamais" : enrolledAt
                     );
                 }
             }
         } catch (SQLException exception) {
             System.out.println("FaceRecognitionService status SQL error: " + exception.getMessage());
-            return new FaceStatus(engineStatus, "Status: Unable to read Face ID", false, "Unknown");
+            return new FaceStatus(engineStatus, "Statut : Lecture Face ID impossible", false, "Inconnu");
         }
     }
 
