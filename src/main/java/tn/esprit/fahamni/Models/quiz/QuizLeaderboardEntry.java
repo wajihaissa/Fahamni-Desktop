@@ -100,4 +100,8 @@ public class QuizLeaderboardEntry {
     public void setWeightedScore(double weightedScore) {
         this.weightedScore = weightedScore;
     }
+
+    public boolean hasIdentity() {
+        return userName != null && !userName.isBlank();
+    }
 }

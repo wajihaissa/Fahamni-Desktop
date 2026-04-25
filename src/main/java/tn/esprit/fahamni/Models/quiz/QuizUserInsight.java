@@ -61,6 +61,18 @@ public class QuizUserInsight {
         this.recommendedDifficulty = recommendedDifficulty;
     }
 
+    public boolean hasAttempts() {
+        return totalAttempts > 0;
+    }
+
+    public boolean hasWeakTopics() {
+        return !weakestTopics.isEmpty();
+    }
+
+    public boolean hasStrongTopics() {
+        return !strongestTopics.isEmpty();
+    }
+
     public List<String> getWeakestTopics() {
         return weakestTopics;
     }

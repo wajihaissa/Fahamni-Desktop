@@ -68,6 +68,14 @@ public class QuizQuestionPerformance {
         this.accuracyRate = accuracyRate;
     }
 
+    public boolean hasAttempts() {
+        return attempts > 0;
+    }
+
+    public boolean hasRecentAnswer() {
+        return lastAnsweredAt != null;
+    }
+
     public Instant getLastAnsweredAt() {
         return lastAnsweredAt;
     }
