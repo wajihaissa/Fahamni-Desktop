@@ -897,17 +897,16 @@ public class QuizService {
     }
 
     private boolean hasQuizResultColumn(String columnName) {
-        return hasTableColumn("quiz_result", columnName);
+        return tableHasColumn("quiz_result", columnName);
     }
 
     private boolean hasQuestionColumn(String columnName) {
-        return hasTableColumn("question", columnName);
+        return tableHasColumn("question", columnName);
     }
 
-    private boolean hasTableColumn(String tableName, String columnName) {
+    private boolean tableHasColumn(String tableName, String columnName) {
         try {
-            DatabaseMetaData metaData = cnx.getMetaData();
-            try (ResultSet columns = metaData.getColumns(cnx.getCatalog(), null, tableName, columnName)) {
+            try (ResultSet columns = getDatabaseMetaData().getColumns(cnx.getCatalog(), null, tableName, columnName)) {
                 return columns.next();
             }
         } catch (SQLException e) {
@@ -917,13 +916,16 @@ public class QuizService {
 
     private boolean tableExists(String tableName) {
         try {
-            DatabaseMetaData metaData = cnx.getMetaData();
-            try (ResultSet tables = metaData.getTables(cnx.getCatalog(), null, tableName, new String[]{"TABLE"})) {
+            try (ResultSet tables = getDatabaseMetaData().getTables(cnx.getCatalog(), null, tableName, new String[]{"TABLE"})) {
                 return tables.next();
             }
         } catch (SQLException e) {
             return false;
         }
+    }
+
+    private DatabaseMetaData getDatabaseMetaData() throws SQLException {
+        return cnx.getMetaData();
     }
 
     private String resolveQuestionTopic(ResultSet rs, String fallback) throws SQLException {
