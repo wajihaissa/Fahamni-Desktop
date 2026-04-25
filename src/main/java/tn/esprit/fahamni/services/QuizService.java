@@ -78,10 +78,7 @@ public class QuizService {
         try (Statement stmt = cnx.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             while (rs.next()) {
-                Quiz quiz = mapResultSetToQuiz(rs);
-                loadQuizQuestions(quiz);
-                loadQuizResults(quiz);
-                quizzes.add(quiz);
+                quizzes.add(loadQuizAggregate(rs));
             }
         } catch (SQLException e) {
             System.err.println("Error fetching quizzes: " + e.getMessage());
@@ -97,10 +94,7 @@ public class QuizService {
             stmt.setLong(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    Quiz quiz = mapResultSetToQuiz(rs);
-                    loadQuizQuestions(quiz);
-                    loadQuizResults(quiz);
-                    return quiz;
+                    return loadQuizAggregate(rs);
                 }
             }
         } catch (SQLException e) {
@@ -356,6 +350,13 @@ public class QuizService {
         return quiz;
     }
 
+    private Quiz loadQuizAggregate(ResultSet rs) throws SQLException {
+        Quiz quiz = mapResultSetToQuiz(rs);
+        loadQuizQuestions(quiz);
+        loadQuizResults(quiz);
+        return quiz;
+    }
+
     private void loadQuizQuestions(Quiz quiz) {
         String questionQuery = "SELECT * FROM question WHERE quiz_id = ?";
         String choiceQuery = "SELECT * FROM choice WHERE question_id = ?";
@@ -364,28 +365,7 @@ public class QuizService {
             questionStmt.setLong(1, quiz.getId());
             try (ResultSet questionRs = questionStmt.executeQuery()) {
                 while (questionRs.next()) {
-                    Question q = new Question();
-                    q.setId(questionRs.getLong("id"));
-                    q.setSourceQuestionId(resolveSourceQuestionId(questionRs));
-                    q.setQuestion(questionRs.getString("question"));
-                    q.setTopic(resolveQuestionTopic(questionRs, quiz.getKeyword()));
-                    q.setDifficulty(resolveQuestionDifficulty(questionRs));
-                    q.setQuiz(quiz);
-
-                    try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
-                        choiceStmt.setLong(1, q.getId());
-                        try (ResultSet choiceRs = choiceStmt.executeQuery()) {
-                            while (choiceRs.next()) {
-                                Choice c = new Choice();
-                                c.setId(choiceRs.getLong("id"));
-                                c.setChoice(choiceRs.getString("choice"));
-                                c.setIsCorrect(choiceRs.getBoolean("is_correct"));
-                                q.addChoice(c);
-                            }
-                        }
-                    }
-
-                    quiz.addQuestion(q);
+                    quiz.addQuestion(loadQuestionWithChoices(questionRs, choiceQuery, quiz));
                 }
             }
         } catch (SQLException e) {
@@ -400,31 +380,64 @@ public class QuizService {
             stmt.setLong(1, quiz.getId());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    QuizResult result = new QuizResult();
-                    result.setId(rs.getLong("id"));
-                    result.setScore(rs.getInt("score"));
-                    result.setTotalQuestions(getNullableInt(rs, "total_questions"));
-                    result.setPercentage(getNullableDouble(rs, "percentage"));
-                    result.setPassed(getNullableBoolean(rs, "passed"));
-
-                    Timestamp completedAt = rs.getTimestamp("completed_at");
-                    result.setCompletedAt(completedAt != null ? completedAt.toInstant() : null);
-
-                    if (hasColumn(rs, "user_email")) {
-                        String email = rs.getString("user_email");
-                        if (email != null && !email.isBlank()) {
-                            String fullName = hasColumn(rs, "user_full_name") ? rs.getString("user_full_name") : email;
-                            Long userId = getNullableLong(rs, "user_id");
-                            result.setUser(new User(userId, fullName, email, "", UserRole.USER));
-                        }
-                    }
-
-                    quiz.addQuizResult(result);
+                    quiz.addQuizResult(mapResultSetToQuizResult(rs));
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error loading results: " + e.getMessage());
         }
+    }
+
+    private Question loadQuestionWithChoices(ResultSet questionRs, String choiceQuery, Quiz quiz) throws SQLException {
+        Question question = new Question();
+        question.setId(questionRs.getLong("id"));
+        question.setSourceQuestionId(resolveSourceQuestionId(questionRs));
+        question.setQuestion(questionRs.getString("question"));
+        question.setTopic(resolveQuestionTopic(questionRs, quiz.getKeyword()));
+        question.setDifficulty(resolveQuestionDifficulty(questionRs));
+        question.setQuiz(quiz);
+
+        try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
+            choiceStmt.setLong(1, question.getId());
+            try (ResultSet choiceRs = choiceStmt.executeQuery()) {
+                while (choiceRs.next()) {
+                    question.addChoice(mapResultSetToChoice(choiceRs));
+                }
+            }
+        }
+
+        return question;
+    }
+
+    private QuizResult mapResultSetToQuizResult(ResultSet rs) throws SQLException {
+        QuizResult result = new QuizResult();
+        result.setId(rs.getLong("id"));
+        result.setScore(rs.getInt("score"));
+        result.setTotalQuestions(getNullableInt(rs, "total_questions"));
+        result.setPercentage(getNullableDouble(rs, "percentage"));
+        result.setPassed(getNullableBoolean(rs, "passed"));
+
+        Timestamp completedAt = rs.getTimestamp("completed_at");
+        result.setCompletedAt(completedAt != null ? completedAt.toInstant() : null);
+
+        if (hasColumn(rs, "user_email")) {
+            String email = rs.getString("user_email");
+            if (email != null && !email.isBlank()) {
+                String fullName = hasColumn(rs, "user_full_name") ? rs.getString("user_full_name") : email;
+                Long userId = getNullableLong(rs, "user_id");
+                result.setUser(new User(userId, fullName, email, "", UserRole.USER));
+            }
+        }
+
+        return result;
+    }
+
+    private Choice mapResultSetToChoice(ResultSet rs) throws SQLException {
+        Choice choice = new Choice();
+        choice.setId(rs.getLong("id"));
+        choice.setChoice(rs.getString("choice"));
+        choice.setIsCorrect(rs.getBoolean("is_correct"));
+        return choice;
     }
 
     private void replaceQuizQuestions(Long quizId, List<Question> questions) throws SQLException {
