@@ -9,6 +9,7 @@ public class Interaction {
     private String commentaire;
     private LocalDateTime createdAt;
     private String createdBy;
+    private int parentId; // 0 = commentaire racine, >0 = réponse à un commentaire
 
     public Interaction(int id, String type, String commentaire,
                        LocalDateTime createdAt, String createdBy) {
@@ -17,6 +18,7 @@ public class Interaction {
         this.commentaire = commentaire;
         this.createdAt = createdAt;
         this.createdBy = createdBy;
+        this.parentId = 0;
     }
 
     public int getId() { return id; }
@@ -33,4 +35,7 @@ public class Interaction {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public int getParentId() { return parentId; }
+    public void setParentId(int parentId) { this.parentId = parentId; }
 }

@@ -2675,4 +2675,49 @@
             -fx-padding: 10px 12px;
         }
 
+        /* ── Commentaires admin ───────────────────────────────────── */
+
+        #backofficeCommentsRoot .backoffice-articles-banner {
+            -fx-background-color: linear-gradient(to bottom, #fff8ec 0%, #fff4df 100%);
+            -fx-border-color: #f6d191;
+            -fx-border-width: 1px;
+            -fx-border-radius: 16px;
+            -fx-background-radius: 16px;
+            -fx-padding: 12px 14px;
+        }
+
+        #backofficeCommentsRoot .backoffice-articles-banner-icon {
+            -fx-min-width: 28px;
+            -fx-min-height: 28px;
+            -fx-alignment: center;
+            -fx-background-color: #fff1d2;
+            -fx-border-color: #f3cf8b;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #a46a08;
+        }
+
+        #backofficeCommentsRoot .backoffice-articles-banner-text {
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #88570b;
+        }
+
+        #backofficeCommentsRoot .backoffice-articles-toolbar { -fx-padding: 14px 16px; }
+        #backofficeCommentsRoot .backoffice-articles-filter-chip { -fx-background-radius: 999px; -fx-border-radius: 999px; -fx-padding: 5px 16px; }
+        #backofficeCommentsRoot .backoffice-articles-filter-chip-approved { -fx-border-color: #2e7d32; -fx-text-fill: #2e7d32; }
+        #backofficeCommentsRoot .backoffice-articles-filter-chip-deleted  { -fx-border-color: #c62828; -fx-text-fill: #c62828; }
+        #backofficeCommentsRoot .backoffice-articles-filter-chip.active   { -fx-background-color: #3b5bdb; -fx-text-fill: white; -fx-border-color: #3b5bdb; }
+        #backofficeCommentsRoot .backoffice-articles-table-panel  { -fx-padding: 20px; }
+        #backofficeCommentsRoot .backoffice-articles-title-cell   { -fx-font-weight: bold; -fx-text-fill: #1e293b; }
+        #backofficeCommentsRoot .backoffice-articles-author-cell  { -fx-text-fill: #3b5bdb; -fx-font-weight: bold; }
+        #backofficeCommentsRoot .backoffice-articles-date-cell    { -fx-text-fill: #64748b; }
+        #backofficeCommentsRoot .backoffice-articles-feedback     { -fx-padding: 10px 14px; -fx-background-radius: 10px; -fx-font-weight: bold; }
+        #backofficeCommentsRoot .backoffice-articles-feedback.success { -fx-background-color: #e8f5e9; -fx-text-fill: #2e7d32; }
+        #backofficeCommentsRoot .backoffice-articles-feedback.error   { -fx-background-color: #ffebee; -fx-text-fill: #c62828; }
+        #backofficeCommentsRoot .backoffice-articles-action-button { -fx-font-size: 11px; -fx-padding: 4px 10px; -fx-background-radius: 8px; -fx-cursor: hand; }
+
         

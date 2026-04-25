@@ -45,6 +45,31 @@ public final class AppConfig {
             && !getMailerFrom().isBlank();
     }
 
+    public static String getGeminiApiKey() {
+        String prop = System.getProperty("GEMINI_API_KEY", "");
+        if (!prop.isBlank()) return prop;
+        return getEnv("GEMINI_API_KEY", "");
+    }
+
+    public static boolean isGeminiConfigured() {
+        return !getGeminiApiKey().isBlank();
+    }
+
+    private static final String DEFAULT_GROQ_KEY =
+        "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";
+
+    public static String getGroqApiKey() {
+        String prop = System.getProperty("GROQ_API_KEY", "");
+        if (!prop.isBlank()) return prop;
+        String env = getEnv("GROQ_API_KEY", "");
+        if (!env.isBlank()) return env;
+        return DEFAULT_GROQ_KEY;
+    }
+
+    public static boolean isGroqConfigured() {
+        return !getGroqApiKey().isBlank();
+    }
+
     private static String getEnv(String key, String fallback) {
         String value = System.getenv(key);
         if (value == null || value.isBlank()) {

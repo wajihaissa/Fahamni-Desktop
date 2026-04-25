@@ -17,6 +17,7 @@ import tn.esprit.fahamni.utils.UserSession;
 public class BackofficeMainController {
 
     private final AdminArticlesService articlesService = new AdminArticlesService();
+    private final tn.esprit.fahamni.services.NotificationService notifService = new tn.esprit.fahamni.services.NotificationService();
 
     @FXML private AnchorPane contentPane;
     @FXML private Label pageTitle;
@@ -26,6 +27,8 @@ public class BackofficeMainController {
     @FXML private Button sessionsButton;
     @FXML private Button reservationsButton;
     @FXML private Button contentButton;
+    @FXML private Button commentsButton;
+    @FXML private Label commentsBadge;
     @FXML private Button articlesButton;
     @FXML private Label articlesBadge;
     @FXML private Button infrastructureToggleButton;
@@ -51,6 +54,7 @@ public class BackofficeMainController {
         setInfrastructureExpanded(false);
         showDashboard();
         refreshArticlesBadge();
+        refreshCommentsBadge();
     }
 
     public void refreshArticlesBadge() {
@@ -116,6 +120,32 @@ public class BackofficeMainController {
             "Pilotez les articles, ressources et publications mises en avant."
         );
         setActiveButton(contentButton);
+    }
+
+    public void refreshCommentsBadge() {
+        if (commentsBadge == null) return;
+        long count = notifService.getUnreadForAdmin().stream()
+            .filter(n -> n.getMessage() != null && n.getMessage().contains("Commentaire bloqué"))
+            .count();
+        if (count > 0) {
+            commentsBadge.setText(String.valueOf(count));
+            commentsBadge.setVisible(true);
+            commentsBadge.setManaged(true);
+        } else {
+            commentsBadge.setVisible(false);
+            commentsBadge.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void showComments() {
+        loadView(
+            "BackofficeCommentsView.fxml",
+            "Gestion des commentaires",
+            "Moderez les commentaires postes par les utilisateurs sur les articles."
+        );
+        setActiveButton(commentsButton);
+        refreshCommentsBadge();
     }
 
     @FXML
@@ -270,6 +300,7 @@ public class BackofficeMainController {
         removeActiveClass(sessionsButton);
         removeActiveClass(reservationsButton);
         removeActiveClass(contentButton);
+        removeActiveClass(commentsButton);
         removeActiveClass(articlesButton);
         removeActiveClass(infrastructureToggleButton);
         removeActiveClass(sallesButton);
