@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class AiQuizAssistantServiceTest {
 
@@ -56,5 +57,28 @@ class AiQuizAssistantServiceTest {
         assertFalse(hint.contains("ruling out"));
         assertFalse(hint.contains("option"));
         assertFalse(hint.contains("choice"));
+    }
+
+    @Test
+    void inferQuestionMetadataFallsBackToKeywordAndAllowedDifficulty() {
+        AiQuizAssistantService.QuestionMetadata metadata = service.inferQuestionMetadata(
+                "Networks",
+                "Network Quiz",
+                "Why is packet routing important in distributed systems?",
+                java.util.List.of("Speed", "Reliability", "Color", "Temperature")
+        );
+
+        assertNotNull(metadata);
+        assertNotNull(metadata.topic());
+        assertNotNull(metadata.difficulty());
+        assertTrue(java.util.Set.of("Easy", "Medium", "Hard").contains(metadata.difficulty()));
+    }
+
+    @Test
+    void generateQuizDraftClampsRequestedQuestionCount() {
+        Quiz quiz = service.generateQuizDraft("Java", "Java Foundations", 10, "Medium").quiz();
+
+        assertNotNull(quiz);
+        assertEquals(5, quiz.getQuestions().size());
     }
 }
