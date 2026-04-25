@@ -1,87 +1,94 @@
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminUser.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Seance.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Notification.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\UserSession.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminArticlesService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\ActivityLog.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Equipement.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminReservation.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\NotificationService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeSallesController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminArticle.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\OperationResult.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\SessionManager.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminUserService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\JwtService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\interfaces\IServices.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Salle.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\MaintenanceSalle.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Blog.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\ReclamationSalle.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\PlannerController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Reservation.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeSessionsController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeContentController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Article.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminReclamationSalleService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\MailService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\FrontOfficeUiTheme.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeEquipementsController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\BackOfficeUiTheme.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeDashboardController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminReservationService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\ReservationController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminDashboardService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\SeanceService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Conversation.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\User.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\MainController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\UserInputValidator.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\ReservationService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeReservationsController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\SallesEquipementsController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminDashboardSummary.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminMaintenanceSalleService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\ActivityLogService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\PlannerService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeUsersController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\StudyPlanRequest.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\MyDataBase.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\UserRole.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BlogController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Interaction.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\MessengerService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeMainController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\SessionCreationContext.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminEquipementService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\Test.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\SceneManager.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminSalleService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\MockTutorDirectoryService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminSession.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Quiz.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminPlaceService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\PasswordResetService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeArticlesController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\AppConfig.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\UserAccountService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeMaintenanceController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\BackofficeReclamationsController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\ProfileSettingsController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\SeanceController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\AdminFeedItem.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\ChatMessage.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\MessengerController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\StudyPlanEntry.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\BlogService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\LoginController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminSessionService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\DashboardController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AuthService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\controllers\QuizController.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\test\Main.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\utils\UiTheme.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\QuizService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\ReservationPlace.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\services\AdminContentService.java
-C:\Users\GIGABYTE\Desktop\Kreaya\film\0402(4)\Java Prosit\Td conception\fahamni-Desktop\src\main\java\tn\esprit\fahamni\Models\Place.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\AdminArticle.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\MaintenanceSalle.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\ProfileSettingsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\SceneManager.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\AdminReservation.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\LoginController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\SeanceController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\TextToSpeechService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminSessionService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeReclamationsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\MessengerService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminReservationService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Quiz.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeSessionsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\StudyPlanEntry.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Article.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\MessengerController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeArticlesController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\AdminFeedItem.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\ReclamationSalle.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\UserSession.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeUsersController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Salle.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeReservationsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeMaintenanceController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminUserService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminArticlesService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Conversation.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\UiTheme.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeDashboardController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\SessionCreationContext.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\QuizService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\OperationResult.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\ChatMessage.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\ReservationService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BlogController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Interaction.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\AdminSession.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\CommentAdminItem.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\ProfanityFilterService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\TranslationService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\AdminDashboardSummary.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\PlannerService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\BackOfficeUiTheme.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\PlannerController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\PasswordResetService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\ActivityLog.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\StudyPlanRequest.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminContentService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminPlaceService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\SessionManager.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\JwtService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\AppConfig.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\ActivityLogService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\Test.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeSallesController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\BlogService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminReclamationSalleService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\UserAccountService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\UserInputValidator.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\interfaces\IServices.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\DashboardController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\AdminUser.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AuthService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminEquipementService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\MockTutorDirectoryService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\NotificationService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeMainController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\QuizController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeCommentsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\MailService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\MainController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\SeanceService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Place.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminMaintenanceSalleService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Seance.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminSalleService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Notification.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\ContentGeneratorService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\AdminDashboardService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\test\Main.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\FrontOfficeUiTheme.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeEquipementsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\ReservationController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\ReservationPlace.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Equipement.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Reservation.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\services\SpellCheckService.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\SallesEquipementsController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\User.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\utils\MyDataBase.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\UserRole.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\controllers\BackofficeContentController.java
+C:\Users\maoui\OneDrive\Bureau\FinalProj\src\main\java\tn\esprit\fahamni\Models\Blog.java
