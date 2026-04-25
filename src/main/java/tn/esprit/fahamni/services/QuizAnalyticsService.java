@@ -157,17 +157,7 @@ public class QuizAnalyticsService {
             summaryStmt.setInt(1, userId);
             try (ResultSet rs = summaryStmt.executeQuery()) {
                 if (rs.next()) {
-                    insight = new QuizUserInsight();
-                    insight.setUserId(rs.getInt("user_id"));
-                    insight.setUserName(rs.getString("user_name"));
-                    insight.setTotalAttempts(rs.getInt("total_attempts"));
-                    insight.setAveragePercentage(rs.getDouble("average_percentage"));
-                    insight.setPassRate(rs.getDouble("pass_rate"));
-                    insight.setRecommendedDifficulty(resolveRecommendedDifficulty(
-                            insight.getAveragePercentage(),
-                            insight.getPassRate(),
-                            insight.getTotalAttempts()
-                    ));
+                    insight = mapUserInsightSummary(rs);
                 }
             }
         } catch (SQLException e) {
@@ -181,17 +171,7 @@ public class QuizAnalyticsService {
         try (PreparedStatement topicStmt = cnx.prepareStatement(topicQuery)) {
             topicStmt.setInt(1, userId);
             try (ResultSet rs = topicStmt.executeQuery()) {
-                List<String> rankedTopics = new ArrayList<>();
-                while (rs.next()) {
-                    rankedTopics.add(rs.getString("topic"));
-                }
-
-                for (int i = 0; i < rankedTopics.size() && i < 3; i++) {
-                    insight.getWeakestTopics().add(rankedTopics.get(i));
-                }
-                for (int i = rankedTopics.size() - 1; i >= 0 && insight.getStrongestTopics().size() < 3; i--) {
-                    insight.getStrongestTopics().add(rankedTopics.get(i));
-                }
+                applyTopicRanking(insight, rs);
             }
         } catch (SQLException e) {
             System.err.println("Error loading topic insight: " + e.getMessage());
@@ -314,5 +294,34 @@ public class QuizAnalyticsService {
         Timestamp lastAnsweredAt = rs.getTimestamp("last_answered_at");
         performance.setLastAnsweredAt(lastAnsweredAt != null ? lastAnsweredAt.toInstant() : null);
         return performance;
+    }
+
+    private QuizUserInsight mapUserInsightSummary(ResultSet rs) throws SQLException {
+        QuizUserInsight insight = new QuizUserInsight();
+        insight.setUserId(rs.getInt("user_id"));
+        insight.setUserName(rs.getString("user_name"));
+        insight.setTotalAttempts(rs.getInt("total_attempts"));
+        insight.setAveragePercentage(rs.getDouble("average_percentage"));
+        insight.setPassRate(rs.getDouble("pass_rate"));
+        insight.setRecommendedDifficulty(resolveRecommendedDifficulty(
+                insight.getAveragePercentage(),
+                insight.getPassRate(),
+                insight.getTotalAttempts()
+        ));
+        return insight;
+    }
+
+    private void applyTopicRanking(QuizUserInsight insight, ResultSet rs) throws SQLException {
+        List<String> rankedTopics = new ArrayList<>();
+        while (rs.next()) {
+            rankedTopics.add(rs.getString("topic"));
+        }
+
+        for (int i = 0; i < rankedTopics.size() && i < 3; i++) {
+            insight.getWeakestTopics().add(rankedTopics.get(i));
+        }
+        for (int i = rankedTopics.size() - 1; i >= 0 && insight.getStrongestTopics().size() < 3; i--) {
+            insight.getStrongestTopics().add(rankedTopics.get(i));
+        }
     }
 }
