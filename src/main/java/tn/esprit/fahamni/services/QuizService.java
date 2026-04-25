@@ -270,14 +270,10 @@ public class QuizService {
 
         try {
             cnx.setAutoCommit(false);
-            QuizResult persistedResult = saveQuizResult(quiz, result);
+            QuizResult persistedResult = persistQuizResult(quiz, result, selectedChoiceIdsByQuestionId);
             if (persistedResult == null) {
                 cnx.rollback();
                 return null;
-            }
-
-            if (tableExists("quiz_answer_attempt")) {
-                saveAnswerAttempts(persistedResult, quiz, selectedChoiceIdsByQuestionId);
             }
 
             cnx.commit();
@@ -298,22 +294,7 @@ public class QuizService {
         }
 
         int totalQuestions = quiz.getQuestions().size();
-        int score = 0;
-
-        for (Question question : quiz.getQuestions()) {
-            Choice correctChoice = getCorrectChoice(question);
-            if (correctChoice == null) {
-                continue;
-            }
-
-            Long selectedChoiceId = selectedChoiceIdsByQuestionId != null
-                    ? selectedChoiceIdsByQuestionId.get(question.getId())
-                    : null;
-
-            if (selectedChoiceId != null && selectedChoiceId.equals(correctChoice.getId())) {
-                score++;
-            }
-        }
+        int score = calculateScore(quiz, selectedChoiceIdsByQuestionId);
 
         QuizResult result = new QuizResult();
         result.setQuiz(quiz);
@@ -596,6 +577,19 @@ public class QuizService {
         }
     }
 
+    private QuizResult persistQuizResult(Quiz quiz, QuizResult result, Map<Long, Long> selectedChoiceIdsByQuestionId) throws SQLException {
+        QuizResult persistedResult = saveQuizResult(quiz, result);
+        if (persistedResult == null) {
+            return null;
+        }
+
+        if (tableExists("quiz_answer_attempt")) {
+            saveAnswerAttempts(persistedResult, quiz, selectedChoiceIdsByQuestionId);
+        }
+
+        return persistedResult;
+    }
+
     private void saveAnswerAttempts(QuizResult result, Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) throws SQLException {
         String query = """
                 INSERT INTO quiz_answer_attempt (quiz_result_id, question_id, selected_choice_id, is_correct, answered_at)
@@ -784,6 +778,26 @@ public class QuizService {
                 .filter(choice -> Boolean.TRUE.equals(choice.getIsCorrect()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private int calculateScore(Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) {
+        int score = 0;
+
+        for (Question question : quiz.getQuestions()) {
+            Choice correctChoice = getCorrectChoice(question);
+            if (correctChoice == null) {
+                continue;
+            }
+
+            Long selectedChoiceId = selectedChoiceIdsByQuestionId != null
+                    ? selectedChoiceIdsByQuestionId.get(question.getId())
+                    : null;
+            if (selectedChoiceId != null && selectedChoiceId.equals(correctChoice.getId())) {
+                score++;
+            }
+        }
+
+        return score;
     }
 
     private boolean hasQuizShell(Quiz quiz) {
