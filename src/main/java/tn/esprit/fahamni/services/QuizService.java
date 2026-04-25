@@ -48,52 +48,14 @@ public class QuizService {
             Instant createdAt = Instant.now();
 
             try (PreparedStatement quizStmt = cnx.prepareStatement(quizQuery, Statement.RETURN_GENERATED_KEYS)) {
-                quizStmt.setString(1, quiz.getTitre());
-                quizStmt.setString(2, quiz.getKeyword());
-                quizStmt.setTimestamp(3, Timestamp.from(createdAt));
-
-                if (quizStmt.executeUpdate() > 0) {
-                    try (ResultSet rs = quizStmt.getGeneratedKeys()) {
-                        if (rs.next()) {
-                            quiz.setId(rs.getLong(1));
-                            quiz.setCreatedAt(createdAt);
-                        }
-                    }
-                }
+                createQuizRecord(quizStmt, quiz, createdAt);
             }
 
             if (quiz.getId() != null && quiz.getQuestions() != null) {
                 try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery, Statement.RETURN_GENERATED_KEYS);
                      PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery, Statement.RETURN_GENERATED_KEYS)) {
                     for (Question question : quiz.getQuestions()) {
-                        bindQuestionStatement(questionStmt, question, quiz);
-                        int questionRows = questionStmt.executeUpdate();
-
-                        if (questionRows <= 0) {
-                            continue;
-                        }
-
-                        try (ResultSet qRs = questionStmt.getGeneratedKeys()) {
-                            if (qRs.next()) {
-                                question.setId(qRs.getLong(1));
-                                question.setQuiz(quiz);
-                            }
-                        }
-
-                        for (Choice choice : question.getChoices()) {
-                            choiceStmt.setString(1, choice.getChoice());
-                            choiceStmt.setBoolean(2, choice.getIsCorrect() != null ? choice.getIsCorrect() : false);
-                            choiceStmt.setLong(3, question.getId());
-                            choiceStmt.executeUpdate();
-
-                            try (ResultSet choiceRs = choiceStmt.getGeneratedKeys()) {
-                                if (choiceRs.next()) {
-                                    choice.setId(choiceRs.getLong(1));
-                                }
-                            }
-
-                            choice.setQuestion(question);
-                        }
+                        insertQuestionWithChoices(questionStmt, choiceStmt, question, quiz);
                     }
                 }
             }
@@ -514,31 +476,7 @@ public class QuizService {
         try (PreparedStatement questionStmt = cnx.prepareStatement(questionQuery, Statement.RETURN_GENERATED_KEYS);
              PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery, Statement.RETURN_GENERATED_KEYS)) {
             for (Question question : questions) {
-                bindQuestionStatement(questionStmt, question, quizShell);
-                questionStmt.executeUpdate();
-
-                try (ResultSet questionKeys = questionStmt.getGeneratedKeys()) {
-                    if (questionKeys.next()) {
-                        question.setId(questionKeys.getLong(1));
-                    }
-                }
-
-                question.setQuiz(quizShell);
-
-                for (Choice choice : question.getChoices()) {
-                    choiceStmt.setString(1, choice.getChoice());
-                    choiceStmt.setBoolean(2, Boolean.TRUE.equals(choice.getIsCorrect()));
-                    choiceStmt.setLong(3, question.getId());
-                    choiceStmt.executeUpdate();
-
-                    try (ResultSet choiceKeys = choiceStmt.getGeneratedKeys()) {
-                        if (choiceKeys.next()) {
-                            choice.setId(choiceKeys.getLong(1));
-                        }
-                    }
-
-                    choice.setQuestion(question);
-                }
+                insertQuestionWithChoices(questionStmt, choiceStmt, question, quizShell);
             }
         }
     }
@@ -563,6 +501,62 @@ public class QuizService {
             deleteQuestionsStmt.setLong(1, quizId);
             deleteQuestionsStmt.executeUpdate();
         }
+    }
+
+    private void createQuizRecord(PreparedStatement statement, Quiz quiz, Instant createdAt) throws SQLException {
+        statement.setString(1, quiz.getTitre());
+        statement.setString(2, quiz.getKeyword());
+        statement.setTimestamp(3, Timestamp.from(createdAt));
+
+        if (statement.executeUpdate() <= 0) {
+            return;
+        }
+
+        try (ResultSet keys = statement.getGeneratedKeys()) {
+            if (keys.next()) {
+                quiz.setId(keys.getLong(1));
+                quiz.setCreatedAt(createdAt);
+            }
+        }
+    }
+
+    private void insertQuestionWithChoices(
+            PreparedStatement questionStatement,
+            PreparedStatement choiceStatement,
+            Question question,
+            Quiz quiz
+    ) throws SQLException {
+        bindQuestionStatement(questionStatement, question, quiz);
+        int questionRows = questionStatement.executeUpdate();
+        if (questionRows <= 0) {
+            return;
+        }
+
+        try (ResultSet questionKeys = questionStatement.getGeneratedKeys()) {
+            if (questionKeys.next()) {
+                question.setId(questionKeys.getLong(1));
+                question.setQuiz(quiz);
+            }
+        }
+
+        for (Choice choice : question.getChoices()) {
+            insertChoice(choiceStatement, choice, question);
+        }
+    }
+
+    private void insertChoice(PreparedStatement statement, Choice choice, Question question) throws SQLException {
+        statement.setString(1, choice.getChoice());
+        statement.setBoolean(2, Boolean.TRUE.equals(choice.getIsCorrect()));
+        statement.setLong(3, question.getId());
+        statement.executeUpdate();
+
+        try (ResultSet choiceKeys = statement.getGeneratedKeys()) {
+            if (choiceKeys.next()) {
+                choice.setId(choiceKeys.getLong(1));
+            }
+        }
+
+        choice.setQuestion(question);
     }
 
     private QuizResult saveQuizResult(Quiz quiz, QuizResult result) {
