@@ -1,63 +1,55 @@
 package tn.esprit.fahamni.services;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.net.ssl.SSLException;
 
-public class GroqMatchingAnalysisService {
+public class GeminiMatchingAnalysisService {
 
-    private static final String GROQ_RESPONSES_API_URL = "https://api.groq.com/openai/v1/responses";
-    private static final String DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b";
-    private static final String MATCHING_SCHEMA_NAME = "matching_need_profile";
+    private static final String GEMINI_API_URL_TEMPLATE =
+        "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
+    private static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(25);
-    private static final Pattern OUTPUT_TEXT_TYPE_PATTERN = Pattern.compile("\"type\"\\s*:\\s*\"output_text\"");
-
-    private final HttpClient httpClient = HttpClient.newBuilder()
-        .connectTimeout(CONNECT_TIMEOUT)
-        .build();
+    private static final Pattern FIELD_PATTERN_TEMPLATE = Pattern.compile("\"%s\"\\s*:");
 
     public boolean isConfigured() {
-        return normalizeEnv("GROQ_API_KEY") != null;
+        return normalizeEnv("GEMINI_API_KEY") != null;
     }
 
     public MatchingAiAttempt analyzeNeed(MatchingAiContext context) {
-        String apiKey = normalizeEnv("GROQ_API_KEY");
+        String apiKey = normalizeEnv("GEMINI_API_KEY");
         if (apiKey == null) {
-            return MatchingAiAttempt.failure("Le service d'analyse assistee n'est pas disponible pour le moment.");
+            return MatchingAiAttempt.failure("La cle Gemini n'est pas configuree. Ajoutez GEMINI_API_KEY.");
         }
         if (context == null || context.objectiveText() == null || context.objectiveText().isBlank()) {
             return MatchingAiAttempt.failure("Veuillez decrire votre besoin pour lancer le matching.");
         }
 
         String model = resolveModel();
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(URI.create(GROQ_RESPONSES_API_URL))
-            .timeout(REQUEST_TIMEOUT)
-            .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + apiKey)
-            .header("X-Client-Request-Id", UUID.randomUUID().toString())
-            .POST(HttpRequest.BodyPublishers.ofString(buildPayload(context, model), StandardCharsets.UTF_8));
+        String endpoint = GEMINI_API_URL_TEMPLATE.formatted(model);
+        String payload = buildPayload(context);
 
         try {
-            HttpResponse<String> response = httpClient.send(
-                requestBuilder.build(),
-                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
-            );
+            HttpResponse<String> response = sendRequest(endpoint, apiKey, payload);
 
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 String errorDetail = extractApiErrorMessage(response.body());
-                System.out.println("Groq matching analysis unavailable: HTTP "
+                System.out.println("Gemini matching analysis unavailable: HTTP "
                     + response.statusCode()
                     + (errorDetail == null ? "" : " - " + errorDetail));
                 return MatchingAiAttempt.failure(resolveHttpFailureMessage(response.statusCode(), errorDetail));
@@ -65,26 +57,83 @@ public class GroqMatchingAnalysisService {
 
             String outputJson = extractOutputJson(response.body());
             if (outputJson == null) {
-                System.out.println("Groq matching analysis unavailable: response parsing failed.");
-                return MatchingAiAttempt.failure("L'analyse assistee n'a pas pu aboutir pour le moment.");
+                System.out.println("Gemini matching analysis unavailable: response parsing failed.");
+                return MatchingAiAttempt.failure("La reponse Gemini n'a pas pu etre interpretee.");
             }
 
             String summary = extractStringField(outputJson, "summary");
             String level = extractStringField(outputJson, "level");
             List<String> keywords = extractStringArrayField(outputJson, "keywords");
             if (summary == null || level == null || keywords.isEmpty()) {
-                System.out.println("Groq matching analysis unavailable: structured payload incomplete.");
-                return MatchingAiAttempt.failure("L'analyse assistee n'a pas pu aboutir pour le moment.");
+                System.out.println("Gemini matching analysis unavailable: structured payload incomplete.");
+                return MatchingAiAttempt.failure("La reponse Gemini est incomplete pour cette analyse.");
             }
 
-            return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Groq externe"));
-        } catch (IOException | InterruptedException e) {
+            return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Gemini"));
+        } catch (InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            System.out.println("Groq matching analysis unavailable: " + e.getMessage());
-            return MatchingAiAttempt.failure("Le service d'analyse assistee est temporairement indisponible.");
+            logTransportFailure("Gemini matching analysis interrupted", e);
+            return MatchingAiAttempt.failure("La connexion a Gemini a ete interrompue. Reessayez.");
+        } catch (IOException e) {
+            logTransportFailure("Gemini matching analysis unavailable", e);
+            try {
+                HttpResponse<String> retriedResponse = sendRequest(endpoint, apiKey, payload);
+                if (retriedResponse.statusCode() < 200 || retriedResponse.statusCode() >= 300) {
+                    String errorDetail = extractApiErrorMessage(retriedResponse.body());
+                    System.out.println("Gemini matching analysis unavailable after retry: HTTP "
+                        + retriedResponse.statusCode()
+                        + (errorDetail == null ? "" : " - " + errorDetail));
+                    return MatchingAiAttempt.failure(resolveHttpFailureMessage(retriedResponse.statusCode(), errorDetail));
+                }
+
+                String retriedOutputJson = extractOutputJson(retriedResponse.body());
+                if (retriedOutputJson == null) {
+                    System.out.println("Gemini matching analysis unavailable after retry: response parsing failed.");
+                    return MatchingAiAttempt.failure("La reponse Gemini n'a pas pu etre interpretee.");
+                }
+
+                String summary = extractStringField(retriedOutputJson, "summary");
+                String level = extractStringField(retriedOutputJson, "level");
+                List<String> keywords = extractStringArrayField(retriedOutputJson, "keywords");
+                if (summary == null || level == null || keywords.isEmpty()) {
+                    System.out.println("Gemini matching analysis unavailable after retry: structured payload incomplete.");
+                    return MatchingAiAttempt.failure("La reponse Gemini est incomplete pour cette analyse.");
+                }
+
+                return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Gemini"));
+            } catch (InterruptedException retryInterruptedException) {
+                Thread.currentThread().interrupt();
+                logTransportFailure("Gemini matching analysis interrupted after retry", retryInterruptedException);
+                return MatchingAiAttempt.failure("La connexion a Gemini a ete interrompue. Reessayez.");
+            } catch (IOException retryException) {
+                logTransportFailure("Gemini matching analysis unavailable after retry", retryException);
+                return MatchingAiAttempt.failure(resolveTransportFailureMessage(retryException));
+            }
         }
+    }
+
+    private HttpResponse<String> sendRequest(String endpoint, String apiKey, String payload)
+        throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+            .timeout(REQUEST_TIMEOUT)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("x-goog-api-key", apiKey)
+            .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
+            .build();
+
+        return buildHttpClient().send(
+            request,
+            HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+        );
+    }
+
+    private HttpClient buildHttpClient() {
+        return HttpClient.newBuilder()
+            .connectTimeout(CONNECT_TIMEOUT)
+            .build();
     }
 
     private String resolveModel() {
@@ -93,21 +142,19 @@ public class GroqMatchingAnalysisService {
             return model;
         }
 
-        model = normalizeEnv("GROQ_MODEL");
-        return model != null ? model : DEFAULT_GROQ_MODEL;
+        model = normalizeEnv("GEMINI_MODEL");
+        return model != null ? model : DEFAULT_GEMINI_MODEL;
     }
 
-    private String buildPayload(MatchingAiContext context, String model) {
-        String instructions = """
+    private String buildPayload(MatchingAiContext context) {
+        String prompt = """
             You are an academic matching analysis assistant for a tutoring platform.
             Return JSON only, matching the provided schema exactly.
             Write the summary in concise professional French.
             The level must be exactly one of: Debutant, Intermediaire, Avance, Niveau non precise.
             Keywords must contain 3 to 5 short distinct French items useful for pedagogical matching.
             Base your analysis on the subject, objective text, preferred mode, visibility scope, and requested duration.
-            """;
 
-        String userPrompt = """
             Analyse this tutoring need for matching.
             Subject: %s
             Objective: %s
@@ -125,7 +172,6 @@ public class GroqMatchingAnalysisService {
         String schema = """
             {
               "type": "object",
-              "additionalProperties": false,
               "properties": {
                 "summary": {
                   "type": "string",
@@ -144,17 +190,21 @@ public class GroqMatchingAnalysisService {
                   }
                 }
               },
-              "required": ["summary", "level", "keywords"]
+              "required": ["summary", "level", "keywords"],
+              "additionalProperties": false
             }
             """;
 
         return "{"
-            + "\"model\":" + quote(model) + ","
-            + "\"reasoning\":{\"effort\":\"low\"},"
-            + "\"text\":{\"format\":{\"type\":\"json_schema\",\"name\":" + quote(MATCHING_SCHEMA_NAME)
-            + ",\"strict\":true,\"schema\":" + compact(schema) + "}},"
-            + "\"instructions\":" + quote(instructions) + ","
-            + "\"input\":[{\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":" + quote(userPrompt) + "}]}]"
+            + "\"contents\":[{"
+            + "\"role\":\"user\","
+            + "\"parts\":[{\"text\":" + quote(prompt) + "}]"
+            + "}],"
+            + "\"generationConfig\":{"
+            + "\"responseMimeType\":\"application/json\","
+            + "\"responseJsonSchema\":" + compact(schema) + ","
+            + "\"thinkingConfig\":{\"thinkingBudget\":0}"
+            + "}"
             + "}";
     }
 
@@ -163,12 +213,11 @@ public class GroqMatchingAnalysisService {
             return null;
         }
 
-        Matcher matcher = OUTPUT_TEXT_TYPE_PATTERN.matcher(responseBody);
-        if (!matcher.find()) {
-            return null;
+        int candidatesIndex = findFieldIndex(responseBody, "candidates", 0);
+        int textFieldIndex = findFieldIndex(responseBody, "text", Math.max(0, candidatesIndex));
+        if (textFieldIndex < 0) {
+            textFieldIndex = findFieldIndex(responseBody, "text", 0);
         }
-
-        int textFieldIndex = findFieldIndex(responseBody, "text", matcher.end());
         if (textFieldIndex < 0) {
             return null;
         }
@@ -177,7 +226,6 @@ public class GroqMatchingAnalysisService {
         if (firstQuote < 0) {
             return null;
         }
-
         return parseJsonStringLiteral(responseBody, firstQuote);
     }
 
@@ -317,7 +365,7 @@ public class GroqMatchingAnalysisService {
     }
 
     private int findFieldIndex(String json, String fieldName, int searchFrom) {
-        Pattern fieldPattern = Pattern.compile("\"" + Pattern.quote(fieldName) + "\"\\s*:");
+        Pattern fieldPattern = Pattern.compile(FIELD_PATTERN_TEMPLATE.pattern().formatted(Pattern.quote(fieldName)));
         Matcher matcher = fieldPattern.matcher(json);
         if (matcher.find(Math.max(0, searchFrom))) {
             return matcher.start();
@@ -361,6 +409,9 @@ public class GroqMatchingAnalysisService {
     private String normalizeEnv(String key) {
         String value = System.getenv(key);
         if (value == null) {
+            value = System.getProperty(key);
+        }
+        if (value == null) {
             return null;
         }
         String normalized = value.trim();
@@ -379,9 +430,45 @@ public class GroqMatchingAnalysisService {
 
     private String resolveHttpFailureMessage(int statusCode, String errorDetail) {
         return switch (statusCode) {
-            case 429 -> "Le service d'analyse assistee est temporairement surcharge. Veuillez reessayer dans un instant.";
-            default -> "Le service d'analyse assistee est temporairement indisponible.";
+            case 400 -> errorDetail != null
+                ? "La requete Gemini est invalide: " + errorDetail
+                : "La requete Gemini est invalide.";
+            case 401, 403 -> "L'appel Gemini a ete refuse. Verifiez GEMINI_API_KEY.";
+            case 429 -> "La limite Gemini est atteinte temporairement. Veuillez reessayer dans un instant.";
+            default -> errorDetail != null
+                ? "Gemini a retourne une erreur HTTP " + statusCode + ": " + errorDetail
+                : "Gemini a retourne une erreur HTTP " + statusCode + ".";
         };
+    }
+
+    private String resolveTransportFailureMessage(IOException exception) {
+        Throwable rootCause = rootCause(exception);
+        if (rootCause instanceof HttpTimeoutException) {
+            return "Gemini met trop de temps a repondre. Veuillez reessayer dans un instant.";
+        }
+        if (rootCause instanceof UnknownHostException || rootCause instanceof ConnectException) {
+            return "Connexion a Gemini impossible pour le moment. Verifiez Internet puis reessayez.";
+        }
+        if (rootCause instanceof SSLException) {
+            return "La connexion securisee vers Gemini a echoue. Redemarrez l'application puis reessayez.";
+        }
+        return "Connexion a Gemini impossible pour le moment. Veuillez reessayer.";
+    }
+
+    private Throwable rootCause(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    private void logTransportFailure(String prefix, Throwable throwable) {
+        Throwable rootCause = rootCause(throwable);
+        String detail = rootCause.getMessage();
+        System.out.println(prefix + ": "
+            + rootCause.getClass().getSimpleName()
+            + (detail == null || detail.isBlank() ? "" : " - " + detail));
     }
 
     private String compact(String value) {

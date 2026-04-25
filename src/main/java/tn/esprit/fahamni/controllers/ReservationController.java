@@ -1720,20 +1720,6 @@ public class ReservationController {
         root.setPadding(new Insets(18.0));
         root.getStyleClass().add("matching-dialog-root");
 
-        Label eyebrowLabel = new Label("MATCHING INTELLIGENT");
-        eyebrowLabel.getStyleClass().add("workspace-eyebrow");
-
-        Label titleLabel = new Label("Trouver un tuteur quand le catalogue ne suffit pas");
-        titleLabel.getStyleClass().add("workspace-title");
-        titleLabel.setWrapText(true);
-
-        Label introLabel = new Label(
-            "Decris le besoin, lance le matching, puis swipe les tuteurs compatibles. "
-                + "Les profils affiches ont deja anime cette matiere et restent libres sur le creneau vise."
-        );
-        introLabel.setWrapText(true);
-        introLabel.getStyleClass().add("reservation-section-copy");
-
         ComboBox<String> subjectComboBox = new ComboBox<>();
         subjectComboBox.setEditable(true);
         subjectComboBox.setPromptText("Matiere visee");
@@ -1798,6 +1784,21 @@ public class ReservationController {
         feedbackLabel.setWrapText(true);
         feedbackLabel.getStyleClass().add("frontoffice-feedback");
         setInlineFeedback(feedbackLabel, null, false);
+
+        VBox landingHero = buildStudentMatchingLandingHero(subjectComboBox.getItems(), subjectComboBox);
+
+        Label eyebrowLabel = new Label("MATCHING SWIPE");
+        eyebrowLabel.getStyleClass().add("workspace-eyebrow");
+
+        Label titleLabel = new Label("Prepare ta demande de matching");
+        titleLabel.getStyleClass().add("workspace-title");
+        titleLabel.setWrapText(true);
+
+        Label introLabel = new Label(
+            "Choisis la matiere, le creneau et le format, puis laisse le swipe composer une short-list de tuteurs compatibles."
+        );
+        introLabel.setWrapText(true);
+        introLabel.getStyleClass().add("reservation-section-copy");
 
         Button launchButton = new Button("Lancer le swipe");
         launchButton.getStyleClass().add("backoffice-primary-button");
@@ -1927,6 +1928,7 @@ public class ReservationController {
         workspaceHost.getStyleClass().add("matching-workspace-host");
 
         root.getChildren().addAll(
+            landingHero,
             eyebrowLabel,
             titleLabel,
             introLabel,
@@ -1939,6 +1941,167 @@ public class ReservationController {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.getStyleClass().add("matching-scroll");
         return scrollPane;
+    }
+
+    private VBox buildStudentMatchingLandingHero(List<String> subjectSamples, Node focusTarget) {
+        VBox hero = new VBox(16.0);
+        hero.getStyleClass().add("matching-showcase-card");
+
+        StackPane visualStage = new StackPane(buildStudentMatchingShowcaseOrbit(subjectSamples));
+        visualStage.getStyleClass().add("matching-showcase-stage");
+
+        Label eyebrowLabel = new Label("MATCH, SWIPE, PLANIFIE");
+        eyebrowLabel.getStyleClass().add("matching-showcase-eyebrow");
+
+        Label titleLabel = new Label("Trouve ton\nmatch tuteur");
+        titleLabel.getStyleClass().add("matching-showcase-title");
+        titleLabel.setWrapText(true);
+
+        Label subtitleLabel = new Label(
+            "Decris ton besoin, vise un creneau et laisse le matching rapprocher les profils qui collent vraiment."
+        );
+        subtitleLabel.getStyleClass().add("matching-showcase-subtitle");
+        subtitleLabel.setWrapText(true);
+
+        Button ctaButton = new Button("Commencer le matching");
+        ctaButton.getStyleClass().addAll("backoffice-primary-button", "matching-showcase-button");
+        ctaButton.setOnAction(event -> {
+            if (focusTarget != null) {
+                focusTarget.requestFocus();
+            }
+        });
+
+        FlowPane chipRow = new FlowPane(8.0, 8.0);
+        chipRow.getStyleClass().add("matching-showcase-chip-row");
+        chipRow.getChildren().addAll(
+            buildMatchingShowcaseChip("Swipe intuitif"),
+            buildMatchingShowcaseChip("Profils verifies"),
+            buildMatchingShowcaseChip("Creneau cible")
+        );
+
+        hero.getChildren().addAll(visualStage, eyebrowLabel, titleLabel, subtitleLabel, ctaButton, chipRow);
+        return hero;
+    }
+
+    private Label buildMatchingShowcaseChip(String text) {
+        Label chip = new Label(safeText(text));
+        chip.getStyleClass().add("matching-showcase-chip");
+        return chip;
+    }
+
+    private Pane buildStudentMatchingShowcaseOrbit(List<String> subjectSamples) {
+        List<String> showcaseLabels = resolveMatchingShowcaseLabels(subjectSamples);
+
+        Pane orbitPane = new Pane();
+        orbitPane.setMinSize(290.0, 240.0);
+        orbitPane.setPrefSize(290.0, 240.0);
+        orbitPane.setMaxSize(290.0, 240.0);
+        orbitPane.getStyleClass().add("matching-showcase-orbit-pane");
+
+        orbitPane.getChildren().addAll(
+            buildMatchingShowcaseOrbit(145.0, 112.0, 42.0, 0.86),
+            buildMatchingShowcaseOrbit(145.0, 112.0, 78.0, 0.60),
+            buildMatchingShowcaseOrbit(145.0, 112.0, 108.0, 0.38)
+        );
+
+        StackPane centerCore = new StackPane();
+        centerCore.getStyleClass().add("matching-showcase-heart-core");
+        centerCore.setPrefSize(58.0, 58.0);
+        centerCore.relocate(116.0, 82.0);
+        Label heartLabel = new Label("❤");
+        heartLabel.getStyleClass().add("matching-showcase-heart-text");
+        centerCore.getChildren().add(heartLabel);
+
+        StackPane avatarOne = buildMatchingShowcaseAvatar(showcaseLabels.get(0), "matching-showcase-avatar-coral", 52.0);
+        avatarOne.relocate(112.0, 6.0);
+
+        StackPane avatarTwo = buildMatchingShowcaseAvatar(showcaseLabels.get(1), "matching-showcase-avatar-peach", 60.0);
+        avatarTwo.relocate(26.0, 70.0);
+
+        StackPane avatarThree = buildMatchingShowcaseAvatar(showcaseLabels.get(2), "matching-showcase-avatar-navy", 68.0);
+        avatarThree.relocate(198.0, 64.0);
+
+        StackPane avatarFour = buildMatchingShowcaseAvatar(showcaseLabels.get(3), "matching-showcase-avatar-sunset", 54.0);
+        avatarFour.relocate(58.0, 174.0);
+
+        StackPane avatarFive = buildMatchingShowcaseAvatar(showcaseLabels.get(4), "matching-showcase-avatar-rose", 46.0);
+        avatarFive.relocate(214.0, 170.0);
+
+        Label bubbleOne = buildMatchingShowcaseBubble("❤");
+        bubbleOne.relocate(10.0, 144.0);
+
+        Label bubbleTwo = buildMatchingShowcaseBubble("❤");
+        bubbleTwo.relocate(248.0, 26.0);
+
+        Label bubbleThree = buildMatchingShowcaseBubble("❤");
+        bubbleThree.relocate(246.0, 190.0);
+
+        orbitPane.getChildren().addAll(
+            centerCore,
+            avatarOne,
+            avatarTwo,
+            avatarThree,
+            avatarFour,
+            avatarFive,
+            bubbleOne,
+            bubbleTwo,
+            bubbleThree
+        );
+        return orbitPane;
+    }
+
+    private Circle buildMatchingShowcaseOrbit(double centerX, double centerY, double radius, double opacity) {
+        Circle orbit = new Circle(centerX, centerY, radius);
+        orbit.setFill(Color.TRANSPARENT);
+        orbit.getStyleClass().add("matching-showcase-orbit");
+        orbit.setOpacity(opacity);
+        orbit.getStrokeDashArray().setAll(7.0, 10.0);
+        return orbit;
+    }
+
+    private StackPane buildMatchingShowcaseAvatar(String label, String toneClass, double size) {
+        StackPane avatar = new StackPane();
+        avatar.getStyleClass().add("matching-showcase-avatar");
+        if (toneClass != null && !toneClass.isBlank()) {
+            avatar.getStyleClass().add(toneClass);
+        }
+        avatar.setPrefSize(size, size);
+        avatar.setMinSize(size, size);
+        avatar.setMaxSize(size, size);
+
+        Label initialsLabel = new Label(resolveMatchingInitials(label));
+        initialsLabel.getStyleClass().add("matching-showcase-avatar-text");
+        avatar.getChildren().add(initialsLabel);
+        return avatar;
+    }
+
+    private Label buildMatchingShowcaseBubble(String text) {
+        Label bubble = new Label(text);
+        bubble.getStyleClass().add("matching-showcase-bubble");
+        return bubble;
+    }
+
+    private List<String> resolveMatchingShowcaseLabels(List<String> subjectSamples) {
+        List<String> normalizedLabels = subjectSamples == null
+            ? new ArrayList<>()
+            : subjectSamples.stream()
+                .filter(Objects::nonNull)
+                .map(this::normalizeText)
+                .filter(Objects::nonNull)
+                .distinct()
+                .limit(5)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        List<String> fallbacks = List.of("Java", "Algo", "Web", "Data", "Math");
+        for (String fallback : fallbacks) {
+            if (normalizedLabels.size() >= 5) {
+                break;
+            }
+            if (!normalizedLabels.contains(fallback)) {
+                normalizedLabels.add(fallback);
+            }
+        }
+        return normalizedLabels;
     }
 
     private MatchingDraft buildStudentMatchingDraft(ComboBox<String> subjectComboBox,
@@ -3327,15 +3490,15 @@ public class ReservationController {
 
     private String resolveMatchingConfidenceLabel(double score) {
         if (score >= 85.0) {
-            return "Confiance IA tres forte";
+            return "Confiance Gemini tres forte";
         }
         if (score >= 72.0) {
-            return "Confiance IA forte";
+            return "Confiance Gemini forte";
         }
         if (score >= 58.0) {
-            return "Confiance IA solide";
+            return "Confiance Gemini solide";
         }
-        return "Confiance IA moderee";
+        return "Confiance Gemini moderee";
     }
 
     private String buildStudentMatchingAiExplanation(StudentMatchCard card, MatchingNeedProfile needProfile) {
@@ -3365,7 +3528,7 @@ public class ReservationController {
     }
 
     private String buildStudentMatchingRequestSummary(MatchingNeedProfile needProfile, int candidateCount) {
-        StringBuilder summary = new StringBuilder("Analyse personnalisee finalisee.");
+        StringBuilder summary = new StringBuilder("Analyse Gemini personnalisee finalisee.");
         String needContext = buildStudentNeedContextLabel(needProfile);
         if (needContext != null) {
             summary.append(" La recherche a ete orientee vers ").append(needContext).append(".");

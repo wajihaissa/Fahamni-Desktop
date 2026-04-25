@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -46,7 +45,7 @@ public class MatchingService {
         "Cette demande n'est plus disponible. Actualisez la liste puis reessayez.";
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
-    private final GroqMatchingAnalysisService groqMatchingAnalysisService = new GroqMatchingAnalysisService();
+    private final GeminiMatchingAnalysisService geminiMatchingAnalysisService = new GeminiMatchingAnalysisService();
     private boolean schemaEnsured;
 
     public MatchingService() {
@@ -769,40 +768,32 @@ public class MatchingService {
             return AnalysisResolution.failure("La demande de matching est invalide.");
         }
         if (normalizedText == null) {
-            return AnalysisResolution.failure("Le besoin etudiant doit etre renseigne pour lancer l'analyse IA.");
+            return AnalysisResolution.failure("Le besoin etudiant doit etre renseigne pour lancer l'analyse Gemini.");
         }
 
-        GroqMatchingAnalysisService.MatchingAiAttempt attempt = null;
-        if (groqMatchingAnalysisService.isConfigured()) {
-            attempt = groqMatchingAnalysisService.analyzeNeed(
-                new GroqMatchingAnalysisService.MatchingAiContext(
-                    safeText(normalizeSubject(draft.subject()), "Matiere non precise"),
-                    normalizedText,
-                    normalizeMode(draft.mode()),
-                    normalizeVisibility(draft.visibilityScope()),
-                    draft.durationMin()
-                )
+        GeminiMatchingAnalysisService.MatchingAiAttempt attempt = geminiMatchingAnalysisService.analyzeNeed(
+            new GeminiMatchingAnalysisService.MatchingAiContext(
+                safeText(normalizeSubject(draft.subject()), "Matiere non precise"),
+                normalizedText,
+                normalizeMode(draft.mode()),
+                normalizeVisibility(draft.visibilityScope()),
+                draft.durationMin()
+            )
+        );
+        if (!attempt.success() || attempt.analysis() == null) {
+            return AnalysisResolution.failure(
+                safeText(attempt.errorMessage(), "Le service Gemini est temporairement indisponible.")
             );
         }
 
-        if (attempt != null && attempt.success() && attempt.analysis() != null) {
-            GroqMatchingAnalysisService.MatchingAiAnalysis analysis = attempt.analysis();
-            MatchingNeedProfile needProfile = new MatchingNeedProfile(
-                safeText(normalizeOptionalText(analysis.summary()), "Analyse IA indisponible."),
-                safeText(normalizeOptionalText(analysis.level()), "Niveau non precise"),
-                normalizeExternalAiKeywords(analysis.keywords()),
-                safeText(normalizeOptionalText(analysis.source()), "IA externe")
-            );
-            return AnalysisResolution.success(needProfile);
-        }
-
-        if (attempt != null && attempt.errorMessage() != null && !attempt.errorMessage().isBlank()) {
-            System.out.println("Matching AI fallback active: " + attempt.errorMessage());
-        } else if (!groqMatchingAnalysisService.isConfigured()) {
-            System.out.println("Matching AI fallback active: GROQ_API_KEY non configuree.");
-        }
-
-        return AnalysisResolution.success(buildLocalNeedProfile(draft, normalizedText));
+        GeminiMatchingAnalysisService.MatchingAiAnalysis analysis = attempt.analysis();
+        MatchingNeedProfile needProfile = new MatchingNeedProfile(
+            safeText(normalizeOptionalText(analysis.summary()), "Analyse Gemini indisponible."),
+            safeText(normalizeOptionalText(analysis.level()), "Niveau non precise"),
+            normalizeExternalAiKeywords(analysis.keywords()),
+            safeText(normalizeOptionalText(analysis.source()), "Gemini")
+        );
+        return AnalysisResolution.success(needProfile);
     }
 
     private List<String> normalizeExternalAiKeywords(List<String> rawKeywords) {
@@ -821,144 +812,6 @@ public class MatchingService {
             }
         }
         return normalizedKeywords.isEmpty() ? List.of("matching cible") : normalizedKeywords;
-    }
-
-    private MatchingNeedProfile buildLocalNeedProfile(MatchingDraft draft, String normalizedText) {
-        String normalizedSubject = safeText(normalizeSubject(draft == null ? null : draft.subject()), "Matiere non precise");
-        String level = inferLocalLevel(normalizedText);
-        List<String> keywords = extractLocalKeywords(normalizedSubject, normalizedText, draft);
-        String summary = buildLocalSummary(normalizedSubject, draft, level, keywords);
-
-        return new MatchingNeedProfile(
-            summary,
-            level,
-            keywords,
-            "Analyse locale"
-        );
-    }
-
-    private String buildLocalSummary(String normalizedSubject,
-                                     MatchingDraft draft,
-                                     String level,
-                                     List<String> keywords) {
-        List<String> fragments = new ArrayList<>();
-        fragments.add("Besoin en " + safeText(normalizedSubject, "matiere non precise").toLowerCase(Locale.ROOT));
-
-        if (level != null && !"Niveau non precise".equalsIgnoreCase(level)) {
-            fragments.add("niveau " + level.toLowerCase(Locale.ROOT));
-        }
-
-        fragments.add(Seance.MODE_ONSITE.equals(normalizeMode(draft == null ? null : draft.mode()))
-            ? "format presentiel"
-            : "format en ligne");
-        fragments.add(VISIBILITY_PRIVATE.equals(normalizeVisibility(draft == null ? null : draft.visibilityScope()))
-            ? "suivi individuel"
-            : "seance ouverte");
-
-        String summary = String.join(", ", fragments) + ".";
-        if (keywords != null && !keywords.isEmpty()) {
-            summary += " Focus: " + String.join(", ", keywords.stream().limit(3).toList()) + ".";
-        }
-        return summary;
-    }
-
-    private String inferLocalLevel(String objectiveText) {
-        String normalized = objectiveText == null ? "" : objectiveText.toLowerCase(Locale.ROOT);
-        if (containsAny(normalized, "avance", "avancee", "avancees", "approfond", "expert", "complexe", "concours")) {
-            return "Avance";
-        }
-        if (containsAny(normalized, "debut", "debutant", "debutante", "initiation", "commencer", "bases", "base")) {
-            return "Debutant";
-        }
-        if (containsAny(normalized, "intermediaire", "revision", "revisions", "renforcement", "pratique", "application")) {
-            return "Intermediaire";
-        }
-        return "Niveau non precise";
-    }
-
-    private List<String> extractLocalKeywords(String normalizedSubject, String objectiveText, MatchingDraft draft) {
-        LinkedHashSet<String> keywords = new LinkedHashSet<>();
-
-        String subjectKeyword = normalizeOptionalText(normalizedSubject);
-        if (subjectKeyword != null && !"Matiere non precise".equalsIgnoreCase(subjectKeyword)) {
-            keywords.add(subjectKeyword);
-        }
-
-        String normalized = objectiveText == null ? "" : objectiveText.toLowerCase(Locale.ROOT);
-        for (String boostedKeyword : List.of(
-            "revision", "exercices", "examens", "compréhension", "methodologie",
-            "algorithme", "programmation", "analyse", "problemes", "logique"
-        )) {
-            if (normalized.contains(boostedKeyword.toLowerCase(Locale.ROOT))) {
-                keywords.add(capitalizeKeyword(boostedKeyword));
-            }
-            if (keywords.size() >= 5) {
-                return new ArrayList<>(keywords);
-            }
-        }
-
-        String[] tokens = normalized.split("[^\\p{L}\\p{Nd}#+]+");
-        for (String token : tokens) {
-            String normalizedToken = normalizeOptionalText(token);
-            if (normalizedToken == null) {
-                continue;
-            }
-
-            String lowered = normalizedToken.toLowerCase(Locale.ROOT);
-            if (lowered.length() < 4 || isLocalKeywordStopWord(lowered)) {
-                continue;
-            }
-
-            keywords.add(capitalizeKeyword(lowered));
-            if (keywords.size() >= 5) {
-                return new ArrayList<>(keywords);
-            }
-        }
-
-        keywords.add(Seance.MODE_ONSITE.equals(normalizeMode(draft == null ? null : draft.mode())) ? "Presentiel" : "En ligne");
-        if (keywords.size() < 5) {
-            keywords.add(VISIBILITY_PRIVATE.equals(normalizeVisibility(draft == null ? null : draft.visibilityScope()))
-                ? "Suivi individuel"
-                : "Session ouverte");
-        }
-        if (keywords.size() < 3) {
-            keywords.add("Accompagnement");
-        }
-        if (keywords.size() < 3) {
-            keywords.add("Progression");
-        }
-        return new ArrayList<>(keywords).subList(0, Math.min(5, keywords.size()));
-    }
-
-    private boolean isLocalKeywordStopWord(String token) {
-        return Arrays.asList(
-            "avec", "pour", "dans", "cette", "besoin", "avoir", "etre", "tres", "plus", "moins",
-            "seance", "cours", "aider", "aide", "aides", "faire", "mieux", "niveau", "student",
-            "etudiant", "etudiante", "ligne", "presentiel", "individuelle", "publique", "objectif",
-            "souhaite", "souhaiter", "sujet", "matiere", "demande", "besoins", "comment", "quand",
-            "parce", "aussi", "alors", "donc", "mais", "sans", "chez", "cela", "cette", "ceux",
-            "leurs", "leurs", "tutorat", "matching", "propose", "proposer", "trouver"
-        ).contains(token);
-    }
-
-    private String capitalizeKeyword(String value) {
-        String normalized = normalizeOptionalText(value);
-        if (normalized == null) {
-            return "Matching cible";
-        }
-        return normalized.substring(0, 1).toUpperCase(Locale.ROOT) + normalized.substring(1);
-    }
-
-    private boolean containsAny(String text, String... fragments) {
-        if (text == null || text.isBlank() || fragments == null) {
-            return false;
-        }
-        for (String fragment : fragments) {
-            if (fragment != null && !fragment.isBlank() && text.contains(fragment.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private List<String> buildSignals(int subjectSessions,
