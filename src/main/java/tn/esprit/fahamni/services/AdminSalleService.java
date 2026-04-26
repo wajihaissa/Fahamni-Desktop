@@ -114,7 +114,7 @@ public class AdminSalleService implements IServices<Salle> {
             statement.setInt(13, salle.getIdSalle());
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune salle trouvee avec l'id " + salle.getIdSalle() + ".");
+                throw new SQLException("La salle selectionnee est introuvable.");
             }
         }
     }
@@ -129,7 +129,7 @@ public class AdminSalleService implements IServices<Salle> {
 
     private void deleteById(int idSalle) throws SQLException {
         if (idSalle <= 0) {
-            throw new IllegalArgumentException("L'id de la salle doit etre positif.");
+            throw new IllegalArgumentException("La salle selectionnee est invalide.");
         }
 
         ensureNoUpcomingSeanceUsesSalle(idSalle);
@@ -138,7 +138,7 @@ public class AdminSalleService implements IServices<Salle> {
             statement.setInt(1, idSalle);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune salle trouvee avec l'id " + idSalle + ".");
+                throw new SQLException("La salle selectionnee est introuvable.");
             }
         }
     }
@@ -154,8 +154,7 @@ public class AdminSalleService implements IServices<Salle> {
                 throw new SQLException(
                     "Cette salle est liee a la seance non encore passee \""
                         + resultSet.getString("matiere")
-                        + "\" (#" + resultSet.getInt("id")
-                        + "). Supprimez ou modifiez d'abord cette seance."
+                        + "\". Supprimez ou modifiez d'abord cette seance."
                 );
             }
         }
@@ -163,7 +162,7 @@ public class AdminSalleService implements IServices<Salle> {
 
     public Salle recupererParId(int idSalle) throws SQLException {
         if (idSalle <= 0) {
-            throw new IllegalArgumentException("L'id de la salle doit etre positif.");
+            throw new IllegalArgumentException("La salle selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_BY_ID_SQL)) {
@@ -235,7 +234,7 @@ public class AdminSalleService implements IServices<Salle> {
             throw new IllegalArgumentException("La salle est obligatoire.");
         }
         if (requireId && salle.getIdSalle() <= 0) {
-            throw new IllegalArgumentException("L'id de la salle est obligatoire pour la modification.");
+            throw new IllegalArgumentException("Une salle existante est requise pour la modification.");
         }
         if (isBlank(salle.getNom())) {
             throw new IllegalArgumentException("Le nom de la salle est obligatoire.");

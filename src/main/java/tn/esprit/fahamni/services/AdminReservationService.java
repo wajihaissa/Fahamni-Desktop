@@ -111,15 +111,15 @@ public class AdminReservationService {
         if (email != null && !email.isBlank()) {
             return email;
         }
-        return "Etudiant #" + rs.getInt("participant_id");
+        return "Etudiant non renseigne";
     }
 
     private String resolveSessionLabel(ResultSet rs) throws SQLException {
         String subject = rs.getString("matiere");
         if (subject != null && !subject.isBlank()) {
-            return subject + " (#" + rs.getInt("seance_id") + ")";
+            return subject;
         }
-        return "Seance #" + rs.getInt("seance_id");
+        return "Seance non renseignee";
     }
 
     private String formatDateTime(Timestamp timestamp) {

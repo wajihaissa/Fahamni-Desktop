@@ -69,7 +69,7 @@ public class AdminEquipementService implements IServices<Equipement> {
             statement.setInt(6, equipement.getIdEquipement());
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucun equipement trouve avec l'id " + equipement.getIdEquipement() + ".");
+                throw new SQLException("L'equipement selectionne est introuvable.");
             }
         }
     }
@@ -84,21 +84,21 @@ public class AdminEquipementService implements IServices<Equipement> {
 
     private void deleteById(int idEquipement) throws SQLException {
         if (idEquipement <= 0) {
-            throw new IllegalArgumentException("L'id de l'equipement doit etre positif.");
+            throw new IllegalArgumentException("L'equipement selectionne est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(DELETE_SQL)) {
             statement.setInt(1, idEquipement);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucun equipement trouve avec l'id " + idEquipement + ".");
+                throw new SQLException("L'equipement selectionne est introuvable.");
             }
         }
     }
 
     public Equipement recupererParId(int idEquipement) throws SQLException {
         if (idEquipement <= 0) {
-            throw new IllegalArgumentException("L'id de l'equipement doit etre positif.");
+            throw new IllegalArgumentException("L'equipement selectionne est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_BY_ID_SQL)) {
@@ -148,7 +148,7 @@ public class AdminEquipementService implements IServices<Equipement> {
             throw new IllegalArgumentException("L'equipement est obligatoire.");
         }
         if (requireId && equipement.getIdEquipement() <= 0) {
-            throw new IllegalArgumentException("L'id de l'equipement est obligatoire pour la modification.");
+            throw new IllegalArgumentException("Un equipement existant est requis pour la modification.");
         }
         if (isBlank(equipement.getNom())) {
             throw new IllegalArgumentException("Le nom de l'equipement est obligatoire.");
