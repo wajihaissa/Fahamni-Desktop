@@ -1,11 +1,14 @@
 package tn.esprit.fahamni.controllers;
 
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
+import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.ApplicationState;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.ViewNavigator;
 
@@ -43,6 +46,9 @@ public class MainController {
 
     @FXML
     private Button callLabButton;
+
+    @FXML
+    private Button aiButton;
 
     @FXML
     private void initialize() {
@@ -109,6 +115,32 @@ public class MainController {
     }
 
     @FXML
+    private void showFahamniAi() {
+        try {
+            FXMLLoader loader = new FXMLLoader(Main.class.getResource("/tn/esprit/fahamni/views/ChatbotView.fxml"));
+            Node chatbotView = loader.load();
+
+            ChatbotController chatbotController = loader.getController();
+
+            // Get the selected matiere from shared context
+            Matiere selectedMatiere = getSelectedMatiere();
+
+            if (selectedMatiere != null) {
+                chatbotController.setMatiere(selectedMatiere);
+            }
+
+            ViewNavigator.getInstance().replaceView(chatbotView, "Fahamni AI");
+            setActiveButton(aiButton);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Label placeholder = new Label("Failed to load Fahamni AI: " + e.getMessage());
+            placeholder.getStyleClass().add("content-placeholder");
+            contentPane.getChildren().clear();
+            contentPane.getChildren().add(placeholder);
+        }
+    }
+
+    @FXML
     private void handleLogout() {
         try {
             Main.showLogin();
@@ -130,6 +162,22 @@ public class MainController {
         }
     }
 
+    private void loadAbsoluteView(String fxmlPath, String title) {
+        try {
+            ViewNavigator.getInstance().loadView(fxmlPath, title);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Label placeholder = new Label("View not implemented yet: " + fxmlPath);
+            placeholder.getStyleClass().add("content-placeholder");
+            contentPane.getChildren().clear();
+            contentPane.getChildren().add(placeholder);
+        }
+    }
+
+    private Matiere getSelectedMatiere() {
+        return ApplicationState.getInstance().getCurrentMatiere();
+    }
+
     private void setActiveButton(Button activeButton) {
         // Reset all buttons
         dashboardButton.getStyleClass().remove("active");
@@ -141,6 +189,7 @@ public class MainController {
         blogButton.getStyleClass().remove("active");
         coursButton.getStyleClass().remove("active");
         callLabButton.getStyleClass().remove("active");
+        aiButton.getStyleClass().remove("active");
 
         // Set active
         if (!activeButton.getStyleClass().contains("active")) {

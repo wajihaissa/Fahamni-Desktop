@@ -27,6 +27,7 @@
                 <Button fx:id="dashboardButton" maxWidth="Infinity" text="Dashboard" styleClass="sidebar-button" onAction="#showDashboard"/>
                 <Button fx:id="coursButton" maxWidth="Infinity" text="Cours" styleClass="sidebar-button" onAction="#showCours"/>
                 <Button fx:id="callLabButton" maxWidth="Infinity" text="Call Lab" styleClass="sidebar-button" onAction="#showCallLab"/>
+                <Button fx:id="aiButton" maxWidth="Infinity" text="Fahamni AI" styleClass="sidebar-button" onAction="#showFahamniAi"/>
                 <Button fx:id="seancesButton" maxWidth="Infinity" text="Seances" styleClass="sidebar-button" onAction="#showSeances"/>
                 <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" styleClass="sidebar-button" onAction="#showReservations"/>
                 <Button fx:id="plannerButton" maxWidth="Infinity" text="Planner" styleClass="sidebar-button" onAction="#showPlanner"/>

@@ -31,6 +31,7 @@ import tn.esprit.fahamni.Models.Category;
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.CategoryService;
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.ApplicationState;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.ViewNavigator;
 
@@ -53,6 +54,8 @@ public class FrontCoursePlayerController {
 
     public void setMatiere(Matiere matiere) {
         this.currentMatiere = matiere;
+        // Store in application state so other views (e.g., Chatbot) can access the current course
+        ApplicationState.getInstance().setCurrentMatiere(matiere);
         renderCourse();
     }
 
