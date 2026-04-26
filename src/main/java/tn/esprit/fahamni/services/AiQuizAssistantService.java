@@ -20,14 +20,14 @@ import java.util.regex.Pattern;
 
 public class AiQuizAssistantService {
 
-    private static final Pattern MESSAGE_CONTENT_PATTERN =
-            Pattern.compile("\"content\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
     private static final Pattern QUESTION_BLOCK_PATTERN =
             Pattern.compile("QUESTION\\s+(\\d+)\\s*:(.*?)(?=QUESTION\\s+\\d+\\s*:|$)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
     private static final Pattern METADATA_TOPIC_PATTERN =
             Pattern.compile("(?im)^TOPIC\\s*:\\s*(.+)$");
     private static final Pattern METADATA_DIFFICULTY_PATTERN =
             Pattern.compile("(?im)^DIFFICULTY\\s*:\\s*(.+)$");
+    private static final String OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
+    private static final String GITHUB_MODELS_CHAT_COMPLETIONS_URL = "https://models.github.ai/inference/chat/completions";
 
     private final HttpClient httpClient;
 
@@ -43,6 +43,10 @@ public class AiQuizAssistantService {
         int normalizedCount = Math.max(2, Math.min(5, questionCount));
         String normalizedDifficulty = safeText(difficulty, "Medium");
 
+        if (!isOpenAiReady()) {
+            return new GeneratedQuizDraft(null, "Unavailable", false, buildAiUnavailableMessage());
+        }
+
         Optional<Quiz> remoteDraft = tryGenerateQuizDraftWithOpenAi(
                 normalizedTopic,
                 normalizedTitle,
@@ -51,13 +55,10 @@ public class AiQuizAssistantService {
         );
 
         if (remoteDraft.isPresent()) {
-            return new GeneratedQuizDraft(remoteDraft.get(), "OpenAI");
+            return new GeneratedQuizDraft(remoteDraft.get(), resolveAiProviderLabel(), true, "Quiz generated with " + resolveAiProviderLabel() + ".");
         }
 
-        return new GeneratedQuizDraft(
-                buildFallbackQuizDraft(normalizedTopic, normalizedTitle, normalizedCount, normalizedDifficulty),
-                "Built-in generator"
-        );
+        return new GeneratedQuizDraft(null, "Unavailable", false, resolveAiProviderLabel() + " quiz generation did not return a usable draft. Please try again.");
     }
 
     public QuestionMetadata inferQuestionMetadata(String quizKeyword, String quizTitle, String questionText, List<String> choices) {
@@ -81,33 +82,26 @@ public class AiQuizAssistantService {
         return buildFallbackMetadata(fallbackTopic, normalizedQuestion, normalizedChoices);
     }
 
-    public String generateHint(Quiz quiz, Question question, Long selectedChoiceId) {
+    public GeneratedHint generateHint(Quiz quiz, Question question, Long selectedChoiceId) {
         if (question == null) {
-            return "Read the question carefully and focus on the main idea it is testing.";
+            return new GeneratedHint(null, "Unavailable", false, "No question is available for hint generation.");
         }
 
-        String keyword = quiz != null && !isBlank(quiz.getKeyword()) ? quiz.getKeyword() : "the topic";
+        if (!isOpenAiReady()) {
+            return new GeneratedHint(null, "Unavailable", false, buildAiUnavailableMessage());
+        }
+
         Optional<String> remoteHint = tryGenerateHintWithOpenAi(quiz, question, selectedChoiceId);
         if (remoteHint.isPresent()) {
-            return remoteHint.get();
+            return new GeneratedHint(remoteHint.get(), resolveAiProviderLabel(), true, "Hint generated with " + resolveAiProviderLabel() + ".");
         }
 
-        Choice selectedChoice = findChoiceById(question, selectedChoiceId);
-
-        if (selectedChoice != null && Boolean.TRUE.equals(selectedChoice.getIsCorrect())) {
-            return "You are on a promising track. Re-read the wording and make sure your choice matches the main idea, not just a familiar phrase.";
-        }
-
-        if (selectedChoice != null) {
-            return deriveQuestionSpecificHint(question, keyword, true);
-        }
-
-        return deriveQuestionSpecificHint(question, keyword, false);
+        return new GeneratedHint(null, "Unavailable", false, resolveAiProviderLabel() + " hint generation is unavailable right now. Please try again.");
     }
 
-    private Optional<String> tryGenerateHintWithOpenAi(Quiz quiz, Question question, Long selectedChoiceId) {
-        String apiKey = EnvConfig.get("OPENAI_API_KEY");
-        String model = EnvConfig.get("OPENAI_MODEL");
+    protected Optional<String> tryGenerateHintWithOpenAi(Quiz quiz, Question question, Long selectedChoiceId) {
+        String apiKey = getOpenAiApiKey();
+        String model = resolveRequestedModelName();
         if (isBlank(apiKey) || isBlank(model) || question == null || isBlank(question.getQuestion())) {
             return Optional.empty();
         }
@@ -135,14 +129,14 @@ public class AiQuizAssistantService {
         }
     }
 
-    private Optional<QuestionMetadata> tryInferQuestionMetadataWithOpenAi(
+    protected Optional<QuestionMetadata> tryInferQuestionMetadataWithOpenAi(
             String quizKeyword,
             String quizTitle,
             String questionText,
             List<String> choices
     ) {
-        String apiKey = EnvConfig.get("OPENAI_API_KEY");
-        String model = EnvConfig.get("OPENAI_MODEL");
+        String apiKey = getOpenAiApiKey();
+        String model = resolveRequestedModelName();
         if (isBlank(apiKey) || isBlank(model) || isBlank(questionText)) {
             return Optional.empty();
         }
@@ -168,38 +162,6 @@ public class AiQuizAssistantService {
         } catch (IOException exception) {
             return Optional.empty();
         }
-    }
-
-    private String deriveQuestionSpecificHint(Question question, String keyword, boolean hasSelection) {
-        String prompt = question != null && !isBlank(question.getQuestion())
-                ? question.getQuestion().trim().toLowerCase(Locale.ROOT)
-                : "";
-
-        if (prompt.startsWith("why ")) {
-            return "Focus on the reason or benefit the question is asking about in " + keyword + ".";
-        }
-
-        if (prompt.contains("what should you do first") || prompt.contains("first step")) {
-            return "Think about the foundation someone should understand before moving into details in " + keyword + ".";
-        }
-
-        if (prompt.contains("best describes") || prompt.contains("main goal") || prompt.contains("main purpose")) {
-            return "Look for the definition or core purpose behind " + keyword + ", not a side effect or extreme claim.";
-        }
-
-        if (prompt.contains("best sign") || prompt.contains("understands")) {
-            return "Think about what would genuinely show understanding of " + keyword + " in practice.";
-        }
-
-        if (prompt.contains("distractor")) {
-            return "Focus on what makes an answer seem believable while still missing the main idea.";
-        }
-
-        if (hasSelection) {
-            return "Re-read the question and check whether your current choice answers exactly what is being asked about " + keyword + ".";
-        }
-
-        return "Use the wording of this question as your guide and focus on the main concept it is testing in " + keyword + ".";
     }
 
     private String buildHintPrompt(Quiz quiz, Question question, Long selectedChoiceId) {
@@ -342,9 +304,9 @@ public class AiQuizAssistantService {
         return "Medium";
     }
 
-    private Optional<Quiz> tryGenerateQuizDraftWithOpenAi(String topic, String title, int questionCount, String difficulty) {
-        String apiKey = EnvConfig.get("OPENAI_API_KEY");
-        String model = EnvConfig.get("OPENAI_MODEL");
+    protected Optional<Quiz> tryGenerateQuizDraftWithOpenAi(String topic, String title, int questionCount, String difficulty) {
+        String apiKey = getOpenAiApiKey();
+        String model = resolveRequestedModelName();
         if (isBlank(apiKey) || isBlank(model)) {
             return Optional.empty();
         }
@@ -376,19 +338,107 @@ public class AiQuizAssistantService {
     }
 
     private Optional<String> extractFirstMessageContent(String responseBody) {
-        Matcher matcher = MESSAGE_CONTENT_PATTERN.matcher(responseBody);
-        if (!matcher.find()) {
+        int contentKeyIndex = responseBody == null ? -1 : responseBody.indexOf("\"content\"");
+        if (contentKeyIndex < 0) {
             return Optional.empty();
         }
-        return Optional.of(unescapeJson(matcher.group(1)));
+
+        int colonIndex = responseBody.indexOf(':', contentKeyIndex);
+        if (colonIndex < 0) {
+            return Optional.empty();
+        }
+
+        int valueStartIndex = skipWhitespace(responseBody, colonIndex + 1);
+        if (valueStartIndex < 0 || valueStartIndex >= responseBody.length()) {
+            return Optional.empty();
+        }
+
+        if (responseBody.charAt(valueStartIndex) == '"') {
+            String stringValue = readJsonString(responseBody, valueStartIndex);
+            return stringValue == null ? Optional.empty() : Optional.of(stringValue);
+        }
+
+        // GitHub/OpenAI responses may also represent content as an array of typed segments.
+        if (responseBody.charAt(valueStartIndex) == '[') {
+            int textKeyIndex = responseBody.indexOf("\"text\"", valueStartIndex);
+            if (textKeyIndex < 0) {
+                return Optional.empty();
+            }
+
+            int textColonIndex = responseBody.indexOf(':', textKeyIndex);
+            if (textColonIndex < 0) {
+                return Optional.empty();
+            }
+
+            int textValueStartIndex = skipWhitespace(responseBody, textColonIndex + 1);
+            if (textValueStartIndex < 0 || textValueStartIndex >= responseBody.length() || responseBody.charAt(textValueStartIndex) != '"') {
+                return Optional.empty();
+            }
+
+            String stringValue = readJsonString(responseBody, textValueStartIndex);
+            return stringValue == null ? Optional.empty() : Optional.of(stringValue);
+        }
+
+        return Optional.empty();
+    }
+
+    private int skipWhitespace(String value, int startIndex) {
+        if (value == null) {
+            return -1;
+        }
+
+        int index = startIndex;
+        while (index < value.length() && Character.isWhitespace(value.charAt(index))) {
+            index++;
+        }
+        return index;
+    }
+
+    private String readJsonString(String value, int openingQuoteIndex) {
+        if (value == null || openingQuoteIndex < 0 || openingQuoteIndex >= value.length() || value.charAt(openingQuoteIndex) != '"') {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        boolean escaping = false;
+
+        for (int index = openingQuoteIndex + 1; index < value.length(); index++) {
+            char current = value.charAt(index);
+
+            if (escaping) {
+                builder.append('\\').append(current);
+                escaping = false;
+                continue;
+            }
+
+            if (current == '\\') {
+                escaping = true;
+                continue;
+            }
+
+            if (current == '"') {
+                return unescapeJson(builder.toString());
+            }
+
+            builder.append(current);
+        }
+
+        return null;
     }
 
     private Optional<String> sendChatCompletion(String apiKey, String requestBody) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                .uri(URI.create(resolveChatCompletionsUrl()))
                 .timeout(Duration.ofSeconds(25))
                 .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
+                .header("Content-Type", "application/json");
+
+        if (isGitHubModelsConfigured()) {
+            requestBuilder.header("Accept", "application/vnd.github+json");
+            requestBuilder.header("X-GitHub-Api-Version", "2022-11-28");
+        }
+
+        HttpRequest request = requestBuilder
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
@@ -398,6 +448,83 @@ public class AiQuizAssistantService {
         }
 
         return extractFirstMessageContent(response.body());
+    }
+
+    protected boolean isOpenAiReady() {
+        return !isBlank(getOpenAiApiKey()) && !isBlank(getOpenAiModel()) && (looksLikeOpenAiApiKey(getOpenAiApiKey()) || looksLikeGitHubToken(getOpenAiApiKey()));
+    }
+
+    private String getOpenAiApiKey() {
+        return EnvConfig.get("OPENAI_API_KEY");
+    }
+
+    private String getOpenAiModel() {
+        return EnvConfig.get("OPENAI_MODEL");
+    }
+
+    private boolean looksLikeOpenAiApiKey(String apiKey) {
+        if (isBlank(apiKey)) {
+            return false;
+        }
+
+        String normalized = apiKey.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("sk-") || normalized.startsWith("sess-");
+    }
+
+    private boolean looksLikeGitHubToken(String apiKey) {
+        if (isBlank(apiKey)) {
+            return false;
+        }
+
+        String normalized = apiKey.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("github_pat_")
+                || normalized.startsWith("ghp_")
+                || normalized.startsWith("gho_")
+                || normalized.startsWith("ghu_")
+                || normalized.startsWith("ghs_")
+                || normalized.startsWith("ghr_");
+    }
+
+    private boolean isGitHubModelsConfigured() {
+        return looksLikeGitHubToken(getOpenAiApiKey());
+    }
+
+    private String resolveChatCompletionsUrl() {
+        return isGitHubModelsConfigured()
+                ? GITHUB_MODELS_CHAT_COMPLETIONS_URL
+                : OPENAI_CHAT_COMPLETIONS_URL;
+    }
+
+    private String resolveRequestedModelName() {
+        String model = getOpenAiModel();
+        if (!isGitHubModelsConfigured() || isBlank(model)) {
+            return model;
+        }
+
+        if (model.contains("/")) {
+            return model.trim();
+        }
+
+        String normalized = model.trim().toLowerCase(Locale.ROOT);
+        if (normalized.startsWith("gpt-") || normalized.startsWith("o1") || normalized.startsWith("o3") || normalized.startsWith("o4")) {
+            return "openai/" + model.trim();
+        }
+        return model.trim();
+    }
+
+    protected String resolveAiProviderLabel() {
+        return isGitHubModelsConfigured() ? "GitHub Models" : "OpenAI";
+    }
+
+    protected String buildAiUnavailableMessage() {
+        String apiKey = getOpenAiApiKey();
+        if (isBlank(apiKey) || isBlank(getOpenAiModel())) {
+            return resolveAiProviderLabel() + " is not configured. Add valid OPENAI_API_KEY and OPENAI_MODEL values before using AI generation.";
+        }
+        if (!looksLikeOpenAiApiKey(apiKey) && !looksLikeGitHubToken(apiKey)) {
+            return "OPENAI_API_KEY does not look like a supported OpenAI or GitHub Models token. Update the .env value before using AI generation.";
+        }
+        return resolveAiProviderLabel() + " is unavailable right now. Please try again.";
     }
 
     private Quiz parseQuizDraft(String content, String fallbackTitle, String fallbackTopic) {
@@ -472,64 +599,137 @@ public class AiQuizAssistantService {
 
     private List<QuestionTemplate> buildFallbackTemplates(String topic, String difficulty) {
         String normalizedDifficulty = difficulty.toLowerCase(Locale.ROOT);
+        TopicProfile profile = buildTopicProfile(topic);
         List<QuestionTemplate> templates = new ArrayList<>();
 
         templates.add(new QuestionTemplate(
-                "Which statement best describes the main goal of " + topic + "?",
-                "Focus on the main purpose, not just a tool or side effect.",
-                "The correct answer defines the core purpose of " + topic + " at a high level.",
-                "To solve a clearly identified learning or practical need",
-                "To make every task fully automatic without review",
-                "To replace all subject knowledge instantly",
-                "To avoid using any structured process",
+                "A team starts working with " + topic + " for the first time. What are they usually trying to improve first?",
+                "Think about the first practical problem this topic helps people handle better.",
+                "The best answer points to the main practical value of " + topic + " before advanced optimization or scale enters the picture.",
+                profile.primaryOutcome(),
+                "Making every decision without evidence or structure",
+                "Replacing all human judgment immediately",
+                "Avoiding any repeatable process",
                 0
         ));
 
         templates.add(new QuestionTemplate(
-                "When studying " + topic + ", what should you do first?",
-                "Start with the foundation before advanced details.",
-                "Strong learning starts with basic concepts, vocabulary, and context before optimization.",
-                "Understand the essential concepts and terminology",
-                "Memorize rare edge cases immediately",
-                "Skip examples and jump to final evaluation",
-                "Ignore the problem the topic is trying to solve",
+                "You are learning " + topic + ". Which starting point builds the strongest foundation?",
+                "Start where the topic becomes concrete, not where it becomes flashy.",
+                "A strong foundation in " + topic + " begins with core concepts, language, and a simple example of how the pieces connect.",
+                "Learn the core terms, the main workflow, and one representative example",
+                "Jump straight into rare edge cases and exceptions",
+                "Copy advanced solutions before understanding the basics",
+                "Ignore how the topic is used in real situations",
                 0
         ));
 
         templates.add(new QuestionTemplate(
-                "Which sign best shows that someone understands " + topic + "?",
-                "Real understanding shows up when the person can explain the concept clearly.",
-                "Explaining reasoning and applying the concept correctly is a stronger signal than memorizing isolated facts.",
-                "They can justify why one solution fits better than the others",
-                "They repeat keywords without context",
-                "They guess quickly without checking assumptions",
-                "They avoid practical examples",
+                "Which situation best shows real understanding of " + topic + "?",
+                "Look for applied reasoning, not just memorized language.",
+                "Understanding is strongest when someone can explain why a choice fits the situation and apply the topic with intent.",
+                "They can explain why a specific " + profile.artifact() + " fits the situation and what tradeoff it brings",
+                "They repeat terms from " + topic + " without linking them to any use case",
+                "They choose whatever sounds technical without checking the context",
+                "They avoid explaining how the result would help in practice",
                 0
         ));
 
         templates.add(new QuestionTemplate(
-                "In a " + normalizedDifficulty + " quiz about " + topic + ", what makes a distractor answer strong?",
-                "A good distractor feels plausible but misses the main idea.",
-                "Distractors should be believable enough to test understanding, while still being incorrect.",
-                "It sounds believable but does not fully satisfy the question",
-                "It is obviously unrelated and easy to reject",
-                "It repeats the exact wording of the question's best answer",
-                "It gives no information at all",
+                "In a " + normalizedDifficulty + " challenge about " + topic + ", which mistake is most likely to cause trouble early?",
+                "Think about the mistake that breaks the basic reasoning, not just a small detail.",
+                "Early problems in " + topic + " usually come from misunderstanding the core relationship between the goal, the context, and the selected approach.",
+                profile.commonMistake(),
+                "Using a different font or color than expected",
+                "Adding more jargon without clarifying the goal",
+                "Spending more time naming things than evaluating them",
                 0
         ));
 
         templates.add(new QuestionTemplate(
-                "Why can hints be useful during a quiz on " + topic + "?",
-                "A useful hint narrows the reasoning path without spoiling the answer.",
-                "Hints support learning by nudging the learner toward the right concept instead of revealing the final choice directly.",
-                "They guide the learner toward the right concept",
-                "They should always reveal the correct answer immediately",
-                "They make question design unnecessary",
-                "They remove the need to think critically",
+                "If someone applies " + topic + " well, what outcome should you expect to notice?",
+                "Choose the result that reflects better decisions or clearer execution.",
+                "Good use of " + topic + " usually shows up as a clearer path from intent to result, not as noise or complexity for its own sake.",
+                profile.observableResult(),
+                "More confusion about what to do next",
+                "Less connection between the goal and the chosen approach",
+                "A process that sounds impressive but solves nothing important",
                 0
         ));
 
         return templates;
+    }
+
+    private TopicProfile buildTopicProfile(String topic) {
+        String normalizedTopic = topic == null ? "" : topic.trim();
+        String lowerTopic = normalizedTopic.toLowerCase(Locale.ROOT);
+
+        if (containsAny(lowerTopic, "java", "python", "javascript", "programming", "coding", "development", "software")) {
+            return new TopicProfile(
+                    normalizedTopic,
+                    "build reliable features and solve implementation problems more clearly",
+                    "implementation approach",
+                    "misunderstanding how the core building blocks work together",
+                    "code that is easier to reason about, test, and extend"
+            );
+        }
+
+        if (containsAny(lowerTopic, "sql", "database", "data", "analytics")) {
+            return new TopicProfile(
+                    normalizedTopic,
+                    "organize information so questions can be answered accurately",
+                    "query or data model",
+                    "mixing unrelated data without matching the right structure",
+                    "clearer answers, fewer inconsistencies, and more trustworthy results"
+            );
+        }
+
+        if (containsAny(lowerTopic, "network", "routing", "cyber", "security", "cloud", "devops")) {
+            return new TopicProfile(
+                    normalizedTopic,
+                    "move, protect, or deliver systems more reliably",
+                    "configuration or network decision",
+                    "treating all traffic, risks, or services as if they behave the same way",
+                    "more stable delivery, fewer avoidable failures, and clearer control"
+            );
+        }
+
+        if (containsAny(lowerTopic, "marketing", "branding", "sales", "business", "management")) {
+            return new TopicProfile(
+                    normalizedTopic,
+                    "connect the offer to the right audience and decision",
+                    "strategy",
+                    "focusing on activity instead of whether the message fits the audience",
+                    "clearer positioning and more consistent decision-making"
+            );
+        }
+
+        if (containsAny(lowerTopic, "biology", "chemistry", "physics", "science", "math", "algebra")) {
+            return new TopicProfile(
+                    normalizedTopic,
+                    "explain how a system, pattern, or rule behaves",
+                    "conceptual model",
+                    "memorizing isolated facts without understanding the underlying rule",
+                    "better explanations, predictions, and problem-solving accuracy"
+            );
+        }
+
+        return new TopicProfile(
+                normalizedTopic.isBlank() ? "this topic" : normalizedTopic,
+                "understand the core ideas and apply them more effectively",
+                "approach",
+                "copying surface details without understanding the main principle",
+                "clearer reasoning and more confident real-world application"
+        );
+    }
+
+    private boolean containsAny(String value, String... fragments) {
+        for (String fragment : fragments) {
+            if (value.contains(fragment)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Choice findChoiceById(Question question, Long choiceId) {
@@ -645,10 +845,22 @@ public class AiQuizAssistantService {
                 .replace("\\\\", "\\");
     }
 
-    public record GeneratedQuizDraft(Quiz quiz, String provider) {
+    public record GeneratedQuizDraft(Quiz quiz, String provider, boolean success, String message) {
+    }
+
+    public record GeneratedHint(String text, String provider, boolean success, String message) {
     }
 
     public record QuestionMetadata(String topic, String difficulty) {
+    }
+
+    private record TopicProfile(
+            String topic,
+            String primaryOutcome,
+            String artifact,
+            String commonMistake,
+            String observableResult
+    ) {
     }
 
     private record QuestionTemplate(

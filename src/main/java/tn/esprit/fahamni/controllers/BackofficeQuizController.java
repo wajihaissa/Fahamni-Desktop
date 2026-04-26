@@ -289,6 +289,11 @@ public class BackofficeQuizController {
 
         AiQuizAssistantService.GeneratedQuizDraft generatedDraft =
                 aiQuizAssistantService.generateQuizDraft(topic, title, questionCount, difficulty);
+        if (!generatedDraft.success()) {
+            showFeedback(generatedDraft.message(), true);
+            return;
+        }
+
         Quiz generatedQuiz = generatedDraft.quiz();
 
         if (generatedQuiz == null || generatedQuiz.getQuestions().isEmpty()) {
@@ -308,7 +313,7 @@ public class BackofficeQuizController {
         }
         clearQuestionEditor();
         updateQuestionsList();
-        showFeedback("Quiz genere avec " + generatedDraft.provider() + ". Verifiez puis enregistrez.", false);
+        showFeedback(generatedDraft.message(), false);
     }
 
     private Quiz buildQuizFromForm() {

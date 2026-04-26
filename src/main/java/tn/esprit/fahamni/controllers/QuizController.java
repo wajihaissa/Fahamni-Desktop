@@ -575,8 +575,11 @@ public class QuizController {
         hintButton.setOnAction(event -> {
             Toggle selectedToggle = group.getSelectedToggle();
             Long selectedChoiceId = selectedToggle != null ? (Long) selectedToggle.getUserData() : null;
-            String hint = aiQuizAssistantService.generateHint(quiz, question, selectedChoiceId);
-            hintLabel.setText("Hint: " + hint);
+            AiQuizAssistantService.GeneratedHint generatedHint =
+                    aiQuizAssistantService.generateHint(quiz, question, selectedChoiceId);
+            hintLabel.setText(generatedHint.success()
+                    ? "Hint: " + generatedHint.text()
+                    : generatedHint.message());
             hintLabel.setVisible(true);
             hintLabel.setManaged(true);
         });

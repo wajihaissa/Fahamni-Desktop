@@ -369,6 +369,11 @@ public class AdaptiveQuizService {
             String titlePrefix,
             String keywordPrefix
     ) {
+        Quiz existingQuiz = findReusableGeneratedQuiz(user, selectedQuestions, keywordPrefix);
+        if (existingQuiz != null) {
+            return existingQuiz;
+        }
+
         Quiz quiz = new Quiz();
         String primaryTopic = selectedQuestions.stream()
                 .map(Question::getTopic)
@@ -382,7 +387,7 @@ public class AdaptiveQuizService {
         }
 
         Instant createdAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        quiz.setTitre(titlePrefix + " - " + focusTopic + " - " + user.getFullName() + " - " + createdAt);
+        quiz.setTitre(buildGeneratedQuizTitle(titlePrefix, focusTopic, selectedQuestions));
         quiz.setKeyword(buildUniqueKeyword(keywordPrefix, focusTopic, user, createdAt));
 
         for (Question source : selectedQuestions) {
@@ -390,6 +395,102 @@ public class AdaptiveQuizService {
         }
 
         return quizService.createQuiz(quiz);
+    }
+
+    private Quiz findReusableGeneratedQuiz(User user, List<Question> selectedQuestions, String keywordPrefix) {
+        if (user == null || user.getId() == null || selectedQuestions == null || selectedQuestions.isEmpty()) {
+            return null;
+        }
+
+        List<Long> selectedSourceIds = resolveQuestionSignature(selectedQuestions);
+        if (selectedSourceIds.isEmpty()) {
+            return null;
+        }
+
+        return quizService.getAllQuizzes().stream()
+                .filter(quiz -> isReusableGeneratedQuiz(quiz, user, keywordPrefix))
+                .filter(quiz -> resolveQuestionSignature(quiz.getQuestions()).equals(selectedSourceIds))
+                .max(Comparator.comparing(Quiz::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
+                .orElse(null);
+    }
+
+    private boolean isReusableGeneratedQuiz(Quiz quiz, User user, String keywordPrefix) {
+        if (quiz == null || user == null || user.getId() == null) {
+            return false;
+        }
+
+        if (!quiz.getQuizResults().isEmpty()) {
+            return false;
+        }
+
+        String keyword = quiz.getKeyword();
+        if (keyword == null || keyword.isBlank() || !keyword.startsWith(keywordPrefix + "-")) {
+            return false;
+        }
+
+        Integer ownerUserId = extractGeneratedQuizOwnerUserId(keyword);
+        return ownerUserId != null && ownerUserId.equals(user.getId());
+    }
+
+    private Integer extractGeneratedQuizOwnerUserId(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+
+        String[] tokens = keyword.split("-");
+        if (tokens.length < 2) {
+            return null;
+        }
+
+        String userToken = tokens[tokens.length - 2];
+        try {
+            return Integer.valueOf(userToken);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private List<Long> resolveQuestionSignature(List<Question> questions) {
+        if (questions == null || questions.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> signature = new ArrayList<>();
+        for (Question question : questions) {
+            if (question == null) {
+                return List.of();
+            }
+
+            Long resolvedId = question.getSourceQuestionId() != null ? question.getSourceQuestionId() : question.getId();
+            if (resolvedId == null) {
+                return List.of();
+            }
+            signature.add(resolvedId);
+        }
+        return signature;
+    }
+
+    private String buildGeneratedQuizTitle(String titlePrefix, String focusTopic, List<Question> selectedQuestions) {
+        String normalizedTopic = focusTopic == null || focusTopic.isBlank() ? "General" : focusTopic.trim();
+        long hardCount = selectedQuestions.stream()
+                .filter(question -> "Hard".equals(normalizeDifficulty(question.getDifficulty())))
+                .count();
+        long easyCount = selectedQuestions.stream()
+                .filter(question -> "Easy".equals(normalizeDifficulty(question.getDifficulty())))
+                .count();
+
+        String emphasis;
+        if (titlePrefix.startsWith("Mistake Recovery")) {
+            emphasis = "Review Set";
+        } else if (hardCount >= Math.max(1, selectedQuestions.size() / 2)) {
+            emphasis = "Challenge Set";
+        } else if (easyCount >= Math.max(1, selectedQuestions.size() / 2)) {
+            emphasis = "Foundation Set";
+        } else {
+            emphasis = "Focus Set";
+        }
+
+        return titlePrefix + " - " + normalizedTopic + " " + emphasis;
     }
 
     private String buildUniqueKeyword(String keywordPrefix, String focusTopic, User user, Instant createdAt) {

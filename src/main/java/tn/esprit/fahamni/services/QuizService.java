@@ -597,7 +597,9 @@ public class QuizService {
             }
 
             if (hasQuizResultColumn("user_id")) {
-                if (result.getUser() != null && result.getUser().getId() != null) {
+                if (result.getUser() != null
+                        && result.getUser().getId() != null
+                        && userExists(result.getUser().getId())) {
                     stmt.setLong(index++, result.getUser().getId());
                 } else {
                     stmt.setNull(index++, Types.BIGINT);
@@ -960,6 +962,22 @@ public class QuizService {
 
     private boolean hasQuestionColumn(String columnName) {
         return tableHasColumn("question", columnName);
+    }
+
+    private boolean userExists(Integer userId) {
+        if (userId == null || !tableExists("user")) {
+            return false;
+        }
+
+        String query = "SELECT 1 FROM `user` WHERE id = ? LIMIT 1";
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     private boolean tableHasColumn(String tableName, String columnName) {
