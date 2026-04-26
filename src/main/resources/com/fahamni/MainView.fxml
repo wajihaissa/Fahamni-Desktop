@@ -103,7 +103,7 @@
                                 onAction="#toggleGlobalAi"
                                 style="-fx-background-color: linear-gradient(to bottom, #0f766e, #0d9488); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 999px; -fx-padding: 12 20;"
                                 text="Ask Fahamni"
-                                AnchorPane.bottomAnchor="24.0"
+                                AnchorPane.bottomAnchor="96.0"
                                 AnchorPane.rightAnchor="24.0"/>
                     </children>
                 </AnchorPane>

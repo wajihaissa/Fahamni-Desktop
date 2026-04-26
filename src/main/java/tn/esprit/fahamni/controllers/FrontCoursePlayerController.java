@@ -130,7 +130,7 @@ public class FrontCoursePlayerController {
             boolean shouldShow = !courseAiPanel.isVisible();
             courseAiPanel.setVisible(shouldShow);
             courseAiPanel.setManaged(shouldShow);
-            courseAiFab.setText(shouldShow ? "Masquer AI" : "AI du cours");
+            courseAiFab.setText(shouldShow ? "Masquer tuteur" : "Tuteur du cours");
             if (shouldShow) {
                 syncCourseAiContext();
             }

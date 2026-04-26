@@ -86,7 +86,7 @@
         <Button fx:id="courseAiFab"
                 onAction="#toggleCourseAi"
                 style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 24; -fx-padding: 12 18;"
-                text="AI du cours"
+                text="Tuteur du cours"
                 StackPane.alignment="BOTTOM_RIGHT">
             <StackPane.margin>
                 <Insets top="0.0" right="24.0" bottom="24.0" left="0.0"/>
