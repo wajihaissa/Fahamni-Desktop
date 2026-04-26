@@ -304,7 +304,7 @@ public class CourseContextBuilder {
             StringBuilder text = new StringBuilder();
             int bytesRead;
 
-            while ((bytesRead = ais.read(buffer)) >= 0) {
+            while ((bytesRead = ais.read(buffer)) > 0) {
                 if (recognizer.acceptWaveForm(buffer, bytesRead)) {
                     JSONObject chunk = new JSONObject(recognizer.getResult());
                     String partial = chunk.optString("text", "");
