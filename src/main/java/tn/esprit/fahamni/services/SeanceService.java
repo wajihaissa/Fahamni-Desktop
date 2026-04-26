@@ -131,7 +131,12 @@ public class SeanceService implements IServices<Seance> {
 
         String sql = """
             SELECT id, matiere, start_at, duration_min, max_participants, status,
-                   description, created_at, updated_at, tuteur_id, mode_seance, salle_id
+                   description, created_at, updated_at, tuteur_id,
+            """
+            + (supportsSeanceModeColumn() ? "mode_seance" : "'" + Seance.MODE_ONLINE + "' AS mode_seance")
+            + ", "
+            + (supportsSeanceSalleColumn() ? "salle_id" : "NULL AS salle_id")
+            + """
             FROM seance
             ORDER BY id DESC
             """;
@@ -181,13 +186,30 @@ public class SeanceService implements IServices<Seance> {
             throw new IllegalArgumentException(roomConflict);
         }
 
-        String sql = """
-            INSERT INTO seance (
-                matiere, start_at, duration_min, max_participants, status, description,
-                created_at, updated_at, tuteur_id, mode_seance, salle_id
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
+        boolean hasModeColumn = supportsSeanceModeColumn();
+        boolean hasSalleColumn = supportsSeanceSalleColumn();
+        String sql = hasModeColumn || hasSalleColumn
+            ? """
+                INSERT INTO seance (
+                    matiere, start_at, duration_min, max_participants, status, description,
+                    created_at, updated_at, tuteur_id
+                """
+                + (hasModeColumn ? ", mode_seance" : "")
+                + (hasSalleColumn ? ", salle_id" : "")
+                + """
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?
+                """
+                + (hasModeColumn ? ", ?" : "")
+                + (hasSalleColumn ? ", ?" : "")
+                + ")"
+            : """
+                INSERT INTO seance (
+                    matiere, start_at, duration_min, max_participants, status, description,
+                    created_at, updated_at, tuteur_id
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             LocalDateTime now = LocalDateTime.now();
@@ -203,8 +225,13 @@ public class SeanceService implements IServices<Seance> {
             pst.setTimestamp(7, Timestamp.valueOf(seance.getCreatedAt() != null ? seance.getCreatedAt() : now));
             pst.setTimestamp(8, seance.getUpdatedAt() != null ? Timestamp.valueOf(seance.getUpdatedAt()) : null);
             pst.setInt(9, seance.getTuteurId());
-            pst.setString(10, seance.getMode());
-            setNullableInteger(pst, 11, seance.getSalleId());
+            int nextIndex = 10;
+            if (hasModeColumn) {
+                pst.setString(nextIndex++, seance.getMode());
+            }
+            if (hasSalleColumn) {
+                setNullableInteger(pst, nextIndex, seance.getSalleId());
+            }
             pst.executeUpdate();
 
             try (ResultSet generatedKeys = pst.getGeneratedKeys()) {
@@ -246,13 +273,16 @@ public class SeanceService implements IServices<Seance> {
             throw new IllegalArgumentException(roomConflict);
         }
 
+        boolean hasModeColumn = supportsSeanceModeColumn();
+        boolean hasSalleColumn = supportsSeanceSalleColumn();
         String sql = """
             UPDATE seance
             SET matiere = ?, start_at = ?, duration_min = ?, max_participants = ?,
-                status = ?, description = ?, updated_at = ?, tuteur_id = ?,
-                mode_seance = ?, salle_id = ?
-            WHERE id = ?
-            """;
+                status = ?, description = ?, updated_at = ?, tuteur_id = ?
+            """
+            + (hasModeColumn ? ", mode_seance = ?" : "")
+            + (hasSalleColumn ? ", salle_id = ?" : "")
+            + " WHERE id = ?";
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             String normalizedSubject = normalizeText(seance.getMatiere());
@@ -266,9 +296,14 @@ public class SeanceService implements IServices<Seance> {
             pst.setString(6, blankToNull(normalizedDescription));
             pst.setTimestamp(7, Timestamp.valueOf(seance.getUpdatedAt() != null ? seance.getUpdatedAt() : LocalDateTime.now()));
             pst.setInt(8, seance.getTuteurId());
-            pst.setString(9, seance.getMode());
-            setNullableInteger(pst, 10, seance.getSalleId());
-            pst.setInt(11, seance.getId());
+            int nextIndex = 9;
+            if (hasModeColumn) {
+                pst.setString(nextIndex++, seance.getMode());
+            }
+            if (hasSalleColumn) {
+                setNullableInteger(pst, nextIndex++, seance.getSalleId());
+            }
+            pst.setInt(nextIndex, seance.getId());
 
             int updatedRows = pst.executeUpdate();
             if (updatedRows == 0) {
@@ -421,6 +456,10 @@ public class SeanceService implements IServices<Seance> {
     }
 
     private String validateInfrastructure(Seance seance) {
+        if (!supportsInfrastructureFields()) {
+            return null;
+        }
+
         String mode = normalizeMode(seance.getMode());
         if (!Seance.MODE_ONLINE.equals(mode) && !Seance.MODE_ONSITE.equals(mode)) {
             return "Choisissez un mode de seance valide.";
@@ -443,6 +482,9 @@ public class SeanceService implements IServices<Seance> {
     }
 
     private String validateSelectedRoom(Seance seance) {
+        if (!tableExists("salle")) {
+            return null;
+        }
         if (cnx == null) {
             return "Connexion a la base indisponible pour verifier la salle.";
         }
@@ -474,6 +516,9 @@ public class SeanceService implements IServices<Seance> {
     private String validateSelectedEquipements(Seance seance) {
         Map<Integer, Integer> equipementQuantites = seance.getEquipementQuantites();
         if (equipementQuantites.isEmpty()) {
+            return null;
+        }
+        if (!tableExists("equipement")) {
             return null;
         }
         if (cnx == null) {
@@ -544,6 +589,7 @@ public class SeanceService implements IServices<Seance> {
 
     private String validateRoomScheduleConflict(Seance candidate) {
         if (candidate == null
+            || !supportsInfrastructureFields()
             || !candidate.isPresentiel()
             || candidate.getSalleId() == null
             || candidate.getStatus() == 2
@@ -605,6 +651,13 @@ public class SeanceService implements IServices<Seance> {
             return;
         }
 
+        if (!supportsInfrastructureFields()) {
+            seance.setMode(Seance.MODE_ONLINE);
+            seance.setSalleId(null);
+            seance.setEquipementQuantites(Map.of());
+            return;
+        }
+
         String mode = normalizeMode(seance.getMode());
         seance.setMode(mode);
         if (!Seance.MODE_ONSITE.equals(mode)) {
@@ -634,7 +687,7 @@ public class SeanceService implements IServices<Seance> {
     }
 
     private void attachEquipementIds(List<Seance> seances) {
-        if (seances == null || seances.isEmpty()) {
+        if (seances == null || seances.isEmpty() || !tableExists("seance_equipement")) {
             return;
         }
 
@@ -645,7 +698,7 @@ public class SeanceService implements IServices<Seance> {
 
     private Map<Integer, Integer> loadEquipementQuantitesBySeanceId(int seanceId) {
         LinkedHashMap<Integer, Integer> equipementQuantites = new LinkedHashMap<>();
-        if (seanceId <= 0 || cnx == null) {
+        if (seanceId <= 0 || cnx == null || !tableExists("seance_equipement")) {
             return equipementQuantites;
         }
 
@@ -665,6 +718,10 @@ public class SeanceService implements IServices<Seance> {
 
     private void replaceSeanceEquipements(Seance seance) throws SQLException {
         if (seance == null || seance.getId() <= 0) {
+            return;
+        }
+
+        if (!tableExists("seance_equipement")) {
             return;
         }
 
@@ -731,6 +788,40 @@ public class SeanceService implements IServices<Seance> {
 
     private boolean isMissingTable(SQLException exception) {
         return "42S02".equals(exception.getSQLState()) || exception.getErrorCode() == 1146;
+    }
+
+    private boolean supportsInfrastructureFields() {
+        return supportsSeanceModeColumn() && supportsSeanceSalleColumn();
+    }
+
+    private boolean supportsSeanceModeColumn() {
+        return columnExists("seance", "mode_seance");
+    }
+
+    private boolean supportsSeanceSalleColumn() {
+        return columnExists("seance", "salle_id");
+    }
+
+    private boolean tableExists(String tableName) {
+        if (cnx == null || tableName == null || tableName.isBlank()) {
+            return false;
+        }
+        try (ResultSet tables = cnx.getMetaData().getTables(cnx.getCatalog(), null, tableName, null)) {
+            return tables.next();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    private boolean columnExists(String tableName, String columnName) {
+        if (!tableExists(tableName)) {
+            return false;
+        }
+        try (ResultSet columns = cnx.getMetaData().getColumns(cnx.getCatalog(), null, tableName, columnName)) {
+            return columns.next();
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     private String blankToNull(String value) {

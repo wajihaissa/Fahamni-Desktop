@@ -16,6 +16,18 @@ public class AdminArticlesService {
         return MyDataBase.getInstance().getCnx();
     }
 
+    private boolean hasBlogCategoryColumn() {
+        Connection c = cnx();
+        if (c == null) {
+            return false;
+        }
+        try (ResultSet columns = c.getMetaData().getColumns(c.getCatalog(), null, "blog", "category")) {
+            return columns.next();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public List<Blog> getAllArticles() {
         return queryArticles(null);
     }
@@ -196,14 +208,15 @@ public class AdminArticlesService {
 
         List<Blog> result = new ArrayList<>();
         String[] userColumns = {"full_name", "fullName", "name", "username"};
+        String categorySelect = hasBlogCategoryColumn() ? "b.category" : "NULL AS category";
         for (String column : userColumns) {
             result.clear();
             String sql = status == null
-                ? "SELECT b.id, b.titre, b.content, b.images, b.category, b.status, " +
+                ? "SELECT b.id, b.titre, b.content, b.images, " + categorySelect + ", b.status, " +
                     "b.publisher_id, b.created_at, b.published_at, u." + column + " AS publisher_name " +
                     "FROM blog b LEFT JOIN user u ON b.publisher_id = u.id " +
                     "ORDER BY b.created_at DESC"
-                : "SELECT b.id, b.titre, b.content, b.images, b.category, b.status, " +
+                : "SELECT b.id, b.titre, b.content, b.images, " + categorySelect + ", b.status, " +
                     "b.publisher_id, b.created_at, b.published_at, u." + column + " AS publisher_name " +
                     "FROM blog b LEFT JOIN user u ON b.publisher_id = u.id " +
                     "WHERE b.status = ? ORDER BY b.created_at DESC";
