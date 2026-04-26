@@ -2,8 +2,10 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
+import tn.esprit.fahamni.utils.JwtService;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.PasswordSecurity;
 import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
@@ -12,6 +14,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class AuthService {
+
+    private static final String REVIEW_PENDING_DB = "PENDING_REVIEW";
+    private static final String REVIEW_DECLINED_DB = "DECLINED";
 
     private final Connection connection;
     private String lastAuthenticationError;
@@ -34,12 +39,21 @@ public class AuthService {
             return null;
         }
 
+        try {
+            ensureAuthUserSchema(c);
+        } catch (SQLException exception) {
+            lastAuthenticationError = "Impossible de preparer la verification du compte : " + exception.getMessage();
+            return null;
+        }
+
         String[] nameCols = {"full_name", "fullName", "name", "username"};
         String[] roleCols = {"roles", "role"};
         for (String nameCol : nameCols) {
             for (String roleCol : roleCols) {
                 try (PreparedStatement ps = c.prepareStatement(
-                    "SELECT id, " + nameCol + ", " + roleCol + ", password FROM user WHERE email = ?")) {
+                    "SELECT id, " + nameCol + ", " + roleCol + ", password, status, " +
+                        "COALESCE(registration_status, 'APPROVED') AS registration_status " +
+                        "FROM user WHERE email = ?")) {
                     ps.setString(1, normalizedEmail);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
@@ -47,15 +61,36 @@ public class AuthService {
                             String fullName = rs.getString(nameCol);
                             String roleStr = rs.getString(roleCol);
                             String dbPassword = rs.getString("password");
+                            String reviewStatus = normalizeReviewStatus(rs.getString("registration_status"));
 
-                            if (!passwordMatches(password, dbPassword)) {
+                            if (!PasswordSecurity.matches(password, dbPassword)) {
                                 lastAuthenticationError = "Email ou mot de passe invalide.";
                                 return null;
                             }
 
+                            if (REVIEW_PENDING_DB.equals(reviewStatus)) {
+                                lastAuthenticationError = "Votre compte est en attente de validation administrative.";
+                                return null;
+                            }
+
+                            if (REVIEW_DECLINED_DB.equals(reviewStatus)) {
+                                lastAuthenticationError = "Votre inscription a ete refusee. Contactez l'administration.";
+                                return null;
+                            }
+
+                            boolean active = true;
+                            try {
+                                active = rs.getBoolean("status");
+                            } catch (SQLException ignored) {
+                            }
+                            if (!active) {
+                                lastAuthenticationError = "Votre compte est suspendu. Contactez l'administration.";
+                                return null;
+                            }
+
                             UserRole role = mapRole(roleStr);
-                            System.out.println("AuthService: connexion BD reussie pour " + email + " (id=" + userId + ")");
-                            return new User(userId, fullName, normalizedEmail, password, role);
+                            System.out.println("AuthService: connexion BD reussie pour " + normalizedEmail + " (id=" + userId + ")");
+                            return new User(userId, fullName, normalizedEmail, dbPassword, role);
                         }
                     }
                 } catch (SQLException ignored) {
@@ -64,12 +99,23 @@ public class AuthService {
             }
         }
 
-        System.out.println("AuthService: utilisateur non trouve pour " + email);
+        System.out.println("AuthService: utilisateur non trouve pour " + normalizedEmail);
         return null;
     }
 
     public String getLastAuthenticationError() {
         return lastAuthenticationError;
+    }
+
+    public String issueJwt(User user) {
+        if (user == null) {
+            return null;
+        }
+        return JwtService.generateToken(user);
+    }
+
+    public boolean isJwtValidForUser(String token, User user) {
+        return JwtService.isTokenValidForUser(token, user);
     }
 
     public OperationResult register(String fullName, String email, String password, String confirmPassword, String role) {
@@ -88,6 +134,11 @@ public class AuthService {
             return OperationResult.failure(passwordError);
         }
 
+        String roleError = UserInputValidator.validateFrontRole(role);
+        if (roleError != null) {
+            return OperationResult.failure(roleError);
+        }
+
         String normalizedEmail = UserInputValidator.normalizeEmail(email);
         String normalizedFullName = UserInputValidator.normalizeFullName(fullName);
 
@@ -99,20 +150,35 @@ public class AuthService {
             return OperationResult.failure("Connexion a la base indisponible. Impossible de creer le compte.");
         }
 
-        String insertQuery = "INSERT INTO `user` (`email`, `password`, `full_name`, `roles`, `status`, `created_at`) VALUES (?, ?, ?, ?, ?, NOW())";
+        try {
+            ensureAuthUserSchema(connection);
+        } catch (SQLException exception) {
+            return OperationResult.failure("Impossible de preparer l'inscription : " + exception.getMessage());
+        }
+
+        String insertQuery = """
+            INSERT INTO `user` (
+                `email`, `password`, `full_name`, `roles`, `status`, `created_at`,
+                `registration_status`, `profile_active`, `review_note`, `reviewed_at`
+            ) VALUES (?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?)
+            """;
         try (PreparedStatement statement = connection.prepareStatement(insertQuery)) {
             statement.setString(1, normalizedEmail);
-            statement.setString(2, password);
+            statement.setString(2, PasswordSecurity.hashPassword(password));
             statement.setString(3, normalizedFullName);
             statement.setString(4, mapRegistrationRole(role));
-            statement.setBoolean(5, true);
+            statement.setBoolean(5, false);
+            statement.setString(6, REVIEW_PENDING_DB);
+            statement.setBoolean(7, true);
+            statement.setString(8, "Self-registration submitted and waiting for review.");
+            statement.setTimestamp(9, null);
             statement.executeUpdate();
         } catch (SQLException e) {
             System.out.println("Error registering user: " + e.getMessage());
             return OperationResult.failure("Erreur lors de la creation du compte : " + e.getMessage());
         }
 
-        return OperationResult.success("Compte cree avec succes. Vous pouvez maintenant vous connecter.");
+        return OperationResult.success("Compte cree avec succes. Il sera disponible apres validation par l'administration.");
     }
 
     private boolean emailAlreadyExists(String email) {
@@ -130,20 +196,6 @@ public class AuthService {
             System.out.println("Error checking email: " + e.getMessage());
             return false;
         }
-    }
-
-    private boolean passwordMatches(String input, String stored) {
-        if (stored == null) {
-            return false;
-        }
-        if (stored.equals(input)) {
-            return true;
-        }
-        if (stored.startsWith("$2")) {
-            System.out.println("AuthService: mot de passe BCrypt detecte, verification simplifiee.");
-            return true;
-        }
-        return false;
     }
 
     private boolean isBlank(String value) {
@@ -170,5 +222,27 @@ public class AuthService {
             return "[\"ROLE_TUTOR\"]";
         }
         return "[\"ROLE_USER\"]";
+    }
+
+    private void ensureAuthUserSchema(Connection c) throws SQLException {
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `registration_status` VARCHAR(32) NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `review_note` TEXT NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `reviewed_at` DATETIME NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `profile_active` TINYINT(1) NULL");
+        executeStatement(c, "UPDATE `user` SET `registration_status` = 'APPROVED' WHERE `registration_status` IS NULL OR TRIM(`registration_status`) = ''");
+        executeStatement(c, "UPDATE `user` SET `profile_active` = 1 WHERE `profile_active` IS NULL");
+    }
+
+    private void executeStatement(Connection c, String sql) throws SQLException {
+        try (PreparedStatement statement = c.prepareStatement(sql)) {
+            statement.execute();
+        }
+    }
+
+    private String normalizeReviewStatus(String reviewStatus) {
+        if (reviewStatus == null || reviewStatus.trim().isEmpty()) {
+            return "APPROVED";
+        }
+        return reviewStatus.trim().toUpperCase().replace('-', '_').replace(' ', '_');
     }
 }

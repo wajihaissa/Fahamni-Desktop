@@ -46,7 +46,7 @@ public final class SceneManager {
             BackOfficeUiTheme.apply(scene);
             return;
         }
-        FrontOfficeUiTheme.apply(scene);
+        FrontOfficeUiTheme.apply(scene, fxmlPath);
     }
 }
 

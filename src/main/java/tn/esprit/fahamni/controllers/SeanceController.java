@@ -46,8 +46,8 @@ import java.util.stream.Collectors;
 
 public class SeanceController {
 
-    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
-    private static final DateTimeFormatter UPCOMING_FORMATTER = DateTimeFormatter.ofPattern("dd MMM - HH:mm", Locale.ENGLISH);
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.FRENCH);
+    private static final DateTimeFormatter UPCOMING_FORMATTER = DateTimeFormatter.ofPattern("dd MMM - HH:mm", Locale.FRENCH);
     private static final DateTimeFormatter DETAILS_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final DateTimeFormatter DAY_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String SESSION_EVALUATIONS_STYLESHEET = "/com/fahamni/styles/frontoffice-session-evaluations.css";
@@ -141,7 +141,7 @@ public class SeanceController {
         subjectLabel.getStyleClass().add("calendar-upcoming-title");
         subjectLabel.setWrapText(true);
 
-        Label tutorLabel = new Label("Tutor: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()));
+        Label tutorLabel = new Label("Tuteur : " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()));
         tutorLabel.getStyleClass().add("calendar-upcoming-meta");
         tutorLabel.setWrapText(true);
 

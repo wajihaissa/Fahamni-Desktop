@@ -1,0 +1,511 @@
+.login-root {
+    -fx-background-color:
+        radial-gradient(center 14% 16%, radius 34%, rgba(87, 172, 255, 0.16) 0%, rgba(87, 172, 255, 0.0) 72%),
+        radial-gradient(center 84% 18%, radius 40%, rgba(118, 109, 255, 0.11) 0%, rgba(118, 109, 255, 0.0) 74%),
+        linear-gradient(to bottom right, #07111b 0%, #091522 34%, #0d1b2b 64%, #11223a 100%);
+}
+
+.login-spiderweb-overlay {
+    -fx-opacity: 0.98;
+}
+
+.login-grid-overlay {
+    -fx-background-color:
+        linear-gradient(to right, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.0) 97.8%, rgba(139, 184, 255, 0.08) 100%),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.0) 0%, rgba(255, 255, 255, 0.0) 97.8%, rgba(139, 184, 255, 0.08) 100%);
+    -fx-opacity: 0.26;
+}
+
+.login-vignette {
+    -fx-background-color:
+        radial-gradient(center 50% 40%, radius 72%, rgba(5, 10, 18, 0.0) 48%, rgba(5, 10, 18, 0.18) 100%);
+}
+
+.login-aurora {
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+}
+
+.login-aurora-left {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(76, 128, 255, 0.22) 0%, rgba(76, 128, 255, 0.07) 34%, rgba(76, 128, 255, 0.0) 72%);
+}
+
+.login-aurora-right {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(121, 205, 255, 0.14) 0%, rgba(121, 205, 255, 0.05) 32%, rgba(121, 205, 255, 0.0) 72%);
+}
+
+.login-orb {
+    -fx-background-radius: 999px;
+}
+
+.login-orb-top {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(106, 95, 255, 0.14) 0%, rgba(106, 95, 255, 0.04) 36%, rgba(106, 95, 255, 0.0) 72%);
+}
+
+.login-orb-bottom {
+    -fx-background-color: radial-gradient(center 50% 50%, radius 50%, rgba(89, 225, 255, 0.13) 0%, rgba(89, 225, 255, 0.04) 36%, rgba(89, 225, 255, 0.0) 72%);
+}
+
+.login-horizon-beam {
+    -fx-background-color: linear-gradient(to right, rgba(112, 162, 255, 0.0) 0%, rgba(112, 162, 255, 0.82) 26%, rgba(216, 242, 255, 0.96) 50%, rgba(112, 162, 255, 0.82) 74%, rgba(112, 162, 255, 0.0) 100%);
+    -fx-effect: dropshadow(gaussian, rgba(116, 180, 255, 0.36), 16, 0.24, 0, 0);
+}
+
+.login-shell {
+    -fx-padding: 38px 44px;
+}
+
+.login-side {
+    -fx-min-height: 536px;
+}
+
+.login-side-brand {
+    -fx-padding: 10px 10px 10px 10px;
+}
+
+.login-side-form {
+    -fx-padding: 0 0 0 6px;
+}
+
+.login-scroll {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+    -fx-fit-to-width: true;
+}
+
+.login-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.login-scroll .corner {
+    -fx-background-color: transparent;
+}
+
+.login-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4px 0 8px;
+}
+
+.login-scroll .scroll-bar:vertical .track {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 999px;
+}
+
+.login-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(144, 193, 255, 0.34);
+    -fx-background-radius: 999px;
+}
+
+.login-scroll .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: rgba(170, 215, 255, 0.48);
+}
+
+.login-scroll .scroll-bar:vertical .increment-button,
+.login-scroll .scroll-bar:vertical .decrement-button,
+.login-scroll .scroll-bar:vertical .increment-arrow,
+.login-scroll .scroll-bar:vertical .decrement-arrow {
+    -fx-padding: 0;
+    -fx-shape: "";
+    -fx-background-color: transparent;
+}
+
+.login-brand-block {
+    -fx-padding: 26px 28px 24px 28px;
+    -fx-background-color:
+        radial-gradient(center 18% 12%, radius 42%, rgba(90, 175, 255, 0.10) 0%, rgba(90, 175, 255, 0.0) 74%),
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    -fx-border-color: rgba(145, 183, 255, 0.16);
+    -fx-border-width: 1px;
+    -fx-border-radius: 30px;
+    -fx-background-radius: 30px;
+    -fx-effect: dropshadow(gaussian, rgba(5, 12, 30, 0.34), 26, 0.20, 0, 12);
+}
+
+.login-brand-chip-row {
+    -fx-padding: 0 0 4px 0;
+}
+
+.login-brand-chip {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: rgba(139, 184, 255, 0.24);
+    -fx-border-width: 1px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 12px;
+    -fx-text-fill: #d7ebff;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-letter-spacing: 0.8px;
+}
+
+.login-brand-chip-muted {
+    -fx-text-fill: #8db0df;
+    -fx-border-color: rgba(139, 184, 255, 0.14);
+}
+
+.login-art-image {
+    -fx-effect: dropshadow(gaussian, rgba(30, 106, 255, 0.28), 28, 0.20, 0, 10);
+}
+
+.login-brand-copy {
+    -fx-padding: 8px 0 2px 0;
+}
+
+.login-brand-title {
+    -fx-text-fill: white;
+    -fx-font-size: 48px;
+    -fx-font-weight: bold;
+}
+
+.login-brand-subtitle {
+    -fx-text-fill: rgba(214, 227, 255, 0.78);
+    -fx-font-size: 14px;
+    -fx-line-spacing: 2px;
+}
+
+.login-metrics-row {
+    -fx-padding: 8px 0 0 0;
+}
+
+.login-metric-card {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    -fx-border-color: rgba(139, 184, 255, 0.14);
+    -fx-border-width: 1px;
+    -fx-border-radius: 18px;
+    -fx-background-radius: 18px;
+    -fx-padding: 13px 14px;
+    -fx-pref-width: 108px;
+}
+
+.login-metric-value {
+    -fx-text-fill: #9fcdff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.login-metric-label {
+    -fx-text-fill: rgba(194, 212, 243, 0.64);
+    -fx-font-size: 11px;
+}
+
+.login-panel {
+    -fx-padding: 4px 0 4px 0;
+    -fx-fill-width: true;
+}
+
+.login-form-card {
+    -fx-background-color:
+        radial-gradient(center 88% 12%, radius 38%, rgba(92, 174, 255, 0.10) 0%, rgba(92, 174, 255, 0.0) 100%),
+        linear-gradient(to bottom, rgba(8, 23, 49, 0.88) 0%, rgba(14, 34, 69, 0.82) 100%);
+    -fx-border-color: rgba(152, 196, 255, 0.16);
+    -fx-border-width: 1px;
+    -fx-border-radius: 32px;
+    -fx-background-radius: 32px;
+    -fx-padding: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(6, 14, 33, 0.46), 34, 0.24, 0, 16);
+}
+
+.login-mode-pane {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    -fx-border-color: rgba(166, 204, 255, 0.10);
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-background-radius: 24px;
+    -fx-padding: 22px 22px 18px 22px;
+}
+
+.login-eyebrow {
+    -fx-text-fill: #90c7ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-letter-spacing: 0.6px;
+}
+
+.login-heading {
+    -fx-text-fill: white;
+    -fx-font-size: 34px;
+    -fx-font-weight: bold;
+}
+
+.login-copy,
+.login-helper-text {
+    -fx-text-fill: rgba(210, 224, 247, 0.74);
+    -fx-font-size: 12px;
+}
+
+.login-divider {
+    -fx-opacity: 0.48;
+}
+
+.login-divider .line {
+    -fx-border-color: rgba(176, 205, 247, 0.12);
+    -fx-border-width: 1px 0 0 0;
+}
+
+.login-fields-stack {
+    -fx-padding: 2px 0 0 0;
+}
+
+.login-field-group {
+    -fx-spacing: 8px;
+}
+
+.login-input-label {
+    -fx-text-fill: #eef6ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.login-input {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(10, 24, 48, 0.88) 0%, rgba(12, 29, 58, 0.96) 100%);
+    -fx-border-color: rgba(129, 179, 255, 0.32);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 15px 18px;
+    -fx-text-fill: #edf7ff;
+    -fx-prompt-text-fill: #87a5d1;
+    -fx-font-size: 13px;
+    -fx-highlight-fill: #7dbcff;
+    -fx-highlight-text-fill: #081a36;
+}
+
+.login-input:focused {
+    -fx-border-color: #9bd7ff;
+    -fx-border-width: 1.4px;
+    -fx-effect: dropshadow(gaussian, rgba(108, 192, 255, 0.28), 16, 0.22, 0, 0);
+}
+
+.login-root .combo-box.login-input {
+    -fx-background-insets: 0;
+}
+
+.login-root .combo-box.login-input .list-cell {
+    -fx-text-fill: #edf7ff;
+    -fx-font-size: 13px;
+}
+
+.login-root .combo-box.login-input .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.login-root .combo-box.login-input .arrow {
+    -fx-background-color: #93c5ff;
+}
+
+.login-root .combo-box-popup .list-view {
+    -fx-background-color: #0e213f;
+    -fx-border-color: rgba(147, 197, 255, 0.24);
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+}
+
+.login-root .combo-box-popup .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e9f5ff;
+}
+
+.login-root .combo-box-popup .list-cell:hover,
+.login-root .combo-box-popup .list-cell:filled:selected {
+    -fx-background-color: rgba(108, 166, 255, 0.16);
+    -fx-text-fill: white;
+}
+
+.login-options-row {
+    -fx-padding: 4px 0 0 0;
+}
+
+.login-check {
+    -fx-text-fill: rgba(226, 236, 252, 0.90);
+    -fx-font-size: 12px;
+}
+
+.login-check .box {
+    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-border-color: rgba(146, 183, 242, 0.34);
+    -fx-border-width: 1px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+}
+
+.login-check:selected .box {
+    -fx-background-color: linear-gradient(to bottom, #77b7ff 0%, #568eff 100%);
+    -fx-border-color: rgba(217, 239, 255, 0.26);
+}
+
+.login-check:selected .mark {
+    -fx-background-color: white;
+}
+
+.login-link {
+    -fx-text-fill: #9fd3ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.login-link:hover {
+    -fx-text-fill: #d8f1ff;
+    -fx-underline: true;
+}
+
+.login-primary-button {
+    -fx-background-color:
+        linear-gradient(to right, #8be0ff 0%, #66a8ff 40%, #5b7cff 100%);
+    -fx-border-color: rgba(219, 243, 255, 0.24);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 15px 18px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(91, 124, 255, 0.34), 18, 0.22, 0, 8);
+}
+
+.login-primary-button:hover {
+    -fx-background-color:
+        linear-gradient(to right, #9be5ff 0%, #78b5ff 40%, #6d8cff 100%);
+}
+
+.login-primary-button:pressed {
+    -fx-background-color:
+        linear-gradient(to right, #77c7eb 0%, #5d95e6 40%, #566fe2 100%);
+}
+
+.login-secondary-button {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.03) 100%);
+    -fx-border-color: rgba(141, 196, 255, 0.28);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-text-fill: #d7ecff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 13px 18px;
+    -fx-cursor: hand;
+}
+
+.login-secondary-button:hover {
+    -fx-background-color:
+        linear-gradient(to bottom, rgba(122, 181, 255, 0.20) 0%, rgba(255, 255, 255, 0.05) 100%);
+    -fx-text-fill: white;
+}
+
+.login-message-label {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: rgba(175, 209, 251, 0.10);
+    -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+    -fx-text-fill: #eef6ff;
+    -fx-font-size: 12px;
+    -fx-padding: 10px 12px;
+}
+
+.login-message-label.success {
+    -fx-background-color: rgba(85, 193, 142, 0.12);
+    -fx-border-color: rgba(135, 231, 184, 0.18);
+}
+
+.login-message-label.error {
+    -fx-background-color: rgba(225, 93, 111, 0.12);
+    -fx-border-color: rgba(255, 171, 183, 0.16);
+}
+
+.login-dialog-pane {
+    -fx-background-color:
+        linear-gradient(to bottom right, #07162f 0%, #0b1f43 46%, #113264 100%);
+    -fx-border-color: rgba(139, 184, 255, 0.24);
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-background-radius: 24px;
+    -fx-padding: 0;
+}
+
+.login-dialog-pane > .header-panel {
+    -fx-background-color:
+        linear-gradient(to right, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    -fx-border-color: rgba(146, 183, 242, 0.12);
+    -fx-border-width: 0 0 1px 0;
+    -fx-background-radius: 24px 24px 0 0;
+    -fx-border-radius: 24px 24px 0 0;
+    -fx-padding: 22px 24px 14px 24px;
+}
+
+.login-dialog-pane > .header-panel .label {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.login-dialog-pane > .content.label {
+    -fx-text-fill: rgba(214, 227, 255, 0.76);
+    -fx-font-size: 12px;
+    -fx-padding: 12px 24px 0 24px;
+}
+
+.login-dialog-pane .button-bar {
+    -fx-padding: 0 22px 20px 22px;
+}
+
+.login-dialog-pane .button-bar .container {
+    -fx-spacing: 10px;
+}
+
+.login-dialog-pane .button-bar .button {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: rgba(147, 197, 255, 0.20);
+    -fx-border-width: 1px;
+    -fx-border-radius: 14px;
+    -fx-background-radius: 14px;
+    -fx-text-fill: #e9f5ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 16px;
+    -fx-cursor: hand;
+}
+
+.login-dialog-pane .button-bar .button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+}
+
+.login-dialog-pane .button-bar .button:default {
+    -fx-background-color:
+        linear-gradient(to right, #8be0ff 0%, #66a8ff 40%, #5b7cff 100%);
+    -fx-border-color: rgba(219, 243, 255, 0.24);
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(91, 124, 255, 0.26), 16, 0.20, 0, 6);
+}
+
+.login-dialog-pane .button-bar .button:default:hover {
+    -fx-background-color:
+        linear-gradient(to right, #9be5ff 0%, #78b5ff 40%, #6d8cff 100%);
+}
+
+.login-dialog-content {
+    -fx-padding: 18px 24px 20px 24px;
+}
+
+.login-dialog-copy {
+    -fx-text-fill: rgba(214, 227, 255, 0.76);
+    -fx-font-size: 12px;
+}
+
+.login-dialog-label {
+    -fx-text-fill: #eef6ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.login-dialog-readonly {
+    -fx-opacity: 0.88;
+}

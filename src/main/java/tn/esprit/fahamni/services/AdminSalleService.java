@@ -144,6 +144,10 @@ public class AdminSalleService implements IServices<Salle> {
     }
 
     private void ensureNoUpcomingSeanceUsesSalle(int idSalle) throws SQLException {
+        if (!supportsSalleAssignments()) {
+            return;
+        }
+
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_ACTIVE_SEANCE_BY_SALLE_SQL)) {
             statement.setInt(1, idSalle);
             try (ResultSet resultSet = statement.executeQuery()) {
@@ -296,6 +300,25 @@ public class AdminSalleService implements IServices<Salle> {
             return;
         }
         statement.setDate(index, Date.valueOf(value));
+    }
+
+    private boolean supportsSalleAssignments() {
+        if (cnx == null) {
+            return false;
+        }
+        try (ResultSet tables = cnx.getMetaData().getTables(cnx.getCatalog(), null, "seance", null)) {
+            if (!tables.next()) {
+                return false;
+            }
+        } catch (SQLException e) {
+            return false;
+        }
+
+        try (ResultSet columns = cnx.getMetaData().getColumns(cnx.getCatalog(), null, "seance", "salle_id")) {
+            return columns.next();
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     private Integer getNullableInteger(ResultSet resultSet, String columnLabel) throws SQLException {

@@ -4,62 +4,109 @@
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Hyperlink?>
-<?import javafx.scene.image.Image?>
-<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.shape.Polygon?>
+<?import tn.esprit.fahamni.utils.AnimatedSpiderwebPane?>
 
-<AnchorPane prefHeight="600.0" prefWidth="900.0" styleClass="login-root"
+<AnchorPane fx:id="loginRoot" prefHeight="600.0" prefWidth="900.0" styleClass="login-root"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.LoginController">
     <children>
-        <Polygon fill="#fff6ea" mouseTransparent="true"
-                 points="0.0, 0.0, 418.0, 0.0, 306.0, 600.0, 0.0, 600.0"/>
+        <AnimatedSpiderwebPane mouseTransparent="true" styleClass="login-spiderweb-overlay"
+                               AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                               AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+        <Region mouseTransparent="true" styleClass="login-grid-overlay"
+                AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+        <Region mouseTransparent="true" styleClass="login-vignette"
+                AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+                AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+        <Region mouseTransparent="true" prefHeight="480.0" prefWidth="480.0" styleClass="login-aurora login-aurora-left"
+                AnchorPane.leftAnchor="-120.0" AnchorPane.topAnchor="-80.0"/>
+        <Region mouseTransparent="true" prefHeight="520.0" prefWidth="520.0" styleClass="login-aurora login-aurora-right"
+                AnchorPane.rightAnchor="-140.0" AnchorPane.bottomAnchor="-110.0"/>
+        <Region mouseTransparent="true" prefHeight="340.0" prefWidth="340.0" styleClass="login-orb login-orb-top"
+                AnchorPane.rightAnchor="120.0" AnchorPane.topAnchor="44.0"/>
+        <Region mouseTransparent="true" prefHeight="280.0" prefWidth="280.0" styleClass="login-orb login-orb-bottom"
+                AnchorPane.leftAnchor="72.0" AnchorPane.bottomAnchor="36.0"/>
+        <Region mouseTransparent="true" prefHeight="2.0" styleClass="login-horizon-beam"
+                AnchorPane.leftAnchor="64.0" AnchorPane.rightAnchor="64.0" AnchorPane.topAnchor="108.0"/>
 
-        <HBox alignment="CENTER" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
+        <HBox alignment="CENTER" spacing="22.0" styleClass="login-shell" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0"
               AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
             <children>
-                <StackPane alignment="CENTER" maxWidth="Infinity" prefWidth="420.0">
+                <StackPane alignment="CENTER_LEFT" maxWidth="Infinity" prefWidth="430.0" styleClass="login-side login-side-brand">
                     <children>
-                        <VBox alignment="CENTER" maxWidth="356.0" spacing="18.0" styleClass="login-brand-block">
+                        <VBox fx:id="brandBlock" alignment="TOP_LEFT" maxWidth="370.0" spacing="22.0" styleClass="login-brand-block">
                             <children>
-                                <ImageView fitHeight="374.0" fitWidth="290.0" pickOnBounds="true"
+                                <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="login-brand-chip-row">
+                                    <children>
+                                        <Label text="FAHAMNI DESKTOP" styleClass="login-brand-chip"/>
+                                        <Label text="ACCES SECURISE" styleClass="login-brand-chip login-brand-chip-muted"/>
+                                    </children>
+                                </HBox>
+
+                                <ImageView fx:id="loginArtImage" fitHeight="330.0" fitWidth="278.0" pickOnBounds="true"
                                            preserveRatio="true" styleClass="login-art-image">
                                     <image>
                                         <Image url="@../../images/logo.png"/>
                                     </image>
                                 </ImageView>
 
-                                <VBox alignment="CENTER" spacing="5.0" styleClass="login-brand-copy">
+                                <VBox alignment="TOP_LEFT" spacing="8.0" styleClass="login-brand-copy">
                                     <children>
                                         <Label text="Fahamni" styleClass="login-brand-title"/>
                                         <Label maxWidth="280.0"
                                                text="Plateforme d'apprentissage et de suivi academique."
-                                               textAlignment="CENTER" wrapText="true"
+                                               wrapText="true"
                                                styleClass="login-brand-subtitle"/>
                                     </children>
                                 </VBox>
+
+                                <HBox spacing="12.0" styleClass="login-metrics-row">
+                                    <children>
+                                        <VBox spacing="4.0" styleClass="login-metric-card">
+                                            <children>
+                                                <Label text="Suivi" styleClass="login-metric-value"/>
+                                                <Label text="En temps reel" styleClass="login-metric-label"/>
+                                            </children>
+                                        </VBox>
+                                        <VBox spacing="4.0" styleClass="login-metric-card">
+                                            <children>
+                                                <Label text="Tutorat" styleClass="login-metric-value"/>
+                                                <Label text="Par role intelligent" styleClass="login-metric-label"/>
+                                            </children>
+                                        </VBox>
+                                        <VBox spacing="4.0" styleClass="login-metric-card">
+                                            <children>
+                                                <Label text="Acces" styleClass="login-metric-value"/>
+                                                <Label text="Session securisee" styleClass="login-metric-label"/>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </HBox>
                             </children>
                         </VBox>
                     </children>
                 </StackPane>
 
-                <StackPane alignment="CENTER_RIGHT" maxWidth="Infinity" prefWidth="480.0">
+                <StackPane alignment="CENTER" maxWidth="Infinity" prefWidth="470.0" styleClass="login-side login-side-form">
                     <children>
-                        <VBox maxWidth="340.0" spacing="18.0" styleClass="login-panel">
+                        <VBox maxWidth="368.0" spacing="18.0" styleClass="login-panel">
                             <children>
-                                <VBox spacing="0.0" styleClass="login-form-card">
+                                <VBox fx:id="loginFormCard" spacing="0.0" styleClass="login-form-card">
                                     <children>
-                                        <VBox fx:id="signInPane" spacing="18.0">
+                                        <VBox fx:id="signInPane" spacing="18.0" styleClass="login-mode-pane">
                                             <children>
                                                 <VBox spacing="8.0">
                                                     <children>
@@ -92,7 +139,7 @@
                                                             <children>
                                                                 <CheckBox mnemonicParsing="false" selected="true" styleClass="login-check" text="Se souvenir de moi"/>
                                                                 <Region HBox.hgrow="ALWAYS"/>
-                                                                <Hyperlink focusTraversable="false" text="Mot de passe oublie ?" styleClass="login-link"/>
+                                                                <Hyperlink focusTraversable="false" onAction="#handleForgotPassword" text="Mot de passe oublie ?" styleClass="login-link"/>
                                                             </children>
                                                         </HBox>
                                                     </children>
@@ -100,6 +147,10 @@
 
                                                 <Button fx:id="loginButton" defaultButton="true" maxWidth="Infinity"
                                                         onAction="#handleLogin" text="SE CONNECTER" styleClass="login-primary-button"/>
+
+                                                <Button maxWidth="Infinity"
+                                                        onAction="#handleFaceLogin" text="SE CONNECTER AVEC FACE ID"
+                                                        styleClass="login-secondary-button"/>
 
                                                 <Separator styleClass="login-divider"/>
 
@@ -116,7 +167,7 @@
                                             </children>
                                         </VBox>
 
-                                        <VBox fx:id="signUpPane" managed="false" spacing="18.0" visible="false">
+                                        <VBox fx:id="signUpPane" managed="false" spacing="18.0" styleClass="login-mode-pane" visible="false">
                                             <children>
                                                 <VBox spacing="8.0">
                                                     <children>

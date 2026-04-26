@@ -1,8 +1,9 @@
 package tn.esprit.fahamni.utils;
 
-import java.net.URL;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+
+import java.net.URL;
 
 public final class UiTheme {
 

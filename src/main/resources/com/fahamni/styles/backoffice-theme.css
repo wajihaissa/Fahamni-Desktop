@@ -341,6 +341,24 @@
             -fx-background-radius: 999px;
         }
 
+        .backoffice-frontdesk-button {
+            -fx-background-color: rgba(255, 255, 255, 0.94);
+            -fx-border-color: #d4e0f7;
+            -fx-border-width: 1px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-text-fill: #244f96;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 9px 14px;
+            -fx-cursor: hand;
+        }
+
+        .backoffice-frontdesk-button:hover {
+            -fx-background-color: #edf4ff;
+            -fx-border-color: #aac4f6;
+        }
+
         .backoffice-users-page {
             -fx-spacing: 18px;
         }
@@ -381,6 +399,31 @@
 
         .backoffice-users-add-button:hover {
             -fx-background-color: linear-gradient(to bottom, #46a0ff 0%, #3b74ff 100%);
+        }
+
+        .backoffice-users-insights-panel {
+            -fx-alignment: top-left;
+        }
+
+        .backoffice-users-insight-card, .backoffice-users-summary-card {
+            -fx-background-color: linear-gradient(to bottom, #203553 0%, #1a2c49 100%);
+            -fx-border-color: rgba(255, 255, 255, 0.10);
+            -fx-border-width: 1px;
+            -fx-background-radius: 20px;
+            -fx-border-radius: 20px;
+            -fx-padding: 16px 18px;
+        }
+
+        .backoffice-users-insight-label {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: rgba(214, 226, 246, 0.84);
+        }
+
+        .backoffice-users-insight-value {
+            -fx-font-size: 28px;
+            -fx-font-weight: bold;
+            -fx-text-fill: white;
         }
 
         .backoffice-users-pending-panel, .backoffice-users-directory-panel {
@@ -446,11 +489,17 @@
 
         .backoffice-users-filter-chip {
             -fx-background-color: rgba(255, 255, 255, 0.10);
+            -fx-border-color: transparent;
+            -fx-border-width: 0;
             -fx-text-fill: rgba(229, 237, 251, 0.86);
             -fx-font-size: 11px;
             -fx-font-weight: bold;
             -fx-padding: 7px 12px;
             -fx-background-radius: 999px;
+            -fx-border-radius: 999px;
+            -fx-cursor: hand;
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
         }
 
         .backoffice-users-filter-chip.active {
@@ -484,7 +533,28 @@
             -fx-text-fill: #177546;
         }
 
+        .backoffice-status-chip.active-status,
+        .backoffice-status-chip.approved-review,
+        .backoffice-status-chip.profile-on,
+        .backoffice-status-chip.linked {
+            -fx-background-color: #e4f7ea;
+            -fx-text-fill: #177546;
+        }
+
+        .backoffice-status-chip.pending-review,
+        .backoffice-status-chip.linked-pending {
+            -fx-background-color: #fff6e5;
+            -fx-text-fill: #9b670a;
+        }
+
         .backoffice-status-chip.suspended {
+            -fx-background-color: #fff0f2;
+            -fx-text-fill: #c43b49;
+        }
+
+        .backoffice-status-chip.declined-review,
+        .backoffice-status-chip.profile-off,
+        .backoffice-status-chip.linked-missing {
             -fx-background-color: #fff0f2;
             -fx-text-fill: #c43b49;
         }
@@ -501,6 +571,12 @@
             -fx-background-color: #fff6e5;
             -fx-border-color: #ffd26f;
             -fx-text-fill: #a46a08;
+        }
+
+        .backoffice-risk-chip.high {
+            -fx-background-color: #fff0f2;
+            -fx-border-color: #ffc8d0;
+            -fx-text-fill: #c43b49;
         }
 
         .backoffice-table-action-button {
@@ -528,6 +604,42 @@
 
         .backoffice-users-editor-panel {
             -fx-padding: 20px;
+        }
+
+        .backoffice-users-editor-insight-panel {
+            -fx-background-color: #f8fbff;
+            -fx-border-color: #dbe5f6;
+            -fx-border-width: 1px;
+            -fx-background-radius: 16px;
+            -fx-border-radius: 16px;
+            -fx-padding: 12px 14px;
+        }
+
+        .backoffice-users-ai-review-panel {
+            -fx-background-color: linear-gradient(to bottom right, #f7fbff 0%, #eef5ff 100%);
+            -fx-border-color: #cfe0fb;
+        }
+
+        .backoffice-users-ai-label {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #557095;
+        }
+
+        .backoffice-users-ai-value {
+            -fx-font-size: 18px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #203d67;
+        }
+
+        .backoffice-users-ai-copy {
+            -fx-font-size: 12px;
+            -fx-text-fill: #506785;
+        }
+
+        .backoffice-users-ai-meta {
+            -fx-font-size: 11px;
+            -fx-text-fill: #7890af;
         }
 
         .profile-settings-shell {

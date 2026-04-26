@@ -38,6 +38,18 @@
                         <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" onAction="#showReservations" styleClass="backoffice-nav-button"/>
                         <Button fx:id="contentButton" maxWidth="Infinity" text="Contenu" onAction="#showContent" styleClass="backoffice-nav-button"/>
                         <StackPane>
+                            <Button fx:id="commentsButton" maxWidth="Infinity" text="Commentaires" onAction="#showComments" styleClass="backoffice-nav-button"/>
+                            <Label fx:id="commentsBadge" text=""
+                                   style="-fx-background-color: #e74c3c; -fx-text-fill: white;
+                                          -fx-font-size: 10; -fx-font-weight: bold;
+                                          -fx-background-radius: 10; -fx-padding: 2 6;
+                                          -fx-min-width: 18; -fx-alignment: center;"
+                                   StackPane.alignment="CENTER_RIGHT"
+                                   managed="false" visible="false">
+                                <StackPane.margin><Insets right="10"/></StackPane.margin>
+                            </Label>
+                        </StackPane>
+                        <StackPane>
                             <Button fx:id="articlesButton" maxWidth="Infinity" text="Articles" onAction="#showArticles" styleClass="backoffice-nav-button"/>
                             <Label fx:id="articlesBadge" text=""
                                    style="-fx-background-color: #e74c3c; -fx-text-fill: white;
@@ -86,6 +98,7 @@
                 <Label fx:id="pageSubtitle" text="Vue d'ensemble des operations, contenus et activites du backoffice." styleClass="backoffice-page-subtitle"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="frontDeskButton" managed="false" onAction="#handleOpenFrontDesk" text="Aller au frontoffice" visible="false" styleClass="backoffice-frontdesk-button"/>
             <Label text="Administrateur" styleClass="backoffice-badge"/>
         </HBox>
     </top>
