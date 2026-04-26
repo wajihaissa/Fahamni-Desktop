@@ -3,8 +3,10 @@ package tn.esprit.fahamni.controllers;
 import java.awt.Desktop;
 import java.io.File;
 import java.net.URI;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -269,9 +271,11 @@ public class FrontCoursePlayerController {
                     showWarning("Fichier vidéo introuvable: " + videoPath);
                     return;
                 }
+                // Safely convert file path to URI to handle spaces and special characters
                 mediaSource = resolvedFile.toURI().toString();
             }
 
+            // Create Media with safe URI
             Media media = new Media(mediaSource);
             mediaPlayer = new MediaPlayer(media);
             MediaView mediaView = new MediaView(mediaPlayer);
@@ -394,8 +398,14 @@ public class FrontCoursePlayerController {
         if (type == null) {
             return false;
         }
-        String normalized = type.trim().toLowerCase();
-        return "vidéo".equals(normalized) || "video".equals(normalized);
+
+        // Normalize accents/diacritics before comparison
+        // Decompose into base character + combining marks, then remove marks
+        String normalized = Normalizer.normalize(type.trim(), Normalizer.Form.NFD);
+        normalized = Pattern.compile("[\\p{InCombiningDiacriticalMarks}]+").matcher(normalized).replaceAll("");
+        normalized = normalized.toLowerCase();
+
+        return "video".equals(normalized);
     }
 
     private File resolveResourceFile(String path) {
