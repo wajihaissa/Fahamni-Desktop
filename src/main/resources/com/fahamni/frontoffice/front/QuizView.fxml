@@ -40,6 +40,13 @@
                             <String fx:value="quiz-toolbar-button"/>
                         </styleClass>
                     </Button>
+                    <Button text="Retake Mistakes" onAction="#handleGenerateMistakeRecoveryQuiz">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
                     <Button text="Leaderboard" onAction="#handleShowLeaderboard">
                         <styleClass>
                             <String fx:value="action-button"/>

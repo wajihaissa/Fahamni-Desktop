@@ -3,7 +3,9 @@ package tn.esprit.fahamni.services;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.quiz.Question;
 import tn.esprit.fahamni.Models.quiz.Quiz;
+import tn.esprit.fahamni.Models.quiz.QuizAnswerAttempt;
 import tn.esprit.fahamni.Models.quiz.QuizQuestionPerformance;
+import tn.esprit.fahamni.Models.quiz.QuizResult;
 import tn.esprit.fahamni.Models.quiz.QuizUserInsight;
 
 import java.time.Instant;
@@ -63,6 +65,63 @@ public class AdaptiveQuizService {
         }
 
         return persistAdaptiveQuiz(user, selectedQuestions, insight);
+    }
+
+    public Quiz generateMistakeRecoveryQuizForUser(User user, int desiredQuestionCount) {
+        if (user == null || user.getId() == null || desiredQuestionCount <= 0) {
+            return null;
+        }
+
+        List<Question> questionBank = quizService.getAllQuestionsFromBank();
+        if (questionBank.size() < 2) {
+            return null;
+        }
+
+        List<QuizQuestionPerformance> performanceHistory = analyticsService.getQuestionPerformanceForUser(user.getId());
+        if (performanceHistory.isEmpty()) {
+            return null;
+        }
+
+        Map<Long, Question> questionBankBySourceId = new HashMap<>();
+        for (Question question : questionBank) {
+            Long resolvedId = question.getSourceQuestionId() != null ? question.getSourceQuestionId() : question.getId();
+            if (resolvedId != null) {
+                questionBankBySourceId.putIfAbsent(resolvedId, question);
+            }
+        }
+
+        List<Question> selectedQuestions = performanceHistory.stream()
+                .filter(performance -> performance.getIncorrectAnswers() > 0)
+                .sorted(Comparator
+                        .comparingInt(QuizQuestionPerformance::getIncorrectAnswers).reversed()
+                        .thenComparingDouble(QuizQuestionPerformance::getAccuracyRate)
+                        .thenComparing(QuizQuestionPerformance::getLastAnsweredAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(performance -> questionBankBySourceId.get(performance.getQuestionId()))
+                .filter(question -> question != null)
+                .distinct()
+                .limit(desiredQuestionCount)
+                .toList();
+
+        if (selectedQuestions.isEmpty()) {
+            return null;
+        }
+
+        QuizUserInsight insight = analyticsService.getUserInsight(user.getId());
+        return persistAdaptiveQuiz(user, selectedQuestions, insight, "Mistake Recovery Quiz", "mistake-retry");
+    }
+
+    public Quiz generateMistakeRecoveryQuizForUser(User user, QuizResult sourceResult, int desiredQuestionCount) {
+        if (user == null || user.getId() == null || desiredQuestionCount <= 0) {
+            return null;
+        }
+
+        List<Question> selectedQuestions = extractIncorrectQuestionsFromResult(sourceResult, desiredQuestionCount);
+        if (selectedQuestions.isEmpty()) {
+            return generateMistakeRecoveryQuizForUser(user, desiredQuestionCount);
+        }
+
+        QuizUserInsight insight = analyticsService.getUserInsight(user.getId());
+        return persistAdaptiveQuiz(user, selectedQuestions, insight, "Mistake Recovery Quiz", "mistake-retry");
     }
 
     private Map<String, Double> buildTopicWeaknessScores(
@@ -257,7 +316,59 @@ public class AdaptiveQuizService {
         return difficultyTarget > 0 && currentDifficultyUsage >= difficultyTarget;
     }
 
+    private List<Question> extractIncorrectQuestionsFromResult(QuizResult sourceResult, int desiredQuestionCount) {
+        if (sourceResult == null || sourceResult.getQuiz() == null || sourceResult.getQuiz().getQuestions().isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Question> questionBankBySourceId = buildQuestionBankBySourceId();
+        Map<Long, QuizAnswerAttempt> attemptsByQuestionId = sourceResult.getAnswerAttempts().stream()
+                .filter(attempt -> attempt.getQuestionId() != null)
+                .collect(Collectors.toMap(
+                        QuizAnswerAttempt::getQuestionId,
+                        attempt -> attempt,
+                        (left, right) -> right,
+                        LinkedHashMap::new
+                ));
+
+        return sourceResult.getQuiz().getQuestions().stream()
+                .filter(question -> {
+                    QuizAnswerAttempt attempt = attemptsByQuestionId.get(question.getId());
+                    return attempt != null && !Boolean.TRUE.equals(attempt.getCorrect());
+                })
+                .map(question -> {
+                    Long resolvedId = question.getSourceQuestionId() != null ? question.getSourceQuestionId() : question.getId();
+                    return resolvedId != null ? questionBankBySourceId.getOrDefault(resolvedId, question) : question;
+                })
+                .distinct()
+                .limit(desiredQuestionCount)
+                .toList();
+    }
+
+    private Map<Long, Question> buildQuestionBankBySourceId() {
+        Map<Long, Question> questionBankBySourceId = new LinkedHashMap<>();
+
+        for (Question question : quizService.getAllQuestionsFromBank()) {
+            Long resolvedId = question.getSourceQuestionId() != null ? question.getSourceQuestionId() : question.getId();
+            if (resolvedId != null) {
+                questionBankBySourceId.putIfAbsent(resolvedId, question);
+            }
+        }
+
+        return questionBankBySourceId;
+    }
+
     private Quiz persistAdaptiveQuiz(User user, List<Question> selectedQuestions, QuizUserInsight insight) {
+        return persistAdaptiveQuiz(user, selectedQuestions, insight, "Adaptive Quiz", "adaptive");
+    }
+
+    private Quiz persistAdaptiveQuiz(
+            User user,
+            List<Question> selectedQuestions,
+            QuizUserInsight insight,
+            String titlePrefix,
+            String keywordPrefix
+    ) {
         Quiz quiz = new Quiz();
         String primaryTopic = selectedQuestions.stream()
                 .map(Question::getTopic)
@@ -271,8 +382,8 @@ public class AdaptiveQuizService {
         }
 
         Instant createdAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-        quiz.setTitre("Adaptive Quiz - " + focusTopic + " - " + user.getFullName() + " - " + createdAt);
-        quiz.setKeyword(buildUniqueKeyword(focusTopic, user, createdAt));
+        quiz.setTitre(titlePrefix + " - " + focusTopic + " - " + user.getFullName() + " - " + createdAt);
+        quiz.setKeyword(buildUniqueKeyword(keywordPrefix, focusTopic, user, createdAt));
 
         for (Question source : selectedQuestions) {
             quiz.addQuestion(quizService.copyQuestionForQuiz(source, quiz));
@@ -281,7 +392,7 @@ public class AdaptiveQuizService {
         return quizService.createQuiz(quiz);
     }
 
-    private String buildUniqueKeyword(String focusTopic, User user, Instant createdAt) {
+    private String buildUniqueKeyword(String keywordPrefix, String focusTopic, User user, Instant createdAt) {
         String sanitizedTopic = focusTopic == null || focusTopic.isBlank()
                 ? "general"
                 : focusTopic.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("^-|-$", "");
@@ -291,7 +402,7 @@ public class AdaptiveQuizService {
 
         String userToken = user.getId() != null ? String.valueOf(user.getId()) : "user";
         String timeToken = String.valueOf(createdAt.getEpochSecond());
-        return "adaptive-" + sanitizedTopic + "-" + userToken + "-" + timeToken;
+        return keywordPrefix + "-" + sanitizedTopic + "-" + userToken + "-" + timeToken;
     }
 
     private double computeAccuracyPenalty(QuizQuestionPerformance performance) {

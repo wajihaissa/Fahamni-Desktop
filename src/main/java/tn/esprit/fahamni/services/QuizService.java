@@ -4,6 +4,7 @@ import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.quiz.Question;
+import tn.esprit.fahamni.Models.quiz.QuizAnswerAttempt;
 import tn.esprit.fahamni.Models.quiz.Quiz;
 import tn.esprit.fahamni.Models.quiz.QuizResult;
 import tn.esprit.fahamni.utils.MyDataBase;
@@ -222,6 +223,28 @@ public class QuizService {
                 .orElse(null);
     }
 
+    public List<QuizAnswerAttempt> getAnswerAttemptsForResult(Long quizResultId) {
+        if (quizResultId == null || !tableExists("quiz_answer_attempt")) {
+            return List.of();
+        }
+
+        String query = "SELECT * FROM quiz_answer_attempt WHERE quiz_result_id = ? ORDER BY id ASC";
+        List<QuizAnswerAttempt> answerAttempts = new ArrayList<>();
+
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            stmt.setLong(1, quizResultId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    answerAttempts.add(mapResultSetToQuizAnswerAttempt(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading answer attempts: " + e.getMessage());
+        }
+
+        return answerAttempts;
+    }
+
     public List<String> getSourceQuizTitlesForQuiz(Long quizId) {
         if (quizId == null || !hasQuestionColumn("source_question_id")) {
             return List.of();
@@ -375,6 +398,8 @@ public class QuizService {
         question.setQuestion(questionRs.getString("question"));
         question.setTopic(resolveQuestionTopic(questionRs, quiz.getKeyword()));
         question.setDifficulty(resolveQuestionDifficulty(questionRs));
+        question.setHint(resolveQuestionHint(questionRs));
+        question.setExplanation(resolveQuestionExplanation(questionRs));
         question.setQuiz(quiz);
 
         try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
@@ -396,6 +421,8 @@ public class QuizService {
         question.setQuestion(questionRs.getString("question"));
         question.setTopic(resolveQuestionTopic(questionRs, questionRs.getString("quiz_keyword")));
         question.setDifficulty(resolveQuestionDifficulty(questionRs));
+        question.setHint(resolveQuestionHint(questionRs));
+        question.setExplanation(resolveQuestionExplanation(questionRs));
 
         try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
             choiceStmt.setLong(1, question.getId());
@@ -430,6 +457,19 @@ public class QuizService {
         }
 
         return result;
+    }
+
+    private QuizAnswerAttempt mapResultSetToQuizAnswerAttempt(ResultSet rs) throws SQLException {
+        QuizAnswerAttempt answerAttempt = new QuizAnswerAttempt();
+        answerAttempt.setId(rs.getLong("id"));
+        answerAttempt.setQuizResultId(getNullableLong(rs, "quiz_result_id"));
+        answerAttempt.setQuestionId(getNullableLong(rs, "question_id"));
+        answerAttempt.setSelectedChoiceId(getNullableLong(rs, "selected_choice_id"));
+        answerAttempt.setCorrect(getNullableBoolean(rs, "is_correct"));
+
+        Timestamp answeredAt = rs.getTimestamp("answered_at");
+        answerAttempt.setAnsweredAt(answeredAt != null ? answeredAt.toInstant() : null);
+        return answerAttempt;
     }
 
     private Choice mapResultSetToChoice(ResultSet rs) throws SQLException {
@@ -699,6 +739,16 @@ public class QuizService {
             placeholders.add("?");
         }
 
+        if (hasQuestionColumn("hint")) {
+            columns.add("hint");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("explanation")) {
+            columns.add("explanation");
+            placeholders.add("?");
+        }
+
         columns.add("quiz_id");
         placeholders.add("?");
 
@@ -725,6 +775,14 @@ public class QuizService {
             } else {
                 statement.setNull(index++, Types.BIGINT);
             }
+        }
+
+        if (hasQuestionColumn("hint")) {
+            statement.setString(index++, question.getHint());
+        }
+
+        if (hasQuestionColumn("explanation")) {
+            statement.setString(index++, question.getExplanation());
         }
 
         statement.setLong(index, quiz.getId());
@@ -946,6 +1004,22 @@ public class QuizService {
             }
         }
         return "Medium";
+    }
+
+    private String resolveQuestionHint(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "hint")) {
+            return "";
+        }
+        String hint = rs.getString("hint");
+        return hint == null ? "" : hint;
+    }
+
+    private String resolveQuestionExplanation(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "explanation")) {
+            return "";
+        }
+        String explanation = rs.getString("explanation");
+        return explanation == null ? "" : explanation;
     }
 
     private Long resolveSourceQuestionId(ResultSet rs) throws SQLException {

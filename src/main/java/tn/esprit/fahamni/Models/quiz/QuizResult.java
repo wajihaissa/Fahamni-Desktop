@@ -1,6 +1,8 @@
 package tn.esprit.fahamni.Models.quiz;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import tn.esprit.fahamni.Models.User;
 
@@ -13,6 +15,7 @@ public class QuizResult {
     private Double percentage;
     private Boolean passed;
     private Instant completedAt;
+    private final List<QuizAnswerAttempt> answerAttempts = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -88,5 +91,15 @@ public class QuizResult {
 
     public void setCompletedAt(Instant completedAt) {
         this.completedAt = completedAt;
+    }
+
+    public List<QuizAnswerAttempt> getAnswerAttempts() {
+        return answerAttempts;
+    }
+
+    public void addAnswerAttempt(QuizAnswerAttempt answerAttempt) {
+        if (answerAttempt != null && !answerAttempts.contains(answerAttempt)) {
+            answerAttempts.add(answerAttempt);
+        }
     }
 }

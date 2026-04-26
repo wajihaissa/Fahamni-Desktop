@@ -183,6 +183,8 @@ public class MyDataBase {
             ensureQuestionColumn(connection, "topic", "VARCHAR(190) NULL AFTER question");
             ensureQuestionColumn(connection, "difficulty", "VARCHAR(40) NOT NULL DEFAULT 'Medium' AFTER topic");
             ensureQuestionColumn(connection, "source_question_id", "BIGINT NULL AFTER difficulty");
+            ensureQuestionColumn(connection, "hint", "TEXT NULL AFTER source_question_id");
+            ensureQuestionColumn(connection, "explanation", "TEXT NULL AFTER hint");
             ensureQuizResultColumn(connection, "total_questions", "INT NULL AFTER score");
             ensureQuizResultColumn(connection, "percentage", "DOUBLE NULL AFTER total_questions");
             ensureQuizResultColumn(connection, "passed", "BOOLEAN NULL AFTER percentage");

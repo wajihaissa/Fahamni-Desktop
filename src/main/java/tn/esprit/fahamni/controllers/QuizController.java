@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -28,14 +29,17 @@ import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.quiz.Question;
+import tn.esprit.fahamni.Models.quiz.QuizAnswerAttempt;
 import tn.esprit.fahamni.Models.quiz.Quiz;
 import tn.esprit.fahamni.Models.quiz.QuizLeaderboardEntry;
 import tn.esprit.fahamni.Models.quiz.QuizResult;
 import tn.esprit.fahamni.Models.quiz.QuizUserInsight;
 import tn.esprit.fahamni.services.AdaptiveQuizService;
 import tn.esprit.fahamni.services.AiQuizAssistantService;
+import tn.esprit.fahamni.services.QuizCertificationMailer;
 import tn.esprit.fahamni.services.QuizAnalyticsService;
 import tn.esprit.fahamni.services.QuizService;
+import tn.esprit.fahamni.utils.UserSession;
 
 import java.text.NumberFormat;
 import java.util.Comparator;
@@ -44,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class QuizController {
 
@@ -62,6 +67,7 @@ public class QuizController {
     private final QuizAnalyticsService quizAnalyticsService = new QuizAnalyticsService();
     private final AdaptiveQuizService adaptiveQuizService = new AdaptiveQuizService();
     private final AiQuizAssistantService aiQuizAssistantService = new AiQuizAssistantService();
+    private final QuizCertificationMailer quizCertificationMailer = new QuizCertificationMailer();
     private final Map<Long, List<String>> adaptiveQuizSourceCache = new HashMap<>();
     // Static test user used while the user session system is being integrated.
     private static final User TEST_USER = new User(1L, "Quiz Tester", "quiz.tester@fahamni.tn", "", UserRole.USER);
@@ -84,16 +90,17 @@ public class QuizController {
             quizzes = quizService.getAllQuizzes();
         }
         allQuizzes = quizzes;
+        List<Quiz> visibleQuizzes = filterVisibleQuizzes(quizzes);
         renderFilteredQuizCards();
-        renderRecentResults(quizzes);
-        updateStats(quizzes);
+        renderRecentResults(visibleQuizzes);
+        updateStats(visibleQuizzes);
     }
 
     private void renderFilteredQuizCards() {
         String query = quizSearchField != null ? quizSearchField.getText() : "";
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
 
-        List<Quiz> filteredQuizzes = allQuizzes.stream()
+        List<Quiz> filteredQuizzes = filterVisibleQuizzes(allQuizzes).stream()
                 .filter(quiz -> normalizedQuery.isBlank()
                         || quiz.getTitre().toLowerCase(Locale.ROOT).contains(normalizedQuery)
                         || quiz.getKeyword().toLowerCase(Locale.ROOT).contains(normalizedQuery))
@@ -445,7 +452,7 @@ public class QuizController {
                         selectedAnswers.put(question.getId(), (Long) group.getSelectedToggle().getUserData());
                     }
                 }
-                return quizService.submitQuiz(quiz.getId(), selectedAnswers, TEST_USER);
+                return quizService.submitQuiz(quiz.getId(), selectedAnswers, getQuizUser());
             }
             return null;
         });
@@ -455,6 +462,8 @@ public class QuizController {
             if (quizResult.getId() != null) {
                 showQuizCompletionDialog(quiz, quizResult);
                 refreshQuizData();
+                quizCertificationMailer.sendPassCertificateAsync(quizResult.getUser(), quiz, quizResult)
+                        .thenAccept(mailDispatchResult -> Platform.runLater(() -> handleCertificateMailResult(mailDispatchResult)));
             } else {
                 showAlert(Alert.AlertType.ERROR, "Save failed", "The quiz result could not be saved.");
             }
@@ -583,7 +592,9 @@ public class QuizController {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Quiz result");
         dialog.setHeaderText(null);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        ButtonType reviewButtonType = new ButtonType("Review Answers", ButtonBar.ButtonData.LEFT);
+        ButtonType retryMistakesButtonType = new ButtonType("Retake Mistakes", ButtonBar.ButtonData.OTHER);
+        dialog.getDialogPane().getButtonTypes().addAll(reviewButtonType, retryMistakesButtonType, ButtonType.OK);
         dialog.getDialogPane().getStyleClass().add("quiz-dialog-pane");
         applyCurrentTheme(dialog.getDialogPane());
 
@@ -628,7 +639,8 @@ public class QuizController {
         scoreHero.getChildren().addAll(scoreLabel, percentageLabel);
 
         HBox statsRow = new HBox(12);
-        QuizUserInsight insight = TEST_USER.getId() != null ? quizAnalyticsService.getUserInsight(TEST_USER.getId()) : null;
+        User activeUser = getQuizUser();
+        QuizUserInsight insight = activeUser.getId() != null ? quizAnalyticsService.getUserInsight(activeUser.getId()) : null;
         String recommendation = insight != null
                 ? insight.getRecommendedDifficulty() + " focus"
                 : "Medium focus";
@@ -638,12 +650,39 @@ public class QuizController {
         statsRow.getChildren().addAll(
                 buildResultStat("Topic", quiz.getKeyword().isBlank() ? "General" : quiz.getKeyword()),
                 buildResultStat("Questions", String.valueOf(result.getTotalQuestions())),
-                buildResultStat("Saved", "Yes"),
+                buildResultStat("Progress", buildProgressDeltaLabel(insight)),
                 buildResultStat("Next Focus", weakestTopic + " / " + recommendation)
         );
 
-        content.getChildren().addAll(statusBadge, titleLabel, summaryLabel, sourceLabel, scoreHero, statsRow);
+        HBox analyticsRow = new HBox(12);
+        analyticsRow.getChildren().addAll(
+                buildResultStat("Current Streak", insight != null ? insight.getCurrentStreak() + " passed" : "0 passed"),
+                buildResultStat("Recent Avg", insight != null ? formatPercentage(insight.getRecentAveragePercentage()) : formatPercentage(0.0)),
+                buildResultStat("Previous Avg", insight != null ? formatPercentage(insight.getPreviousAveragePercentage()) : formatPercentage(0.0))
+        );
+
+        content.getChildren().addAll(statusBadge, titleLabel, summaryLabel, sourceLabel, scoreHero, statsRow, analyticsRow);
         dialog.getDialogPane().setContent(content);
+
+        Button reviewButton = (Button) dialog.getDialogPane().lookupButton(reviewButtonType);
+        reviewButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
+
+        Button retryMistakesButton = (Button) dialog.getDialogPane().lookupButton(retryMistakesButtonType);
+        retryMistakesButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
+
+        reviewButton.addEventFilter(ActionEvent.ACTION, event -> {
+            event.consume();
+            showResultDetails(result);
+        });
+
+        retryMistakesButton.addEventFilter(ActionEvent.ACTION, event -> {
+            event.consume();
+            handleGenerateMistakeRecoveryQuiz(result);
+        });
+
         dialog.showAndWait();
     }
 
@@ -851,7 +890,7 @@ public class QuizController {
 
     @FXML
     private void handleGenerateAdaptiveQuiz() {
-        Quiz adaptiveQuiz = adaptiveQuizService.generateAdaptiveQuizForUser(TEST_USER, 5);
+        Quiz adaptiveQuiz = adaptiveQuizService.generateAdaptiveQuizForUser(getQuizUser(), 5);
         if (adaptiveQuiz == null) {
             showPageStatus(
                     "Complete a couple of quizzes first so adaptive mode can learn your weak topics.",
@@ -865,9 +904,38 @@ public class QuizController {
         showPageStatus(
                 "Adaptive quiz ready: "
                         + (adaptiveQuiz.getKeyword().isBlank() ? "General" : adaptiveQuiz.getKeyword())
-                        + " focus added to your list.",
+                        + " focus opened for you.",
                 "quiz-page-status-success"
         );
+        openGeneratedQuiz(adaptiveQuiz);
+    }
+
+    @FXML
+    private void handleGenerateMistakeRecoveryQuiz() {
+        handleGenerateMistakeRecoveryQuiz(null);
+    }
+
+    private void handleGenerateMistakeRecoveryQuiz(QuizResult sourceResult) {
+        if (sourceResult != null && sourceResult.getAnswerAttempts().isEmpty() && sourceResult.getId() != null) {
+            quizService.getAnswerAttemptsForResult(sourceResult.getId()).forEach(sourceResult::addAnswerAttempt);
+        }
+
+        Quiz mistakeRecoveryQuiz = adaptiveQuizService.generateMistakeRecoveryQuizForUser(getQuizUser(), sourceResult, 5);
+        if (mistakeRecoveryQuiz == null) {
+            showPageStatus(
+                    "Retake-mistakes mode is available after at least one missed question.",
+                    "quiz-page-status-info"
+            );
+            return;
+        }
+
+        refreshQuizData();
+        adaptiveQuizSourceCache.remove(mistakeRecoveryQuiz.getId());
+        showPageStatus(
+                "Mistake recovery quiz ready and opened with your most-missed questions.",
+                "quiz-page-status-success"
+        );
+        openGeneratedQuiz(mistakeRecoveryQuiz);
     }
 
     private String buildQuizDescription(Quiz quiz) {
@@ -878,6 +946,9 @@ public class QuizController {
         String topic = quiz.getKeyword().isBlank() ? "General" : quiz.getKeyword();
         List<String> sourceTitles = getAdaptiveSourceQuizTitles(quiz);
         if (!sourceTitles.isEmpty()) {
+            if (quiz.getKeyword().startsWith("mistake-retry-")) {
+                return "A recovery quiz on '" + topic + "' built from questions you previously missed in: " + joinSourceTitles(sourceTitles) + ".";
+            }
             return "An adaptive quiz on '" + topic + "' built from: " + joinSourceTitles(sourceTitles) + ".";
         }
         return "A quick knowledge check about '" + topic + "'.";
@@ -886,16 +957,26 @@ public class QuizController {
     private String buildQuizStartSubtitle(Quiz quiz) {
         List<String> sourceTitles = getAdaptiveSourceQuizTitles(quiz);
         if (!sourceTitles.isEmpty()) {
+            if (quiz.getKeyword().startsWith("mistake-retry-")) {
+                return "Answer one question at a time. This recovery set focuses on earlier misses from: " + joinSourceTitles(sourceTitles) + ".";
+            }
             return "Answer one question at a time. This adaptive set pulls from: " + joinSourceTitles(sourceTitles) + ".";
         }
         return "Answer one question at a time and move through the quiz at your own pace.";
     }
 
     private List<String> getAdaptiveSourceQuizTitles(Quiz quiz) {
-        if (quiz == null || quiz.getId() == null || !quiz.getKeyword().startsWith("adaptive-")) {
+        if (quiz == null || quiz.getId() == null || !isGeneratedPracticeQuiz(quiz)) {
             return List.of();
         }
         return adaptiveQuizSourceCache.computeIfAbsent(quiz.getId(), quizService::getSourceQuizTitlesForQuiz);
+    }
+
+    private boolean isGeneratedPracticeQuiz(Quiz quiz) {
+        if (quiz == null || quiz.getKeyword().isBlank()) {
+            return false;
+        }
+        return quiz.getKeyword().startsWith("adaptive-") || quiz.getKeyword().startsWith("mistake-retry-");
     }
 
     private String joinSourceTitles(List<String> sourceTitles) {
@@ -913,19 +994,237 @@ public class QuizController {
                 + sourceTitles.get(sourceTitles.size() - 1);
     }
 
-    private void showResultDetails(QuizResult result) {
-        String userInfo = result.getUser() != null
-                ? result.getUser().getFullName() + " (" + result.getUser().getEmail() + ")"
-                : "Unknown user";
+    private String buildProgressDeltaLabel(QuizUserInsight insight) {
+        if (insight == null) {
+            return "No trend yet";
+        }
 
-        showAlert(
-                Alert.AlertType.INFORMATION,
-                "Result details",
-                "Quiz: " + (result.getQuiz() != null ? result.getQuiz().getTitre() : "-"),
-                "Score: " + result.getScore() + "/" + result.getTotalQuestions() + "\n"
-                        + "Percentage: " + formatPercentage(result.getPercentage() != null ? result.getPercentage() : 0.0) + "\n"
-                        + "Status: " + (Boolean.TRUE.equals(result.getPassed()) ? "Passed" : "Not passed") + "\n"
-                        + "Played by: " + userInfo
+        double delta = insight.getImprovementDelta();
+        if (Math.abs(delta) < 0.5) {
+            return "Stable";
+        }
+
+        String prefix = delta > 0 ? "+" : "";
+        return prefix + Math.round(delta) + " pts";
+    }
+
+    private String buildReviewSubtitle(QuizResult result) {
+        User activeUser = getQuizUser();
+        QuizUserInsight insight = activeUser.getId() != null ? quizAnalyticsService.getUserInsight(activeUser.getId()) : null;
+        String trend = insight == null
+                ? "Keep reviewing your explanations to lock in the concepts."
+                : "Recent avg " + formatPercentage(insight.getRecentAveragePercentage())
+                + " | Previous avg " + formatPercentage(insight.getPreviousAveragePercentage())
+                + " | Streak " + insight.getCurrentStreak();
+        return "Review each answer, compare it to the correct choice, and use the explanation to tighten the weak spots. " + trend;
+    }
+
+    private User getQuizUser() {
+        User currentUser = UserSession.getCurrentUser();
+        if (currentUser != null && currentUser.getId() != null && currentUser.getId() > 0) {
+            return currentUser;
+        }
+        return TEST_USER;
+    }
+
+    private List<Quiz> filterVisibleQuizzes(List<Quiz> quizzes) {
+        if (quizzes == null || quizzes.isEmpty()) {
+            return List.of();
+        }
+
+        return quizzes.stream()
+                .filter(this::isQuizVisibleToCurrentUser)
+                .toList();
+    }
+
+    private boolean isQuizVisibleToCurrentUser(Quiz quiz) {
+        if (!isGeneratedPracticeQuiz(quiz)) {
+            return true;
+        }
+
+        Integer ownerUserId = extractGeneratedQuizOwnerUserId(quiz);
+        Integer currentUserId = getQuizUser().getId();
+        return ownerUserId != null && currentUserId != null && ownerUserId.equals(currentUserId);
+    }
+
+    private Integer extractGeneratedQuizOwnerUserId(Quiz quiz) {
+        if (quiz == null || quiz.getKeyword().isBlank()) {
+            return null;
+        }
+
+        String[] tokens = quiz.getKeyword().split("-");
+        if (tokens.length < 2) {
+            return null;
+        }
+
+        String userToken = tokens[tokens.length - 2];
+        try {
+            return Integer.valueOf(userToken);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private void openGeneratedQuiz(Quiz generatedQuiz) {
+        if (generatedQuiz == null || generatedQuiz.getId() == null) {
+            return;
+        }
+
+        Quiz refreshedQuiz = allQuizzes.stream()
+                .filter(quiz -> generatedQuiz.getId().equals(quiz.getId()))
+                .findFirst()
+                .orElseGet(() -> quizService.getQuizById(generatedQuiz.getId()));
+
+        if (refreshedQuiz != null && isQuizVisibleToCurrentUser(refreshedQuiz)) {
+            handleStartQuiz(refreshedQuiz);
+        }
+    }
+
+    private void handleCertificateMailResult(QuizCertificationMailer.MailDispatchResult result) {
+        if (result == null) {
+            return;
+        }
+
+        if (result.skipped()) {
+            showPageStatus(result.message(), "quiz-page-status-info");
+            return;
+        }
+
+        if (result.success()) {
+            showPageStatus("Certificate email sent to " + safeText(result.recipient(), "your inbox") + ".", "quiz-page-status-success");
+            return;
+        }
+
+        showPageStatus(result.message(), "quiz-page-status-error");
+    }
+
+    private List<Node> buildReviewCards(QuizResult result) {
+        if (result == null || result.getQuiz() == null || result.getQuiz().getQuestions().isEmpty()) {
+            return List.<Node>of(new Label("No review data is available for this attempt yet."));
+        }
+
+        if (result.getAnswerAttempts().isEmpty() && result.getId() != null) {
+            quizService.getAnswerAttemptsForResult(result.getId()).forEach(result::addAnswerAttempt);
+        }
+
+        Map<Long, QuizAnswerAttempt> attemptsByQuestionId = result.getAnswerAttempts().stream()
+                .filter(attempt -> attempt.getQuestionId() != null)
+                .collect(Collectors.toMap(QuizAnswerAttempt::getQuestionId, attempt -> attempt, (left, right) -> left, HashMap::new));
+
+        return result.getQuiz().getQuestions().stream()
+                .map(question -> buildReviewCard(question, attemptsByQuestionId.get(question.getId())))
+                .collect(Collectors.toList());
+    }
+
+    private VBox buildReviewCard(Question question, QuizAnswerAttempt attempt) {
+        VBox card = new VBox(10);
+        card.getStyleClass().addAll("quiz-question-stage-card", "quiz-result-stat-card");
+
+        Choice correctChoice = findCorrectChoice(question);
+        Choice selectedChoice = findChoiceById(question, attempt != null ? attempt.getSelectedChoiceId() : null);
+        boolean correct = attempt != null && Boolean.TRUE.equals(attempt.getCorrect());
+
+        Label promptLabel = new Label(question.getQuestion());
+        promptLabel.getStyleClass().add("quiz-question-label");
+        promptLabel.setWrapText(true);
+
+        Label metaLabel = new Label("Topic: " + safeText(question.getTopic(), "General")
+                + " | Difficulty: " + safeText(question.getDifficulty(), "Medium")
+                + " | " + (correct ? "Correct" : "Needs review"));
+        metaLabel.getStyleClass().add("quiz-dialog-subtitle");
+        metaLabel.setWrapText(true);
+
+        Label selectedLabel = new Label("Your answer: " + (selectedChoice != null ? selectedChoice.getChoice() : "No answer"));
+        selectedLabel.getStyleClass().add("quiz-hint-label");
+        selectedLabel.setWrapText(true);
+
+        Label correctLabel = new Label("Correct answer: " + (correctChoice != null ? correctChoice.getChoice() : "Unavailable"));
+        correctLabel.getStyleClass().add("quiz-hint-label");
+        correctLabel.setWrapText(true);
+
+        String explanationText = !safeText(question.getExplanation(), "").isBlank()
+                ? question.getExplanation()
+                : !safeText(question.getHint(), "").isBlank()
+                ? question.getHint()
+                : "Revisit the core concept behind this question and compare why the correct choice fits better than the distractors.";
+        Label explanationLabel = new Label("Why: " + explanationText);
+        explanationLabel.getStyleClass().add("quiz-hint-label");
+        explanationLabel.setWrapText(true);
+
+        card.getChildren().addAll(promptLabel, metaLabel, selectedLabel, correctLabel, explanationLabel);
+        return card;
+    }
+
+    private Choice findCorrectChoice(Question question) {
+        if (question == null) {
+            return null;
+        }
+        return question.getChoices().stream()
+                .filter(choice -> Boolean.TRUE.equals(choice.getIsCorrect()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Choice findChoiceById(Question question, Long choiceId) {
+        if (question == null || choiceId == null) {
+            return null;
+        }
+        return question.getChoices().stream()
+                .filter(choice -> choiceId.equals(choice.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String safeText(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private void showResultDetails(QuizResult result) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Result review");
+        dialog.setHeaderText(null);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.getDialogPane().getStyleClass().add("quiz-dialog-pane");
+        applyCurrentTheme(dialog.getDialogPane());
+
+        VBox content = new VBox(18);
+        content.getStyleClass().addAll("quiz-dialog-shell", "quiz-result-shell");
+        content.setPadding(new Insets(18));
+        content.setPrefWidth(700);
+
+        Label titleLabel = new Label(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz review");
+        titleLabel.getStyleClass().add("quiz-dialog-title");
+        titleLabel.setWrapText(true);
+
+        Label subtitleLabel = new Label(buildReviewSubtitle(result));
+        subtitleLabel.getStyleClass().add("quiz-dialog-subtitle");
+        subtitleLabel.setWrapText(true);
+
+        VBox summaryRow = new VBox(12);
+        HBox statsRow = new HBox(12,
+                buildResultStat("Score", result.getScore() + "/" + result.getTotalQuestions()),
+                buildResultStat("Percentage", formatPercentage(result.getPercentage() != null ? result.getPercentage() : 0.0)),
+                buildResultStat("Status", Boolean.TRUE.equals(result.getPassed()) ? "Passed" : "Retry"),
+                buildResultStat("Player", result.getUser() != null ? result.getUser().getFullName() : "Unknown")
         );
+        summaryRow.getChildren().add(statsRow);
+
+        VBox reviewList = new VBox(12);
+        reviewList.getChildren().addAll(buildReviewCards(result));
+
+        ScrollPane scrollPane = new ScrollPane(reviewList);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setPrefViewportHeight(520);
+        scrollPane.getStyleClass().add("quiz-dialog-scroll");
+
+        content.getChildren().addAll(titleLabel, subtitleLabel, summaryRow, scrollPane);
+        dialog.getDialogPane().setContent(content);
+
+        Button okButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+
+        dialog.showAndWait();
     }
 }

@@ -31,9 +31,9 @@ public final class EnvConfig {
 
     private static Map<String, String> loadEnvFile() {
         Map<String, String> values = new HashMap<>();
-        Path envPath = Path.of(ENV_FILE_NAME);
+        Path envPath = resolveEnvPath();
 
-        if (!Files.exists(envPath)) {
+        if (envPath == null || !Files.exists(envPath)) {
             return values;
         }
 
@@ -59,6 +59,20 @@ public final class EnvConfig {
         }
 
         return values;
+    }
+
+    private static Path resolveEnvPath() {
+        Path current = Path.of("").toAbsolutePath().normalize();
+
+        while (current != null) {
+            Path candidate = current.resolve(ENV_FILE_NAME);
+            if (Files.exists(candidate)) {
+                return candidate;
+            }
+            current = current.getParent();
+        }
+
+        return null;
     }
 
     private static String stripWrappingQuotes(String value) {

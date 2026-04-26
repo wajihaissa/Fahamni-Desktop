@@ -177,6 +177,8 @@ public class QuizAnalyticsService {
             System.err.println("Error loading topic insight: " + e.getMessage());
         }
 
+        applyRollingProgress(insight, userId);
+
         return insight;
     }
 
@@ -186,54 +188,45 @@ public class QuizAnalyticsService {
         }
 
         String query = """
+                WITH resolved_attempts AS (
+                    SELECT
+                        COALESCE(
+                            q.source_question_id,
+                            (
+                                SELECT matched.id
+                                FROM question matched
+                                INNER JOIN quiz matched_quiz ON matched_quiz.id = matched.quiz_id
+                                WHERE matched.question = q.question
+                                    AND matched.id <> q.id
+                                    AND matched.source_question_id IS NULL
+                                    AND matched_quiz.keyword NOT LIKE 'adaptive-%'
+                                    AND matched_quiz.titre NOT LIKE 'Adaptive Quiz - %'
+                                ORDER BY matched.id
+                                LIMIT 1
+                            ),
+                            q.id
+                        ) AS question_id,
+                        COALESCE(NULLIF(q.topic, ''), NULLIF(quiz.keyword, ''), 'General') AS topic,
+                        COALESCE(NULLIF(q.difficulty, ''), 'Medium') AS difficulty,
+                        qaa.is_correct,
+                        qaa.answered_at
+                    FROM quiz_answer_attempt qaa
+                    INNER JOIN question q ON q.id = qaa.question_id
+                    INNER JOIN quiz_result qr ON qr.id = qaa.quiz_result_id
+                    INNER JOIN quiz ON quiz.id = qr.quiz_id
+                    WHERE qr.user_id = ?
+                )
                 SELECT
-                    COALESCE(
-                        q.source_question_id,
-                        (
-                            SELECT matched.id
-                            FROM question matched
-                            INNER JOIN quiz matched_quiz ON matched_quiz.id = matched.quiz_id
-                            WHERE matched.question = q.question
-                                AND matched.id <> q.id
-                                AND matched.source_question_id IS NULL
-                                AND matched_quiz.keyword NOT LIKE 'adaptive-%'
-                                AND matched_quiz.titre NOT LIKE 'Adaptive Quiz - %'
-                            ORDER BY matched.id
-                            LIMIT 1
-                        ),
-                        q.id
-                    ) AS question_id,
-                    COALESCE(NULLIF(q.topic, ''), NULLIF(quiz.keyword, ''), 'General') AS topic,
-                    COALESCE(NULLIF(q.difficulty, ''), 'Medium') AS difficulty,
+                    question_id,
+                    topic,
+                    difficulty,
                     COUNT(*) AS attempts,
-                    SUM(CASE WHEN qaa.is_correct = 1 THEN 1 ELSE 0 END) AS correct_answers,
-                    SUM(CASE WHEN qaa.is_correct = 0 THEN 1 ELSE 0 END) AS incorrect_answers,
-                    AVG(CASE WHEN qaa.is_correct = 1 THEN 100 ELSE 0 END) AS accuracy_rate,
-                    MAX(qaa.answered_at) AS last_answered_at
-                FROM quiz_answer_attempt qaa
-                INNER JOIN question q ON q.id = qaa.question_id
-                INNER JOIN quiz_result qr ON qr.id = qaa.quiz_result_id
-                INNER JOIN quiz ON quiz.id = qr.quiz_id
-                WHERE qr.user_id = ?
-                GROUP BY
-                    COALESCE(
-                        q.source_question_id,
-                        (
-                            SELECT matched.id
-                            FROM question matched
-                            INNER JOIN quiz matched_quiz ON matched_quiz.id = matched.quiz_id
-                            WHERE matched.question = q.question
-                                AND matched.id <> q.id
-                                AND matched.source_question_id IS NULL
-                                AND matched_quiz.keyword NOT LIKE 'adaptive-%'
-                                AND matched_quiz.titre NOT LIKE 'Adaptive Quiz - %'
-                            ORDER BY matched.id
-                            LIMIT 1
-                        ),
-                        q.id
-                    ),
-                    COALESCE(NULLIF(q.topic, ''), NULLIF(quiz.keyword, ''), 'General'),
-                    COALESCE(NULLIF(q.difficulty, ''), 'Medium')
+                    SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct_answers,
+                    SUM(CASE WHEN is_correct = 0 THEN 1 ELSE 0 END) AS incorrect_answers,
+                    AVG(CASE WHEN is_correct = 1 THEN 100 ELSE 0 END) AS accuracy_rate,
+                    MAX(answered_at) AS last_answered_at
+                FROM resolved_attempts
+                GROUP BY question_id, topic, difficulty
                 ORDER BY accuracy_rate ASC, attempts DESC, last_answered_at DESC
                 """;
 
@@ -323,5 +316,73 @@ public class QuizAnalyticsService {
         for (int i = rankedTopics.size() - 1; i >= 0 && insight.getStrongestTopics().size() < 3; i--) {
             insight.getStrongestTopics().add(rankedTopics.get(i));
         }
+    }
+
+    private void applyRollingProgress(QuizUserInsight insight, Integer userId) {
+        if (insight == null || userId == null) {
+            return;
+        }
+
+        insight.setRecentAveragePercentage(loadAveragePercentageWindow(userId, 5, 0));
+        insight.setPreviousAveragePercentage(loadAveragePercentageWindow(userId, 5, 5));
+        insight.setImprovementDelta(insight.getRecentAveragePercentage() - insight.getPreviousAveragePercentage());
+        insight.setCurrentStreak(loadCurrentPassStreak(userId));
+    }
+
+    private double loadAveragePercentageWindow(Integer userId, int limit, int offset) {
+        String query = """
+                SELECT AVG(windowed.percentage) AS average_percentage
+                FROM (
+                    SELECT percentage
+                    FROM quiz_result
+                    WHERE user_id = ?
+                    ORDER BY completed_at DESC, id DESC
+                    LIMIT ? OFFSET ?
+                ) windowed
+                """;
+
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            stmt.setInt(2, limit);
+            stmt.setInt(3, offset);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    double value = rs.getDouble("average_percentage");
+                    return rs.wasNull() ? 0.0 : value;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading quiz progress window: " + e.getMessage());
+        }
+
+        return 0.0;
+    }
+
+    private int loadCurrentPassStreak(Integer userId) {
+        String query = """
+                SELECT passed
+                FROM quiz_result
+                WHERE user_id = ?
+                ORDER BY completed_at DESC, id DESC
+                LIMIT 20
+                """;
+
+        int streak = 0;
+
+        try (PreparedStatement stmt = cnx.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    if (!rs.getBoolean("passed")) {
+                        break;
+                    }
+                    streak++;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error loading pass streak: " + e.getMessage());
+        }
+
+        return streak;
     }
 }

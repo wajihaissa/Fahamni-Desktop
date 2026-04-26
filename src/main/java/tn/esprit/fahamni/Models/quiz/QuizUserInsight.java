@@ -10,6 +10,10 @@ public class QuizUserInsight {
     private double averagePercentage;
     private double passRate;
     private String recommendedDifficulty;
+    private double recentAveragePercentage;
+    private double previousAveragePercentage;
+    private double improvementDelta;
+    private int currentStreak;
     private final List<String> weakestTopics = new ArrayList<>();
     private final List<String> strongestTopics = new ArrayList<>();
 
@@ -59,6 +63,38 @@ public class QuizUserInsight {
 
     public void setRecommendedDifficulty(String recommendedDifficulty) {
         this.recommendedDifficulty = recommendedDifficulty;
+    }
+
+    public double getRecentAveragePercentage() {
+        return recentAveragePercentage;
+    }
+
+    public void setRecentAveragePercentage(double recentAveragePercentage) {
+        this.recentAveragePercentage = recentAveragePercentage;
+    }
+
+    public double getPreviousAveragePercentage() {
+        return previousAveragePercentage;
+    }
+
+    public void setPreviousAveragePercentage(double previousAveragePercentage) {
+        this.previousAveragePercentage = previousAveragePercentage;
+    }
+
+    public double getImprovementDelta() {
+        return improvementDelta;
+    }
+
+    public void setImprovementDelta(double improvementDelta) {
+        this.improvementDelta = improvementDelta;
+    }
+
+    public int getCurrentStreak() {
+        return currentStreak;
+    }
+
+    public void setCurrentStreak(int currentStreak) {
+        this.currentStreak = currentStreak;
     }
 
     public boolean hasAttempts() {
