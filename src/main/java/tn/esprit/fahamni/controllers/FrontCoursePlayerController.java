@@ -304,6 +304,7 @@ public class FrontCoursePlayerController {
 
         try {
             String mediaSource;
+            File localVideoFile = null;
             if (videoPath.startsWith("http://") || videoPath.startsWith("https://")) {
                 mediaSource = videoPath;
             } else {
@@ -312,6 +313,7 @@ public class FrontCoursePlayerController {
                     showWarning("Fichier vidéo introuvable: " + videoPath);
                     return;
                 }
+                localVideoFile = resolvedFile;
                 // Safely convert file path to URI to handle spaces and special characters
                 mediaSource = resolvedFile.toURI().toString();
             }
@@ -319,6 +321,7 @@ public class FrontCoursePlayerController {
             // Create Media with safe URI
             Media media = new Media(mediaSource);
             final MediaPlayer player = new MediaPlayer(media);
+            final File rotationSourceFile = localVideoFile;
             mediaPlayer = player;
             MediaView mediaView = new MediaView(player);
             mediaView.setPreserveRatio(true);
@@ -358,7 +361,7 @@ public class FrontCoursePlayerController {
             });
 
             player.setOnReady(() -> {
-                applyBestKnownRotation(media, mediaView, videoScene[0], mediaSource);
+                applyBestKnownRotation(media, mediaView, videoScene[0], mediaSource, rotationSourceFile);
                 Duration totalDuration = player.getTotalDuration();
                 double totalSeconds = Math.max(1, totalDuration.toSeconds());
                 seekSlider.setMin(0);
@@ -446,7 +449,7 @@ public class FrontCoursePlayerController {
         media.getMetadata().addListener(metadataListener);
     }
 
-    private void applyBestKnownRotation(Media media, MediaView mediaView, Scene scene, String mediaSource) {
+    private void applyBestKnownRotation(Media media, MediaView mediaView, Scene scene, String mediaSource, File localVideoFile) {
         if (scene == null) {
             return;
         }
@@ -461,7 +464,7 @@ public class FrontCoursePlayerController {
 
         double finalRotation = rotationFromMetadata != null
             ? rotationFromMetadata
-            : readVideoRotation(mediaSource);
+            : readVideoRotation(mediaSource, localVideoFile);
         applyMediaViewRotation(mediaView, scene, finalRotation);
     }
 
@@ -486,21 +489,30 @@ public class FrontCoursePlayerController {
         }
     }
 
-    private double readVideoRotation(String mediaSource) {
-        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(mediaSource)) {
+    private double readVideoRotation(String mediaSource, File localVideoFile) {
+        try (FFmpegFrameGrabber grabber = localVideoFile != null
+            ? new FFmpegFrameGrabber(localVideoFile)
+            : new FFmpegFrameGrabber(mediaSource)) {
             grabber.start();
-            String rotate = grabber.getVideoMetadata("rotate");
-            if (rotate == null || rotate.isBlank()) {
-                return 0;
+            double displayRotation = grabber.getDisplayRotation();
+            if (Math.abs(displayRotation) > 0.1d) {
+                return displayRotation;
             }
-            return Double.parseDouble(rotate.trim());
+
+            String rotate = grabber.getVideoMetadata("rotate");
+            if (rotate != null && !rotate.isBlank()) {
+                return Double.parseDouble(rotate.trim());
+            }
+
+            return 0;
         } catch (Exception e) {
             return 0;
         }
     }
 
     private void applyMediaViewRotation(MediaView mediaView, Scene scene, double rotation) {
-        double normalizedRotation = normalizeRotation(rotation);
+        // FFmpeg/embedded metadata rotation direction is opposite to JavaFX's visual rotation here.
+        double normalizedRotation = normalizeRotation(-rotation);
         mediaView.setRotate(normalizedRotation);
 
         boolean quarterTurn = Math.abs(normalizedRotation) == 90 || Math.abs(normalizedRotation) == 270;

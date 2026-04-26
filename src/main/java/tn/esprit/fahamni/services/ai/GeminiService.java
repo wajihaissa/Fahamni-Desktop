@@ -8,8 +8,12 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -126,36 +130,75 @@ public class GeminiService {
             "Gemini API key is missing. Provide one of: "
                 + API_KEY_ENV
                 + " env var, JVM arg -Dgemini.api.key=..., or .env file (GEMINI_API_KEY=...)."
+                + " user.dir=" + System.getProperty("user.dir")
+                + ", searched=" + candidateDotEnvPaths()
         );
     }
 
     private String readKeyFromDotEnv() {
         try {
-            File envFile = new File(System.getProperty("user.dir"), ".env");
-            if (!envFile.exists()) {
-                return null;
-            }
-            List<String> lines = Files.readAllLines(envFile.toPath(), StandardCharsets.UTF_8);
-            for (String rawLine : lines) {
-                if (rawLine == null) {
+            for (Path envPath : candidateDotEnvPaths()) {
+                if (!Files.exists(envPath)) {
                     continue;
                 }
-                String line = rawLine.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                if (line.startsWith(API_KEY_ENV + "=")) {
-                    String value = line.substring((API_KEY_ENV + "=").length()).trim();
-                    if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
-                        value = value.substring(1, value.length() - 1);
-                    }
-                    return value;
+                String key = readKeyFromEnvFile(envPath);
+                if (key != null && !key.isBlank()) {
+                    return key;
                 }
             }
             return null;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private List<Path> candidateDotEnvPaths() {
+        Set<Path> candidates = new LinkedHashSet<>();
+        addDotEnvCandidates(candidates, Path.of(System.getProperty("user.dir")));
+
+        try {
+            URL codeSource = GeminiService.class.getProtectionDomain().getCodeSource().getLocation();
+            if (codeSource != null) {
+                Path location = Path.of(codeSource.toURI()).toAbsolutePath().normalize();
+                addDotEnvCandidates(candidates, Files.isDirectory(location) ? location : location.getParent());
+            }
+        } catch (Exception ignored) {
+            // Ignore and keep the other candidate locations.
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private void addDotEnvCandidates(Set<Path> candidates, Path start) {
+        if (start == null) {
+            return;
+        }
+        Path current = start.toAbsolutePath().normalize();
+        while (current != null) {
+            candidates.add(current.resolve(".env"));
+            current = current.getParent();
+        }
+    }
+
+    private String readKeyFromEnvFile(Path envPath) throws Exception {
+        List<String> lines = Files.readAllLines(envPath, StandardCharsets.UTF_8);
+        for (String rawLine : lines) {
+            if (rawLine == null) {
+                continue;
+            }
+            String line = rawLine.replace("\uFEFF", "").trim();
+            if (line.isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            if (line.startsWith(API_KEY_ENV + "=")) {
+                String value = line.substring((API_KEY_ENV + "=").length()).trim();
+                if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                return value;
+            }
+        }
+        return null;
     }
 
     private String readStream(InputStream inputStream) throws Exception {
