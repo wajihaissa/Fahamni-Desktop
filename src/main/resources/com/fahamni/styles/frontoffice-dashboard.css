@@ -248,7 +248,7 @@
 #dashboardHomeRoot .dashboard-premium-photo-title {
     -fx-text-fill: #f4f9ff;
     -fx-font-size: 16px;
-    -fx-font-weight: 760;
+    -fx-font-weight: 700;
 }
 
 #dashboardHomeRoot .dashboard-premium-image-chip {
@@ -296,7 +296,7 @@
 #dashboardHomeRoot .dashboard-premium-floating-title {
     -fx-text-fill: #f4f8ff;
     -fx-font-size: 17px;
-    -fx-font-weight: 750;
+    -fx-font-weight: 700;
 }
 
 #dashboardHomeRoot .dashboard-premium-floating-copy,
@@ -366,7 +366,7 @@
 #dashboardHomeRoot .dashboard-premium-account-name {
     -fx-text-fill: #f2f8ff;
     -fx-font-size: 18px;
-    -fx-font-weight: 760;
+    -fx-font-weight: 700;
 }
 
 #dashboardHomeRoot .dashboard-premium-session-card,

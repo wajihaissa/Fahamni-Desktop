@@ -75,6 +75,7 @@ C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\controllers\Profile
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\utils\UserInputValidator.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\Models\Reservation.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\services\ActivityLogService.java
+C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\tools\BlogSchemaRepairRunner.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\controllers\BackofficeContentController.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\services\SpellCheckService.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\controllers\BackofficeCommentsController.java
@@ -83,6 +84,7 @@ C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\Models\Interaction.
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\Models\ChatMessage.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\controllers\BackofficeArticlesController.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\Models\AdminSession.java
+C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\utils\BlogSchemaSupport.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\utils\SceneManager.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\controllers\MessengerController.java
 C:\Users\nawres\fahamni-java\src\main\java\tn\esprit\fahamni\controllers\BackofficeSessionsController.java

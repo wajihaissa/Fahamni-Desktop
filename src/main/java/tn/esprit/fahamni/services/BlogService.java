@@ -6,6 +6,7 @@ import tn.esprit.fahamni.Models.Interaction;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.utils.BlogSchemaSupport;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.SessionManager;
 
@@ -52,6 +53,7 @@ public class BlogService implements IServices<Blog> {
     }
 
     public BlogService() {
+        BlogSchemaSupport.ensureSchema();
         ensureViewsColumn();
         ensureSharedFromColumn();
         ensureFavoriteColumn();
@@ -62,6 +64,10 @@ public class BlogService implements IServices<Blog> {
     public List<Blog> getAllBlogs() {
         syncAllBlogCounts(); // synchronise likes_count/comments_count pour tous les articles
         List<Blog> blogs = getAllBlogsFromDB();
+        if (blogs.isEmpty() && isBlogTableEmpty()) {
+            ensureSampleBlogsPersisted();
+            blogs = getAllBlogsFromDB();
+        }
         if (blogs.isEmpty()) blogs.addAll(getSampleBlogs());
         return blogs;
     }
@@ -294,6 +300,7 @@ public class BlogService implements IServices<Blog> {
     /** @return null si succès, message d'erreur détaillé sinon */
     public String addInteraction(int blogId, String type, String commentaire, String createdByName) {
         if (blogId <= 0) return "blogId invalide: " + blogId;
+        if (!blogExists(blogId)) return "Article introuvable en base (id=" + blogId + ").";
 
         int userId = getCurrentUserId();
         if (userId <= 0 || !userExists(userId)) {
@@ -409,6 +416,7 @@ public class BlogService implements IServices<Blog> {
     /** Enregistre une réaction (1=like, 2=love, 3=surprise), remplace l'ancienne */
     public void addReaction(int blogId, int reactionType, String userName) {
         if (blogId <= 0) return;
+        if (!blogExists(blogId)) return;
         int userId = getCurrentUserId();
         if (userId <= 0 || !userExists(userId)) return;
 
@@ -475,6 +483,7 @@ public class BlogService implements IServices<Blog> {
 
     public void addReply(int blogId, int parentId, String comment) {
         ensureParentIdColumn();
+        if (!blogExists(blogId)) return;
         int userId = getCurrentUserId();
         if (userId <= 0 || comment == null || comment.isBlank()) return;
         Connection c = cnx();
@@ -771,6 +780,7 @@ public class BlogService implements IServices<Blog> {
 
     public void incrementViews(int blogId) {
         ensureViewsColumn();
+        if (!blogExists(blogId)) return;
         Connection c = cnx();
         if (c == null) return;
         try (PreparedStatement ps = c.prepareStatement(
@@ -1014,6 +1024,10 @@ public class BlogService implements IServices<Blog> {
 
     public boolean addFavorite(int blogId) {
         ensureFavoriteColumn();
+        if (!blogExists(blogId)) {
+            System.err.println("addFavorite: blog introuvable en base (id=" + blogId + ")");
+            return false;
+        }
         int userId = getCurrentUserId();
         if (userId <= 0) return false;
         Connection c = cnx();
@@ -1055,6 +1069,7 @@ public class BlogService implements IServices<Blog> {
 
     public boolean isFavorite(int blogId) {
         ensureFavoriteColumn();
+        if (!blogExists(blogId)) return false;
         int userId = getCurrentUserId();
         if (userId <= 0) return false;
         Connection c = cnx();
@@ -1174,6 +1189,98 @@ public class BlogService implements IServices<Blog> {
                 "Regardez des séries, écoutez des podcasts, pratiquez avec Anki, trouvez un partenaire.",
                 "autre", LocalDateTime.now().minusDays(3), "Meriem Khelifi", LocalDateTime.now().minusDays(3)));
         return s;
+    }
+
+    private boolean isBlogTableEmpty() {
+        Connection c = cnx();
+        if (c == null) return false;
+        try (PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM blog")) {
+            ResultSet rs = ps.executeQuery();
+            return rs.next() && rs.getInt(1) == 0;
+        } catch (Exception e) {
+            System.err.println("isBlogTableEmpty: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void ensureSampleBlogsPersisted() {
+        Connection c = cnx();
+        if (c == null || !isBlogTableEmpty()) return;
+
+        Integer samplePublisherId = resolveSamplePublisherId();
+        if (samplePublisherId == null || samplePublisherId <= 0) {
+            System.err.println("ensureSampleBlogsPersisted: aucun utilisateur disponible pour publisher_id.");
+            return;
+        }
+
+        String sql =
+            "INSERT INTO blog (" +
+                "titre, content, images, status, category, created_at, published_at, " +
+                "publisher_id, likes_count, comments_count, is_status_notif_read, shared_from_id, views" +
+            ") VALUES (?, ?, NULL, 'published', ?, ?, ?, ?, 0, 0, 0, NULL, 0)";
+
+        int inserted = 0;
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            for (Blog sample : getSampleBlogs()) {
+                ps.setString(1, sample.getTitre());
+                ps.setString(2, sample.getContent());
+                ps.setString(3, toCategoryDB(sample.getImage()));
+                ps.setTimestamp(4, Timestamp.valueOf(sample.getCreatedAt()));
+                ps.setTimestamp(5, Timestamp.valueOf(
+                    sample.getPublishedAt() != null ? sample.getPublishedAt() : sample.getCreatedAt()
+                ));
+                ps.setInt(6, samplePublisherId);
+                ps.addBatch();
+            }
+            int[] results = ps.executeBatch();
+            for (int result : results) {
+                if (result >= 0 || result == Statement.SUCCESS_NO_INFO) {
+                    inserted++;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("ensureSampleBlogsPersisted: " + e.getMessage());
+            return;
+        }
+
+        if (inserted > 0) {
+            System.out.println("BlogService: " + inserted + " article(s) d'exemple ont ete enregistres en base.");
+        }
+    }
+
+    private Integer resolveSamplePublisherId() {
+        int currentUserId = getCurrentUserId();
+        if (currentUserId > 0 && userExists(currentUserId)) {
+            return currentUserId;
+        }
+
+        Connection c = cnx();
+        if (c == null) return null;
+        try (PreparedStatement ps = c.prepareStatement("SELECT id FROM user ORDER BY id ASC LIMIT 1")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("resolveSamplePublisherId: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private boolean blogExists(int blogId) {
+        if (blogId <= 0) return false;
+        Connection c = cnx();
+        if (c == null) return false;
+        try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM blog WHERE id = ? LIMIT 1")) {
+            ps.setInt(1, blogId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (Exception e) {
+            System.err.println("blogExists: " + e.getMessage());
+            return false;
+        }
     }
 
     /** Vérifie si le user a déjà liké cet article */
