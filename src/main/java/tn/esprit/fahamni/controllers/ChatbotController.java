@@ -18,13 +18,15 @@ import tn.esprit.fahamni.services.ai.GeminiService;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ChatbotController implements Initializable {
 
     private final GeminiService geminiService = new GeminiService();
     private final CourseContextBuilder courseContextBuilder = new CourseContextBuilder();
-    private String courseContext = "";
-    private boolean isContextLoaded = false;
+    private final AtomicReference<String> courseContext = new AtomicReference<>("");
+    private final AtomicBoolean isContextLoaded = new AtomicBoolean(false);
 
     @FXML
     private VBox chatBox;
@@ -65,8 +67,9 @@ public class ChatbotController implements Initializable {
         Thread worker = new Thread(() -> {
             try {
                 String response;
-                if (courseContext != null && !courseContext.isBlank()) {
-                    response = geminiService.askGeminiWithContext(cleanedText, courseContext);
+                String context = courseContext.get();
+                if (context != null && !context.isBlank()) {
+                    response = geminiService.askGeminiWithContext(cleanedText, context);
                 } else {
                     response = geminiService.askGemini(cleanedText);
                 }
@@ -95,18 +98,18 @@ public class ChatbotController implements Initializable {
             false
         );
 
-        isContextLoaded = false;
+        isContextLoaded.set(false);
         courseContextBuilder.buildCourseContext(matiere)
             .thenAccept(result -> {
-                courseContext = result == null ? "" : result;
-                isContextLoaded = true;
+                courseContext.set(result == null ? "" : result);
+                isContextLoaded.set(true);
                 Platform.runLater(() -> addMessageToUI("Materials loaded! What would you like to know?", false));
             })
             .exceptionally(ex -> {
                 System.err.println("Course context ingestion failed: " + ex.getMessage());
                 ex.printStackTrace();
-                isContextLoaded = false;
-                courseContext = "";
+                isContextLoaded.set(false);
+                courseContext.set("");
                 Platform.runLater(() ->
                     addMessageToUI("Failed to load course materials. I can still answer general questions.", false)
                 );
