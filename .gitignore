@@ -20,11 +20,12 @@ build/
 /nbbuild/
 /nbproject/private/
 /.nb-gradle/
-
 # OS files
 *.log
 *.tmp
 *.swp
+.env
+.env.*
 .DS_Store
 .env.local
 fahamni.local.properties

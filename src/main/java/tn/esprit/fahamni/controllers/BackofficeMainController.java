@@ -26,6 +26,7 @@ public class BackofficeMainController {
     @FXML private Button usersButton;
     @FXML private Button sessionsButton;
     @FXML private Button reservationsButton;
+    @FXML private Button quizButton;
     @FXML private Button contentButton;
     @FXML private Button commentsButton;
     @FXML private Label commentsBadge;
@@ -75,9 +76,9 @@ public class BackofficeMainController {
     @FXML
     private void showDashboard() {
         loadView(
-            "BackofficeDashboardView.fxml",
-            "Dashboard Admin",
-            "Vue d'ensemble des operations, contenus et activites du backoffice."
+                "BackofficeDashboardView.fxml",
+                "Dashboard Admin",
+                "Vue d'ensemble des operations, contenus et activites du backoffice."
         );
         setActiveButton(dashboardButton);
     }
@@ -85,9 +86,9 @@ public class BackofficeMainController {
     @FXML
     private void showUsers() {
         loadView(
-            "BackofficeUsersView.fxml",
-            "Gestion des utilisateurs",
-            "Suivez les comptes, les roles et les statuts visibles dans la plateforme."
+                "BackofficeUsersView.fxml",
+                "Gestion des utilisateurs",
+                "Suivez les comptes, les roles et les statuts visibles dans la plateforme."
         );
         setActiveButton(usersButton);
     }
@@ -95,9 +96,9 @@ public class BackofficeMainController {
     @FXML
     private void showSessions() {
         loadView(
-            "BackofficeSessionsView.fxml",
-            "Gestion des seances",
-            "Planifiez les seances et gardez une vue claire sur leur publication."
+                "BackofficeSessionsView.fxml",
+                "Gestion des seances",
+                "Planifiez les seances et gardez une vue claire sur leur publication."
         );
         setActiveButton(sessionsButton);
     }
@@ -105,19 +106,29 @@ public class BackofficeMainController {
     @FXML
     private void showReservations() {
         loadView(
-            "BackofficeReservationsView.fxml",
-            "Gestion des reservations",
-            "Validez les demandes et ajustez rapidement leur statut administratif."
+                "BackofficeReservationsView.fxml",
+                "Gestion des reservations",
+                "Validez les demandes et ajustez rapidement leur statut administratif."
         );
         setActiveButton(reservationsButton);
     }
 
     @FXML
+    private void showQuiz() {
+        loadView(
+                "BackofficeQuizView.fxml",
+                "Gestion des quiz",
+                "Creez, modifiez et suivez les quiz proposes dans la plateforme."
+        );
+        setActiveButton(quizButton);
+    }
+
+    @FXML
     private void showContent() {
         loadView(
-            "BackofficeContentView.fxml",
-            "Gestion du contenu",
-            "Pilotez les articles, ressources et publications mises en avant."
+                "BackofficeContentView.fxml",
+                "Gestion du contenu",
+                "Pilotez les articles, ressources et publications mises en avant."
         );
         setActiveButton(contentButton);
     }
@@ -151,9 +162,9 @@ public class BackofficeMainController {
     @FXML
     private void showArticles() {
         loadView(
-            "BackofficeArticlesView.fxml",
-            "Gestion des articles",
-            "Validez les articles proposes et suivez leur activite."
+                "BackofficeArticlesView.fxml",
+                "Gestion des articles",
+                "Validez les articles proposes et suivez leur activite."
         );
         setActiveButton(articlesButton);
         refreshArticlesBadge();
@@ -168,9 +179,9 @@ public class BackofficeMainController {
     private void showSalles() {
         setInfrastructureExpanded(true);
         loadView(
-            "BackofficeSallesView.fxml",
-            "Gestion des salles",
-            "Administrez vos espaces, leur capacite et leur niveau de disponibilite."
+                "BackofficeSallesView.fxml",
+                "Gestion des salles",
+                "Administrez vos espaces, leur capacite et leur niveau de disponibilite."
         );
         setActiveButton(sallesButton);
     }
@@ -179,9 +190,9 @@ public class BackofficeMainController {
     private void showReclamations() {
         setInfrastructureExpanded(true);
         loadView(
-            "BackofficeReclamationsView.fxml",
-            "Reclamations des salles",
-            "Centralisez les signalements des tuteurs et transformez-les en actions administratives claires."
+                "BackofficeReclamationsView.fxml",
+                "Reclamations des salles",
+                "Centralisez les signalements des tuteurs et transformez-les en actions administratives claires."
         );
         setActiveButton(reclamationsButton);
     }
@@ -190,9 +201,9 @@ public class BackofficeMainController {
     private void showMaintenance() {
         setInfrastructureExpanded(true);
         loadView(
-            "BackofficeMaintenanceView.fxml",
-            "Maintenance des salles",
-            "Suivez les interventions techniques et gardez une vision claire de l'etat des salles."
+                "BackofficeMaintenanceView.fxml",
+                "Maintenance des salles",
+                "Suivez les interventions techniques et gardez une vision claire de l'etat des salles."
         );
         setActiveButton(maintenanceButton);
     }
@@ -201,9 +212,9 @@ public class BackofficeMainController {
     private void showEquipements() {
         setInfrastructureExpanded(true);
         loadView(
-            "BackofficeEquipementsView.fxml",
-            "Gestion des equipements",
-            "Suivez le parc materiel, les quantites disponibles et l'etat courant de chaque equipement."
+                "BackofficeEquipementsView.fxml",
+                "Gestion des equipements",
+                "Suivez le parc materiel, les quantites disponibles et l'etat courant de chaque equipement."
         );
         setActiveButton(equipementsButton);
     }
@@ -212,10 +223,10 @@ public class BackofficeMainController {
     private void showInfrastructureStats() {
         setInfrastructureExpanded(true);
         showPlaceholder(
-            "Statistiques infrastructure",
-            "Vous pourrez ici suivre les indicateurs specifiques aux salles et equipements.",
-            "Espace statistiques a venir",
-            "Le dropdown est deja pret pour accueillir vos tableaux de bord metier."
+                "Statistiques infrastructure",
+                "Vous pourrez ici suivre les indicateurs specifiques aux salles et equipements.",
+                "Espace statistiques a venir",
+                "Le dropdown est deja pret pour accueillir vos tableaux de bord metier."
         );
         setActiveButton(infrastructureStatsButton);
     }
@@ -299,6 +310,7 @@ public class BackofficeMainController {
         removeActiveClass(usersButton);
         removeActiveClass(sessionsButton);
         removeActiveClass(reservationsButton);
+        removeActiveClass(quizButton);
         removeActiveClass(contentButton);
         removeActiveClass(commentsButton);
         removeActiveClass(articlesButton);
@@ -314,10 +326,10 @@ public class BackofficeMainController {
         }
 
         if (activeButton == sallesButton
-            || activeButton == reclamationsButton
-            || activeButton == maintenanceButton
-            || activeButton == equipementsButton
-            || activeButton == infrastructureStatsButton) {
+                || activeButton == reclamationsButton
+                || activeButton == maintenanceButton
+                || activeButton == equipementsButton
+                || activeButton == infrastructureStatsButton) {
             if (infrastructureToggleButton != null && !infrastructureToggleButton.getStyleClass().contains("active")) {
                 infrastructureToggleButton.getStyleClass().add("active");
             }

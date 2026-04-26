@@ -89,7 +89,6 @@ tn\esprit\fahamni\Models\Blog.class
 tn\esprit\fahamni\test\Main.class
 tn\esprit\fahamni\services\MailService.class
 tn\esprit\fahamni\Models\ReclamationSalle.class
-tn\esprit\fahamni\Models\Quiz.class
 tn\esprit\fahamni\controllers\MainController$1.class
 tn\esprit\fahamni\services\TwoFactorAuthService$PendingTwoFactorSetup.class
 tn\esprit\fahamni\Models\StudyPlanRequest.class

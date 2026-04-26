@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.controllers;
 
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -19,11 +20,14 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.geometry.Pos;
+import javafx.scene.text.TextAlignment;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -42,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import javafx.util.Duration;
 
 public class BackofficeSallesController {
     private static final int DEFAULT_ROWS_PER_PAGE = 20;
@@ -148,8 +153,10 @@ public class BackofficeSallesController {
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final ObservableList<Salle> displayedSalles = FXCollections.observableArrayList();
     private final Map<Integer, FixedEquipmentSelectionControls> fixedEquipmentSelectionControls = new LinkedHashMap<>();
+    private final PauseTransition recentSalleHighlight = new PauseTransition(Duration.seconds(4));
     private int currentPageIndex;
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
+    private Integer highlightedSalleId;
 
     @FXML
     private void initialize() {
@@ -185,6 +192,7 @@ public class BackofficeSallesController {
             if (!loadSalles()) {
                 return;
             }
+            highlightSalle(salle.getIdSalle());
             selectSalleById(salle.getIdSalle());
             showFeedback("La salle a ete ajoutee avec succes. Vous pouvez maintenant gerer ses equipements fixes.", true);
         } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
@@ -213,6 +221,7 @@ public class BackofficeSallesController {
             if (!loadSalles()) {
                 return;
             }
+            highlightSalle(salle.getIdSalle());
             selectSalleById(salle.getIdSalle());
             showFeedback("La salle selectionnee a ete mise a jour.", true);
         } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
@@ -377,12 +386,25 @@ public class BackofficeSallesController {
     }
 
     private void configureTable() {
-        nomColumn.setCellValueFactory(new PropertyValueFactory<>("nom"));
+        nomColumn.setCellValueFactory(cellData -> new SimpleStringProperty(formatOptionalText(cellData.getValue().getNom())));
         batimentColumn.setCellValueFactory(cellData -> new SimpleStringProperty(formatOptionalText(cellData.getValue().getBatiment())));
-        localisationColumn.setCellValueFactory(new PropertyValueFactory<>("localisation"));
-        typeColumn.setCellValueFactory(new PropertyValueFactory<>("typeSalle"));
-        capaciteColumn.setCellValueFactory(new PropertyValueFactory<>("capacite"));
+        localisationColumn.setCellValueFactory(cellData -> new SimpleStringProperty(formatOptionalText(cellData.getValue().getLocalisation())));
+        typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(formatOptionalText(cellData.getValue().getTypeSalle())));
+        capaciteColumn.setCellValueFactory(cellData -> new javafx.beans.property.SimpleObjectProperty<>(cellData.getValue().getCapacite()));
         etatColumn.setCellValueFactory(cellData -> new SimpleStringProperty(formatEtat(cellData.getValue().getEtat())));
+
+        nomColumn.setCellFactory(column -> createTextCell(Pos.CENTER_LEFT));
+        batimentColumn.setCellFactory(column -> createTextCell(Pos.CENTER_LEFT));
+        localisationColumn.setCellFactory(column -> createTextCell(Pos.CENTER_LEFT));
+        typeColumn.setCellFactory(column -> createTextCell(Pos.CENTER_LEFT));
+        capaciteColumn.setCellFactory(column -> createTextCell(Pos.CENTER));
+        etatColumn.setCellFactory(column -> createTextCell(Pos.CENTER_LEFT));
+
+        sallesTable.setRowFactory(tableView -> buildSalleRow());
+        recentSalleHighlight.setOnFinished(event -> {
+            highlightedSalleId = null;
+            sallesTable.refresh();
+        });
     }
 
     private void configureForm() {
@@ -935,6 +957,46 @@ public class BackofficeSallesController {
     private String resolveMessage(Exception exception) {
         String message = exception.getMessage();
         return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
+    }
+
+    private TableRow<Salle> buildSalleRow() {
+        return new TableRow<>() {
+            @Override
+            protected void updateItem(Salle item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().remove("backoffice-recent-row");
+
+                if (!empty && item != null && highlightedSalleId != null && item.getIdSalle() == highlightedSalleId) {
+                    getStyleClass().add("backoffice-recent-row");
+                }
+            }
+        };
+    }
+
+    private void highlightSalle(int idSalle) {
+        highlightedSalleId = idSalle > 0 ? idSalle : null;
+        recentSalleHighlight.playFromStart();
+        sallesTable.refresh();
+    }
+
+    private <T> TableCell<Salle, T> createTextCell(Pos alignment) {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                setAlignment(alignment);
+                setTextAlignment(alignment == Pos.CENTER ? TextAlignment.CENTER : TextAlignment.LEFT);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                setText(String.valueOf(item));
+                setGraphic(null);
+            }
+        };
     }
 
     private void refreshTablePage() {

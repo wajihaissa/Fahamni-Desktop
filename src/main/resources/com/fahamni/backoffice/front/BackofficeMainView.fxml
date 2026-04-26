@@ -36,6 +36,7 @@
                         <Button fx:id="usersButton" maxWidth="Infinity" text="Utilisateurs" onAction="#showUsers" styleClass="backoffice-nav-button"/>
                         <Button fx:id="sessionsButton" maxWidth="Infinity" text="Seances" onAction="#showSessions" styleClass="backoffice-nav-button"/>
                         <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" onAction="#showReservations" styleClass="backoffice-nav-button"/>
+                        <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" onAction="#showQuiz" styleClass="backoffice-nav-button"/>
                         <Button fx:id="contentButton" maxWidth="Infinity" text="Contenu" onAction="#showContent" styleClass="backoffice-nav-button"/>
                         <StackPane>
                             <Button fx:id="commentsButton" maxWidth="Infinity" text="Commentaires" onAction="#showComments" styleClass="backoffice-nav-button"/>

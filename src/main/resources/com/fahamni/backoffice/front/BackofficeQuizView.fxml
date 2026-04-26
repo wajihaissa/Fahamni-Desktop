@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="20.0" styleClass="backoffice-page"
+      xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.fahamni.controllers.BackofficeQuizController">
+    <padding>
+        <Insets top="24.0" right="24.0" bottom="24.0" left="24.0"/>
+    </padding>
+
+    <VBox spacing="8.0" styleClass="backoffice-header-block">
+        <Label text="Gestion des Quiz" styleClass="backoffice-page-title"/>
+        <Label text="Suivez les quiz, ajoutez-en de nouveaux, supprimez ceux qui ne servent plus et consultez les stats." styleClass="backoffice-page-subtitle"/>
+    </VBox>
+
+    <HBox spacing="18.0" styleClass="backoffice-stats-row">
+        <VBox spacing="8.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+            <Label text="Total de quiz" styleClass="backoffice-stat-title"/>
+            <Label fx:id="totalQuizzesLabel" text="0" styleClass="backoffice-stat-value"/>
+            <Label text="Nombre total de quiz publiés." styleClass="backoffice-stat-copy"/>
+        </VBox>
+        <VBox spacing="8.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+            <Label text="Quiz avec résultats" styleClass="backoffice-stat-title"/>
+            <Label fx:id="quizzesWithResultsLabel" text="0" styleClass="backoffice-stat-value"/>
+            <Label text="Quiz ayant au moins un résultat enregistré." styleClass="backoffice-stat-copy"/>
+        </VBox>
+        <VBox spacing="8.0" styleClass="backoffice-stat-card" HBox.hgrow="ALWAYS">
+            <Label text="Score moyen" styleClass="backoffice-stat-title"/>
+            <Label fx:id="averageScoreLabel" text="0%" styleClass="backoffice-stat-value"/>
+            <Label text="Score moyen des quiz complétés." styleClass="backoffice-stat-copy"/>
+        </VBox>
+    </HBox>
+
+    <HBox spacing="20.0" alignment="TOP_LEFT">
+        <VBox spacing="14.0" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS" styleClass="backoffice-panel backoffice-quiz-table-panel">
+            <Label text="Liste des quiz" styleClass="backoffice-section-title"/>
+            <TableView fx:id="quizzesTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
+                <columns>
+                    <TableColumn fx:id="titleColumn" text="Titre"/>
+        <TableColumn fx:id="keywordColumn" text="Mot-clé"/>
+                    <TableColumn fx:id="questionsColumn" text="Questions"/>
+        <TableColumn fx:id="resultsColumn" text="Résultats"/>
+        <TableColumn fx:id="createdAtColumn" text="Créé le"/>
+                    <TableColumn fx:id="lastScoreColumn" text="Dernier score"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+        <ScrollPane fitToWidth="true" fitToHeight="false" prefWidth="360.0" minWidth="320.0" styleClass="backoffice-panel backoffice-form-panel backoffice-quiz-form-panel">
+            <content>
+                <VBox spacing="12.0" fillWidth="true" prefWidth="360.0" styleClass="backoffice-quiz-form-content">
+                    <Label text="Ajouter un quiz simple" styleClass="backoffice-section-title"/>
+                    <Label text="Titre" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="titleField" promptText="Titre du quiz" styleClass="backoffice-form-input"/>
+                    <Label text="Mot-clé" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="keywordField" promptText="Mot-clé" styleClass="backoffice-form-input"/>
+                    <Label text="Actions Quiz" styleClass="backoffice-form-label"/>
+                    <HBox spacing="10.0" alignment="CENTER">
+                        <Button text="Enregistrer" onAction="#handleCreateQuiz" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                        <Button text="Rafraîchir" onAction="#handleRefresh" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
+                    <Label text="Generation IA" styleClass="backoffice-form-label"/>
+                    <HBox spacing="10.0" alignment="CENTER_LEFT">
+                        <ComboBox fx:id="aiQuestionCountComboBox" promptText="Questions" prefWidth="100.0" styleClass="backoffice-form-input"/>
+                        <ComboBox fx:id="aiDifficultyComboBox" promptText="Difficulte" prefWidth="120.0" styleClass="backoffice-form-input"/>
+                        <Button text="Generer avec IA" onAction="#handleGenerateQuizWithAi" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
+                    <HBox spacing="10.0" alignment="CENTER">
+                        <Button text="Modifier" onAction="#handleUpdateQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                        <Button text="Supprimer" onAction="#handleDeleteQuiz" styleClass="backoffice-secondary-button" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                    </HBox>
+                    <Separator/>
+                    <Label text="Question selectionnee" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="questionField" promptText="Question principale" styleClass="backoffice-form-input"/>
+                    <Label text="Choix" styleClass="backoffice-form-label"/>
+                    <TextField fx:id="choice1Field" promptText="Choix A" styleClass="backoffice-form-input"/>
+                    <TextField fx:id="choice2Field" promptText="Choix B" styleClass="backoffice-form-input"/>
+                    <TextField fx:id="choice3Field" promptText="Choix C" styleClass="backoffice-form-input"/>
+                    <TextField fx:id="choice4Field" promptText="Choix D" styleClass="backoffice-form-input"/>
+                    <Label text="Réponse correcte" styleClass="backoffice-form-label"/>
+                    <ComboBox fx:id="correctChoiceComboBox" styleClass="backoffice-form-input"/>
+                    <HBox spacing="10.0">
+                        <Button text="Ajouter / Modifier" onAction="#handleAddQuestion" styleClass="backoffice-primary-button" HBox.hgrow="ALWAYS"/>
+                        <Button text="Supprimer question" onAction="#handleDeleteSelectedQuestion" styleClass="backoffice-secondary-button"/>
+                    </HBox>
+                    <Label fx:id="questionsAddedLabel" text="0/5 questions" styleClass="backoffice-form-label"/>
+                    <ListView fx:id="questionsListView" prefHeight="100.0" minHeight="80.0" maxHeight="120.0" styleClass="backoffice-form-input"/>
+                    <Label fx:id="feedbackLabel" text="" styleClass="backoffice-feedback" visible="false" managed="false" wrapText="true"/>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </HBox>
+</VBox>
