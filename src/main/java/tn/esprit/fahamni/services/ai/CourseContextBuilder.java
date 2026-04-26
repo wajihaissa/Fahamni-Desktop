@@ -41,6 +41,9 @@ public class CourseContextBuilder {
     private static final String TYPE_VIDEO = "Vid\u00e9o";
     private static final String TYPE_LINK = "Lien";
 
+    private static boolean isFfmpegAvailable = false;
+    private static boolean hasCheckedFfmpeg = false;
+
     private final LanguageDetector languageDetector = LanguageDetectorBuilder
         .fromLanguages(Language.ENGLISH, Language.FRENCH)
         .build();
@@ -401,12 +404,21 @@ public class CourseContextBuilder {
     }
 
     private boolean isFfmpegAvailable() {
+        if (hasCheckedFfmpeg) {
+            return isFfmpegAvailable;
+        }
+
         try {
             ProcessBuilder pb = new ProcessBuilder(FFMPEG_PATH, "-version");
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            return process.waitFor() == 0;
+            boolean result = process.waitFor() == 0;
+            isFfmpegAvailable = result;
+            hasCheckedFfmpeg = true;
+            return result;
         } catch (Exception e) {
+            isFfmpegAvailable = false;
+            hasCheckedFfmpeg = true;
             return false;
         }
     }
