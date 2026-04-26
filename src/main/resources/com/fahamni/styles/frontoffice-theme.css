@@ -1245,6 +1245,37 @@
             -fx-background-color: #ecf3ff;
         }
 
+        .backoffice-location-action-button {
+            -fx-background-color: linear-gradient(to bottom, #2dc7bf 0%, #15918c 100%);
+            -fx-border-color: #117f7a;
+            -fx-border-width: 1px;
+            -fx-text-fill: white;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-padding: 10px 14px;
+            -fx-cursor: hand;
+            -fx-effect: dropshadow(gaussian, rgba(17, 127, 122, 0.24), 12, 0.18, 0, 4);
+        }
+
+        .backoffice-location-action-button:hover {
+            -fx-background-color: linear-gradient(to bottom, #42d4cc 0%, #1ea09a 100%);
+        }
+
+        .backoffice-location-action-button:pressed {
+            -fx-background-color: linear-gradient(to bottom, #27b5ae 0%, #117f7a 100%);
+        }
+
+        .backoffice-location-action-button:disabled {
+            -fx-background-color: #d7efee;
+            -fx-border-color: #b7d9d7;
+            -fx-text-fill: #6a8f8d;
+            -fx-opacity: 1;
+            -fx-effect: none;
+            -fx-cursor: default;
+        }
+
         .action-button.secondary:disabled {
             -fx-background-color: #eef3fa;
             -fx-border-color: #d9e2ef;
@@ -1462,6 +1493,19 @@
             -fx-text-fill: #c43b49;
             -fx-background-radius: 12px;
             -fx-padding: 10px 12px;
+        }
+
+        .backoffice-inline-note {
+            -fx-font-size: 11px;
+            -fx-text-fill: #7185a4;
+        }
+
+        .backoffice-inline-note.success {
+            -fx-text-fill: #1d7a46;
+        }
+
+        .backoffice-inline-note.error {
+            -fx-text-fill: #c43b49;
         }
 
         .backoffice-room-hero {

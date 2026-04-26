@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.controllers;
 
 import tn.esprit.fahamni.services.AdminArticlesService;
+import tn.esprit.fahamni.services.NotificationService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
@@ -16,6 +17,7 @@ import javafx.scene.layout.VBox;
 public class BackofficeMainController {
 
     private final AdminArticlesService articlesService = new AdminArticlesService();
+    private final NotificationService notifService = new NotificationService();
 
     @FXML private AnchorPane contentPane;
     @FXML private Label pageTitle;
@@ -25,14 +27,14 @@ public class BackofficeMainController {
     @FXML private Button sessionsButton;
     @FXML private Button reservationsButton;
     @FXML private Button contentButton;
+    @FXML private Button commentsButton;
+    @FXML private Label commentsBadge;
     @FXML private Button articlesButton;
     @FXML private Label articlesBadge;
     @FXML private Button infrastructureToggleButton;
     @FXML private VBox infrastructureSubmenu;
     @FXML private Label infrastructureChevron;
     @FXML private Button sallesButton;
-    @FXML private Button reclamationsButton;
-    @FXML private Button maintenanceButton;
     @FXML private Button equipementsButton;
     @FXML private Button infrastructureStatsButton;
 
@@ -43,6 +45,7 @@ public class BackofficeMainController {
         setInfrastructureExpanded(false);
         showDashboard();
         refreshArticlesBadge();
+        refreshCommentsBadge();
     }
 
     public void refreshArticlesBadge() {
@@ -57,6 +60,24 @@ public class BackofficeMainController {
         } else {
             articlesBadge.setVisible(false);
             articlesBadge.setManaged(false);
+        }
+    }
+
+    public void refreshCommentsBadge() {
+        if (commentsBadge == null) {
+            return;
+        }
+        long pending = notifService.getUnreadForAdmin().stream()
+            .filter(notification -> notification.getMessage() != null
+                && notification.getMessage().contains("Commentaire bloqué"))
+            .count();
+        if (pending > 0) {
+            commentsBadge.setText(String.valueOf(pending));
+            commentsBadge.setVisible(true);
+            commentsBadge.setManaged(true);
+        } else {
+            commentsBadge.setVisible(false);
+            commentsBadge.setManaged(false);
         }
     }
 
@@ -111,6 +132,17 @@ public class BackofficeMainController {
     }
 
     @FXML
+    private void showComments() {
+        loadView(
+            "BackofficeCommentsView.fxml",
+            "Gestion des commentaires",
+            "Moderez les commentaires postes par les utilisateurs sur les articles."
+        );
+        setActiveButton(commentsButton);
+        refreshCommentsBadge();
+    }
+
+    @FXML
     private void showArticles() {
         loadView(
             "BackofficeArticlesView.fxml",
@@ -135,28 +167,6 @@ public class BackofficeMainController {
             "Administrez vos espaces, leur capacite et leur niveau de disponibilite."
         );
         setActiveButton(sallesButton);
-    }
-
-    @FXML
-    private void showReclamations() {
-        setInfrastructureExpanded(true);
-        loadView(
-            "BackofficeReclamationsView.fxml",
-            "Reclamations des salles",
-            "Centralisez les signalements des tuteurs et transformez-les en actions administratives claires."
-        );
-        setActiveButton(reclamationsButton);
-    }
-
-    @FXML
-    private void showMaintenance() {
-        setInfrastructureExpanded(true);
-        loadView(
-            "BackofficeMaintenanceView.fxml",
-            "Maintenance des salles",
-            "Suivez les interventions techniques et gardez une vision claire de l'etat des salles."
-        );
-        setActiveButton(maintenanceButton);
     }
 
     @FXML
@@ -249,11 +259,10 @@ public class BackofficeMainController {
         removeActiveClass(sessionsButton);
         removeActiveClass(reservationsButton);
         removeActiveClass(contentButton);
+        removeActiveClass(commentsButton);
         removeActiveClass(articlesButton);
         removeActiveClass(infrastructureToggleButton);
         removeActiveClass(sallesButton);
-        removeActiveClass(reclamationsButton);
-        removeActiveClass(maintenanceButton);
         removeActiveClass(equipementsButton);
         removeActiveClass(infrastructureStatsButton);
 
@@ -262,8 +271,6 @@ public class BackofficeMainController {
         }
 
         if (activeButton == sallesButton
-            || activeButton == reclamationsButton
-            || activeButton == maintenanceButton
             || activeButton == equipementsButton
             || activeButton == infrastructureStatsButton) {
             if (infrastructureToggleButton != null && !infrastructureToggleButton.getStyleClass().contains("active")) {

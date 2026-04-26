@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane id="backofficeCommentsRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeCommentsController">
+    <content>
+        <VBox id="backofficeCommentsContent" spacing="18.0" styleClass="backoffice-page">
+            <padding>
+                <Insets top="24.0" right="28.0" bottom="28.0" left="28.0"/>
+            </padding>
+
+            <VBox spacing="6.0" styleClass="backoffice-header-block">
+                <Label text="Gestion des commentaires" styleClass="backoffice-panel-title"/>
+                <Label text="Supervisez les commentaires postes par les utilisateurs et moderez les contenus inappropries." styleClass="backoffice-panel-copy"/>
+            </VBox>
+
+            <VBox spacing="14.0" styleClass="backoffice-panel backoffice-room-hero">
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0">
+                        <Label text="Moderation des commentaires" styleClass="backoffice-section-title"/>
+                        <Label text="Vue globale de tous les commentaires publies sur les articles de la plateforme." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="Pilotage editorial" styleClass="backoffice-room-chip"/>
+                </HBox>
+
+                <HBox spacing="14.0">
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS" styleClass="backoffice-stat-card">
+                        <Label text="En attente" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="totalCountLabel" text="0">
+                            <styleClass>
+                                <String fx:value="backoffice-stat-value"/>
+                                <String fx:value="backoffice-articles-stat-value-pending"/>
+                            </styleClass>
+                        </Label>
+                        <Label text="Bloques, en attente de decision." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS" styleClass="backoffice-stat-card">
+                        <Label text="Visibles" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="visibleCountLabel" text="0">
+                            <styleClass>
+                                <String fx:value="backoffice-stat-value"/>
+                                <String fx:value="backoffice-articles-stat-value-approved"/>
+                            </styleClass>
+                        </Label>
+                        <Label text="Commentaires actifs sur la plateforme." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS" styleClass="backoffice-stat-card">
+                        <Label text="Supprimes" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="deletedCountLabel" text="0">
+                            <styleClass>
+                                <String fx:value="backoffice-stat-value"/>
+                                <String fx:value="backoffice-articles-stat-value-deleted"/>
+                            </styleClass>
+                        </Label>
+                        <Label text="Commentaires retires par l'admin." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox fx:id="notifBanner" alignment="CENTER_LEFT" managed="false" spacing="10.0" styleClass="backoffice-articles-banner" visible="false">
+                <Label text="N" styleClass="backoffice-articles-banner-icon"/>
+                <Label fx:id="notifLabel" text="" wrapText="true" HBox.hgrow="ALWAYS" styleClass="backoffice-articles-banner-text"/>
+            </HBox>
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <styleClass>
+                    <String fx:value="backoffice-panel"/>
+                    <String fx:value="backoffice-articles-toolbar"/>
+                </styleClass>
+                <Button fx:id="btnTous" focusTraversable="false" onAction="#filterTous" text="Tous">
+                    <styleClass>
+                        <String fx:value="backoffice-secondary-button"/>
+                        <String fx:value="backoffice-articles-filter-chip"/>
+                    </styleClass>
+                </Button>
+                <Button fx:id="btnPending" focusTraversable="false" onAction="#filterPending" text="En attente">
+                    <styleClass>
+                        <String fx:value="backoffice-secondary-button"/>
+                        <String fx:value="backoffice-articles-filter-chip"/>
+                        <String fx:value="backoffice-articles-filter-chip-pending"/>
+                    </styleClass>
+                </Button>
+                <Button fx:id="btnVisible" focusTraversable="false" onAction="#filterVisible" text="Approuves">
+                    <styleClass>
+                        <String fx:value="backoffice-secondary-button"/>
+                        <String fx:value="backoffice-articles-filter-chip"/>
+                        <String fx:value="backoffice-articles-filter-chip-approved"/>
+                    </styleClass>
+                </Button>
+                <Button fx:id="btnDeleted" focusTraversable="false" onAction="#filterDeleted" text="Supprimes">
+                    <styleClass>
+                        <String fx:value="backoffice-secondary-button"/>
+                        <String fx:value="backoffice-articles-filter-chip"/>
+                        <String fx:value="backoffice-articles-filter-chip-deleted"/>
+                    </styleClass>
+                </Button>
+                <Region HBox.hgrow="ALWAYS"/>
+                <TextField fx:id="searchField" prefWidth="230.0" promptText="Filtrer par auteur..." styleClass="backoffice-form-input"/>
+                <Button focusTraversable="false" onAction="#handleRefresh" text="Actualiser" styleClass="backoffice-secondary-button"/>
+            </HBox>
+
+            <VBox spacing="12.0">
+                <styleClass>
+                    <String fx:value="backoffice-panel"/>
+                    <String fx:value="backoffice-articles-table-panel"/>
+                </styleClass>
+                <VBox spacing="4.0">
+                    <Label text="Liste des commentaires" styleClass="backoffice-section-title"/>
+                    <Label text="Cliquez sur Supprimer pour retirer un commentaire, ou Restaurer pour le remettre en ligne." styleClass="backoffice-panel-copy"/>
+                </VBox>
+
+                <HBox fx:id="bulkBar" alignment="CENTER_LEFT" managed="false" spacing="10.0" styleClass="backoffice-articles-banner" visible="false">
+                    <Label fx:id="selectionCountLabel" text="0 selectionne(s)" styleClass="backoffice-articles-banner-text"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button focusTraversable="false" onAction="#handleBulkApprove" text="Approuver la selection" styleClass="action-button"/>
+                    <Button focusTraversable="false" onAction="#handleBulkDelete"  text="Supprimer la selection" styleClass="backoffice-danger-button"/>
+                </HBox>
+
+                <TableView fx:id="commentsTable" prefHeight="500.0" VBox.vgrow="ALWAYS">
+                    <styleClass>
+                        <String fx:value="backoffice-table"/>
+                        <String fx:value="backoffice-articles-table"/>
+                    </styleClass>
+                    <columns>
+                        <TableColumn fx:id="colSelect"      minWidth="40.0"  prefWidth="44.0"  text=""/>
+                        <TableColumn fx:id="colCommentaire" minWidth="200.0" prefWidth="260.0" text="Commentaire"/>
+                        <TableColumn fx:id="colAuteur"      minWidth="100.0" prefWidth="130.0" text="Auteur"/>
+                        <TableColumn fx:id="colArticle"     minWidth="130.0" prefWidth="160.0" text="Article"/>
+                        <TableColumn fx:id="colDate"        minWidth="90.0"  prefWidth="110.0" text="Date"/>
+                        <TableColumn fx:id="colStatut"      minWidth="95.0"  prefWidth="105.0" text="Statut"/>
+                        <TableColumn fx:id="colActions"     minWidth="200.0" prefWidth="220.0" text="Actions"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Aucun commentaire dans cette vue." styleClass="backoffice-panel-copy"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+            <Label fx:id="feedbackLabel" managed="false" text="" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+
+            <!-- Journal d'activite des commentaires -->
+            <VBox spacing="12.0" styleClass="backoffice-panel">
+                <padding><Insets top="20.0" right="20.0" bottom="20.0" left="20.0"/></padding>
+
+                <HBox alignment="CENTER_LEFT">
+                    <VBox spacing="4.0">
+                        <Label text="Journal d'activite" styleClass="backoffice-panel-title"/>
+                        <Label text="Retrouvez les dernieres decisions prises sur les commentaires moderes." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="logCountLabel" text="20 dernieres actions" styleClass="backoffice-panel-copy"/>
+                </HBox>
+
+                <TableView fx:id="commentLogTable" prefHeight="300.0">
+                    <styleClass>
+                        <String fx:value="backoffice-table"/>
+                        <String fx:value="backoffice-articles-table"/>
+                    </styleClass>
+                    <columns>
+                        <TableColumn fx:id="colLogDate"    minWidth="120.0" prefWidth="140.0" text="Date"/>
+                        <TableColumn fx:id="colLogAdmin"   minWidth="120.0" prefWidth="150.0" text="Administrateur"/>
+                        <TableColumn fx:id="colLogAction"  minWidth="90.0"  prefWidth="110.0" text="Action"/>
+                        <TableColumn fx:id="colLogComment" minWidth="200.0" prefWidth="280.0" text="Commentaire"/>
+                        <TableColumn fx:id="colLogAuteur"  minWidth="100.0" prefWidth="130.0" text="Auteur"/>
+                    </columns>
+                    <placeholder>
+                        <Label text="Aucune action enregistree pour l'instant." styleClass="backoffice-panel-copy"/>
+                    </placeholder>
+                </TableView>
+            </VBox>
+
+        </VBox>
+    </content>
+</ScrollPane>

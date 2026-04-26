@@ -13,6 +13,9 @@ public class Blog {
     private LocalDateTime publishedAt;
     private int publisherId; // id du user qui a créé l'article
     private String status;  // pending | published | deleted
+    private int views;
+    private int sharedFromId;   // 0 = article original, >0 = partagé
+    private String originalAuthor; // auteur de l'article original (pour affichage)
 
     public Blog(int id, String titre, String content, String image, LocalDateTime createdAt,
                 String publishedBy, LocalDateTime publishedAt) {
@@ -52,4 +55,15 @@ public class Blog {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public int getViews() { return views; }
+    public void setViews(int views) { this.views = views; }
+
+    public int getSharedFromId() { return sharedFromId; }
+    public void setSharedFromId(int sharedFromId) { this.sharedFromId = sharedFromId; }
+
+    public String getOriginalAuthor() { return originalAuthor; }
+    public void setOriginalAuthor(String originalAuthor) { this.originalAuthor = originalAuthor; }
+
+    public boolean isShared() { return sharedFromId > 0; }
 }
