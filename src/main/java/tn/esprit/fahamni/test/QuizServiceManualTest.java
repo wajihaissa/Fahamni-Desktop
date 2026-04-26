@@ -15,6 +15,7 @@ public class QuizServiceManualTest {
 
     public static void main(String[] args) {
         QuizService service = new QuizService();
+        cleanupManualTestQuizzes(service);
 
         System.out.println("=== QUIZ SERVICE MANUAL TEST ===");
 
@@ -44,8 +45,8 @@ public class QuizServiceManualTest {
         System.out.println("\n[CREATE]");
 
         Quiz quiz = new Quiz();
-        quiz.setTitre("running the streets ");
-        quiz.setKeyword("TS");
+        quiz.setTitre("QuizServiceManualTest - Create");
+        quiz.setKeyword("manual-create");
 
         Question q1 = new Question();
         q1.setQuestion("Java is mainly a?");
@@ -98,8 +99,8 @@ public class QuizServiceManualTest {
     private static Quiz runUpdateTest(QuizService service, Quiz quizToUpdate) {
         System.out.println("\n[UPDATE]");
 
-        quizToUpdate.setTitre("all bout ma bread");
-        quizToUpdate.setKeyword("YN");
+        quizToUpdate.setTitre("QuizServiceManualTest - Update");
+        quizToUpdate.setKeyword("manual-update");
 
         Question replacementQuestion = new Question();
         replacementQuestion.setQuestion("Which company originally developed Java?");
@@ -170,5 +171,21 @@ public class QuizServiceManualTest {
         choice.setChoice(text);
         choice.setIsCorrect(isCorrect);
         return choice;
+    }
+
+    private static void cleanupManualTestQuizzes(QuizService service) {
+        for (Quiz quiz : service.getAllQuizzes()) {
+            String title = quiz.getTitre();
+            if (title == null) {
+                continue;
+            }
+
+            String normalizedTitle = title.trim();
+            if (normalizedTitle.startsWith("QuizServiceManualTest -")
+                    || normalizedTitle.equalsIgnoreCase("running the streets")
+                    || normalizedTitle.equalsIgnoreCase("all bout ma bread")) {
+                service.deleteQuiz(quiz.getId());
+            }
+        }
     }
 }

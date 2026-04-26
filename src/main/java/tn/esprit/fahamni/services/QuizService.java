@@ -147,18 +147,21 @@ public class QuizService {
         try {
             cnx.setAutoCommit(false);
 
-            if (tableExists("quiz_answer_attempt")) {
+            if (tableExists("quiz_answer_attempt") && tableExists("quiz_result")) {
                 try (PreparedStatement deleteAttemptsStmt = cnx.prepareStatement(deleteAttemptsQuery)) {
                     deleteAttemptsStmt.setLong(1, id);
                     deleteAttemptsStmt.executeUpdate();
                 }
             }
 
-            try (PreparedStatement deleteResultsStmt = cnx.prepareStatement(deleteResultsQuery);
-                 PreparedStatement deleteQuizStmt = cnx.prepareStatement(deleteQuizQuery)) {
-                deleteResultsStmt.setLong(1, id);
-                deleteResultsStmt.executeUpdate();
+            if (tableExists("quiz_result")) {
+                try (PreparedStatement deleteResultsStmt = cnx.prepareStatement(deleteResultsQuery)) {
+                    deleteResultsStmt.setLong(1, id);
+                    deleteResultsStmt.executeUpdate();
+                }
+            }
 
+            try (PreparedStatement deleteQuizStmt = cnx.prepareStatement(deleteQuizQuery)) {
                 deleteQuizQuestions(id);
 
                 deleteQuizStmt.setLong(1, id);
@@ -178,6 +181,10 @@ public class QuizService {
 
     public List<Quiz> getRecentResults() {
         List<Quiz> quizzes = new ArrayList<>();
+        if (!tableExists("quiz_result")) {
+            return quizzes;
+        }
+
         String query = "SELECT DISTINCT q.* FROM quiz q INNER JOIN quiz_result qr ON q.id = qr.quiz_id";
 
         try (Statement stmt = cnx.createStatement();
@@ -377,6 +384,10 @@ public class QuizService {
     }
 
     private void loadQuizResults(Quiz quiz) {
+        if (!tableExists("quiz_result")) {
+            return;
+        }
+
         String query = "SELECT * FROM quiz_result WHERE quiz_id = ? ORDER BY completed_at DESC, id DESC";
 
         try (PreparedStatement stmt = cnx.prepareStatement(query)) {
@@ -576,6 +587,11 @@ public class QuizService {
     }
 
     private QuizResult saveQuizResult(Quiz quiz, QuizResult result) {
+        if (!tableExists("quiz_result")) {
+            System.err.println("Error saving quiz result: quiz_result table is missing");
+            return null;
+        }
+
         String query = buildQuizResultInsertQuery();
 
         try (PreparedStatement stmt = cnx.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {

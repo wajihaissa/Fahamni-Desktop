@@ -53,6 +53,26 @@ public final class DatabaseSchemaUtils {
         }
     }
 
+    public static boolean indexExists(Connection connection, String tableName, String indexName) throws SQLException {
+        if (connection == null || tableName == null || tableName.isBlank() || indexName == null || indexName.isBlank()) {
+            return false;
+        }
+
+        DatabaseMetaData metaData = connection.getMetaData();
+        for (String candidateTableName : new String[]{tableName, tableName.toUpperCase(), tableName.toLowerCase()}) {
+            try (ResultSet resultSet = metaData.getIndexInfo(connection.getCatalog(), null, candidateTableName, false, false)) {
+                while (resultSet.next()) {
+                    String currentIndexName = resultSet.getString("INDEX_NAME");
+                    if (indexName.equalsIgnoreCase(currentIndexName)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     public static void executeDdl(Connection connection, String sql) throws SQLException {
         if (connection == null || sql == null || sql.isBlank()) {
             return;

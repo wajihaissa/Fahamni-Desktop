@@ -699,7 +699,7 @@ public class QuizController {
     private VBox buildResultStat(String label, String value) {
         VBox statCard = new VBox(4);
         statCard.getStyleClass().add("quiz-result-stat-card");
-        statCard.setPrefWidth(160);
+        statCard.setPrefWidth(140);
 
         Label titleLabel = new Label(label);
         titleLabel.getStyleClass().add("quiz-result-stat-label");
@@ -1188,12 +1188,13 @@ public class QuizController {
         dialog.setHeaderText(null);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
         dialog.getDialogPane().getStyleClass().add("quiz-dialog-pane");
+        dialog.getDialogPane().setPrefWidth(640);
         applyCurrentTheme(dialog.getDialogPane());
 
         VBox content = new VBox(18);
         content.getStyleClass().addAll("quiz-dialog-shell", "quiz-result-shell");
-        content.setPadding(new Insets(18));
-        content.setPrefWidth(700);
+        content.setPadding(new Insets(16));
+        content.setPrefWidth(620);
 
         Label titleLabel = new Label(result.getQuiz() != null ? result.getQuiz().getTitre() : "Quiz review");
         titleLabel.getStyleClass().add("quiz-dialog-title");
@@ -1219,7 +1220,7 @@ public class QuizController {
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setPrefViewportHeight(520);
+        scrollPane.setPrefViewportHeight(460);
         scrollPane.getStyleClass().add("quiz-dialog-scroll");
 
         content.getChildren().addAll(titleLabel, subtitleLabel, summaryRow, scrollPane);

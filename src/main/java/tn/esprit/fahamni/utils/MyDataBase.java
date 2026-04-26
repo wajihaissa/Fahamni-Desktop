@@ -1,7 +1,9 @@
 package tn.esprit.fahamni.utils;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -89,26 +91,6 @@ public class MyDataBase {
             CONSTRAINT fk_seance_equipement_equipement
                 FOREIGN KEY (idEquipement) REFERENCES equipement(idEquipement)
                 ON DELETE CASCADE
-        )
-        """;
-
-    private static final String CREATE_QUIZ_ANSWER_ATTEMPT_TABLE_SQL = """
-        CREATE TABLE IF NOT EXISTS quiz_answer_attempt (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            quiz_result_id INT NOT NULL,
-            question_id INT NOT NULL,
-            selected_choice_id INT NULL,
-            is_correct BOOLEAN NOT NULL DEFAULT FALSE,
-            answered_at DATETIME NOT NULL,
-            CONSTRAINT fk_quiz_answer_attempt_result
-                FOREIGN KEY (quiz_result_id) REFERENCES quiz_result(id)
-                ON DELETE CASCADE,
-            CONSTRAINT fk_quiz_answer_attempt_question
-                FOREIGN KEY (question_id) REFERENCES question(id)
-                ON DELETE CASCADE,
-            CONSTRAINT fk_quiz_answer_attempt_choice
-                FOREIGN KEY (selected_choice_id) REFERENCES choice(id)
-                ON DELETE SET NULL
         )
         """;
 
@@ -263,18 +245,21 @@ public class MyDataBase {
             ensureSeanceColumn(connection, "mode_seance", "VARCHAR(30) NOT NULL DEFAULT 'en_ligne'");
             ensureSeanceColumn(connection, "salle_id", "INT NULL");
             createTableIfMissing(connection, "seance_equipement", CREATE_SEANCE_EQUIPEMENT_TABLE_SQL);
+            ensureQuizColumn(connection, "keyword", "VARCHAR(190) NOT NULL DEFAULT '' AFTER titre");
+            ensureQuizColumn(connection, "created_at", "DATETIME NULL AFTER keyword");
             ensureQuestionColumn(connection, "topic", "VARCHAR(190) NULL AFTER question");
             ensureQuestionColumn(connection, "difficulty", "VARCHAR(40) NOT NULL DEFAULT 'Medium' AFTER topic");
             ensureQuestionColumn(connection, "source_question_id", "BIGINT NULL AFTER difficulty");
             ensureQuestionColumn(connection, "hint", "TEXT NULL AFTER source_question_id");
             ensureQuestionColumn(connection, "explanation", "TEXT NULL AFTER hint");
+            ensureQuizResultTable(connection);
             ensureQuizResultColumn(connection, "total_questions", "INT NULL AFTER score");
             ensureQuizResultColumn(connection, "percentage", "DOUBLE NULL AFTER total_questions");
             ensureQuizResultColumn(connection, "passed", "BOOLEAN NULL AFTER percentage");
             ensureQuizResultColumn(connection, "user_id", "INT NULL AFTER passed");
             ensureQuizResultColumn(connection, "user_email", "VARCHAR(190) NULL AFTER user_id");
             ensureQuizResultColumn(connection, "user_full_name", "VARCHAR(190) NULL AFTER user_email");
-            createTableIfMissing(connection, "quiz_answer_attempt", CREATE_QUIZ_ANSWER_ATTEMPT_TABLE_SQL);
+            ensureQuizAnswerAttemptTable(connection);
         } catch (SQLException exception) {
             System.out.println("Unable to align managed schema automatically: " + exception.getMessage());
         }
@@ -295,6 +280,10 @@ public class MyDataBase {
         ensureColumn(connection, "seance", columnName, columnDefinition);
     }
 
+    private void ensureQuizColumn(Connection connection, String columnName, String columnDefinition) throws SQLException {
+        ensureColumn(connection, "quiz", columnName, columnDefinition);
+    }
+
     private void ensureQuestionColumn(Connection connection, String columnName, String columnDefinition) throws SQLException {
         ensureColumn(connection, "question", columnName, columnDefinition);
     }
@@ -313,6 +302,190 @@ public class MyDataBase {
             connection,
             "ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition
         );
+    }
+
+    private void ensureQuizResultTable(Connection connection) throws SQLException {
+        if (DatabaseSchemaUtils.tableExists(connection, "quiz_result")) {
+            ensureQuizResultIndexes(connection);
+            return;
+        }
+
+        if (!DatabaseSchemaUtils.tableExists(connection, "quiz")) {
+            return;
+        }
+
+        String quizIdType = resolveColumnType(connection, "quiz", "id", "BIGINT");
+        String userIdType = DatabaseSchemaUtils.tableExists(connection, "user")
+            ? resolveColumnType(connection, "user", "id", "INT")
+            : "INT";
+
+        DatabaseSchemaUtils.executeDdl(connection, buildQuizResultCreateSql(quizIdType, userIdType));
+        ensureQuizResultIndexes(connection);
+    }
+
+    private String buildQuizResultCreateSql(String quizIdType, String userIdType) {
+        return """
+            CREATE TABLE IF NOT EXISTS quiz_result (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                quiz_id %s NOT NULL,
+                score INT NOT NULL,
+                completed_at DATETIME NOT NULL,
+                total_questions INT NULL,
+                percentage DOUBLE NULL,
+                passed BOOLEAN NULL,
+                user_id %s NULL,
+                user_email VARCHAR(190) NULL,
+                user_full_name VARCHAR(190) NULL
+            )
+            """.formatted(quizIdType, userIdType);
+    }
+
+    private void ensureQuizResultIndexes(Connection connection) throws SQLException {
+        ensureIndex(
+            connection,
+            "quiz_result",
+            "idx_quiz_result_quiz",
+            "CREATE INDEX idx_quiz_result_quiz ON quiz_result(quiz_id)"
+        );
+        ensureIndex(
+            connection,
+            "quiz_result",
+            "idx_quiz_result_user",
+            "CREATE INDEX idx_quiz_result_user ON quiz_result(user_id)"
+        );
+        ensureIndex(
+            connection,
+            "quiz_result",
+            "idx_quiz_result_completed_at",
+            "CREATE INDEX idx_quiz_result_completed_at ON quiz_result(completed_at)"
+        );
+    }
+
+    private void ensureQuizAnswerAttemptTable(Connection connection) throws SQLException {
+        if (DatabaseSchemaUtils.tableExists(connection, "quiz_answer_attempt")) {
+            ensureQuizAnswerAttemptIndexes(connection);
+            return;
+        }
+
+        if (!DatabaseSchemaUtils.tableExists(connection, "quiz_result")
+            || !DatabaseSchemaUtils.tableExists(connection, "question")
+            || !DatabaseSchemaUtils.tableExists(connection, "choice")) {
+            return;
+        }
+
+        String quizResultIdType = resolveColumnType(connection, "quiz_result", "id", "BIGINT");
+        String questionIdType = resolveColumnType(connection, "question", "id", "BIGINT");
+        String selectedChoiceIdType = resolveColumnType(connection, "choice", "id", "BIGINT");
+
+        SQLException foreignKeyFailure = null;
+        try {
+            DatabaseSchemaUtils.executeDdl(
+                connection,
+                buildQuizAnswerAttemptCreateSql(quizResultIdType, questionIdType, selectedChoiceIdType, true)
+            );
+        } catch (SQLException exception) {
+            foreignKeyFailure = exception;
+        }
+
+        if (!DatabaseSchemaUtils.tableExists(connection, "quiz_answer_attempt")) {
+            DatabaseSchemaUtils.executeDdl(
+                connection,
+                buildQuizAnswerAttemptCreateSql(quizResultIdType, questionIdType, selectedChoiceIdType, false)
+            );
+            if (foreignKeyFailure != null) {
+                System.out.println(
+                    "quiz_answer_attempt created without foreign keys to stay compatible with the current quiz schema: "
+                        + foreignKeyFailure.getMessage()
+                );
+            }
+        }
+
+        ensureQuizAnswerAttemptIndexes(connection);
+    }
+
+    private String buildQuizAnswerAttemptCreateSql(
+        String quizResultIdType,
+        String questionIdType,
+        String selectedChoiceIdType,
+        boolean withForeignKeys
+    ) {
+        StringBuilder sql = new StringBuilder("""
+            CREATE TABLE IF NOT EXISTS quiz_answer_attempt (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                quiz_result_id %s NOT NULL,
+                question_id %s NOT NULL,
+                selected_choice_id %s NULL,
+                is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+                answered_at DATETIME NOT NULL
+            """.formatted(quizResultIdType, questionIdType, selectedChoiceIdType));
+
+        if (withForeignKeys) {
+            sql.append("""
+                ,
+                CONSTRAINT fk_quiz_answer_attempt_result
+                    FOREIGN KEY (quiz_result_id) REFERENCES quiz_result(id)
+                    ON DELETE CASCADE,
+                CONSTRAINT fk_quiz_answer_attempt_question
+                    FOREIGN KEY (question_id) REFERENCES question(id)
+                    ON DELETE CASCADE,
+                CONSTRAINT fk_quiz_answer_attempt_choice
+                    FOREIGN KEY (selected_choice_id) REFERENCES choice(id)
+                    ON DELETE SET NULL
+                """);
+        }
+
+        sql.append("\n)");
+        return sql.toString();
+    }
+
+    private void ensureQuizAnswerAttemptIndexes(Connection connection) throws SQLException {
+        ensureIndex(
+            connection,
+            "quiz_answer_attempt",
+            "idx_quiz_answer_attempt_result",
+            "CREATE INDEX idx_quiz_answer_attempt_result ON quiz_answer_attempt(quiz_result_id)"
+        );
+        ensureIndex(
+            connection,
+            "quiz_answer_attempt",
+            "idx_quiz_answer_attempt_question",
+            "CREATE INDEX idx_quiz_answer_attempt_question ON quiz_answer_attempt(question_id)"
+        );
+        ensureIndex(
+            connection,
+            "quiz_answer_attempt",
+            "idx_quiz_answer_attempt_choice",
+            "CREATE INDEX idx_quiz_answer_attempt_choice ON quiz_answer_attempt(selected_choice_id)"
+        );
+    }
+
+    private void ensureIndex(Connection connection, String tableName, String indexName, String createIndexSql) throws SQLException {
+        if (!DatabaseSchemaUtils.tableExists(connection, tableName) || DatabaseSchemaUtils.indexExists(connection, tableName, indexName)) {
+            return;
+        }
+        DatabaseSchemaUtils.executeDdl(connection, createIndexSql);
+    }
+
+    private String resolveColumnType(Connection connection, String tableName, String columnName, String fallbackType) throws SQLException {
+        DatabaseMetaData metaData = connection.getMetaData();
+        String catalog = connection.getCatalog();
+
+        for (String candidateTableName : new String[]{tableName, tableName.toUpperCase(), tableName.toLowerCase()}) {
+            for (String candidateColumnName : new String[]{columnName, columnName.toUpperCase(), columnName.toLowerCase()}) {
+                try (ResultSet columns = metaData.getColumns(catalog, null, candidateTableName, candidateColumnName)) {
+                    if (!columns.next()) {
+                        continue;
+                    }
+
+                    String typeName = columns.getString("TYPE_NAME");
+                    if (typeName != null && !typeName.isBlank()) {
+                        return typeName;
+                    }
+                }
+            }
+        }
+
+        return fallbackType;
     }
 
     private static String sanitizeJdbcUrl(String url) {
