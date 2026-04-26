@@ -53,6 +53,7 @@ public class FrontCoursePlayerController {
 
     private final CategoryService categoryService = new CategoryService();
     private Matiere currentMatiere;
+    private long lastUpdateTime = 0;
 
     public void setMatiere(Matiere matiere) {
         this.currentMatiere = matiere;
@@ -324,6 +325,12 @@ public class FrontCoursePlayerController {
             });
 
             mediaPlayer.currentTimeProperty().addListener((obs, oldVal, newVal) -> {
+                long now = System.currentTimeMillis();
+                if (now - lastUpdateTime < 500) {
+                    return;
+                }
+                lastUpdateTime = now;
+
                 currentTimeLabel.setText(formatDuration(newVal));
                 if (!userSeeking[0]) {
                     seekSlider.setValue(newVal.toSeconds());
