@@ -13,6 +13,8 @@ public final class UserInputValidator {
     private static final Set<String> ALLOWED_FRONT_ROLES = Set.of("Etudiant", "Tuteur", "Student", "Tutor");
     private static final Set<String> ALLOWED_BACKOFFICE_ROLES = Set.of("Student", "Tutor", "Administrator");
     private static final Set<String> ALLOWED_STATUSES = Set.of("Active", "Suspended");
+    private static final Set<String> ALLOWED_REVIEW_STATUSES = Set.of("Pending Review", "Approved", "Declined");
+    private static final Set<String> ALLOWED_PROFILE_STATUSES = Set.of("Profile On", "Profile Off");
 
     private UserInputValidator() {
     }
@@ -97,6 +99,20 @@ public final class UserInputValidator {
     public static String validateStatus(String status) {
         if (isBlank(status) || !ALLOWED_STATUSES.contains(status.trim())) {
             return "Veuillez choisir un statut valide.";
+        }
+        return null;
+    }
+
+    public static String validateReviewStatus(String reviewStatus) {
+        if (isBlank(reviewStatus) || !ALLOWED_REVIEW_STATUSES.contains(reviewStatus.trim())) {
+            return "Veuillez choisir un statut de revision valide.";
+        }
+        return null;
+    }
+
+    public static String validateProfileStatus(String profileStatus) {
+        if (isBlank(profileStatus) || !ALLOWED_PROFILE_STATUSES.contains(profileStatus.trim())) {
+            return "Veuillez choisir un statut de profil valide.";
         }
         return null;
     }

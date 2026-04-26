@@ -41,7 +41,6 @@ tn\esprit\fahamni\utils\FrontOfficeThemePreference$ThemeMode.class
 tn\esprit\fahamni\Models\AdminReservation.class
 tn\esprit\fahamni\controllers\SallesEquipementsController$EquipmentAvailability.class
 tn\esprit\fahamni\controllers\BackofficeSessionsController.class
-tn\esprit\fahamni\controllers\BackofficeUsersController.class
 tn\esprit\fahamni\Models\Notification.class
 tn\esprit\fahamni\services\AdminReclamationSalleService.class
 tn\esprit\fahamni\Models\Place.class
@@ -110,7 +109,6 @@ tn\esprit\fahamni\utils\FrontOfficeMotion.class
 tn\esprit\fahamni\Models\UserRole.class
 tn\esprit\fahamni\controllers\ProfileSettingsController$1.class
 tn\esprit\fahamni\controllers\SallesEquipementsController.class
-tn\esprit\fahamni\services\AdminUserService.class
 tn\esprit\fahamni\services\QuizService.class
 tn\esprit\fahamni\controllers\AboutController.class
 tn\esprit\fahamni\controllers\BackofficeSallesController.class
@@ -135,7 +133,6 @@ tn\esprit\fahamni\controllers\BackofficeArticlesController$8.class
 tn\esprit\fahamni\services\FaceRecognitionService$DetectResult.class
 tn\esprit\fahamni\controllers\BackofficeReservationsController.class
 tn\esprit\fahamni\services\TwoFactorAuthService$ChallengeStartResult.class
-tn\esprit\fahamni\controllers\BackofficeUsersController$4.class
 tn\esprit\fahamni\services\FaceRecognitionService$CompareResult.class
 tn\esprit\fahamni\controllers\BackofficeReclamationsController$ReclamationAction.class
 tn\esprit\fahamni\services\AdminDashboardService.class

@@ -9,8 +9,8 @@
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
@@ -28,17 +28,44 @@
             <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="backoffice-users-hero">
                 <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                     <Label text="Users Management" styleClass="backoffice-users-hero-title"/>
-                    <Label text="Manage registrations, user access and profile status from one place."
+                    <Label text="Review registrations, activate accounts, control profile visibility, and keep linked student profiles in sync."
                            styleClass="backoffice-panel-copy"/>
                 </VBox>
                 <Label fx:id="totalUsersLabel" text="0 users" styleClass="backoffice-users-count-badge"/>
                 <Button onAction="#handleAddNewUser" styleClass="backoffice-users-add-button" text="Add New User"/>
             </HBox>
 
+            <HBox alignment="TOP_LEFT" spacing="16.0" styleClass="backoffice-users-insights-panel">
+                <FlowPane hgap="12.0" prefWrapLength="600.0" vgap="12.0" HBox.hgrow="ALWAYS">
+                    <VBox minWidth="140.0" prefWidth="150.0" spacing="6.0" styleClass="backoffice-users-insight-card">
+                        <Label text="Pending Review" styleClass="backoffice-users-insight-label"/>
+                        <Label fx:id="pendingCountValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
+                    </VBox>
+                    <VBox minWidth="140.0" prefWidth="150.0" spacing="6.0" styleClass="backoffice-users-insight-card">
+                        <Label text="Approved" styleClass="backoffice-users-insight-label"/>
+                        <Label fx:id="approvedCountValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
+                    </VBox>
+                    <VBox minWidth="140.0" prefWidth="150.0" spacing="6.0" styleClass="backoffice-users-insight-card">
+                        <Label text="Declined" styleClass="backoffice-users-insight-label"/>
+                        <Label fx:id="declinedCountValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
+                    </VBox>
+                    <VBox minWidth="140.0" prefWidth="150.0" spacing="6.0" styleClass="backoffice-users-insight-card">
+                        <Label text="Linked Profiles" styleClass="backoffice-users-insight-label"/>
+                        <Label fx:id="linkedProfilesValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
+                    </VBox>
+                </FlowPane>
+
+                <VBox minWidth="320.0" prefWidth="380.0" spacing="8.0" styleClass="backoffice-users-summary-card">
+                    <Label text="Admin Insights" styleClass="backoffice-users-section-title-light"/>
+                    <Label fx:id="insightsSummaryLabel" text="Loading insights..." wrapText="true"
+                           styleClass="backoffice-users-section-copy-light"/>
+                </VBox>
+            </HBox>
+
             <VBox spacing="12.0" styleClass="backoffice-users-pending-panel">
                 <VBox spacing="4.0">
                     <Label text="Pending Registrations" styleClass="backoffice-users-section-title-light"/>
-                    <Label text="Review recent accounts and decide whether to approve or suspend them."
+                    <Label text="Review real pending accounts before they can sign in, and block risky profiles when needed."
                            styleClass="backoffice-users-section-copy-light"/>
                 </VBox>
 
@@ -47,33 +74,51 @@
 
             <VBox spacing="14.0" styleClass="backoffice-users-directory-panel">
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
-                    <Label text="Reviewed User Directory" styleClass="backoffice-users-section-title-light"/>
+                    <Label text="User Directory" styleClass="backoffice-users-section-title-light"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="directorySummaryLabel" text="All users" styleClass="backoffice-users-count-badge"/>
                 </HBox>
 
                 <HBox spacing="8.0">
-                    <Label text="All" styleClass="backoffice-users-filter-chip active"/>
-                    <Label text="Approved" styleClass="backoffice-users-filter-chip"/>
-                    <Label text="Declined" styleClass="backoffice-users-filter-chip"/>
+                    <Button fx:id="allReviewsFilterButton" mnemonicParsing="false" onAction="#handleReviewFilterAction"
+                            styleClass="backoffice-users-filter-chip" text="All" userData="ALL"/>
+                    <Button fx:id="pendingReviewsFilterButton" mnemonicParsing="false" onAction="#handleReviewFilterAction"
+                            styleClass="backoffice-users-filter-chip" text="Pending Review" userData="PENDING"/>
+                    <Button fx:id="approvedReviewsFilterButton" mnemonicParsing="false" onAction="#handleReviewFilterAction"
+                            styleClass="backoffice-users-filter-chip" text="Approved" userData="APPROVED"/>
+                    <Button fx:id="declinedReviewsFilterButton" mnemonicParsing="false" onAction="#handleReviewFilterAction"
+                            styleClass="backoffice-users-filter-chip" text="Declined" userData="DECLINED"/>
                 </HBox>
 
                 <HBox spacing="10.0">
                     <TextField fx:id="searchField" promptText="Search by name or email..." styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
-                    <ComboBox fx:id="statusFilterComboBox" prefWidth="150.0" styleClass="backoffice-form-input"/>
+                    <ComboBox fx:id="statusFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
                     <ComboBox fx:id="roleFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
                 </HBox>
 
+                <FlowPane alignment="CENTER_LEFT" hgap="8.0" vgap="8.0">
+                    <Label fx:id="selectionSummaryLabel" text="0 selected" styleClass="backoffice-users-count-badge"/>
+                    <Button mnemonicParsing="false" onAction="#handleBulkApprove" styleClass="backoffice-primary-button" text="Approve Selected"/>
+                    <Button mnemonicParsing="false" onAction="#handleBulkDecline" styleClass="backoffice-secondary-button" text="Decline Selected"/>
+                    <Button mnemonicParsing="false" onAction="#handleBulkMoveToPending" styleClass="backoffice-secondary-button" text="Move To Pending"/>
+                    <Button mnemonicParsing="false" onAction="#handleBulkActivate" styleClass="backoffice-secondary-button" text="Activate"/>
+                    <Button mnemonicParsing="false" onAction="#handleBulkSuspend" styleClass="backoffice-secondary-button" text="Suspend"/>
+                    <Button mnemonicParsing="false" onAction="#handleBulkToggleProfile" styleClass="backoffice-secondary-button" text="Toggle Profile"/>
+                </FlowPane>
+
                 <StackPane VBox.vgrow="ALWAYS">
-                    <TableView fx:id="usersTable" prefHeight="320.0" styleClass="backoffice-table backoffice-users-table">
+                    <TableView fx:id="usersTable" prefHeight="360.0" styleClass="backoffice-table backoffice-users-table">
                         <columns>
-                            <TableColumn fx:id="fullNameColumn" prefWidth="180.0" text="Name"/>
-                            <TableColumn fx:id="emailColumn" prefWidth="230.0" text="Email"/>
-                            <TableColumn fx:id="roleColumn" prefWidth="115.0" text="Role"/>
-                            <TableColumn fx:id="statusColumn" prefWidth="125.0" text="Status"/>
-                            <TableColumn fx:id="fraudRiskColumn" prefWidth="220.0" text="Fraud Risk"/>
-                            <TableColumn fx:id="createdAtColumn" prefWidth="150.0" text="Created"/>
-                            <TableColumn fx:id="actionsColumn" prefWidth="190.0" text="Actions"/>
+                            <TableColumn fx:id="fullNameColumn" prefWidth="170.0" text="Name"/>
+                            <TableColumn fx:id="emailColumn" prefWidth="220.0" text="Email"/>
+                            <TableColumn fx:id="roleColumn" prefWidth="110.0" text="Role"/>
+                            <TableColumn fx:id="reviewStatusColumn" prefWidth="125.0" text="Review"/>
+                            <TableColumn fx:id="statusColumn" prefWidth="110.0" text="Account"/>
+                            <TableColumn fx:id="profileStatusColumn" prefWidth="110.0" text="Profile"/>
+                            <TableColumn fx:id="fraudRiskColumn" prefWidth="220.0" text="Fraud Check"/>
+                            <TableColumn fx:id="linkedProfileColumn" prefWidth="130.0" text="Linked Profile"/>
+                            <TableColumn fx:id="createdAtColumn" prefWidth="145.0" text="Created"/>
+                            <TableColumn fx:id="actionsColumn" prefWidth="285.0" text="Actions"/>
                         </columns>
                     </TableView>
                 </StackPane>
@@ -83,7 +128,7 @@
                 <HBox alignment="CENTER_LEFT" spacing="12.0">
                     <VBox spacing="4.0" HBox.hgrow="ALWAYS">
                         <Label text="Quick Editor" styleClass="backoffice-section-title"/>
-                        <Label text="Create a new user or update the selected account from the directory."
+                        <Label text="Create a new user or update one selected account with review status, account access, and profile visibility."
                                styleClass="backoffice-panel-copy"/>
                     </VBox>
                     <Button onAction="#handleRefreshUsers" styleClass="backoffice-secondary-button" text="Refresh"/>
@@ -108,13 +153,24 @@
                                 <ComboBox fx:id="roleComboBox" styleClass="backoffice-form-input"/>
                             </VBox>
                             <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                                <Label text="Status" styleClass="backoffice-form-label"/>
+                                <Label text="Account State" styleClass="backoffice-form-label"/>
                                 <ComboBox fx:id="statusComboBox" styleClass="backoffice-form-input"/>
                             </VBox>
                         </HBox>
                     </VBox>
 
                     <VBox spacing="10.0" HBox.hgrow="ALWAYS">
+                        <HBox spacing="14.0">
+                            <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                                <Label text="Review State" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="reviewStatusComboBox" styleClass="backoffice-form-input"/>
+                            </VBox>
+                            <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                                <Label text="Profile Visibility" styleClass="backoffice-form-label"/>
+                                <ComboBox fx:id="profileStatusComboBox" styleClass="backoffice-form-input"/>
+                            </VBox>
+                        </HBox>
+
                         <VBox spacing="6.0">
                             <Label text="Temporary Password" styleClass="backoffice-form-label"/>
                             <PasswordField fx:id="passwordField" promptText="Mot de passe temporaire" styleClass="backoffice-form-input"/>
@@ -124,11 +180,16 @@
                             <Label text="Confirm Password" styleClass="backoffice-form-label"/>
                             <PasswordField fx:id="confirmPasswordField" promptText="Confirmer le mot de passe" styleClass="backoffice-form-input"/>
                         </VBox>
-
-                        <Label text="Use the create flow for new registrations. Updating a selected user keeps the password unchanged."
-                               wrapText="true" styleClass="backoffice-panel-copy"/>
                     </VBox>
                 </HBox>
+
+                <VBox spacing="8.0" styleClass="backoffice-users-editor-insight-panel">
+                    <Label text="Selected User Insight" styleClass="backoffice-form-label"/>
+                    <Label fx:id="selectedUserInsightLabel"
+                           text="Select one user to inspect tailored admin guidance."
+                           wrapText="true"
+                           styleClass="backoffice-panel-copy"/>
+                </VBox>
 
                 <HBox spacing="10.0">
                     <Button onAction="#handleCreateUser" styleClass="backoffice-primary-button" text="Create User"/>
