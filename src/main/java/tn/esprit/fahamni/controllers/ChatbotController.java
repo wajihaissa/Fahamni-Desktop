@@ -18,6 +18,8 @@ import tn.esprit.fahamni.services.ai.GeminiService;
 
 import java.net.URL;
 import java.util.ResourceBundle;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,6 +29,11 @@ public class ChatbotController implements Initializable {
     private final CourseContextBuilder courseContextBuilder = new CourseContextBuilder();
     private final AtomicReference<String> courseContext = new AtomicReference<>("");
     private final AtomicBoolean isContextLoaded = new AtomicBoolean(false);
+    private final ExecutorService chatExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "ChatbotWorker");
+        t.setDaemon(true);
+        return t;
+    });
 
     @FXML
     private VBox chatBox;
@@ -64,7 +71,8 @@ public class ChatbotController implements Initializable {
 
         HBox typingRow = addMessageRow("Typing...", false);
 
-        Thread worker = new Thread(() -> {
+        // Submit chat request to thread pool
+        chatExecutor.submit(() -> {
             try {
                 String response;
                 String context = courseContext.get();
@@ -84,8 +92,6 @@ public class ChatbotController implements Initializable {
                 });
             }
         });
-        worker.setDaemon(true);
-        worker.start();
     }
 
     public void setMatiere(Matiere matiere) {
@@ -162,5 +168,15 @@ public class ChatbotController implements Initializable {
 
         chatBox.getChildren().add(row);
         return row;
+    }
+
+    /**
+     * Shutdown the chat executor service gracefully.
+     * Should be called when the controller is destroyed or the window closes.
+     */
+    public void shutdown() {
+        if (chatExecutor != null && !chatExecutor.isShutdown()) {
+            chatExecutor.shutdown();
+        }
     }
 }
