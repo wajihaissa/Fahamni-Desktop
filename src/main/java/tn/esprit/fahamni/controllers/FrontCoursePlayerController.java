@@ -88,6 +88,8 @@ public class FrontCoursePlayerController {
     private void goBackToCourses(ActionEvent event) {
         try {
             shutdownCourseAi();
+            ApplicationState.getInstance().clearCurrentMatiere();
+            ApplicationState.getInstance().setCurrentView("Cours");
 
             Node coursesView = SceneManager.loadView(
                 Main.class,

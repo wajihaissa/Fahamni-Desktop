@@ -7,70 +7,107 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane prefHeight="800.0" prefWidth="1200.0" styleClass="main-root"
-            xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.fahamni.controllers.MainController">
-    <left>
-        <VBox styleClass="sidebar" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets top="20" right="0" bottom="20" left="0"/>
-            </padding>
+<StackPane prefHeight="800.0" prefWidth="1200.0"
+           xmlns="http://javafx.com/javafx/17"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="tn.esprit.fahamni.controllers.MainController">
+    <children>
+        <BorderPane styleClass="main-root">
+            <left>
+                <VBox styleClass="sidebar" BorderPane.alignment="CENTER">
+                    <padding>
+                        <Insets top="20" right="0" bottom="20" left="0"/>
+                    </padding>
 
-            <VBox alignment="CENTER" spacing="10.0" styleClass="sidebar-header">
-                <Label text="FAHAMNI" styleClass="sidebar-title"/>
-            </VBox>
-
-            <VBox spacing="5.0" styleClass="sidebar-menu">
-                <Button fx:id="dashboardButton" maxWidth="Infinity" text="Dashboard" styleClass="sidebar-button" onAction="#showDashboard"/>
-                <Button fx:id="coursButton" maxWidth="Infinity" text="Cours" styleClass="sidebar-button" onAction="#showCours"/>
-                <Button fx:id="callLabButton" maxWidth="Infinity" text="Call Lab" styleClass="sidebar-button" onAction="#showCallLab"/>
-                <Button fx:id="aiButton" maxWidth="Infinity" text="Fahamni AI" styleClass="sidebar-button" onAction="#showFahamniAi"/>
-                <Button fx:id="seancesButton" maxWidth="Infinity" text="Seances" styleClass="sidebar-button" onAction="#showSeances"/>
-                <Button fx:id="reservationsButton" maxWidth="Infinity" text="Reservations" styleClass="sidebar-button" onAction="#showReservations"/>
-                <Button fx:id="plannerButton" maxWidth="Infinity" text="Planner" styleClass="sidebar-button" onAction="#showPlanner"/>
-                <Button fx:id="messengerButton" maxWidth="Infinity" text="Messagerie" styleClass="sidebar-button" onAction="#showMessenger"/>
-                <Button fx:id="quizButton" maxWidth="Infinity" text="Quiz" styleClass="sidebar-button" onAction="#showQuiz"/>
-                <Button fx:id="blogButton" maxWidth="Infinity" text="Blog" styleClass="sidebar-button" onAction="#showBlog"/>
-            </VBox>
-
-            <VBox alignment="BOTTOM_CENTER" spacing="10.0" VBox.vgrow="ALWAYS" styleClass="sidebar-footer">
-                <Button maxWidth="Infinity" text="Logout" styleClass="logout-button" onAction="#handleLogout"/>
-            </VBox>
-        </VBox>
-    </left>
-
-    <top>
-        <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="topbar" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets top="10" right="20" bottom="10" left="20"/>
-            </padding>
-
-            <VBox spacing="3.0">
-                <Label fx:id="pageTitle" text="Dashboard" styleClass="page-title"/>
-                <Label text="Votre espace d'apprentissage Fahamni" styleClass="page-subtitle"/>
-            </VBox>
-
-            <Region HBox.hgrow="ALWAYS"/>
-
-            <HBox spacing="10.0" alignment="CENTER_RIGHT" styleClass="topbar-actions">
-                <Button text="Alertes" styleClass="topbar-pill-button"/>
-                <Button text="Compte" styleClass="topbar-pill-button"/>
-                <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="topbar-profile-card">
-                    <Label text="FS" styleClass="profile-avatar"/>
-                    <VBox spacing="2.0">
-                        <Label text="Etudiant Fahamni" styleClass="profile-name"/>
-                        <Label text="Espace Etudiant" styleClass="profile-role"/>
+                    <VBox alignment="CENTER" spacing="10.0" styleClass="sidebar-header">
+                        <Label text="FAHAMNI" styleClass="sidebar-title"/>
                     </VBox>
+
+                    <VBox spacing="5.0" styleClass="sidebar-menu">
+                        <Button fx:id="dashboardButton" maxWidth="Infinity" onAction="#showDashboard" styleClass="sidebar-button" text="Dashboard"/>
+                        <Button fx:id="coursButton" maxWidth="Infinity" onAction="#showCours" styleClass="sidebar-button" text="Cours"/>
+                        <Button fx:id="callLabButton" maxWidth="Infinity" onAction="#showCallLab" styleClass="sidebar-button" text="Call Lab"/>
+                        <Button fx:id="aiButton" maxWidth="Infinity" onAction="#showFahamniAi" styleClass="sidebar-button" text="Fahamni AI"/>
+                        <Button fx:id="seancesButton" maxWidth="Infinity" onAction="#showSeances" styleClass="sidebar-button" text="Seances"/>
+                        <Button fx:id="reservationsButton" maxWidth="Infinity" onAction="#showReservations" styleClass="sidebar-button" text="Reservations"/>
+                        <Button fx:id="plannerButton" maxWidth="Infinity" onAction="#showPlanner" styleClass="sidebar-button" text="Planner"/>
+                        <Button fx:id="messengerButton" maxWidth="Infinity" onAction="#showMessenger" styleClass="sidebar-button" text="Messagerie"/>
+                        <Button fx:id="quizButton" maxWidth="Infinity" onAction="#showQuiz" styleClass="sidebar-button" text="Quiz"/>
+                        <Button fx:id="blogButton" maxWidth="Infinity" onAction="#showBlog" styleClass="sidebar-button" text="Blog"/>
+                    </VBox>
+
+                    <VBox alignment="BOTTOM_CENTER" spacing="10.0" styleClass="sidebar-footer" VBox.vgrow="ALWAYS">
+                        <Button maxWidth="Infinity" onAction="#handleLogout" styleClass="logout-button" text="Logout"/>
+                    </VBox>
+                </VBox>
+            </left>
+
+            <top>
+                <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="topbar" BorderPane.alignment="CENTER">
+                    <padding>
+                        <Insets top="10" right="20" bottom="10" left="20"/>
+                    </padding>
+
+                    <VBox spacing="3.0">
+                        <Label fx:id="pageTitle" styleClass="page-title" text="Dashboard"/>
+                        <Label styleClass="page-subtitle" text="Votre espace d'apprentissage Fahamni"/>
+                    </VBox>
+
+                    <Region HBox.hgrow="ALWAYS"/>
+
+                    <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="topbar-actions">
+                        <Button styleClass="topbar-pill-button" text="Alertes"/>
+                        <Button styleClass="topbar-pill-button" text="Compte"/>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="topbar-profile-card">
+                            <Label styleClass="profile-avatar" text="FS"/>
+                            <VBox spacing="2.0">
+                                <Label styleClass="profile-name" text="Etudiant Fahamni"/>
+                                <Label styleClass="profile-role" text="Espace Etudiant"/>
+                            </VBox>
+                        </HBox>
+                    </HBox>
                 </HBox>
-            </HBox>
-        </HBox>
-    </top>
+            </top>
 
-    <center>
-        <AnchorPane fx:id="contentPane" styleClass="content-pane" BorderPane.alignment="CENTER"/>
-    </center>
-</BorderPane>
-
+            <center>
+                <AnchorPane styleClass="content-pane" BorderPane.alignment="CENTER">
+                    <children>
+                        <AnchorPane fx:id="contentPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
+                        <Region fx:id="globalAiScrim"
+                                managed="false"
+                                mouseTransparent="true"
+                                style="-fx-background-color: rgba(15, 23, 42, 0.16);"
+                                visible="false"
+                                AnchorPane.bottomAnchor="0.0"
+                                AnchorPane.leftAnchor="0.0"
+                                AnchorPane.rightAnchor="0.0"
+                                AnchorPane.topAnchor="0.0"/>
+                        <VBox fx:id="globalAiPanel"
+                              managed="false"
+                              maxWidth="400.0"
+                              minWidth="400.0"
+                              prefWidth="400.0"
+                              style="-fx-background-color: white; -fx-effect: dropshadow(three-pass-box, rgba(15,23,42,0.16), 18, 0, -4, 0);"
+                              visible="false"
+                              AnchorPane.bottomAnchor="0.0"
+                              AnchorPane.rightAnchor="0.0"
+                              AnchorPane.topAnchor="0.0">
+                            <children>
+                                <AnchorPane fx:id="globalAiContent" VBox.vgrow="ALWAYS"/>
+                            </children>
+                        </VBox>
+                        <Button fx:id="globalAiFab"
+                                onAction="#toggleGlobalAi"
+                                style="-fx-background-color: linear-gradient(to bottom, #0f766e, #0d9488); -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 999px; -fx-padding: 12 20;"
+                                text="Ask Fahamni"
+                                AnchorPane.bottomAnchor="24.0"
+                                AnchorPane.rightAnchor="24.0"/>
+                    </children>
+                </AnchorPane>
+            </center>
+        </BorderPane>
+    </children>
+</StackPane>

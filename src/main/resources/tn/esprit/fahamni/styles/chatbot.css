@@ -2,11 +2,23 @@
     -fx-background-color: linear-gradient(to bottom right, #0f172a, #1e293b);
 }
 
+.global-chat-background {
+    -fx-background-color: linear-gradient(to bottom, #ffffff, #f8fbff);
+    -fx-border-color: #dbe5f6;
+    -fx-border-width: 1 0 0 1;
+}
+
 .chat-header {
     -fx-background-color: rgba(15, 23, 42, 0.78);
     -fx-background-radius: 0 0 18 18;
     -fx-padding: 18 24;
     -fx-effect: dropshadow(three-pass-box, rgba(2, 6, 23, 0.28), 20, 0.12, 0, 6);
+}
+
+.global-chat-header {
+    -fx-background-color: linear-gradient(to right, #0f766e, #115e59);
+    -fx-padding: 18 20 16 20;
+    -fx-spacing: 6;
 }
 
 .chat-header-title {
@@ -51,9 +63,28 @@
     -fx-effect: dropshadow(three-pass-box, rgba(15, 23, 42, 0.12), 10, 0.08, 0, 2);
 }
 
+.global-message-bubble-ai {
+    -fx-background-color: #ecfeff;
+    -fx-text-fill: #11363b;
+    -fx-background-radius: 16 16 16 4;
+    -fx-padding: 10 14;
+    -fx-font-size: 13px;
+    -fx-border-color: #bce8ea;
+    -fx-border-radius: 16 16 16 4;
+}
+
 .chat-composer {
     -fx-background-color: rgba(15, 23, 42, 0.86);
     -fx-padding: 14 18 18 18;
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+
+.global-chat-composer {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2e8f0 transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 14 16 16 16;
     -fx-spacing: 10;
     -fx-alignment: center-left;
 }
@@ -88,4 +119,26 @@
 
 .send-button:pressed {
     -fx-background-color: #1e40af;
+}
+
+.global-send-button {
+    -fx-background-color: linear-gradient(to right, #0f766e, #0d9488);
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-background-radius: 20;
+    -fx-padding: 10 18;
+    -fx-cursor: hand;
+}
+
+.global-send-button:hover {
+    -fx-background-color: linear-gradient(to right, #0d9488, #14b8a6);
+}
+
+.global-chat-context-badge {
+    -fx-background-color: rgba(255, 255, 255, 0.16);
+    -fx-text-fill: #ecfeff;
+    -fx-background-radius: 999px;
+    -fx-padding: 5 10;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
 }

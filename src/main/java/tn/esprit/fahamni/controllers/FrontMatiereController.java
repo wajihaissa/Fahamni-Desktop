@@ -24,6 +24,7 @@ import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.CategoryService;
 import tn.esprit.fahamni.services.MatiereService;
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.ApplicationState;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.ViewNavigator;
 
@@ -213,6 +214,11 @@ public class FrontMatiereController implements Initializable {
             if (pageTitle != null) {
                 pageTitle.setText("Cours: " + (matiere.getTitre() == null ? "Sans titre" : matiere.getTitre()));
             }
+
+            ApplicationState.getInstance().setCurrentMatiere(matiere);
+            ApplicationState.getInstance().setCurrentView(
+                "Cours: " + (matiere.getTitre() == null ? "Sans titre" : matiere.getTitre())
+            );
         } catch (Exception e) {
             System.err.println("Error opening course player: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             e.printStackTrace();

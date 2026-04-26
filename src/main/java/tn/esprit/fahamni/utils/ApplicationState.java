@@ -11,6 +11,7 @@ public class ApplicationState {
 
     private static ApplicationState instance;
     private Matiere currentMatiere;
+    private String currentView = "Dashboard";
 
     private ApplicationState() {
     }
@@ -32,5 +33,16 @@ public class ApplicationState {
 
     public void clearCurrentMatiere() {
         this.currentMatiere = null;
+    }
+
+    public String getCurrentView() {
+        return currentView;
+    }
+
+    public void setCurrentView(String currentView) {
+        if (currentView == null || currentView.isBlank()) {
+            return;
+        }
+        this.currentView = currentView;
     }
 }
