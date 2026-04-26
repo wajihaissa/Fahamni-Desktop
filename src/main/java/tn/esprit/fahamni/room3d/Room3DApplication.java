@@ -10,11 +10,18 @@ import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
 import com.jme3.light.PointLight;
+import com.jme3.light.SpotLight;
 import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
+import com.jme3.math.FastMath;
 import com.jme3.math.Ray;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
+import com.jme3.post.FilterPostProcessor;
+import com.jme3.post.filters.BloomFilter;
+import com.jme3.post.filters.FXAAFilter;
+import com.jme3.post.ssao.SSAOFilter;
 import com.jme3.shadow.CompareMode;
 import com.jme3.shadow.DirectionalLightShadowRenderer;
 import com.jme3.shadow.EdgeFilteringMode;
@@ -84,6 +91,7 @@ public class Room3DApplication extends SimpleApplication {
     private boolean initialized;
     private DirectionalLightShadowRenderer shadowRenderer;
     private DirectionalLight primaryShadowLight;
+    private FilterPostProcessor postProcessor;
 
     private Material floorMaterial;
     private Material wallMaterial;
@@ -97,11 +105,15 @@ public class Room3DApplication extends SimpleApplication {
     private Material screenMaterial;
     private Material boardMaterial;
     private Material storageMaterial;
+    private Material doorMaterial;
+    private Material posterMaterial;
     private Material accentMaterial;
     private Material availableSeatMaterial;
     private Material reservedSeatMaterial;
     private Material maintenanceSeatMaterial;
     private Material unavailableSeatMaterial;
+    private Material sunlightSoftMaterial;
+    private Material sunlightCoreMaterial;
     private Material hoverIndicatorMaterial;
     private Material selectedIndicatorMaterial;
 
@@ -147,7 +159,7 @@ public class Room3DApplication extends SimpleApplication {
         initialized = true;
         setDisplayFps(false);
         setDisplayStatView(false);
-        viewPort.setBackgroundColor(new ColorRGBA(0.88f, 0.91f, 0.95f, 1f));
+        viewPort.setBackgroundColor(new ColorRGBA(0.68f, 0.77f, 0.88f, 1f));
 
         flyCam.setMoveSpeed(14f);
         flyCam.setDragToRotate(true);
@@ -159,6 +171,7 @@ public class Room3DApplication extends SimpleApplication {
         hudFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         initialiseMaterials();
         initialiseShadows();
+        initialisePostProcessing();
         rebuildScene();
         Room3DViewerLauncher.markApplicationReady(this);
     }
@@ -182,6 +195,10 @@ public class Room3DApplication extends SimpleApplication {
         if (shadowRenderer != null) {
             viewPort.removeProcessor(shadowRenderer);
             shadowRenderer = null;
+        }
+        if (postProcessor != null) {
+            viewPort.removeProcessor(postProcessor);
+            postProcessor = null;
         }
         Room3DViewerLauncher.onApplicationClosed(this);
         super.destroy();
@@ -262,7 +279,7 @@ public class Room3DApplication extends SimpleApplication {
         attachTeachingArea(metrics);
         attachSeats(metrics);
         attachCeilingLights(metrics);
-        attachLights();
+        attachLights(metrics);
         positionCamera(metrics);
 
         titleText.setText(buildHeadlineText());
@@ -423,23 +440,39 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private void initialiseMaterials() {
-        floorMaterial = createTexturedLitMaterial(FLOOR_TEXTURE_PATH, new ColorRGBA(0.89f, 0.89f, 0.88f, 1f), 0.46f, 0.06f, 7f);
-        wallMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.96f, 0.95f, 0.92f, 1f), 0.5f, 0.02f, 1.8f);
-        ceilingMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.94f, 0.95f, 0.96f, 1f), 0.42f, 0.01f, 1.2f);
-        deskMaterial = createTexturedLitMaterial(WOOD_TEXTURE_PATH, new ColorRGBA(0.94f, 0.88f, 0.78f, 1f), 0.38f, 0.18f, 18f);
-        stageMaterial = createTexturedLitMaterial(FLOOR_TEXTURE_PATH, new ColorRGBA(0.87f, 0.87f, 0.86f, 1f), 0.4f, 0.03f, 4.5f);
-        trimMaterial = createLitMaterial(new ColorRGBA(0.82f, 0.84f, 0.87f, 1f), 0.5f, 0.1f, 8f);
-        metalMaterial = createLitMaterial(new ColorRGBA(0.29f, 0.31f, 0.35f, 1f), 0.26f, 0.36f, 22f);
-        glassMaterial = createLitMaterial(new ColorRGBA(0.78f, 0.84f, 0.9f, 1f), 0.22f, 0.24f, 14f);
-        lightPanelMaterial = createFlatMaterial(new ColorRGBA(0.97f, 0.97f, 0.95f, 1f));
-        screenMaterial = createFlatMaterial(new ColorRGBA(0.15f, 0.16f, 0.18f, 1f));
-        boardMaterial = createLitMaterial(new ColorRGBA(0.86f, 0.89f, 0.93f, 1f), 0.38f, 0.05f, 4f);
-        storageMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.88f, 0.89f, 0.9f, 1f), 0.42f, 0.04f, 4.5f);
-        accentMaterial = createFlatMaterial(new ColorRGBA(0.72f, 0.85f, 0.92f, 1f));
-        availableSeatMaterial = createLitMaterial(new ColorRGBA(0.24f, 0.34f, 0.56f, 1f));
-        reservedSeatMaterial = createLitMaterial(new ColorRGBA(0.72f, 0.42f, 0.31f, 1f));
-        maintenanceSeatMaterial = createLitMaterial(new ColorRGBA(0.69f, 0.58f, 0.24f, 1f));
-        unavailableSeatMaterial = createLitMaterial(new ColorRGBA(0.5f, 0.54f, 0.6f, 1f));
+        floorMaterial = createTexturedLitMaterial(FLOOR_TEXTURE_PATH, new ColorRGBA(0.87f, 0.84f, 0.8f, 1f), 0.22f, 0.025f, 5f);
+        wallMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.95f, 0.93f, 0.89f, 1f), 0.26f, 0.01f, 1.8f);
+        ceilingMaterial = createTexturedLitMaterial(WALL_TEXTURE_PATH, new ColorRGBA(0.97f, 0.96f, 0.94f, 1f), 0.34f, 0.008f, 1.5f);
+        deskMaterial = createTexturedLitMaterial(WOOD_TEXTURE_PATH, new ColorRGBA(0.62f, 0.46f, 0.3f, 1f), 0.18f, 0.18f, 18f);
+        stageMaterial = createTexturedLitMaterial(WOOD_TEXTURE_PATH, new ColorRGBA(0.54f, 0.4f, 0.27f, 1f), 0.16f, 0.14f, 16f);
+        trimMaterial = createLitMaterial(new ColorRGBA(0.18f, 0.2f, 0.22f, 1f), 0.12f, 0.34f, 28f);
+        metalMaterial = createLitMaterial(new ColorRGBA(0.56f, 0.58f, 0.6f, 1f), 0.08f, 0.72f, 58f);
+        glassMaterial = createTransparentLitMaterial(new ColorRGBA(0.78f, 0.88f, 0.93f, 0.32f), 0.08f, 0.82f, 84f);
+        lightPanelMaterial = createEmissiveLitMaterial(
+            new ColorRGBA(1f, 0.96f, 0.9f, 1f),
+            new ColorRGBA(1f, 0.9f, 0.72f, 1f).mult(1.1f),
+            0.92f,
+            0.03f,
+            2f
+        );
+        screenMaterial = createEmissiveLitMaterial(
+            new ColorRGBA(0.09f, 0.1f, 0.11f, 1f),
+            new ColorRGBA(0.22f, 0.3f, 0.4f, 1f).mult(0.16f),
+            0.04f,
+            0.7f,
+            110f
+        );
+        boardMaterial = createLitMaterial(new ColorRGBA(0.95f, 0.95f, 0.92f, 1f), 0.24f, 0.09f, 10f);
+        storageMaterial = createTexturedLitMaterial(WOOD_TEXTURE_PATH, new ColorRGBA(0.41f, 0.28f, 0.18f, 1f), 0.16f, 0.18f, 24f);
+        doorMaterial = createTexturedLitMaterial(WOOD_TEXTURE_PATH, new ColorRGBA(0.34f, 0.22f, 0.14f, 1f), 0.14f, 0.2f, 22f);
+        posterMaterial = createLitMaterial(new ColorRGBA(0.64f, 0.61f, 0.47f, 1f), 0.32f, 0.08f, 6f);
+        accentMaterial = createLitMaterial(new ColorRGBA(0.76f, 0.6f, 0.31f, 1f), 0.22f, 0.18f, 16f);
+        availableSeatMaterial = createLitMaterial(new ColorRGBA(0.31f, 0.37f, 0.33f, 1f), 0.18f, 0.05f, 6f);
+        reservedSeatMaterial = createLitMaterial(new ColorRGBA(0.59f, 0.38f, 0.26f, 1f), 0.18f, 0.05f, 6f);
+        maintenanceSeatMaterial = createLitMaterial(new ColorRGBA(0.69f, 0.54f, 0.22f, 1f), 0.2f, 0.06f, 6f);
+        unavailableSeatMaterial = createLitMaterial(new ColorRGBA(0.43f, 0.45f, 0.47f, 1f), 0.18f, 0.04f, 5f);
+        sunlightSoftMaterial = createTransparentFlatMaterial(new ColorRGBA(1f, 0.94f, 0.82f, 0.025f));
+        sunlightCoreMaterial = createTransparentFlatMaterial(new ColorRGBA(1f, 0.9f, 0.72f, 0.055f));
         hoverIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.78f, 0.69f, 0.55f, 0.88f));
         selectedIndicatorMaterial = createFlatMaterial(new ColorRGBA(0.88f, 0.68f, 0.36f, 0.96f));
     }
@@ -484,6 +517,31 @@ public class Room3DApplication extends SimpleApplication {
         return material;
     }
 
+    private Material createTransparentLitMaterial(ColorRGBA baseColor, float ambientFactor, float specularStrength, float shininess) {
+        Material material = createLitMaterial(baseColor, ambientFactor, specularStrength, shininess);
+        material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+        return material;
+    }
+
+    private Material createTransparentFlatMaterial(ColorRGBA color) {
+        Material material = createFlatMaterial(color);
+        material.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+        material.getAdditionalRenderState().setDepthWrite(false);
+        return material;
+    }
+
+    private Material createEmissiveLitMaterial(
+        ColorRGBA baseColor,
+        ColorRGBA glowColor,
+        float ambientFactor,
+        float specularStrength,
+        float shininess
+    ) {
+        Material material = createLitMaterial(baseColor, ambientFactor, specularStrength, shininess);
+        material.setColor("GlowColor", glowColor);
+        return material;
+    }
+
     private Material createFlatMaterial(ColorRGBA color) {
         Material material = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         material.setColor("Color", color);
@@ -496,15 +554,22 @@ public class Room3DApplication extends SimpleApplication {
         }
 
         shadowRenderer = new DirectionalLightShadowRenderer(assetManager, 4096, 4);
-        shadowRenderer.setLambda(0.58f);
-        shadowRenderer.setShadowIntensity(0.42f);
+        shadowRenderer.setLambda(0.6f);
+        shadowRenderer.setShadowIntensity(0.28f);
         shadowRenderer.setEdgeFilteringMode(EdgeFilteringMode.PCF8);
         shadowRenderer.setShadowCompareMode(CompareMode.Hardware);
         shadowRenderer.setEnabledStabilization(true);
-        shadowRenderer.setShadowZExtend(48f);
-        shadowRenderer.setShadowZFadeLength(18f);
-        shadowRenderer.setEdgesThickness(3);
+        shadowRenderer.setShadowZExtend(52f);
+        shadowRenderer.setShadowZFadeLength(28f);
+        shadowRenderer.setEdgesThickness(1);
         viewPort.addProcessor(shadowRenderer);
+    }
+
+    private void initialisePostProcessing() {
+        if (postProcessor != null) {
+            viewPort.removeProcessor(postProcessor);
+            postProcessor = null;
+        }
     }
 
     private void updateCameraLens() {
@@ -628,14 +693,17 @@ public class Room3DApplication extends SimpleApplication {
             float windowZ = -metrics.roomDepth() * 0.18f + (index * 0.9f);
             String rightKey = "right-window-" + index;
 
-            sceneRoot.attachChild(createSimpleBox(
+            Geometry windowPane = createSimpleBox(
                 rightKey,
                 0.02f,
                 0.72f,
                 0.32f,
                 glassMaterial,
                 new Vector3f(halfRoomWidth - 0.045f, 1.92f, windowZ)
-            ));
+            );
+            windowPane.setQueueBucket(RenderQueue.Bucket.Transparent);
+            windowPane.setShadowMode(RenderQueue.ShadowMode.Off);
+            sceneRoot.attachChild(windowPane);
             sceneRoot.attachChild(createSimpleBox(
                 rightKey + "-frame",
                 0.032f,
@@ -659,7 +727,7 @@ public class Room3DApplication extends SimpleApplication {
             0.018f,
             0.44f,
             0.7f,
-            accentMaterial,
+            posterMaterial,
             new Vector3f(-halfRoomWidth + 0.068f, 1.78f, -metrics.roomDepth() * 0.18f)
         ));
 
@@ -668,7 +736,7 @@ public class Room3DApplication extends SimpleApplication {
             0.46f,
             1.0f,
             0.03f,
-            storageMaterial,
+            doorMaterial,
             new Vector3f(-halfRoomWidth + 0.88f, 1.0f, -halfRoomDepth + 0.07f)
         ));
         sceneRoot.attachChild(createSimpleBox(
@@ -705,6 +773,8 @@ public class Room3DApplication extends SimpleApplication {
             trimMaterial,
             new Vector3f(0f, 0.09f, -halfRoomDepth + 0.01f)
         ));
+
+        attachWindowSunlight(metrics);
     }
 
     private Geometry createWall(String name, float width, float height, float depth, Vector3f position) {
@@ -888,8 +958,23 @@ public class Room3DApplication extends SimpleApplication {
         }
 
         float x = ((seat.column() - metrics.minColumn()) * metrics.seatSpacingX()) - (metrics.layoutWidth() / 2f);
-        float z = metrics.frontSeatZ() - ((seat.row() - metrics.minRow()) * metrics.seatSpacingZ());
+        float z = metrics.frontSeatZ()
+            - resolveStandardDeskRowBackwardOffset(disposition)
+            - ((seat.row() - metrics.minRow()) * metrics.seatSpacingZ());
         return new Vector3f(x, 0f, z);
+    }
+
+    private float resolveStandardDeskRowBackwardOffset(String disposition) {
+        if (!shouldAttachIndividualDesk(disposition)) {
+            return 0f;
+        }
+
+        // Computer stations need a little more breathing room in front because their desks project farther.
+        return switch (disposition) {
+            case "informatique" -> 0.56f;
+            case "conference" -> 0.43f;
+            default -> 0.41f;
+        };
     }
 
     private Vector3f resolveReunionSeatPosition(Room3DPreviewData.SeatPreview seat, LayoutMetrics metrics) {
@@ -1916,27 +2001,11 @@ public class Room3DApplication extends SimpleApplication {
         ));
         screenNode.attachChild(createSimpleBox(
             "board-surface-center",
-            1.22f,
-            0.64f,
-            0.03f,
-            boardMaterial,
-            new Vector3f(0f, 2.02f, 0.015f)
-        ));
-        screenNode.attachChild(createSimpleBox(
-            "board-surface-left",
-            0.42f,
+            1.2f,
             0.62f,
-            0.04f,
+            0.018f,
             boardMaterial,
-            new Vector3f(-1.05f, 2.0f, 0.02f)
-        ));
-        screenNode.attachChild(createSimpleBox(
-            "board-surface-right",
-            0.42f,
-            0.62f,
-            0.04f,
-            boardMaterial,
-            new Vector3f(1.05f, 2.0f, 0.02f)
+            new Vector3f(0f, 2.02f, 0.018f)
         ));
         screenNode.attachChild(createSimpleBox(
             "board-tray",
@@ -1981,6 +2050,7 @@ public class Room3DApplication extends SimpleApplication {
     private void attachCeilingLights(LayoutMetrics metrics) {
         float[] xPositions = {-metrics.roomWidth() * 0.18f, metrics.roomWidth() * 0.18f};
         float[] zPositions = {-metrics.roomDepth() * 0.22f, metrics.roomDepth() * 0.05f, metrics.roomDepth() * 0.32f};
+        float[] rowIntensities = {0.11f, 0.14f, 0.12f};
         ceilingLightPanels = new Node("ceiling-light-panels");
         sceneRoot.attachChild(ceilingLightPanels);
 
@@ -1998,31 +2068,116 @@ public class Room3DApplication extends SimpleApplication {
                 ));
 
                 PointLight pointLight = new PointLight();
-                pointLight.setColor(new ColorRGBA(1f, 0.97f, 0.94f, 1f).mult(0.48f));
-                pointLight.setRadius(Math.max(6.2f, metrics.roomWidth() * 0.72f));
-                pointLight.setPosition(new Vector3f(x, WALL_HEIGHT - 0.32f, z));
+                pointLight.setColor(new ColorRGBA(1f, 0.97f, 0.94f, 1f).mult(rowIntensities[row] + (column * 0.015f)));
+                pointLight.setRadius(Math.max(4.4f, metrics.roomWidth() * 0.48f));
+                pointLight.setPosition(new Vector3f(x, WALL_HEIGHT - 0.28f, z));
                 sceneRoot.addLight(pointLight);
             }
         }
     }
 
-    private void attachLights() {
+    private void attachLights(LayoutMetrics metrics) {
         AmbientLight ambientLight = new AmbientLight();
-        ambientLight.setColor(new ColorRGBA(0.98f, 0.98f, 1f, 1f).mult(0.34f));
+        ambientLight.setColor(new ColorRGBA(0.98f, 0.97f, 0.94f, 1f).mult(0.24f));
         sceneRoot.addLight(ambientLight);
 
         primaryShadowLight = new DirectionalLight();
-        primaryShadowLight.setDirection(new Vector3f(-0.38f, -0.82f, -0.3f).normalizeLocal());
-        primaryShadowLight.setColor(new ColorRGBA(1f, 0.97f, 0.93f, 1f).mult(0.56f));
+        primaryShadowLight.setDirection(new Vector3f(-0.32f, -0.92f, 0.12f).normalizeLocal());
+        primaryShadowLight.setColor(new ColorRGBA(1f, 0.97f, 0.91f, 1f).mult(0.58f));
         sceneRoot.addLight(primaryShadowLight);
         if (shadowRenderer != null) {
             shadowRenderer.setLight(primaryShadowLight);
         }
 
-        DirectionalLight fillLight = new DirectionalLight();
-        fillLight.setDirection(new Vector3f(0.52f, -0.72f, 0.24f).normalizeLocal());
-        fillLight.setColor(new ColorRGBA(0.9f, 0.95f, 1f, 1f).mult(0.18f));
-        sceneRoot.addLight(fillLight);
+        DirectionalLight daylightFill = new DirectionalLight();
+        daylightFill.setDirection(new Vector3f(-0.78f, -0.48f, 0.28f).normalizeLocal());
+        daylightFill.setColor(new ColorRGBA(0.78f, 0.87f, 0.98f, 1f).mult(0.18f));
+        sceneRoot.addLight(daylightFill);
+
+        DirectionalLight bounceLight = new DirectionalLight();
+        bounceLight.setDirection(new Vector3f(0.22f, -0.72f, 0.66f).normalizeLocal());
+        bounceLight.setColor(new ColorRGBA(1f, 0.94f, 0.87f, 1f).mult(0.14f));
+        sceneRoot.addLight(bounceLight);
+
+        attachWindowDaylight(metrics);
+        attachTeachingSpotlights(metrics);
+    }
+
+    private void attachWindowDaylight(LayoutMetrics metrics) {
+        float halfRoomWidth = metrics.roomWidth() / 2f;
+        float[] daylightZPositions = {
+            -metrics.roomDepth() * 0.22f,
+            -metrics.roomDepth() * 0.04f,
+            metrics.roomDepth() * 0.14f,
+            metrics.roomDepth() * 0.3f
+        };
+
+        for (int index = 0; index < daylightZPositions.length; index++) {
+            float intensity = (index == 1 || index == 2) ? 0.11f : 0.085f;
+            PointLight daylight = new PointLight();
+            daylight.setColor(new ColorRGBA(0.79f, 0.87f, 0.98f, 1f).mult(intensity));
+            daylight.setRadius(Math.max(4.2f, metrics.roomWidth() * 0.44f));
+            daylight.setPosition(new Vector3f(halfRoomWidth - 0.44f, 2.18f, daylightZPositions[index]));
+            sceneRoot.addLight(daylight);
+        }
+    }
+
+    private void attachWindowSunlight(LayoutMetrics metrics) {
+        float halfRoomWidth = metrics.roomWidth() / 2f;
+        float patchHalfLength = Math.max(1.05f, metrics.roomWidth() * 0.18f);
+        float patchHalfDepth = Math.max(0.16f, metrics.roomDepth() * 0.034f);
+        float[] zPositions = {
+            -metrics.roomDepth() * 0.2f,
+            -metrics.roomDepth() * 0.03f,
+            metrics.roomDepth() * 0.14f,
+            metrics.roomDepth() * 0.28f
+        };
+        float[] yaws = {-0.34f, -0.29f, -0.24f, -0.2f};
+
+        for (int index = 0; index < zPositions.length; index++) {
+            float baseX = halfRoomWidth - patchHalfLength - 0.52f - (index * 0.08f);
+
+            Geometry softPatch = createTransparentBox(
+                "window-sunlight-soft-" + index,
+                patchHalfLength,
+                0.0035f,
+                patchHalfDepth,
+                sunlightSoftMaterial,
+                new Vector3f(baseX, 0.004f, zPositions[index])
+            );
+            softPatch.rotate(0f, yaws[index], 0f);
+            sceneRoot.attachChild(softPatch);
+
+            Geometry corePatch = createTransparentBox(
+                "window-sunlight-core-" + index,
+                patchHalfLength * 0.48f,
+                0.0038f,
+                patchHalfDepth * 0.62f,
+                sunlightCoreMaterial,
+                new Vector3f(baseX + 0.34f, 0.005f, zPositions[index] - 0.02f)
+            );
+            corePatch.rotate(0f, yaws[index], 0f);
+            sceneRoot.attachChild(corePatch);
+        }
+    }
+
+    private void attachTeachingSpotlights(LayoutMetrics metrics) {
+        float focusZ = Math.min((metrics.roomDepth() / 2f) - 0.7f, metrics.frontSeatZ() + 2.18f);
+        Vector3f focusPoint = new Vector3f(0f, 1.18f, focusZ);
+        float lateralOffset = Math.max(1.4f, metrics.layoutWidth() * 0.34f);
+        float[] xPositions = {-lateralOffset, lateralOffset};
+
+        for (float x : xPositions) {
+            Vector3f lightPosition = new Vector3f(x, WALL_HEIGHT - 0.18f, focusZ - 0.36f);
+            SpotLight spotLight = new SpotLight();
+            spotLight.setPosition(lightPosition);
+            spotLight.setDirection(focusPoint.subtract(lightPosition).normalizeLocal());
+            spotLight.setSpotRange(Math.max(11f, metrics.roomDepth() + 3f));
+            spotLight.setSpotInnerAngle(0.16f);
+            spotLight.setSpotOuterAngle(0.28f);
+            spotLight.setColor(new ColorRGBA(1f, 0.94f, 0.86f, 1f).mult(0.42f));
+            sceneRoot.addLight(spotLight);
+        }
     }
 
     private void positionCamera(LayoutMetrics metrics) {
@@ -2374,9 +2529,26 @@ public class Room3DApplication extends SimpleApplication {
 
     private Geometry createSimpleBox(String name, float halfWidth, float halfHeight, float halfDepth,
                                      Material material, Vector3f position) {
-        Geometry geometry = new Geometry(name, new Box(halfWidth, halfHeight, halfDepth));
+        Box mesh = new Box(halfWidth, halfHeight, halfDepth);
+        if (material.getTextureParam("DiffuseMap") != null) {
+            mesh.scaleTextureCoordinates(new Vector2f(
+                Math.max(1f, Math.max(halfWidth, halfDepth) * 2.35f),
+                Math.max(1f, Math.max(halfHeight, halfDepth) * 2.35f)
+            ));
+        }
+        Geometry geometry = new Geometry(name, mesh);
         geometry.setMaterial(material);
         geometry.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        geometry.setLocalTranslation(position);
+        return geometry;
+    }
+
+    private Geometry createTransparentBox(String name, float halfWidth, float halfHeight, float halfDepth,
+                                          Material material, Vector3f position) {
+        Geometry geometry = new Geometry(name, new Box(halfWidth, halfHeight, halfDepth));
+        geometry.setMaterial(material);
+        geometry.setQueueBucket(RenderQueue.Bucket.Transparent);
+        geometry.setShadowMode(RenderQueue.ShadowMode.Off);
         geometry.setLocalTranslation(position);
         return geometry;
     }
