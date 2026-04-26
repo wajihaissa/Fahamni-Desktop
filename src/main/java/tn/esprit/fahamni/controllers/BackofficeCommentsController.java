@@ -32,7 +32,7 @@ public class BackofficeCommentsController {
     private final NotificationService notifService = new NotificationService();
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    @FXML private HBox  notifBanner;
+    @FXML private VBox  notifBanner;
     @FXML private Label notifLabel;
     @FXML private Label totalCountLabel;    // En attente
     @FXML private Label visibleCountLabel;  // Approuvés
@@ -165,13 +165,82 @@ public class BackofficeCommentsController {
         List<Notification> notifs = notifService.getUnreadForAdmin().stream()
             .filter(n -> n.getMessage() != null && n.getMessage().contains("Commentaire bloqué"))
             .collect(Collectors.toList());
-        if (notifs.isEmpty()) { notifBanner.setVisible(false); notifBanner.setManaged(false); return; }
-        StringBuilder sb = new StringBuilder();
-        for (Notification n : notifs) sb.append(n.getMessage()).append("\n");
-        notifLabel.setText(sb.toString().trim());
+
+        // Garder seulement les cartes (supprimer l'ancien contenu, garder notifLabel caché)
+        notifBanner.getChildren().removeIf(c -> c != notifLabel);
+
+        if (notifs.isEmpty()) {
+            notifBanner.setVisible(false);
+            notifBanner.setManaged(false);
+            return;
+        }
+
+        for (Notification n : notifs) {
+            String raw = n.getMessage() != null ? n.getMessage() : "";
+            // Extraire auteur, mot interdit et aperçu depuis le message
+            String author  = extractBetween(raw, "bloqué de ", " (mot");
+            String word    = extractBetween(raw, "mot interdit : \"", "\"");
+            String preview = extractBetween(raw, "\") : \"", "\"");
+            if (preview == null || preview.isBlank()) preview = raw;
+
+            // Carte individuelle
+            VBox card = new VBox(6);
+            card.setPadding(new Insets(10, 14, 10, 14));
+            card.setStyle(
+                "-fx-background-color: linear-gradient(to right, #fff3e0, #fff8f0);" +
+                "-fx-border-color: #e67e22; -fx-border-width: 0 0 0 4;" +
+                "-fx-background-radius: 10; -fx-border-radius: 10;");
+
+            // En-tête
+            HBox header = new HBox(8);
+            header.setAlignment(Pos.CENTER_LEFT);
+            Label iconLbl = new Label("⚠");
+            iconLbl.setStyle("-fx-font-size: 16; -fx-text-fill: #e67e22;");
+            Label titleLbl = new Label("Commentaire signalé");
+            titleLbl.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: #c0392b;");
+            Region spacer = new Region(); HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+            Label badgeLbl = new Label("Non lu");
+            badgeLbl.setStyle("-fx-background-color: #e67e22; -fx-text-fill: white;" +
+                "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 2 7;");
+            header.getChildren().addAll(iconLbl, titleLbl, spacer, badgeLbl);
+
+            // Détails
+            Label authorLbl = new Label("👤  " + (author != null ? author : "Inconnu"));
+            authorLbl.setStyle("-fx-font-size: 12; -fx-text-fill: #7f4f1e;");
+
+            Label wordLbl = new Label("🚫  Mot interdit : \"" + (word != null ? word : "?") + "\"");
+            wordLbl.setStyle("-fx-font-size: 12; -fx-text-fill: #c0392b; -fx-font-weight: bold;");
+
+            Label previewLbl = new Label("💬  " + preview);
+            previewLbl.setStyle("-fx-font-size: 11; -fx-text-fill: #8d6e63;");
+            previewLbl.setWrapText(true);
+
+            card.getChildren().addAll(header, authorLbl, wordLbl, previewLbl);
+            notifBanner.getChildren().add(card);
+        }
+
         notifBanner.setVisible(true);
         notifBanner.setManaged(true);
-        notifs.forEach(n -> { try { notifService.update(new Notification() {{ setId(n.getId()); setRecipientId(n.getRecipientId()); setBlogId(n.getBlogId()); setMessage(n.getMessage()); setRead(true); }}); } catch (Exception ignored) {} });
+
+        // Marquer comme lu
+        notifs.forEach(n -> {
+            try {
+                Notification upd = new Notification();
+                upd.setId(n.getId()); upd.setRecipientId(n.getRecipientId());
+                upd.setBlogId(n.getBlogId()); upd.setMessage(n.getMessage()); upd.setRead(true);
+                notifService.update(upd);
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private String extractBetween(String text, String start, String end) {
+        if (text == null) return null;
+        int s = text.indexOf(start);
+        if (s < 0) return null;
+        s += start.length();
+        int e = text.indexOf(end, s);
+        if (e < 0) return text.substring(s);
+        return text.substring(s, e);
     }
 
     private void applySearch(String keyword) {

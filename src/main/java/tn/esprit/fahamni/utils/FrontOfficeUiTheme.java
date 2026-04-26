@@ -12,6 +12,7 @@ public final class FrontOfficeUiTheme {
     private static final String CALENDAR_STYLESHEET = "/com/fahamni/styles/frontoffice-calendar.css";
     private static final String INFRASTRUCTURE_STYLESHEET = "/com/fahamni/styles/frontoffice-infrastructure.css";
     private static final String BLOG_STYLESHEET = "/com/fahamni/styles/frontoffice-blog.css";
+    private static final String ABOUT_STYLESHEET = "/com/fahamni/styles/frontoffice-about.css";
 
     private FrontOfficeUiTheme() {
     }
@@ -56,6 +57,7 @@ public final class FrontOfficeUiTheme {
             case "SeanceListView.fxml" -> CALENDAR_STYLESHEET;
             case "SallesEquipementsView.fxml" -> INFRASTRUCTURE_STYLESHEET;
             case "BlogView.fxml" -> BLOG_STYLESHEET;
+            case "AboutView.fxml" -> ABOUT_STYLESHEET;
             default -> null;
         };
     }

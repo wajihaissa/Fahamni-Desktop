@@ -74,10 +74,10 @@
                 </HBox>
             </VBox>
 
-            <HBox fx:id="notifBanner" alignment="CENTER_LEFT" managed="false" spacing="10.0" styleClass="backoffice-articles-banner" visible="false">
-                <Label text="N" styleClass="backoffice-articles-banner-icon"/>
-                <Label fx:id="notifLabel" text="" wrapText="true" HBox.hgrow="ALWAYS" styleClass="backoffice-articles-banner-text"/>
-            </HBox>
+            <VBox fx:id="notifBanner" managed="false" spacing="6.0" visible="false"
+                  style="-fx-background-color: transparent; -fx-padding: 0 0 4 0;">
+                <Label fx:id="notifLabel" text="" managed="false" visible="false"/>
+            </VBox>
 
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <styleClass>

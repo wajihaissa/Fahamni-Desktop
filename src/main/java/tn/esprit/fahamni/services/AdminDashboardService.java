@@ -6,17 +6,12 @@ import java.util.List;
 
 public class AdminDashboardService {
 
-    private final AdminUserService userService = new AdminUserService();
-    private final AdminSessionService sessionService = new AdminSessionService();
-    private final AdminReservationService reservationService = new AdminReservationService();
-    private final AdminContentService contentService = new AdminContentService();
-
     public AdminDashboardSummary getSummary() {
         return new AdminDashboardSummary(
-            userService.getUsers().size(),
-            sessionService.getSessions().size(),
-            reservationService.getReservations().size(),
-            contentService.getArticles().size()
+            safeUsersCount(),
+            safeSessionsCount(),
+            safeReservationsCount(),
+            safeContentCount()
         );
     }
 
@@ -34,6 +29,42 @@ public class AdminDashboardService {
             "Verifier les seances en brouillon avant publication.",
             "Mettre a jour le contenu pedagogique de la semaine."
         );
+    }
+
+    private int safeUsersCount() {
+        try {
+            return new AdminUserService().getUsers().size();
+        } catch (Exception exception) {
+            System.out.println("Dashboard users count error: " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private int safeSessionsCount() {
+        try {
+            return new AdminSessionService().getSessions().size();
+        } catch (Exception exception) {
+            System.out.println("Dashboard sessions count error: " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private int safeReservationsCount() {
+        try {
+            return new AdminReservationService().getReservations().size();
+        } catch (Exception exception) {
+            System.out.println("Dashboard reservations count error: " + exception.getMessage());
+            return 0;
+        }
+    }
+
+    private int safeContentCount() {
+        try {
+            return new AdminContentService().getArticles().size();
+        } catch (Exception exception) {
+            System.out.println("Dashboard content count error: " + exception.getMessage());
+            return 0;
+        }
     }
 }
 

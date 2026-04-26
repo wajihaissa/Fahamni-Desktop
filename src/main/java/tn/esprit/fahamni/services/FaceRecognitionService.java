@@ -31,8 +31,11 @@ import java.util.Map;
 public class FaceRecognitionService {
 
     private static final long MAX_FACE_IMAGE_SIZE_BYTES = 4L * 1024 * 1024;
-    private static final long[] RETRY_DELAYS_MS = {0L, 200L, 600L};
+    private static final long[] RETRY_DELAYS_MS = {500L, 2000L, 4000L, 7000L};
     private static final double SAFE_DEFAULT_THRESHOLD = 80.0;
+
+    // Verrou global : un seul appel Face++ à la fois dans toute l'app
+    private static final java.util.concurrent.Semaphore FACE_SEMAPHORE = new java.util.concurrent.Semaphore(1, true);
 
     public record FaceStatus(
         String engineStatus,
@@ -232,6 +235,9 @@ public class FaceRecognitionService {
                         return new FaceLoginResult(false, null, detectResult.message());
                     }
 
+                    // Pause entre detect et compare pour respecter la limite du plan gratuit Face++
+                    try { Thread.sleep(2000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+
                     CompareResult compareResult = compareFaces(enrolledToken, detectResult.faceToken());
                     if (!compareResult.success()) {
                         return new FaceLoginResult(false, null, compareResult.message());
@@ -338,6 +344,20 @@ public class FaceRecognitionService {
     }
 
     private JsonObject postWithRetries(String endpoint, Map<String, String> formData) throws IOException, InterruptedException, BusyFaceServiceException {
+        try {
+            FACE_SEMAPHORE.acquire(); // attend que l'accès soit libre
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw ie;
+        }
+        try {
+            return postWithRetriesInternal(endpoint, formData);
+        } finally {
+            FACE_SEMAPHORE.release();
+        }
+    }
+
+    private JsonObject postWithRetriesInternal(String endpoint, Map<String, String> formData) throws IOException, InterruptedException, BusyFaceServiceException {
         IOException lastIoException = null;
         InterruptedException lastInterruptedException = null;
         BusyFaceServiceException lastBusyException = null;
@@ -398,6 +418,7 @@ public class FaceRecognitionService {
         }
 
         String errorMessage = extractProviderError(json);
+        if (errorMessage != null) System.err.println("Face++ error [" + response.statusCode() + "]: " + errorMessage);
         if ("CONCURRENCY_LIMIT_EXCEEDED".equalsIgnoreCase(errorMessage)) {
             throw new BusyFaceServiceException();
         }

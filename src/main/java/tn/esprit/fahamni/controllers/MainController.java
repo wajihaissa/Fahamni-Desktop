@@ -49,10 +49,6 @@ import tn.esprit.fahamni.services.UserAccountService;
 
 public class MainController {
 
-    private static final String THEME_MOON_ICON =
-        "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c3.87 0 7.18-2.45 8.44-5.88-.65.28-1.36.43-2.12.43-2.97 0-5.38-2.41-5.38-5.38 0-2.7 1.99-4.94 4.58-5.33A8.96 8.96 0 0 0 12 3z";
-    private static final String THEME_SUN_ICON =
-        "M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm8.04-18.95l-1.41-1.41-1.8 1.79 1.42 1.42 1.79-1.8zM17.24 19.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 13h3v-2h-3v2zm-8-8h-2v3h2V5zm0 4a3 3 0 100 6 3 3 0 000-6zm-7.03 10.66l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z";
 
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
@@ -71,8 +67,6 @@ public class MainController {
     @FXML private Button quizButton;
     @FXML private Button blogButton;
     @FXML private Button aboutButton;
-    @FXML private Button themeToggleButton;
-    @FXML private SVGPath themeToggleIcon;
     @FXML private Button accountButton;
     @FXML private Label profileAvatarLabel;
     @FXML private Label profileNameLabel;
@@ -179,12 +173,6 @@ public class MainController {
         setActiveButton(aboutButton);
     }
 
-    @FXML
-    private void toggleTheme() {
-        FrontOfficeThemePreference.toggle();
-        applyThemeMode();
-        playThemeSwitchAnimation();
-    }
 
     @FXML
     private void toggleAlertsPopup() {
@@ -250,33 +238,44 @@ public class MainController {
             VBox list = new VBox(0);
             for (int i = 0; i < notifications.size(); i++) {
                 Notification notification = notifications.get(i);
-                boolean approved = notification.getMessage() != null
-                        && (notification.getMessage().contains("approuve") || notification.getMessage().contains("publie"));
-                boolean refused = notification.getMessage() != null && notification.getMessage().contains("refuse");
-                boolean isUnread = !notification.isRead();
+                String msg = notification.getMessage() != null ? notification.getMessage() : "";
+                boolean approved  = msg.contains("approuve") || msg.contains("publie");
+                boolean refused   = msg.contains("refuse");
+                boolean profanity = msg.contains("Commentaire") && (msg.contains("bloqué") || msg.contains("interdit") || msg.contains("⚠"));
+                boolean isUnread  = !notification.isRead();
 
                 VBox item = new VBox(4);
                 item.setPadding(new Insets(10, 16, 10, 16));
-                String background = isUnread
-                        ? (approved
-                            ? (lightTheme ? "rgba(90,205,151,0.14)" : "rgba(50,120,94,0.20)")
-                            : (refused
-                                ? (lightTheme ? "rgba(255,166,184,0.18)" : "rgba(140,54,73,0.20)")
-                                : (lightTheme ? "rgba(99,178,255,0.14)" : "rgba(41,74,109,0.26)")))
-                        : (lightTheme ? "rgba(15,34,52,0.03)" : "rgba(255,255,255,0.03)");
-                item.setStyle("-fx-background-color: " + background + ";");
+                String background;
+                if (!isUnread) {
+                    background = lightTheme ? "rgba(15,34,52,0.03)" : "rgba(255,255,255,0.03)";
+                } else if (profanity) {
+                    background = lightTheme ? "rgba(255,140,0,0.12)" : "rgba(200,80,0,0.22)";
+                } else if (approved) {
+                    background = lightTheme ? "rgba(90,205,151,0.14)" : "rgba(50,120,94,0.20)";
+                } else if (refused) {
+                    background = lightTheme ? "rgba(255,166,184,0.18)" : "rgba(140,54,73,0.20)";
+                } else {
+                    background = lightTheme ? "rgba(99,178,255,0.14)" : "rgba(41,74,109,0.26)";
+                }
+                String borderLeft = profanity && isUnread ? "-fx-border-color: #e67e22; -fx-border-width: 0 0 0 3;" : "";
+                item.setStyle("-fx-background-color: " + background + "; " + borderLeft);
 
                 HBox row = new HBox(8);
                 row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-                Label icon = new Label(approved ? "✓" : (refused ? "✕" : "•"));
-                icon.setStyle("-fx-font-size: 15; -fx-text-fill: " +
-                        (approved ? "#198754" : (refused ? "#d1435b" : "#5f49bf")) + ";");
+                String iconText  = profanity ? "⚠" : (approved ? "✓" : (refused ? "✕" : "•"));
+                String iconColor = profanity ? "#e67e22" : (approved ? "#198754" : (refused ? "#d1435b" : "#5f49bf"));
+                Label icon = new Label(iconText);
+                icon.setStyle("-fx-font-size: 15; -fx-text-fill: " + iconColor + ";");
 
-                Label message = new Label(notification.getMessage() != null ? notification.getMessage() : "");
+                Label message = new Label(msg);
                 message.setWrapText(true);
-                String messageColor = isUnread
-                        ? (approved ? "#c5ffe0" : (refused ? "#ffd4db" : "#e8f5ff"))
-                        : "#92a7bf";
+                String messageColor;
+                if (!isUnread)       messageColor = "#92a7bf";
+                else if (profanity)  messageColor = lightTheme ? "#a04400" : "#ffb347";
+                else if (approved)   messageColor = "#c5ffe0";
+                else if (refused)    messageColor = "#ffd4db";
+                else                 messageColor = "#e8f5ff";
                 message.setStyle("-fx-font-size: 12; -fx-text-fill: " + messageColor + ";");
                 message.setMaxWidth(230);
                 HBox.setHgrow(message, Priority.ALWAYS);
@@ -284,8 +283,11 @@ public class MainController {
                 HBox rightBox = new HBox(4);
                 rightBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
                 if (isUnread) {
-                    Label badge = new Label("Nouveau");
-                    badge.setStyle("-fx-background-color: rgba(79,216,255,0.18); -fx-text-fill: #c6f7ff;" +
+                    String badgeText  = profanity ? "Signalé" : "Nouveau";
+                    String badgeBg    = profanity ? "rgba(230,126,34,0.22)" : "rgba(79,216,255,0.18)";
+                    String badgeColor = profanity ? "#e67e22" : "#c6f7ff";
+                    Label badge = new Label(badgeText);
+                    badge.setStyle("-fx-background-color: " + badgeBg + "; -fx-text-fill: " + badgeColor + ";" +
                             "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;" +
                             "-fx-padding: 1 5;");
                     rightBox.getChildren().add(badge);
@@ -445,14 +447,6 @@ public class MainController {
 
     private void applyThemeMode() {
         FrontOfficeThemePreference.apply(rootPane);
-        boolean lightMode = FrontOfficeThemePreference.isLightMode();
-        if (themeToggleButton != null) {
-            themeToggleButton.setText("");
-            themeToggleButton.setAccessibleText(lightMode ? "Passer en mode sombre" : "Passer en mode clair");
-        }
-        if (themeToggleIcon != null) {
-            themeToggleIcon.setContent(lightMode ? THEME_MOON_ICON : THEME_SUN_ICON);
-        }
         refreshAccountMenuTheme();
         if (alertsPopup != null && alertsPopup.isShowing()) {
             alertsPopup.hide();

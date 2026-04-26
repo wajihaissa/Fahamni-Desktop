@@ -70,11 +70,38 @@ public final class AppConfig {
         return !getGroqApiKey().isBlank();
     }
 
+    public static String getFaceApiKey() {
+        return getEnv("FACEPP_API_KEY", "zJ4uLBQ77Y3sN8YLj_X9OtH-mwXsBe67");
+    }
+
+    public static String getFaceApiSecret() {
+        return getEnv("FACEPP_API_SECRET", "X3uNLB7q2V_Vty3uFmpaJtGazC5sQ4qg");
+    }
+
+    public static String getFaceApiBaseUrl() {
+        return getEnv("FACEPP_API_BASE_URL", "https://api-us.faceplusplus.com");
+    }
+
+    public static boolean isFaceConfigured() {
+        return !getFaceApiKey().isBlank()
+            && !getFaceApiSecret().isBlank()
+            && !getFaceApiBaseUrl().isBlank();
+    }
+
+    public static String getAppSecret() {
+        return getEnv("APP_SECRET", "fahamni_desktop_super_secret_2026_2fa_encrypt_key");
+    }
+
+    public static boolean isAppSecretConfigured() {
+        return !getAppSecret().isBlank();
+    }
+
     private static String getEnv(String key, String fallback) {
-        String value = System.getenv(key);
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        return value.trim();
+        // Priorité : propriété JVM (-Dkey=val) → variable d'env Windows → fallback
+        String prop = System.getProperty(key);
+        if (prop != null && !prop.isBlank() && !prop.startsWith("${")) return prop.trim();
+        String env = System.getenv(key);
+        if (env != null && !env.isBlank()) return env.trim();
+        return fallback;
     }
 }
