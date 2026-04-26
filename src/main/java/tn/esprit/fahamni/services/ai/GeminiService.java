@@ -37,62 +37,70 @@ public class GeminiService {
     private String askGeminiInternal(String prompt) throws Exception {
         String apiKey = resolveApiKey();
         URL url = new URL(API_BASE + apiKey);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setDoOutput(true);
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(30000);
+        HttpURLConnection connection = null;
 
-        JSONObject payload = new JSONObject()
-            .put("contents", new JSONArray()
-                .put(new JSONObject()
-                    .put("parts", new JSONArray()
-                        .put(new JSONObject().put("text", prompt)))));
+        try {
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setDoOutput(true);
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(30000);
 
-        byte[] jsonBytes = payload.toString().getBytes(StandardCharsets.UTF_8);
-        try (OutputStream os = connection.getOutputStream()) {
-            os.write(jsonBytes);
+            JSONObject payload = new JSONObject()
+                .put("contents", new JSONArray()
+                    .put(new JSONObject()
+                        .put("parts", new JSONArray()
+                            .put(new JSONObject().put("text", prompt)))));
+
+            byte[] jsonBytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(jsonBytes);
+            }
+
+            int statusCode = connection.getResponseCode();
+            InputStream stream = statusCode >= 200 && statusCode < 300
+                ? connection.getInputStream()
+                : connection.getErrorStream();
+
+            String responseBody = readStream(stream);
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new RuntimeException("Gemini request failed (" + statusCode + "): " + responseBody);
+            }
+
+            JSONObject responseJson = new JSONObject(responseBody);
+            JSONArray candidates = responseJson.optJSONArray("candidates");
+            if (candidates == null || candidates.isEmpty()) {
+                return "No response candidate returned by Gemini.";
+            }
+
+            JSONObject firstCandidate = candidates.optJSONObject(0);
+            if (firstCandidate == null) {
+                return "Invalid candidate format returned by Gemini.";
+            }
+
+            JSONObject content = firstCandidate.optJSONObject("content");
+            if (content == null) {
+                return "No content returned by Gemini.";
+            }
+
+            JSONArray parts = content.optJSONArray("parts");
+            if (parts == null || parts.isEmpty()) {
+                return "No text parts returned by Gemini.";
+            }
+
+            JSONObject firstPart = parts.optJSONObject(0);
+            if (firstPart == null) {
+                return "Invalid text part returned by Gemini.";
+            }
+
+            String text = firstPart.optString("text", "").trim();
+            return text.isEmpty() ? "Gemini returned an empty response." : text;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
-
-        int statusCode = connection.getResponseCode();
-        InputStream stream = statusCode >= 200 && statusCode < 300
-            ? connection.getInputStream()
-            : connection.getErrorStream();
-
-        String responseBody = readStream(stream);
-        if (statusCode < 200 || statusCode >= 300) {
-            throw new RuntimeException("Gemini request failed (" + statusCode + "): " + responseBody);
-        }
-
-        JSONObject responseJson = new JSONObject(responseBody);
-        JSONArray candidates = responseJson.optJSONArray("candidates");
-        if (candidates == null || candidates.isEmpty()) {
-            return "No response candidate returned by Gemini.";
-        }
-
-        JSONObject firstCandidate = candidates.optJSONObject(0);
-        if (firstCandidate == null) {
-            return "Invalid candidate format returned by Gemini.";
-        }
-
-        JSONObject content = firstCandidate.optJSONObject("content");
-        if (content == null) {
-            return "No content returned by Gemini.";
-        }
-
-        JSONArray parts = content.optJSONArray("parts");
-        if (parts == null || parts.isEmpty()) {
-            return "No text parts returned by Gemini.";
-        }
-
-        JSONObject firstPart = parts.optJSONObject(0);
-        if (firstPart == null) {
-            return "Invalid text part returned by Gemini.";
-        }
-
-        String text = firstPart.optString("text", "").trim();
-        return text.isEmpty() ? "Gemini returned an empty response." : text;
     }
 
     private String resolveApiKey() {
