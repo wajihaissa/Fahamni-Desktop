@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.geometry.Pos?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextField?>
@@ -22,13 +21,19 @@
         <VBox spacing="10.0" style="-fx-padding: 16;">
             <Label text="Call Lab"
                    style="-fx-text-fill: #f8fafc; -fx-font-size: 26px; -fx-font-weight: bold;"/>
-            <Label text="LAN 1-to-1 UDP test environment (video + audio)"
+            <Label text="Room-code matchmaking (MySQL) + LAN UDP audio/video"
                    style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
 
             <HBox spacing="12.0" alignment="CENTER_LEFT"
-                  style="-fx-background-color: rgba(15, 23, 42, 0.9); -fx-background-radius: 14; -fx-padding: 12;">
-                <Label text="Connection Setup"
-                       style="-fx-text-fill: #e2e8f0; -fx-font-size: 13px; -fx-font-weight: bold;"/>
+                  style="-fx-background-color: rgba(15, 23, 42, 0.92); -fx-background-radius: 14; -fx-padding: 12;">
+
+                <VBox spacing="4.0">
+                    <Label text="Connection Setup"
+                           style="-fx-text-fill: #e2e8f0; -fx-font-size: 13px; -fx-font-weight: bold;"/>
+                    <Label fx:id="localIpLabel"
+                           text="Local IP: -"
+                           style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;"/>
+                </VBox>
 
                 <VBox spacing="4.0">
                     <Label text="My Video Port"
@@ -37,25 +42,35 @@
                 </VBox>
 
                 <VBox spacing="4.0">
-                    <Label text="Target IP"
+                    <Label text="Your Room Code"
                            style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;"/>
-                    <TextField fx:id="targetIpField" promptText="192.168.1.100" prefWidth="170"/>
+                    <Label fx:id="roomCodeValueLabel"
+                           text="-"
+                           style="-fx-text-fill: #e2e8f0; -fx-font-size: 20px; -fx-font-weight: bold;"/>
                 </VBox>
 
+                <Button text="Create Room"
+                        onAction="#createRoom"
+                        style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 16;"/>
+
                 <VBox spacing="4.0">
-                    <Label text="Target Video Port"
+                    <Label text="Join Room (6 digits)"
                            style="-fx-text-fill: #94a3b8; -fx-font-size: 11px;"/>
-                    <TextField fx:id="targetPortField" text="5000" promptText="5000"/>
+                    <TextField fx:id="joinRoomCodeField" promptText="123456" prefWidth="130"/>
                 </VBox>
+
+                <Button text="Join Room"
+                        onAction="#joinRoom"
+                        style="-fx-background-color: #0ea5e9; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 10 16;"/>
 
                 <Region HBox.hgrow="ALWAYS"/>
 
-                <Button text="Start Call"
-                        onAction="#startCall"
-                        style="-fx-background-color: #16a34a; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18;"/>
+                <Label fx:id="callStatusLabel"
+                       text="Idle"
+                       style="-fx-text-fill: #f8fafc; -fx-font-size: 12px; -fx-background-color: rgba(30,41,59,0.9); -fx-background-radius: 10; -fx-padding: 7 10;"/>
                 <Button text="End Call"
                         onAction="#endCall"
-                        style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 18;"/>
+                        style="-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-padding: 9 16;"/>
                 <ToggleButton fx:id="muteMicButton"
                               text="Mute Mic"
                               onAction="#toggleMuteMic"
