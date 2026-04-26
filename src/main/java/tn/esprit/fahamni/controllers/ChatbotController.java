@@ -101,9 +101,25 @@ public class ChatbotController implements Initializable {
         isContextLoaded.set(false);
         courseContextBuilder.buildCourseContext(matiere)
             .thenAccept(result -> {
-                courseContext.set(result == null ? "" : result);
-                isContextLoaded.set(true);
-                Platform.runLater(() -> addMessageToUI("Materials loaded! What would you like to know?", false));
+                Platform.runLater(() -> {
+                    if (result == null || result.isBlank()) {
+                        // Ingestion resulted in empty context
+                        isContextLoaded.set(false);
+                        courseContext.set("");
+                        addMessageToUI(
+                            "Warning: Could not extract text from materials. I will answer based on general knowledge.",
+                            false
+                        );
+                    } else {
+                        // Successfully extracted context
+                        courseContext.set(result);
+                        isContextLoaded.set(true);
+                        addMessageToUI(
+                            "Materials loaded! You can now ask specific questions about this course.",
+                            false
+                        );
+                    }
+                });
             })
             .exceptionally(ex -> {
                 System.err.println("Course context ingestion failed: " + ex.getMessage());
@@ -111,7 +127,10 @@ public class ChatbotController implements Initializable {
                 isContextLoaded.set(false);
                 courseContext.set("");
                 Platform.runLater(() ->
-                    addMessageToUI("Failed to load course materials. I can still answer general questions.", false)
+                    addMessageToUI(
+                        "Failed to load course materials. I can still answer general questions.",
+                        false
+                    )
                 );
                 return null;
             });
