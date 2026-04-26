@@ -38,7 +38,7 @@
             </styleClass>
             <HBox alignment="TOP_LEFT" spacing="24.0">
                 <VBox spacing="10.0" HBox.hgrow="ALWAYS">
-                    <Label text="INFRASTRUCTURE WORKSPACE" styleClass="workspace-eyebrow"/>
+                        <Label text="ESPACE INFRASTRUCTURE" styleClass="workspace-eyebrow"/>
                     <Label text="Salles &amp; materiel" styleClass="section-title" wrapText="true"/>
                     <Label text="Consultez l'infrastructure disponible avant de creer une seance presentielle." wrapText="true" styleClass="section-subtitle"/>
                 </VBox>

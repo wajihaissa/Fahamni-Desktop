@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.TilePane?>
+<?import javafx.scene.layout.VBox?>
+<?import tn.esprit.fahamni.utils.AnimatedSpiderwebPane?>
+
+<ScrollPane id="aboutRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="about-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.AboutController">
+    <StackPane styleClass="about-page-shell">
+        <AnimatedSpiderwebPane fx:id="aboutBackgroundSpiderwebPane" styleClass="about-page-spiderweb"/>
+        <VBox alignment="TOP_CENTER" styleClass="about-shell-wrap">
+            <padding>
+                <Insets top="12" right="22" bottom="26" left="22"/>
+            </padding>
+
+            <VBox fx:id="aboutContent" maxWidth="1.7976931348623157E308" spacing="24.0" styleClass="about-content">
+            <HBox fx:id="aboutHeroSection" alignment="TOP_LEFT" spacing="24.0" styleClass="about-hero">
+                <VBox maxWidth="1.7976931348623157E308" minWidth="320.0" prefWidth="0.0" spacing="18.0" styleClass="about-hero-copy" HBox.hgrow="ALWAYS">
+                    <Label text="A PROPOS DE FAHAMNI" styleClass="about-eyebrow"/>
+                    <Label text="Une plateforme educative intelligente ou etudiants, tuteurs et administrateurs evoluent dans un seul ecosysteme d'apprentissage."
+                           styleClass="about-hero-title" wrapText="true"/>
+                    <Label text="Fahamni a ete pense comme bien plus qu'une interface de projet scolaire. L'idee est de reunir tutorat, planification, contenu academique, communication et gestion des salles dans un produit structurant, professionnel et utile au quotidien."
+                           styleClass="about-hero-subtitle" wrapText="true"/>
+                    <FlowPane hgap="12.0" prefWrapLength="520.0" vgap="12.0">
+                        <Label text="Marketplace de tutorat" styleClass="about-chip"/>
+                        <Label text="Calendrier et planner" styleClass="about-chip"/>
+                        <Label text="Salles et materiel" styleClass="about-chip"/>
+                        <Label text="Contenu et ressources" styleClass="about-chip"/>
+                        <Label text="Messagerie et quiz" styleClass="about-chip"/>
+                        <Label text="Authentification securisee" styleClass="about-chip"/>
+                    </FlowPane>
+                </VBox>
+
+                <TilePane fx:id="aboutInsightGrid" hgap="16.0" maxWidth="520.0" minWidth="360.0" prefColumns="2" prefTileWidth="248.0" prefWidth="520.0" vgap="16.0" styleClass="about-insight-grid">
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0">
+                        <styleClass>
+                            <String fx:value="about-side-card"/>
+                            <String fx:value="about-side-card-primary"/>
+                        </styleClass>
+                        <Label text="IDEE DU PROJET" styleClass="about-card-kicker"/>
+                        <Label text="Une seule plateforme pour l'accompagnement, la coordination academique et la gestion operationnelle."
+                               styleClass="about-card-title" wrapText="true"/>
+                        <Label text="Chaque role dispose de sa propre experience, tout en restant connecte au meme flux produit."
+                               styleClass="about-card-copy" wrapText="true"/>
+                    </VBox>
+
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0" styleClass="about-side-card">
+                        <Label text="POURQUOI C'EST IMPORTANT" styleClass="about-card-kicker"/>
+                        <Label text="Cela reduit la fragmentation entre reservation, etude, communication et infrastructure pour une experience plus calme et plus complete."
+                               styleClass="about-card-copy" wrapText="true"/>
+                    </VBox>
+
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0" styleClass="about-side-card">
+                        <Label text="ROLES CONNECTES" styleClass="about-card-kicker"/>
+                        <Label text="Etudiants, tuteurs et administrateurs avancent dans un meme produit au lieu d'utiliser des espaces coupes les uns des autres."
+                               styleClass="about-card-copy" wrapText="true"/>
+                        <FlowPane hgap="8.0" prefWrapLength="220.0" vgap="8.0">
+                            <Label text="Etudiants" styleClass="about-micro-chip"/>
+                            <Label text="Tuteurs" styleClass="about-micro-chip"/>
+                            <Label text="Administrateurs" styleClass="about-micro-chip"/>
+                        </FlowPane>
+                    </VBox>
+
+                    <VBox maxWidth="1.7976931348623157E308" minHeight="170.0" spacing="10.0" styleClass="about-side-card">
+                        <Label text="SOCLE DU PRODUIT" styleClass="about-card-kicker"/>
+                        <Label text="Tutorat, planner, salles, blog, quiz et messagerie forment un environnement utile avant, pendant et apres la seance."
+                               styleClass="about-card-copy" wrapText="true"/>
+                        <FlowPane hgap="8.0" prefWrapLength="220.0" vgap="8.0">
+                            <Label text="En ligne" styleClass="about-micro-chip"/>
+                            <Label text="Presentiel" styleClass="about-micro-chip"/>
+                            <Label text="Securise" styleClass="about-micro-chip"/>
+                        </FlowPane>
+                    </VBox>
+                </TilePane>
+            </HBox>
+
+            <FlowPane fx:id="aboutStatStrip" hgap="16.0" prefWrapLength="1180.0" styleClass="about-stat-strip" vgap="16.0">
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="3" styleClass="about-stat-value"/>
+                    <Label text="Espaces par role" styleClass="about-stat-label"/>
+                    <Label text="Des experiences pour etudiants, tuteurs et administrateurs." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="2" styleClass="about-stat-value"/>
+                    <Label text="Modes de seance" styleClass="about-stat-label"/>
+                    <Label text="Les seances peuvent etre gerees en ligne ou en presentiel." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="6+" styleClass="about-stat-value"/>
+                    <Label text="Modules centraux" styleClass="about-stat-label"/>
+                    <Label text="Reservation, planification, contenu, messagerie, quiz et outils de campus." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="230.0" prefWidth="290.0" spacing="6.0" styleClass="about-stat-card">
+                    <Label text="24/7" styleClass="about-stat-value"/>
+                    <Label text="Securite d'acces" styleClass="about-stat-label"/>
+                    <Label text="JWT, Face ID, recuperation de mot de passe et support 2FA." styleClass="about-stat-copy" wrapText="true"/>
+                </VBox>
+            </FlowPane>
+
+            <VBox fx:id="aboutAudienceSection" spacing="16.0" styleClass="about-section-card">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <VBox spacing="4.0">
+                        <Label text="A qui s'adresse Fahamni" styleClass="about-section-title"/>
+                        <Label text="La plateforme a ete pensee autour de trois besoins differents qui doivent pourtant rester relies."
+                               styleClass="about-section-copy" wrapText="true"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Ouvrir l'accueil" onAction="#handleNavigationAction"
+                            styleClass="about-soft-button" userData="DASHBOARD"/>
+                </HBox>
+
+                <TilePane hgap="18.0" prefColumns="3" prefTileWidth="346.0" prefWidth="1.7976931348623157E308" vgap="18.0" styleClass="about-card-grid">
+                    <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
+                        <Label text="Etudiants" styleClass="about-audience-title"/>
+                        <Label text="Les etudiants peuvent chercher des tuteurs, reserver des seances, organiser leur calendrier, suivre leur planner et garder leurs ressources a portee de main."
+                               styleClass="about-body-copy" wrapText="true"/>
+                    </VBox>
+                    <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
+                        <Label text="Tuteurs" styleClass="about-audience-title"/>
+                        <Label text="Les tuteurs peuvent publier des seances, choisir un mode en ligne ou en presentiel, gerer les demandes, suivre leur activite et publier du contenu."
+                               styleClass="about-body-copy" wrapText="true"/>
+                    </VBox>
+                    <VBox minWidth="280.0" prefWidth="390.0" spacing="10.0" styleClass="about-audience-card">
+                        <Label text="Administrateurs" styleClass="about-audience-title"/>
+                        <Label text="Les administrateurs supervisent utilisateurs, salles, materiel, contenu et qualite de plateforme, donnant a Fahamni une vraie base operationnelle."
+                               styleClass="about-body-copy" wrapText="true"/>
+                    </VBox>
+                </TilePane>
+            </VBox>
+
+            <VBox fx:id="aboutFeatureSection" spacing="16.0" styleClass="about-section-card">
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <VBox spacing="4.0">
+                        <Label text="Fonctionnalites principales" styleClass="about-section-title"/>
+                        <Label text="Fahamni melange accompagnement pedagogique et operations du produit au lieu de les separer dans des outils deconnectes."
+                               styleClass="about-section-copy" wrapText="true"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Voir les ressources" onAction="#handleNavigationAction"
+                            styleClass="about-soft-button" userData="BLOG"/>
+                </HBox>
+
+                <TilePane hgap="18.0" prefColumns="3" prefTileWidth="346.0" prefWidth="1.7976931348623157E308" vgap="18.0" styleClass="about-card-grid">
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="BK" styleClass="about-icon-badge"/>
+                            <Label text="Reservation et gestion des seances" styleClass="about-feature-title"/>
+                        </HBox>
+                        <Label text="Les etudiants peuvent trouver des tuteurs, verifier les disponibilites, reserver et mieux suivre leurs prochains rendez-vous d'apprentissage."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Tutorat" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="PL" styleClass="about-icon-badge"/>
+                            <Label text="Calendrier et planner" styleClass="about-feature-title"/>
+                        </HBox>
+                        <Label text="La plateforme aide a construire une routine d'etude plus guidee grace a la planification et a une structure academique plus claire."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Productivite" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="RM" styleClass="about-icon-badge"/>
+                            <Label text="Salles et materiel" styleClass="about-feature-title"/>
+                        </HBox>
+                        <Label text="Le tutorat en presentiel est soutenu par l'attribution de salles, la disponibilite du materiel et une meilleure visibilite de l'infrastructure."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Gestion" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="RS" styleClass="about-icon-badge"/>
+                            <Label text="Ressources et blog" styleClass="about-feature-title"/>
+                        </HBox>
+                        <Label text="Le contenu educatif rend la plateforme utile meme entre deux seances de tutorat."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Contenu" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="MS" styleClass="about-icon-badge"/>
+                            <Label text="Messagerie et interaction" styleClass="about-feature-title"/>
+                        </HBox>
+                        <Label text="Les fonctions de communication aident apprenants et tuteurs a rester alignes sans passer par plusieurs applications."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Collaboration" styleClass="about-feature-tag"/>
+                    </VBox>
+                    <VBox minWidth="260.0" prefWidth="286.0" spacing="12.0" styleClass="about-feature-card">
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label text="SC" styleClass="about-icon-badge"/>
+                            <Label text="Securite et acces" styleClass="about-feature-title"/>
+                        </HBox>
+                        <Label text="Les sessions JWT, la reinitialisation du mot de passe, Face ID et la double authentification rendent le produit plus fiable et plus professionnel."
+                               styleClass="about-body-copy" wrapText="true"/>
+                        <Label text="Securite" styleClass="about-feature-tag"/>
+                    </VBox>
+                </TilePane>
+            </VBox>
+
+            <HBox fx:id="aboutClosingGrid" alignment="TOP_LEFT" spacing="20.0">
+                <VBox maxWidth="1.7976931348623157E308" minWidth="340.0" prefWidth="0.0" spacing="14.0" styleClass="about-section-card" HBox.hgrow="ALWAYS">
+                    <Label text="Ce qui rend Fahamni different" styleClass="about-section-title"/>
+                    <Label text="Fahamni n'est pas seulement un espace d'apprentissage ni seulement une application de reservation. C'est un produit hybride qui rassemble tutorat, planification, communication, contenu et administration dans une meme experience."
+                           styleClass="about-body-copy" wrapText="true"/>
+                </VBox>
+
+                <VBox maxWidth="1.7976931348623157E308" minWidth="340.0" prefWidth="0.0" spacing="14.0" styleClass="about-section-card" HBox.hgrow="ALWAYS">
+                    <Label text="Vision du produit" styleClass="about-section-title"/>
+                    <Label text="L'objectif est d'offrir aux etudiants une maniere plus simple de trouver de l'aide, aux tuteurs une gestion plus structuree des seances et aux administrateurs de vrais outils de pilotage."
+                           styleClass="about-body-copy" wrapText="true"/>
+                </VBox>
+            </HBox>
+
+            <HBox fx:id="aboutSummaryBanner" alignment="CENTER_LEFT" spacing="24.0" styleClass="about-summary-banner">
+                <VBox maxWidth="1.7976931348623157E308" prefWidth="0.0" spacing="10.0" styleClass="about-summary-copy-block" HBox.hgrow="ALWAYS">
+                    <Label text="Fahamni en une phrase" styleClass="about-summary-title"/>
+                    <Label text="Une plateforme d'accompagnement qui aide les etudiants a trouver du soutien, aide les tuteurs a organiser leurs seances et aide les administrateurs a gerer l'environnement numerique et physique de l'apprentissage."
+                           styleClass="about-summary-copy" wrapText="true"/>
+                </VBox>
+                <VBox minWidth="320.0" prefWidth="360.0" spacing="14.0" styleClass="about-summary-side-block">
+                    <Label text="CE QUE LA PLATEFORME RELIE" styleClass="about-card-kicker"/>
+                    <FlowPane hgap="10.0" prefWrapLength="320.0" vgap="10.0">
+                        <Label text="Etudiants" styleClass="about-chip"/>
+                        <Label text="Tuteurs" styleClass="about-chip"/>
+                        <Label text="Administrateurs" styleClass="about-chip"/>
+                        <Label text="Seances en ligne" styleClass="about-chip"/>
+                        <Label text="Support en presentiel" styleClass="about-chip"/>
+                        <Label text="Salles et materiel" styleClass="about-chip"/>
+                    </FlowPane>
+                    <HBox spacing="10.0">
+                        <Button text="Voir l'accueil" onAction="#handleNavigationAction"
+                                styleClass="about-soft-button" userData="DASHBOARD"/>
+                        <Button text="Trouver un tuteur" onAction="#handleNavigationAction"
+                                styleClass="about-soft-button" userData="RESERVATIONS"/>
+                    </HBox>
+                </VBox>
+            </HBox>
+            </VBox>
+        </VBox>
+    </StackPane>
+</ScrollPane>

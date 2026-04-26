@@ -21,6 +21,34 @@ public class BlogService {
         return MyDataBase.getInstance().getCnx();
     }
 
+    private boolean tableExists(String tableName) {
+        Connection c = cnx();
+        if (c == null || tableName == null || tableName.isBlank()) {
+            return false;
+        }
+        try (ResultSet tables = c.getMetaData().getTables(c.getCatalog(), null, tableName, null)) {
+            return tables.next();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean hasBlogColumn(String columnName) {
+        Connection c = cnx();
+        if (c == null || columnName == null || columnName.isBlank()) {
+            return false;
+        }
+        try (ResultSet columns = c.getMetaData().getColumns(c.getCatalog(), null, "blog", columnName)) {
+            return columns.next();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String blogCategorySelect() {
+        return hasBlogColumn("category") ? "b.category" : "NULL AS category";
+    }
+
     // Mapping catégorie formulaire → BD
     public static String toCategoryDB(String formCat) {
         if (formCat == null) return "study-tips";
@@ -61,28 +89,32 @@ public class BlogService {
     /** Met à jour likes_count et comments_count pour tous les articles (JOIN, compatible toutes versions MySQL) */
     private void syncAllBlogCounts() {
         Connection c = cnx();
-        if (c == null) return;
+        if (c == null || !tableExists("interaction")) return;
         // Likes via LEFT JOIN
-        try (Statement st = c.createStatement()) {
-            st.executeUpdate(
-                "UPDATE blog " +
-                "LEFT JOIN (SELECT blog_id, COUNT(*) AS cnt FROM interaction " +
-                "           WHERE reaction IS NOT NULL AND reaction <> 0 GROUP BY blog_id) t " +
-                "ON blog.id = t.blog_id " +
-                "SET blog.likes_count = COALESCE(t.cnt, 0)");
-        } catch (Exception e) {
-            System.err.println("syncAllBlogCounts (likes): " + e.getMessage());
+        if (hasBlogColumn("likes_count")) {
+            try (Statement st = c.createStatement()) {
+                st.executeUpdate(
+                    "UPDATE blog " +
+                    "LEFT JOIN (SELECT blog_id, COUNT(*) AS cnt FROM interaction " +
+                    "           WHERE reaction IS NOT NULL AND reaction <> 0 GROUP BY blog_id) t " +
+                    "ON blog.id = t.blog_id " +
+                    "SET blog.likes_count = COALESCE(t.cnt, 0)");
+            } catch (Exception e) {
+                System.err.println("syncAllBlogCounts (likes): " + e.getMessage());
+            }
         }
         // Commentaires via LEFT JOIN
-        try (Statement st = c.createStatement()) {
-            st.executeUpdate(
-                "UPDATE blog " +
-                "LEFT JOIN (SELECT blog_id, COUNT(*) AS cnt FROM interaction " +
-                "           WHERE comment IS NOT NULL AND comment <> '' GROUP BY blog_id) t " +
-                "ON blog.id = t.blog_id " +
-                "SET blog.comments_count = COALESCE(t.cnt, 0)");
-        } catch (Exception e) {
-            System.err.println("syncAllBlogCounts (comments): " + e.getMessage());
+        if (hasBlogColumn("comments_count")) {
+            try (Statement st = c.createStatement()) {
+                st.executeUpdate(
+                    "UPDATE blog " +
+                    "LEFT JOIN (SELECT blog_id, COUNT(*) AS cnt FROM interaction " +
+                    "           WHERE comment IS NOT NULL AND comment <> '' GROUP BY blog_id) t " +
+                    "ON blog.id = t.blog_id " +
+                    "SET blog.comments_count = COALESCE(t.cnt, 0)");
+            } catch (Exception e) {
+                System.err.println("syncAllBlogCounts (comments): " + e.getMessage());
+            }
         }
     }
 
@@ -94,9 +126,10 @@ public class BlogService {
         }
         List<Blog> blogs = new ArrayList<>();
         String[] userNameCols = {"full_name", "fullName", "name", "username"};
+        String categorySelect = blogCategorySelect();
         for (String col : userNameCols) {
             blogs.clear();
-            String sql = "SELECT b.id, b.titre, b.content, b.images, b.category, b.status, b.publisher_id, " +
+            String sql = "SELECT b.id, b.titre, b.content, b.images, " + categorySelect + ", b.status, b.publisher_id, " +
                          "b.created_at, b.published_at, u." + col + " AS publisher_name " +
                          "FROM blog b LEFT JOIN user u ON b.publisher_id = u.id " +
                          "WHERE (b.status = 'published' OR b.status IS NULL) " +
@@ -111,7 +144,7 @@ public class BlogService {
         // Fallback sans JOIN
         try (Statement st = c.createStatement();
              ResultSet rs = st.executeQuery(
-                "SELECT b.id, b.titre, b.content, b.images, b.category, b.created_at, b.published_at, " +
+                "SELECT b.id, b.titre, b.content, b.images, " + categorySelect + ", b.created_at, b.published_at, " +
                 "CAST(IFNULL(b.publisher_id,0) AS CHAR) AS publisher_name FROM blog b ORDER BY b.created_at DESC")) {
             while (rs.next()) blogs.add(mapBlog(rs));
         } catch (Exception e) {
@@ -138,34 +171,49 @@ public class BlogService {
         }
 
         int blogId = -1;
-        // Tentative 1 : avec publisher_id, likes_count, comments_count
-        try (PreparedStatement ps = c.prepareStatement(
-                "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id, likes_count, comments_count) " +
-                "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?, 0, 0)",
-                Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, blog.getTitre());
-            ps.setString(2, blog.getContent());
-            ps.setString(3, cat);
-            ps.setInt(4, publisherId);
-            ps.executeUpdate();
-            try (ResultSet keys = ps.getGeneratedKeys()) { if (keys.next()) blogId = keys.getInt(1); }
-        } catch (Exception e1) {
-            System.err.println("addBlog [1]: " + e1.getMessage());
+        List<String> columns = new ArrayList<>(List.of("titre", "content", "images", "status", "created_at", "published_at"));
+        List<String> values = new ArrayList<>(List.of("?", "?", "NULL", "'pending'", "NOW()", "NOW()"));
+        boolean includeCategory = hasBlogColumn("category");
+        boolean includePublisherId = hasBlogColumn("publisher_id");
+        boolean includeLikesCount = hasBlogColumn("likes_count");
+        boolean includeCommentsCount = hasBlogColumn("comments_count");
 
-            // Tentative 2 : avec publisher_id, sans likes/comments
-            try (PreparedStatement ps = c.prepareStatement(
-                    "INSERT INTO blog (titre, content, images, status, category, created_at, published_at, publisher_id) " +
-                    "VALUES (?, ?, NULL, 'pending', ?, NOW(), NOW(), ?)",
-                    Statement.RETURN_GENERATED_KEYS)) {
-                ps.setString(1, blog.getTitre());
-                ps.setString(2, blog.getContent());
-                ps.setString(3, cat);
-                ps.setInt(4, publisherId);
-                ps.executeUpdate();
-                try (ResultSet keys = ps.getGeneratedKeys()) { if (keys.next()) blogId = keys.getInt(1); }
-            } catch (Exception e2) {
-                System.err.println("addBlog [2]: " + e2.getMessage());
+        if (includeCategory) {
+            columns.add("category");
+            values.add("?");
+        }
+        if (includePublisherId) {
+            columns.add("publisher_id");
+            values.add("?");
+        }
+        if (includeLikesCount) {
+            columns.add("likes_count");
+            values.add("0");
+        }
+        if (includeCommentsCount) {
+            columns.add("comments_count");
+            values.add("0");
+        }
+
+        String sql = "INSERT INTO blog (" + String.join(", ", columns) + ") VALUES (" + String.join(", ", values) + ")";
+        try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            int index = 1;
+            ps.setString(index++, blog.getTitre());
+            ps.setString(index++, blog.getContent());
+            if (includeCategory) {
+                ps.setString(index++, cat);
             }
+            if (includePublisherId) {
+                ps.setInt(index++, publisherId);
+            }
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    blogId = keys.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("addBlog: " + e.getMessage());
         }
 
         if (blogId > 0) {
@@ -183,12 +231,19 @@ public class BlogService {
     public void updateBlog(Blog blog) {
         Connection c = cnx();
         if (c == null || blog.getId() <= 0) return;
-        try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE blog SET titre = ?, content = ?, category = ? WHERE id = ?")) {
+        boolean includeCategory = hasBlogColumn("category");
+        String sql = includeCategory
+            ? "UPDATE blog SET titre = ?, content = ?, category = ? WHERE id = ?"
+            : "UPDATE blog SET titre = ?, content = ? WHERE id = ?";
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, blog.getTitre());
             ps.setString(2, blog.getContent());
-            ps.setString(3, toCategoryDB(blog.getImage()));
-            ps.setInt(4, blog.getId());
+            if (includeCategory) {
+                ps.setString(3, toCategoryDB(blog.getImage()));
+                ps.setInt(4, blog.getId());
+            } else {
+                ps.setInt(3, blog.getId());
+            }
             ps.executeUpdate();
         } catch (Exception e) {
             System.err.println("Erreur updateBlog: " + e.getMessage());
@@ -198,9 +253,11 @@ public class BlogService {
     public void deleteBlog(int id) {
         Connection c = cnx();
         if (c == null || id <= 0) return;
-        try (PreparedStatement ps = c.prepareStatement("DELETE FROM interaction WHERE blog_id = ?")) {
-            ps.setInt(1, id); ps.executeUpdate();
-        } catch (Exception ignored) {}
+        if (tableExists("interaction")) {
+            try (PreparedStatement ps = c.prepareStatement("DELETE FROM interaction WHERE blog_id = ?")) {
+                ps.setInt(1, id); ps.executeUpdate();
+            } catch (Exception ignored) {}
+        }
         try (PreparedStatement ps = c.prepareStatement("DELETE FROM blog WHERE id = ?")) {
             ps.setInt(1, id); ps.executeUpdate();
         } catch (Exception e) {
@@ -215,9 +272,10 @@ public class BlogService {
         List<Blog> result = new ArrayList<>();
         String kw = "%" + keyword + "%";
         String[] cols = {"full_name", "fullName", "name", "username"};
+        String categorySelect = blogCategorySelect();
         for (String col : cols) {
             result.clear();
-            String sql = "SELECT b.id, b.titre, b.content, b.images, b.category, b.created_at, b.published_at, " +
+            String sql = "SELECT b.id, b.titre, b.content, b.images, " + categorySelect + ", b.created_at, b.published_at, " +
                          "u." + col + " AS publisher_name FROM blog b LEFT JOIN user u ON b.publisher_id = u.id " +
                          "WHERE b.titre LIKE ? OR b.content LIKE ? OR u." + col + " LIKE ? ORDER BY b.created_at DESC";
             try (PreparedStatement ps = c.prepareStatement(sql)) {
@@ -228,7 +286,7 @@ public class BlogService {
             } catch (Exception e) { /* colonne suivante */ }
         }
         try (PreparedStatement ps = c.prepareStatement(
-                "SELECT b.id, b.titre, b.content, b.images, b.category, b.created_at, b.published_at, " +
+                "SELECT b.id, b.titre, b.content, b.images, " + categorySelect + ", b.created_at, b.published_at, " +
                 "CAST(IFNULL(b.publisher_id,0) AS CHAR) AS publisher_name FROM blog b WHERE b.titre LIKE ? OR b.content LIKE ? ORDER BY b.created_at DESC")) {
             ps.setString(1, kw); ps.setString(2, kw);
             ResultSet rs = ps.executeQuery();
@@ -403,18 +461,22 @@ public class BlogService {
     /** Recalcule et met à jour likes_count et comments_count dans la table blog */
     public void updateBlogCounts(int blogId) {
         Connection c = cnx();
-        if (c == null || blogId <= 0) return;
-        try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE blog SET likes_count = (SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND reaction IS NOT NULL AND reaction <> 0) WHERE id = ?")) {
-            ps.setInt(1, blogId); ps.setInt(2, blogId);
-            ps.executeUpdate();
-        } catch (Exception e) { System.err.println("Erreur updateBlogCounts likes: " + e.getMessage()); }
+        if (c == null || blogId <= 0 || !tableExists("interaction")) return;
+        if (hasBlogColumn("likes_count")) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "UPDATE blog SET likes_count = (SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND reaction IS NOT NULL AND reaction <> 0) WHERE id = ?")) {
+                ps.setInt(1, blogId); ps.setInt(2, blogId);
+                ps.executeUpdate();
+            } catch (Exception e) { System.err.println("Erreur updateBlogCounts likes: " + e.getMessage()); }
+        }
 
-        try (PreparedStatement ps = c.prepareStatement(
-                "UPDATE blog SET comments_count = (SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND comment IS NOT NULL AND comment <> '') WHERE id = ?")) {
-            ps.setInt(1, blogId); ps.setInt(2, blogId);
-            ps.executeUpdate();
-        } catch (Exception e) { System.err.println("Erreur updateBlogCounts comments: " + e.getMessage()); }
+        if (hasBlogColumn("comments_count")) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "UPDATE blog SET comments_count = (SELECT COUNT(*) FROM interaction WHERE blog_id = ? AND comment IS NOT NULL AND comment <> '') WHERE id = ?")) {
+                ps.setInt(1, blogId); ps.setInt(2, blogId);
+                ps.executeUpdate();
+            } catch (Exception e) { System.err.println("Erreur updateBlogCounts comments: " + e.getMessage()); }
+        }
     }
 
     // ===================== HELPERS =====================

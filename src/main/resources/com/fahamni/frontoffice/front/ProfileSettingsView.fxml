@@ -6,6 +6,7 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.Region?>
@@ -24,8 +25,8 @@
         <HBox spacing="0.0" styleClass="profile-settings-shell">
             <VBox prefWidth="270.0" styleClass="profile-settings-sidebar">
                 <VBox spacing="8.0" styleClass="profile-settings-sidebar-header">
-                    <Label text="Profile Settings" styleClass="profile-sidebar-title"/>
-                    <Label text="Manage your account" styleClass="profile-sidebar-copy"/>
+                    <Label text="Parametres du profil" styleClass="profile-sidebar-title"/>
+                    <Label text="Gere ton compte" styleClass="profile-sidebar-copy"/>
                     <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="profile-sidebar-user-card">
                         <Label fx:id="profileAvatarLabel" text="FS" styleClass="profile-avatar-large"/>
                         <VBox spacing="2.0">
@@ -37,30 +38,30 @@
 
                 <VBox spacing="10.0" styleClass="profile-nav-list">
                     <Button fx:id="personalInfoNavButton" maxWidth="Infinity" onAction="#showPersonalInfoSection"
-                            styleClass="profile-nav-button" text="Personal Info"/>
+                            styleClass="profile-nav-button" text="Informations personnelles"/>
                     <Button fx:id="accountSettingsNavButton" maxWidth="Infinity" onAction="#showAccountSettingsSection"
-                            styleClass="profile-nav-button" text="Account Settings"/>
+                            styleClass="profile-nav-button" text="Parametres du compte"/>
                     <Button fx:id="certificationsNavButton" maxWidth="Infinity" onAction="#showCertificationsSection"
                             styleClass="profile-nav-button" text="Certifications"/>
                     <Button fx:id="securityNavButton" maxWidth="Infinity" onAction="#showSecuritySection"
-                            styleClass="profile-nav-button" text="Security"/>
+                            styleClass="profile-nav-button" text="Securite"/>
                 </VBox>
 
                 <Region VBox.vgrow="ALWAYS"/>
 
                 <VBox spacing="10.0" styleClass="profile-sidebar-footer">
-                    <Label text="Settings that affect account status stay managed in the backoffice."
+                    <Label text="Les parametres qui touchent au statut du compte restent geres depuis le backoffice."
                            wrapText="true" styleClass="section-subtitle"/>
                     <Button maxWidth="Infinity" onAction="#handleDeleteAccount" styleClass="profile-outline-danger-button"
-                            text="Delete Account"/>
+                            text="Supprimer le compte"/>
                 </VBox>
             </VBox>
 
             <VBox spacing="18.0" HBox.hgrow="ALWAYS" styleClass="profile-settings-content">
                 <VBox spacing="6.0">
-                    <Label fx:id="contentTitleLabel" text="Personal Info" styleClass="profile-content-title"/>
+                    <Label fx:id="contentTitleLabel" text="Informations personnelles" styleClass="profile-content-title"/>
                     <Label fx:id="contentSubtitleLabel"
-                           text="Update your personal details and profile information."
+                           text="Mets a jour tes informations personnelles et ton profil."
                            styleClass="section-subtitle" wrapText="true"/>
                 </VBox>
 
@@ -69,79 +70,79 @@
                 <StackPane>
                     <VBox fx:id="personalInfoSection" managed="false" visible="false" spacing="18.0" styleClass="profile-section-panel">
                         <VBox spacing="8.0">
-                            <Label text="Profile Picture" styleClass="form-label"/>
+                            <Label text="Photo de profil" styleClass="form-label"/>
                             <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="profile-upload-row">
                                 <Button onAction="#handleChooseProfilePicture" styleClass="profile-inline-button"
                                         text="Choisir un fichier"/>
-                                <Label text="Aucun fichier choisi" styleClass="section-subtitle"/>
+                                <Label fx:id="profilePictureStatusLabel" text="Aucun fichier choisi" styleClass="section-subtitle"/>
                             </HBox>
-                            <Label text="Accepted: JPG, PNG, WEBP. Max size: 5MB." styleClass="profile-inline-note"/>
+                            <Label text="Formats acceptes : JPG, PNG, WEBP. Taille max : 5 Mo." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <HBox spacing="20.0">
                             <VBox spacing="8.0" HBox.hgrow="ALWAYS">
-                                <Label text="First Name" styleClass="form-label"/>
-                                <TextField fx:id="firstNameField" promptText="First name" styleClass="form-field"/>
+                                <Label text="Prenom" styleClass="form-label"/>
+                                <TextField fx:id="firstNameField" promptText="Prenom" styleClass="form-field"/>
                             </VBox>
                             <VBox spacing="8.0" HBox.hgrow="ALWAYS">
-                                <Label text="Last Name" styleClass="form-label"/>
-                                <TextField fx:id="lastNameField" promptText="Last name" styleClass="form-field"/>
+                                <Label text="Nom" styleClass="form-label"/>
+                                <TextField fx:id="lastNameField" promptText="Nom" styleClass="form-field"/>
                             </VBox>
                         </HBox>
 
                         <VBox spacing="8.0">
-                            <Label text="Email Address" styleClass="form-label"/>
-                            <TextField fx:id="emailField" editable="false" promptText="Email address"
+                            <Label text="Adresse e-mail" styleClass="form-label"/>
+                            <TextField fx:id="emailField" editable="false" promptText="Adresse e-mail"
                                        styleClass="form-field profile-readonly-field"/>
-                            <Label text="Email cannot be changed from the front office for now." styleClass="profile-inline-note"/>
+                            <Label text="L'adresse e-mail reste synchronisee avec le compte connecte." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <VBox spacing="8.0">
-                            <Label text="Phone Number" styleClass="form-label"/>
+                            <Label text="Numero de telephone" styleClass="form-label"/>
                             <TextField fx:id="phoneField" promptText="+216 00 000 000" styleClass="form-field"/>
                         </VBox>
 
                         <VBox spacing="8.0">
-                            <Label text="Bio / About You" styleClass="form-label"/>
-                            <TextArea fx:id="bioArea" prefRowCount="5" promptText="Tell us about yourself, your expertise, and your learning goals..."
+                            <Label text="Bio / A propos de toi" styleClass="form-label"/>
+                            <TextArea fx:id="bioArea" prefRowCount="5" promptText="Parle-nous de toi, de ton expertise et de tes objectifs d'apprentissage..."
                                       styleClass="text-area"/>
-                            <Label text="Phone, bio and photo are visual fields for now. We can wire them later when you want."
+                            <Label text="Le telephone, la bio et la photo de profil sont maintenant enregistres sur ton compte."
                                    styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
                         <VBox spacing="8.0">
                             <Label text="Role" styleClass="form-label"/>
                             <TextField fx:id="roleField" editable="false" styleClass="form-field profile-readonly-field"/>
-                            <Label text="Role is assigned at registration or from the backoffice." styleClass="profile-inline-note"/>
+                            <Label text="Le role est attribue a l'inscription ou depuis le backoffice." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <HBox spacing="12.0" styleClass="profile-form-actions">
-                            <Button onAction="#handleSaveProfile" styleClass="profile-accent-button" text="Save Changes"/>
-                            <Button onAction="#handleResetForm" styleClass="profile-soft-button" text="Reset"/>
+                            <Button onAction="#handleSaveProfile" styleClass="profile-accent-button" text="Enregistrer les modifications"/>
+                            <Button onAction="#handleResetForm" styleClass="profile-soft-button" text="Reinitialiser"/>
                         </HBox>
                     </VBox>
 
                     <VBox fx:id="accountSettingsSection" managed="false" visible="false" spacing="18.0" styleClass="profile-section-panel">
                         <HBox spacing="20.0">
                             <VBox spacing="8.0" HBox.hgrow="ALWAYS">
-                                <Label text="Account Status" styleClass="form-label"/>
+                                <Label text="Statut du compte" styleClass="form-label"/>
                                 <TextField fx:id="accountStatusField" editable="false" styleClass="form-field profile-readonly-field"/>
                             </VBox>
                             <VBox spacing="8.0" HBox.hgrow="ALWAYS">
-                                <Label text="Assigned Role" styleClass="form-label"/>
+                                <Label text="Role attribue" styleClass="form-label"/>
                                 <TextField fx:id="accountRoleField" editable="false" styleClass="form-field profile-readonly-field"/>
                             </VBox>
                         </HBox>
 
                         <VBox spacing="8.0">
-                            <Label text="Validation Status" styleClass="form-label"/>
+                            <Label text="Statut de validation" styleClass="form-label"/>
                             <TextField fx:id="validationStatusField" editable="false" styleClass="form-field profile-readonly-field"/>
                         </VBox>
 
                         <VBox spacing="8.0">
-                            <Label text="Account Created" styleClass="form-label"/>
+                            <Label text="Compte cree le" styleClass="form-label"/>
                             <TextField fx:id="createdAtField" editable="false" styleClass="form-field profile-readonly-field"/>
-                            <Label text="These values are managed by admins in the backoffice only." styleClass="profile-inline-note"/>
+                            <Label text="Ces valeurs sont gerees uniquement par les administrateurs dans le backoffice." styleClass="profile-inline-note"/>
                         </VBox>
                     </VBox>
 
@@ -149,43 +150,66 @@
                         <VBox spacing="8.0">
                             <Label text="Certifications" styleClass="form-label"/>
                             <TextArea fx:id="certificationsArea" prefRowCount="6"
-                                      promptText="e.g., AWS Certified Solutions Architect, IELTS Band 8, Microsoft Azure Fundamentals..."
+                                      promptText="ex. AWS Certified Solutions Architect, IELTS Band 8, Microsoft Azure Fundamentals..."
                                       styleClass="text-area"/>
-                            <Label text="Enter each certification separated by commas." styleClass="profile-inline-note"/>
+                            <Label text="Saisis chaque certification en les separant par des virgules." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <HBox spacing="12.0">
-                            <Button onAction="#handleSaveCertifications" styleClass="profile-accent-button" text="Save Certifications"/>
+                            <Button onAction="#handleSaveCertifications" styleClass="profile-accent-button" text="Enregistrer les certifications"/>
                         </HBox>
                     </VBox>
 
                     <VBox fx:id="securitySection" managed="false" visible="false" spacing="18.0" styleClass="profile-section-panel">
                         <VBox spacing="6.0">
                             <Label text="Camera Face ID" styleClass="form-label"/>
-                            <Label text="Face engine: Connected" styleClass="profile-inline-note"/>
-                            <Label text="Status: Ready for UI hookup" styleClass="profile-inline-note"/>
+                            <Label fx:id="faceEngineStatusLabel" text="Moteur Face ID : Connecte" styleClass="profile-inline-note"/>
+                            <Label fx:id="faceEnrollmentStatusLabel" text="Statut : Non enrole" styleClass="profile-inline-note"/>
+                            <Label fx:id="faceEnrolledAtLabel" text="Enregistre le : Jamais" styleClass="profile-inline-note"/>
                             <HBox spacing="12.0">
-                                <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Save My Face"/>
-                                <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-danger-inline-button" text="Remove Face ID"/>
+                                <Button onAction="#handleEnrollFaceId" styleClass="profile-accent-button" text="Capturer mon visage"/>
+                                <Button onAction="#handleRemoveFaceId" styleClass="profile-danger-inline-button" text="Supprimer Face ID"/>
                             </HBox>
+                            <Label text="L'enrolement ouvre la webcam, capture un selfie JPEG, puis enregistre uniquement le token Face++ retourne."
+                                   styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
                         <VBox spacing="6.0">
-                            <Label text="Password" styleClass="form-label"/>
-                            <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Change Password"/>
-                            <Label text="Use a strong password to protect your account." styleClass="profile-inline-note"/>
+                            <Label text="Mot de passe" styleClass="form-label"/>
+                            <Button onAction="#handleChangePassword" styleClass="profile-accent-button" text="Changer le mot de passe"/>
+                            <Label text="Utilise un mot de passe fort pour proteger ton compte." styleClass="profile-inline-note"/>
                         </VBox>
 
                         <VBox spacing="6.0">
                             <Label text="Face ID / Passkey" styleClass="form-label"/>
-                            <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Enable Face ID Login"/>
-                            <Label text="Registers a secure passkey on this device later on." styleClass="profile-inline-note"/>
+                            <Button onAction="#handleEnrollFaceId" styleClass="profile-accent-button" text="Activer ou mettre a jour Face ID"/>
+                            <Label text="Cette action relance la capture webcam pour activer ou remplacer la connexion Face ID." styleClass="profile-inline-note" wrapText="true"/>
                         </VBox>
 
                         <VBox spacing="6.0">
                             <Label text="Authenticator 2FA (TOTP)" styleClass="form-label"/>
-                            <Label text="Status: Disabled" styleClass="profile-inline-note"/>
-                            <Button onAction="#handleSecurityPlaceholderAction" styleClass="profile-accent-button" text="Start 2FA Setup"/>
+                            <Label fx:id="twoFactorStatusLabel" text="Statut : Desactive" styleClass="profile-inline-note"/>
+                            <Label fx:id="twoFactorConfirmedAtLabel" text="Confirme le : Jamais" styleClass="profile-inline-note"/>
+                            <Button onAction="#handleStartTwoFactorSetup" styleClass="profile-accent-button" text="Demarrer la configuration 2FA"/>
+                            <VBox fx:id="twoFactorSetupBox" managed="false" spacing="10.0" styleClass="profile-upload-row" visible="false">
+                                <Label text="Scanne ce QR code avec Google Authenticator ou Microsoft Authenticator." styleClass="profile-inline-note" wrapText="true"/>
+                                <ImageView fx:id="twoFactorQrImageView" fitHeight="220.0" fitWidth="220.0" pickOnBounds="true" preserveRatio="true"/>
+                                <Label text="Secret manuel" styleClass="form-label"/>
+                                <Label fx:id="twoFactorSecretLabel" text="Aucun secret genere pour le moment." styleClass="profile-inline-note"/>
+                                <Label text="Entre le code a 6 chiffres de ton application d'authentification." styleClass="profile-inline-note"/>
+                                <TextField fx:id="twoFactorCodeField" promptText="123456" styleClass="form-field"/>
+                                <Button onAction="#handleConfirmTwoFactor" styleClass="profile-accent-button" text="Confirmer et activer"/>
+                            </VBox>
+                            <VBox fx:id="recoveryCodesBox" managed="false" spacing="8.0" visible="false">
+                                <Label text="Codes de recuperation" styleClass="form-label"/>
+                                <TextArea fx:id="recoveryCodesArea" editable="false" prefRowCount="8" styleClass="text-area"/>
+                                <Label text="Copie ces codes maintenant. Ils ne seront affiches qu'une seule fois." styleClass="profile-inline-note" wrapText="true"/>
+                            </VBox>
+                            <VBox spacing="8.0">
+                                <Label text="Desactive avec le code TOTP actuel ou un code de recuperation" styleClass="profile-inline-note"/>
+                                <TextField fx:id="disableTwoFactorCodeField" promptText="Code pour desactiver la 2FA" styleClass="form-field"/>
+                                <Button onAction="#handleDisableTwoFactor" styleClass="profile-danger-inline-button" text="Desactiver la 2FA"/>
+                            </VBox>
                         </VBox>
                     </VBox>
                 </StackPane>

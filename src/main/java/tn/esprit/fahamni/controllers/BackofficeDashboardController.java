@@ -10,7 +10,7 @@ import javafx.scene.layout.VBox;
 
 public class BackofficeDashboardController {
 
-    private final AdminDashboardService dashboardService = new AdminDashboardService();
+    private AdminDashboardService dashboardService;
 
     @FXML
     private Label usersValueLabel;
@@ -32,18 +32,25 @@ public class BackofficeDashboardController {
 
     @FXML
     private void initialize() {
-        AdminDashboardSummary summary = dashboardService.getSummary();
-        usersValueLabel.setText(String.valueOf(summary.getUsersCount()));
-        sessionsValueLabel.setText(String.valueOf(summary.getSessionsCount()));
-        reservationsValueLabel.setText(String.valueOf(summary.getReservationsCount()));
-        contentValueLabel.setText(String.valueOf(summary.getContentCount()));
+        try {
+            dashboardService = new AdminDashboardService();
 
-        for (AdminFeedItem item : dashboardService.getRecentActivities()) {
-            addActivity(item);
-        }
+            AdminDashboardSummary summary = dashboardService.getSummary();
+            usersValueLabel.setText(String.valueOf(summary.getUsersCount()));
+            sessionsValueLabel.setText(String.valueOf(summary.getSessionsCount()));
+            reservationsValueLabel.setText(String.valueOf(summary.getReservationsCount()));
+            contentValueLabel.setText(String.valueOf(summary.getContentCount()));
 
-        for (String alert : dashboardService.getAlerts()) {
-            addAlert(alert);
+            for (AdminFeedItem item : dashboardService.getRecentActivities()) {
+                addActivity(item);
+            }
+
+            for (String alert : dashboardService.getAlerts()) {
+                addAlert(alert);
+            }
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            showFallbackDashboard(exception);
         }
     }
 
@@ -72,6 +79,31 @@ public class BackofficeDashboardController {
 
         row.getChildren().add(label);
         alertsBox.getChildren().add(row);
+    }
+
+    private void showFallbackDashboard(Exception exception) {
+        usersValueLabel.setText("0");
+        sessionsValueLabel.setText("0");
+        reservationsValueLabel.setText("0");
+        contentValueLabel.setText("0");
+
+        if (recentActivityBox != null) {
+            recentActivityBox.getChildren().clear();
+            addActivity(new AdminFeedItem(
+                "Dashboard charge en mode securise",
+                "Une source de donnees a echoue pendant le chargement. Le reste du backoffice reste accessible."
+            ));
+        }
+
+        if (alertsBox != null) {
+            alertsBox.getChildren().clear();
+            addAlert("Le tableau de bord a rencontre une erreur au chargement.");
+            addAlert(exception.getClass().getSimpleName() + " : " + safeMessage(exception.getMessage()));
+        }
+    }
+
+    private String safeMessage(String message) {
+        return message == null || message.isBlank() ? "Aucun detail supplementaire." : message;
     }
 }
 

@@ -2,10 +2,11 @@ package tn.esprit.fahamni.utils;
 
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
-
+///aziz
 public final class UserSession {
 
     private static User currentUser;
+    private static String currentJwtToken;
 
     private UserSession() {
     }
@@ -19,8 +20,27 @@ public final class UserSession {
         SessionManager.setCurrentUser(user);
     }
 
+    public static void start(User user, String jwtToken) {
+        currentUser = user;
+        currentJwtToken = jwtToken;
+        SessionManager.setCurrentUser(user);
+    }
+
+    public static String getCurrentJwtToken() {
+        return currentJwtToken;
+    }
+
+    public static boolean hasValidJwtToken() {
+        return JwtService.isTokenValid(currentJwtToken);
+    }
+
+    public static JwtService.JwtClaims getCurrentJwtClaims() {
+        return JwtService.extractClaims(currentJwtToken);
+    }
+
     public static void clear() {
         currentUser = null;
+        currentJwtToken = null;
         SessionManager.clear();
     }
 
