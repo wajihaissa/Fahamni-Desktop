@@ -22,6 +22,7 @@ public class CallRoomService {
             throw new RuntimeException("Database connection is not available");
         }
 
+        clearStaleRooms();
         String insert = "INSERT INTO call_rooms (room_code, host_ip, host_video_port, status) VALUES (?, ?, ?, 'WAITING')";
 
         for (int i = 0; i < MAX_CODE_RETRIES; i++) {
@@ -42,6 +43,33 @@ public class CallRoomService {
         }
 
         throw new RuntimeException("Could not generate a unique room code. Please retry.");
+    }
+
+    public void clearStaleRooms() {
+        if (cnx == null) {
+            return;
+        }
+
+        String cleanup = "DELETE FROM call_rooms WHERE status = 'WAITING' AND created_at < (NOW() - INTERVAL 30 MINUTE)";
+        try (PreparedStatement pst = cnx.prepareStatement(cleanup)) {
+            pst.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to clear stale rooms: " + e.getMessage(), e);
+        }
+    }
+
+    public void closeRoom(String roomCode) {
+        if (cnx == null || roomCode == null || roomCode.isBlank()) {
+            return;
+        }
+
+        String update = "UPDATE call_rooms SET status = 'ENDED' WHERE room_code = ?";
+        try (PreparedStatement pst = cnx.prepareStatement(update)) {
+            pst.setString(1, roomCode);
+            pst.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to close room: " + e.getMessage(), e);
+        }
     }
 
     public PeerEndpoint joinRoom(String roomCode, String guestIp, int guestPort) {
