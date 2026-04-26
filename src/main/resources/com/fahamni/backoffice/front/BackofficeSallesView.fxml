@@ -28,7 +28,11 @@
             </padding>
 
             <VBox spacing="6.0" styleClass="backoffice-header-block">
-                <Label text="Gestion des salles" styleClass="backoffice-panel-title"/>
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <Label text="Gestion des salles" styleClass="backoffice-panel-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button onAction="#handleOpenExportedSalle3D" text="Ouvrir export .j3o" styleClass="backoffice-room-export-button"/>
+                </HBox>
                 <Label text="Centralisez vos espaces, leur disponibilite et les informations utiles pour l'exploitation." styleClass="backoffice-panel-copy"/>
             </VBox>
 

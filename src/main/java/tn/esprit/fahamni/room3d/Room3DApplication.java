@@ -2,10 +2,14 @@ package tn.esprit.fahamni.room3d;
 
 import com.jme3.app.SimpleApplication;
 import com.jme3.asset.TextureKey;
+import com.jme3.bounding.BoundingBox;
+import com.jme3.bounding.BoundingVolume;
 import com.jme3.font.BitmapFont;
 import com.jme3.font.BitmapText;
+import com.jme3.input.KeyInput;
 import com.jme3.input.MouseInput;
 import com.jme3.input.controls.ActionListener;
+import com.jme3.input.controls.KeyTrigger;
 import com.jme3.input.controls.MouseButtonTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
@@ -34,6 +38,7 @@ import com.jme3.scene.shape.Quad;
 import com.jme3.collision.CollisionResults;
 import com.jme3.texture.Texture;
 
+import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Locale;
@@ -44,8 +49,16 @@ public class Room3DApplication extends SimpleApplication {
 
     private static final String SELECT_SEAT_MAPPING = "select-room-seat";
     private static final String QUICK_SELECT_SEAT_MAPPING = "quick-select-room-seat";
+    private static final String EXPORT_SCENE_MAPPING = "export-room-scene";
     private static final String SEAT_LABEL_KEY = "seatLabel";
     private static final String SEAT_STATUS_KEY = "seatStatus";
+    private static final String EXPORTED_CAMERA_LOCATION_X_KEY = "fahamniExportCameraLocationX";
+    private static final String EXPORTED_CAMERA_LOCATION_Y_KEY = "fahamniExportCameraLocationY";
+    private static final String EXPORTED_CAMERA_LOCATION_Z_KEY = "fahamniExportCameraLocationZ";
+    private static final String EXPORTED_CAMERA_TARGET_X_KEY = "fahamniExportCameraTargetX";
+    private static final String EXPORTED_CAMERA_TARGET_Y_KEY = "fahamniExportCameraTargetY";
+    private static final String EXPORTED_CAMERA_TARGET_Z_KEY = "fahamniExportCameraTargetZ";
+    private static final String EXPORTED_CAMERA_FOV_KEY = "fahamniExportCameraFov";
     private static final float CLICK_DRAG_THRESHOLD = 8f;
     private static final float HOVERED_SEAT_SCALE = 1.03f;
     private static final float SELECTED_SEAT_SCALE = 1.08f;
@@ -57,10 +70,16 @@ public class Room3DApplication extends SimpleApplication {
     private static final float CAMERA_BUTTON_MARGIN_RIGHT = 18f;
     private static final float CAMERA_BUTTON_LABEL_PADDING_X = 12f;
     private static final float CAMERA_BUTTON_LABEL_BASELINE = 20f;
+    private static final float EXPORT_BUTTON_WIDTH = 118f;
+    private static final float EXPORT_BUTTON_HEIGHT = 24f;
+    private static final float EXPORT_BUTTON_FONT_SCALE = 0.78f;
     private static final ColorRGBA CAMERA_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.9f, 0.94f, 0.98f, 0.92f);
     private static final ColorRGBA CAMERA_BUTTON_HOVER_COLOR = new ColorRGBA(0.76f, 0.86f, 0.97f, 0.96f);
     private static final ColorRGBA CAMERA_BUTTON_ACTIVE_COLOR = new ColorRGBA(0.18f, 0.42f, 0.72f, 0.98f);
     private static final ColorRGBA CAMERA_BUTTON_TEXT_COLOR = new ColorRGBA(0.2f, 0.28f, 0.38f, 1f);
+    private static final ColorRGBA EXPORT_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.82f, 0.9f, 0.84f, 0.96f);
+    private static final ColorRGBA EXPORT_BUTTON_HOVER_COLOR = new ColorRGBA(0.22f, 0.56f, 0.34f, 0.98f);
+    private static final ColorRGBA EXPORT_BUTTON_TEXT_COLOR = new ColorRGBA(0.14f, 0.27f, 0.17f, 1f);
 
     private static final float WALL_HEIGHT = 3.8f;
     private static final float CEILING_THICKNESS = 0.05f;
@@ -73,8 +92,10 @@ public class Room3DApplication extends SimpleApplication {
     private static final String FLOOR_TEXTURE_PATH = "com/fahamni/room3d/textures/floor-concrete-light.png";
     private static final String WALL_TEXTURE_PATH = "com/fahamni/room3d/textures/wall-plaster-soft.png";
     private static final String WOOD_TEXTURE_PATH = "com/fahamni/room3d/textures/desk-oak-light.png";
+    private static final float EXPORTED_SCENE_CAMERA_MIN_DISTANCE = 8f;
 
     private Room3DPreviewData previewData;
+    private Path loadedExportPath;
     private Node sceneRoot;
     private Geometry ceilingCutaway;
     private Geometry frontWall;
@@ -85,9 +106,11 @@ public class Room3DApplication extends SimpleApplication {
     private BitmapText titleText;
     private BitmapText summaryText;
     private BitmapText selectionText;
+    private BitmapText statusText;
     private BitmapText legendText;
     private BitmapText interactionHintText;
     private BitmapText hoverText;
+    private HudActionButton exportButton;
     private boolean initialized;
     private DirectionalLightShadowRenderer shadowRenderer;
     private DirectionalLight primaryShadowLight;
@@ -117,6 +140,7 @@ public class Room3DApplication extends SimpleApplication {
     private Material hoverIndicatorMaterial;
     private Material selectedIndicatorMaterial;
 
+    private final Room3DExportService exportService = new Room3DExportService();
     private final Map<Node, SeatVisual> seatVisuals = new HashMap<>();
     private final Map<CameraPreset, CameraPresetButton> cameraPresetButtons = new EnumMap<>(CameraPreset.class);
     private Node hoveredSeatNode;
@@ -128,6 +152,7 @@ public class Room3DApplication extends SimpleApplication {
     private LayoutMetrics activeLayoutMetrics;
     private CameraPreset activeCameraPreset = CameraPreset.ENTRANCE;
     private CameraPreset hoveredCameraPreset;
+    private boolean hoveredExportButton;
     private CameraTransition activeCameraTransition;
     private float activeCameraTransitionElapsed;
     private float activeCameraFov = SHOWCASE_CAMERA_FOV;
@@ -143,15 +168,24 @@ public class Room3DApplication extends SimpleApplication {
         }
 
         if (QUICK_SELECT_SEAT_MAPPING.equals(name) && isPressed) {
-            if (findCameraPresetAtCursor(inputManager.getCursorPosition()) != null) {
+            if (isCursorOverHudButton(inputManager.getCursorPosition())) {
                 return;
             }
             selectSeat(findSeatNodeAtCursor());
+            return;
+        }
+
+        if (EXPORT_SCENE_MAPPING.equals(name) && isPressed) {
+            exportCurrentScene();
         }
     };
 
     public Room3DApplication(Room3DPreviewData previewData) {
         this.previewData = Objects.requireNonNull(previewData, "previewData");
+    }
+
+    public Room3DApplication(Path exportPath) {
+        this.loadedExportPath = Objects.requireNonNull(exportPath, "exportPath").toAbsolutePath().normalize();
     }
 
     @Override
@@ -166,13 +200,18 @@ public class Room3DApplication extends SimpleApplication {
 
         inputManager.addMapping(SELECT_SEAT_MAPPING, new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         inputManager.addMapping(QUICK_SELECT_SEAT_MAPPING, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
-        inputManager.addListener(selectionListener, SELECT_SEAT_MAPPING, QUICK_SELECT_SEAT_MAPPING);
+        inputManager.addMapping(EXPORT_SCENE_MAPPING, new KeyTrigger(KeyInput.KEY_E));
+        inputManager.addListener(selectionListener, SELECT_SEAT_MAPPING, QUICK_SELECT_SEAT_MAPPING, EXPORT_SCENE_MAPPING);
 
         hudFont = assetManager.loadFont("Interface/Fonts/Default.fnt");
         initialiseMaterials();
         initialiseShadows();
         initialisePostProcessing();
-        rebuildScene();
+        if (isExportedSceneMode()) {
+            loadExportedScene();
+        } else {
+            rebuildScene();
+        }
         Room3DViewerLauncher.markApplicationReady(this);
     }
 
@@ -206,8 +245,17 @@ public class Room3DApplication extends SimpleApplication {
 
     public void updatePreview(Room3DPreviewData previewData) {
         this.previewData = Objects.requireNonNull(previewData, "previewData");
+        this.loadedExportPath = null;
         if (initialized) {
             rebuildScene();
+        }
+    }
+
+    public void updateExportedScene(Path exportPath) {
+        this.loadedExportPath = Objects.requireNonNull(exportPath, "exportPath").toAbsolutePath().normalize();
+        this.previewData = null;
+        if (initialized) {
+            loadExportedScene();
         }
     }
 
@@ -240,30 +288,7 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private void rebuildScene() {
-        if (sceneRoot != null) {
-            rootNode.detachChild(sceneRoot);
-        }
-        guiNode.detachAllChildren();
-        seatVisuals.clear();
-        cameraPresetButtons.clear();
-        hoveredSeatNode = null;
-        selectedSeatNode = null;
-        primaryClickStart = null;
-        primarySelectionArmed = false;
-        setSelectedSeatSnapshot(null, null);
-        activeLayoutMetrics = null;
-        activeCameraPreset = CameraPreset.ENTRANCE;
-        hoveredCameraPreset = null;
-        activeCameraTransition = null;
-        activeCameraTransitionElapsed = 0f;
-        activeCameraFov = SHOWCASE_CAMERA_FOV;
-        ceilingCutaway = null;
-        frontWall = null;
-        frontBorder = null;
-        frontBorderTrim = null;
-        ceilingLightPanels = null;
-
-        initialiseHud();
+        resetViewerState();
 
         sceneRoot = new Node("room-3d-preview-root");
         rootNode.attachChild(sceneRoot);
@@ -286,15 +311,95 @@ public class Room3DApplication extends SimpleApplication {
         summaryText.setText(buildDefaultSummary());
         selectionText.setText(buildDefaultSelectionText());
         selectionText.setColor(createHudNeutralColor());
+        clearStatusMessage();
         legendText.setText(buildLegendText());
         interactionHintText.setText(buildInteractionHintText());
         updateBitmapTextVisibility(titleText);
         updateBitmapTextVisibility(summaryText);
         updateBitmapTextVisibility(selectionText);
+        updateBitmapTextVisibility(statusText);
         updateBitmapTextVisibility(legendText);
         updateBitmapTextVisibility(interactionHintText);
         hideHoverText();
         updateHudPositions();
+    }
+
+    private void loadExportedScene() {
+        resetViewerState();
+        sceneRoot = new Node("room-3d-import-root");
+        rootNode.attachChild(sceneRoot);
+
+        String loadErrorMessage = null;
+        try {
+            Spatial loadedScene = exportService.loadSceneFromJ3o(loadedExportPath, assetManager);
+            if (loadedScene instanceof Node loadedNode) {
+                sceneRoot = loadedNode;
+                rootNode.detachChildNamed("room-3d-import-root");
+                rootNode.attachChild(sceneRoot);
+            } else {
+                sceneRoot.attachChild(loadedScene);
+            }
+
+            sceneRoot.updateLogicalState(0f);
+            sceneRoot.updateGeometricState();
+            if (!applyStoredExportCameraView()) {
+                positionCameraForExportedScene();
+            }
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            loadErrorMessage = exception.getMessage();
+            cam.setLocation(new Vector3f(0f, 6f, 14f));
+            cam.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
+            updateCameraLens();
+        }
+
+        titleText.setText(buildHeadlineText());
+        summaryText.setText(buildDefaultSummary());
+        selectionText.setText(buildDefaultSelectionText());
+        selectionText.setColor(createHudNeutralColor());
+        if (loadErrorMessage == null || loadErrorMessage.isBlank()) {
+            clearStatusMessage();
+        } else {
+            showStatusMessage(loadErrorMessage, new ColorRGBA(0.76f, 0.24f, 0.2f, 1f));
+        }
+        legendText.setText(buildLegendText());
+        interactionHintText.setText(buildInteractionHintText());
+        updateBitmapTextVisibility(titleText);
+        updateBitmapTextVisibility(summaryText);
+        updateBitmapTextVisibility(selectionText);
+        updateBitmapTextVisibility(statusText);
+        updateBitmapTextVisibility(legendText);
+        updateBitmapTextVisibility(interactionHintText);
+        hideHoverText();
+        updateHudPositions();
+    }
+
+    private void resetViewerState() {
+        if (sceneRoot != null) {
+            rootNode.detachChild(sceneRoot);
+        }
+        guiNode.detachAllChildren();
+        seatVisuals.clear();
+        cameraPresetButtons.clear();
+        hoveredSeatNode = null;
+        selectedSeatNode = null;
+        primaryClickStart = null;
+        primarySelectionArmed = false;
+        setSelectedSeatSnapshot(null, null);
+        activeLayoutMetrics = null;
+        activeCameraPreset = CameraPreset.ENTRANCE;
+        hoveredCameraPreset = null;
+        hoveredExportButton = false;
+        activeCameraTransition = null;
+        activeCameraTransitionElapsed = 0f;
+        activeCameraFov = SHOWCASE_CAMERA_FOV;
+        ceilingCutaway = null;
+        frontWall = null;
+        frontBorder = null;
+        frontBorderTrim = null;
+        ceilingLightPanels = null;
+        exportButton = null;
+
+        initialiseHud();
     }
 
     private void initialiseHud() {
@@ -313,6 +418,11 @@ public class Room3DApplication extends SimpleApplication {
         selectionText.setColor(createHudNeutralColor());
         selectionText.setCullHint(Spatial.CullHint.Always);
 
+        statusText = new BitmapText(hudFont);
+        statusText.setSize(hudFont.getCharSet().getRenderedSize() * 0.9f);
+        statusText.setColor(createHudNeutralColor());
+        statusText.setCullHint(Spatial.CullHint.Always);
+
         legendText = new BitmapText(hudFont);
         legendText.setSize(hudFont.getCharSet().getRenderedSize() * 0.86f);
         legendText.setColor(new ColorRGBA(0.23f, 0.29f, 0.38f, 1f));
@@ -327,11 +437,15 @@ public class Room3DApplication extends SimpleApplication {
         hoverText.setColor(ColorRGBA.White);
         hoverText.setCullHint(Spatial.CullHint.Always);
 
-        initialiseCameraPresetButtons();
+        if (!isExportedSceneMode()) {
+            initialiseCameraPresetButtons();
+        }
+        initialiseExportButton();
 
         guiNode.attachChild(titleText);
         guiNode.attachChild(summaryText);
         guiNode.attachChild(selectionText);
+        guiNode.attachChild(statusText);
         guiNode.attachChild(legendText);
         guiNode.attachChild(interactionHintText);
         guiNode.attachChild(hoverText);
@@ -349,8 +463,24 @@ public class Room3DApplication extends SimpleApplication {
         updateCameraPresetButtonStyles();
     }
 
+    private void initialiseExportButton() {
+        exportButton = createHudActionButton(
+            "export-room-scene-button",
+            "Export .j3o",
+            EXPORT_BUTTON_WIDTH,
+            EXPORT_BUTTON_HEIGHT,
+            EXPORT_BUTTON_DEFAULT_COLOR.clone(),
+            EXPORT_BUTTON_TEXT_COLOR,
+            EXPORT_BUTTON_FONT_SCALE,
+            true
+        );
+        guiNode.attachChild(exportButton.node());
+        updateExportButtonStyle();
+    }
+
     private void updateHudPositions() {
-        if (titleText == null || summaryText == null || selectionText == null || legendText == null || interactionHintText == null || hoverText == null) {
+        if (titleText == null || summaryText == null || selectionText == null || statusText == null
+            || legendText == null || interactionHintText == null || hoverText == null) {
             return;
         }
 
@@ -365,6 +495,10 @@ public class Room3DApplication extends SimpleApplication {
         }
         if (selectionText.getCullHint() != Spatial.CullHint.Always) {
             selectionText.setLocalTranslation(18f, topY, 0f);
+            topY -= estimateTextBlockHeight(selectionText.getText(), selectionText.getLineHeight()) + 8f;
+        }
+        if (statusText.getCullHint() != Spatial.CullHint.Always) {
+            statusText.setLocalTranslation(18f, topY, 0f);
         }
 
         float interactionBaseline = 24f + interactionHintText.getLineHeight();
@@ -398,9 +532,44 @@ public class Room3DApplication extends SimpleApplication {
         return new CameraPresetButton(preset, buttonNode, background, label, CAMERA_BUTTON_WIDTH, CAMERA_BUTTON_HEIGHT);
     }
 
+    private HudActionButton createHudActionButton(
+        String name,
+        String text,
+        float width,
+        float height,
+        ColorRGBA backgroundColor,
+        ColorRGBA textColor,
+        float fontScale,
+        boolean centerLabel
+    ) {
+        Node buttonNode = new Node(name);
+
+        Geometry background = new Geometry(buttonNode.getName() + "-background", new Quad(width, height));
+        background.setMaterial(createFlatMaterial(backgroundColor));
+        background.setQueueBucket(RenderQueue.Bucket.Gui);
+
+        BitmapText label = new BitmapText(hudFont);
+        label.setSize(hudFont.getCharSet().getRenderedSize() * fontScale);
+        label.setColor(textColor);
+        label.setText(text);
+        if (centerLabel) {
+            float centeredX = Math.max(8f, (width - label.getLineWidth()) / 2f);
+            float centeredBaseline = Math.max(16f, height - ((height - label.getLineHeight()) / 2f) - 4f);
+            label.setLocalTranslation(centeredX, centeredBaseline, 0f);
+        } else {
+            label.setLocalTranslation(CAMERA_BUTTON_LABEL_PADDING_X, CAMERA_BUTTON_LABEL_BASELINE, 0f);
+        }
+
+        buttonNode.attachChild(background);
+        buttonNode.attachChild(label);
+        return new HudActionButton(buttonNode, background, label, width, height);
+    }
+
     private void updateCameraPresetButtonPositions() {
         if (cameraPresetButtons.isEmpty()) {
-            return;
+            if (exportButton == null) {
+                return;
+            }
         }
 
         float totalWidth = (CAMERA_BUTTON_WIDTH * 2f) + CAMERA_BUTTON_GAP;
@@ -416,6 +585,12 @@ public class Room3DApplication extends SimpleApplication {
             float x = startX + (preset.column() * (CAMERA_BUTTON_WIDTH + CAMERA_BUTTON_GAP));
             float y = startY - (preset.row() * (CAMERA_BUTTON_HEIGHT + CAMERA_BUTTON_GAP));
             button.node().setLocalTranslation(x, y, 0f);
+        }
+
+        if (exportButton != null) {
+            float exportButtonX = startX + ((totalWidth - exportButton.width()) / 2f);
+            float exportButtonY = startY - (2f * (CAMERA_BUTTON_HEIGHT + CAMERA_BUTTON_GAP)) + ((CAMERA_BUTTON_HEIGHT - exportButton.height()) / 2f);
+            exportButton.node().setLocalTranslation(exportButtonX, exportButtonY, 0f);
         }
     }
 
@@ -437,6 +612,16 @@ public class Room3DApplication extends SimpleApplication {
             button.background().getMaterial().setColor("Color", backgroundColor);
             button.label().setColor(labelColor);
         }
+    }
+
+    private void updateExportButtonStyle() {
+        if (exportButton == null) {
+            return;
+        }
+
+        ColorRGBA backgroundColor = hoveredExportButton ? EXPORT_BUTTON_HOVER_COLOR : EXPORT_BUTTON_DEFAULT_COLOR;
+        exportButton.background().getMaterial().setColor("Color", backgroundColor);
+        exportButton.label().setColor(hoveredExportButton ? ColorRGBA.White : EXPORT_BUTTON_TEXT_COLOR);
     }
 
     private void initialiseMaterials() {
@@ -2390,7 +2575,7 @@ public class Room3DApplication extends SimpleApplication {
             return;
         }
 
-        if (primarySelectionArmed || findCameraPresetAtCursor(inputManager.getCursorPosition()) != null) {
+        if (primarySelectionArmed || isCursorOverHudButton(inputManager.getCursorPosition())) {
             setHoveredSeat(null);
             return;
         }
@@ -2442,24 +2627,16 @@ public class Room3DApplication extends SimpleApplication {
         if (previewData == null) {
             return "";
         }
-        if (previewData.isDesignReview()) {
-            return "";
-        }
         if (previewData.summaryNote() != null) {
             return previewData.summaryNote();
         }
-
-        StringBuilder builder = new StringBuilder();
-        if (previewData.isDesignReview()) {
-            builder.append("Mode conception AI | ");
-        }
-        builder.append(previewData.summaryLine());
-        builder.append("\nDisposition: ").append(previewData.disposition());
-        builder.append(" | Accessibilite: ").append(previewData.accessible() ? "oui" : "non");
-        return builder.toString();
+        return "";
     }
 
     private String buildDefaultSelectionText() {
+        if (isExportedSceneMode()) {
+            return "";
+        }
         if (previewData == null) {
             return "";
         }
@@ -2473,7 +2650,7 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private String buildLegendText() {
-        if (previewData == null) {
+        if (isExportedSceneMode() || previewData == null) {
             return "";
         }
         if (previewData.isDesignReview()) {
@@ -2487,21 +2664,158 @@ public class Room3DApplication extends SimpleApplication {
                 + " | Reservees: " + countSeats(RoomSeatVisualState.RESERVED)
                 + " | Maintenance: " + countSeats(RoomSeatVisualState.MAINTENANCE);
         }
-        return "Capacite simulee: " + previewData.seatCount() + "/" + previewData.capacity()
-            + " places | Etat: " + previewData.roomStatus();
+        return "";
     }
 
     private String buildInteractionHintText() {
+        if (isExportedSceneMode()) {
+            return "Guide: glisser pour deplacer la camera | bouton ou touche E export .j3o | ZQSD/WASD";
+        }
         if (previewData != null && previewData.isDesignReview()) {
-            return "Guide: glisser pour deplacer la camera | boutons camera | ZQSD/WASD | validation dans le backoffice";
+            return "Guide: glisser pour deplacer la camera | boutons camera | bouton ou touche E export .j3o | ZQSD/WASD | validation dans le backoffice";
         }
         if (previewData.supportsSeatSelection()) {
-            return "Guide: clic pour choisir | glisser pour deplacer la camera | boutons camera | ZQSD/WASD";
+            return "Guide: clic pour choisir | glisser pour deplacer la camera | boutons camera | bouton ou touche E export .j3o | ZQSD/WASD";
         }
-        return "Guide: clic pour voir une place | glisser pour deplacer la camera | boutons camera | ZQSD/WASD";
+        return "Guide: clic pour voir une place | glisser pour deplacer la camera | boutons camera | bouton ou touche E export .j3o | ZQSD/WASD";
+    }
+
+    private void exportCurrentScene() {
+        if (sceneRoot == null) {
+            showStatusMessage("Export .j3o impossible : scene indisponible.", new ColorRGBA(0.76f, 0.24f, 0.2f, 1f));
+            return;
+        }
+
+        CameraPreset presetToRestore = null;
+        try {
+            presetToRestore = prepareSceneForExport();
+            Path exportPath = exportService.exportSceneAsJ3o(sceneRoot, previewData);
+            showStatusMessage(
+                "Export .j3o cree : " + formatDisplayExportPath(exportPath),
+                new ColorRGBA(0.14f, 0.5f, 0.28f, 1f)
+            );
+        } catch (IllegalStateException exception) {
+            showStatusMessage(
+                exception.getMessage(),
+                new ColorRGBA(0.76f, 0.24f, 0.2f, 1f)
+            );
+        } finally {
+            if (presetToRestore != null) {
+                updateCeilingVisibilityForPreset(presetToRestore);
+            }
+        }
+    }
+
+    private String formatDisplayExportPath(Path exportPath) {
+        if (exportPath == null) {
+            return "fichier indisponible";
+        }
+
+        Path workingDirectory = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
+        Path normalizedExportPath = exportPath.toAbsolutePath().normalize();
+        if (normalizedExportPath.startsWith(workingDirectory)) {
+            return workingDirectory.relativize(normalizedExportPath).toString().replace('\\', '/');
+        }
+        return normalizedExportPath.getFileName() == null ? normalizedExportPath.toString() : normalizedExportPath.getFileName().toString();
+    }
+
+    private CameraPreset prepareSceneForExport() {
+        if (sceneRoot == null) {
+            return null;
+        }
+
+        if (activeLayoutMetrics != null) {
+            CameraPreset presetToRestore = activeCameraPreset != CameraPreset.ENTRANCE ? activeCameraPreset : null;
+            updateCeilingVisibilityForPreset(CameraPreset.ENTRANCE);
+            storeExportedCameraView(buildCameraView(activeLayoutMetrics, CameraPreset.ENTRANCE));
+            return presetToRestore;
+        }
+
+        if (!hasStoredExportCameraView(sceneRoot)) {
+            storeExportedCameraView(new CameraView(
+                cam.getLocation().clone(),
+                estimateCurrentLookTarget(),
+                activeCameraFov
+            ));
+        }
+        return null;
+    }
+
+    private void storeExportedCameraView(CameraView view) {
+        if (sceneRoot == null || view == null) {
+            return;
+        }
+
+        sceneRoot.setUserData(EXPORTED_CAMERA_LOCATION_X_KEY, view.location().x);
+        sceneRoot.setUserData(EXPORTED_CAMERA_LOCATION_Y_KEY, view.location().y);
+        sceneRoot.setUserData(EXPORTED_CAMERA_LOCATION_Z_KEY, view.location().z);
+        sceneRoot.setUserData(EXPORTED_CAMERA_TARGET_X_KEY, view.target().x);
+        sceneRoot.setUserData(EXPORTED_CAMERA_TARGET_Y_KEY, view.target().y);
+        sceneRoot.setUserData(EXPORTED_CAMERA_TARGET_Z_KEY, view.target().z);
+        sceneRoot.setUserData(EXPORTED_CAMERA_FOV_KEY, view.fovDegrees());
+    }
+
+    private boolean hasStoredExportCameraView(Spatial spatial) {
+        return spatial != null
+            && spatial.getUserData(EXPORTED_CAMERA_LOCATION_X_KEY) != null
+            && spatial.getUserData(EXPORTED_CAMERA_LOCATION_Y_KEY) != null
+            && spatial.getUserData(EXPORTED_CAMERA_LOCATION_Z_KEY) != null
+            && spatial.getUserData(EXPORTED_CAMERA_TARGET_X_KEY) != null
+            && spatial.getUserData(EXPORTED_CAMERA_TARGET_Y_KEY) != null
+            && spatial.getUserData(EXPORTED_CAMERA_TARGET_Z_KEY) != null
+            && spatial.getUserData(EXPORTED_CAMERA_FOV_KEY) != null;
+    }
+
+    private boolean applyStoredExportCameraView() {
+        if (!hasStoredExportCameraView(sceneRoot)) {
+            return false;
+        }
+
+        Float locationX = sceneRoot.getUserData(EXPORTED_CAMERA_LOCATION_X_KEY);
+        Float locationY = sceneRoot.getUserData(EXPORTED_CAMERA_LOCATION_Y_KEY);
+        Float locationZ = sceneRoot.getUserData(EXPORTED_CAMERA_LOCATION_Z_KEY);
+        Float targetX = sceneRoot.getUserData(EXPORTED_CAMERA_TARGET_X_KEY);
+        Float targetY = sceneRoot.getUserData(EXPORTED_CAMERA_TARGET_Y_KEY);
+        Float targetZ = sceneRoot.getUserData(EXPORTED_CAMERA_TARGET_Z_KEY);
+        Float fov = sceneRoot.getUserData(EXPORTED_CAMERA_FOV_KEY);
+        if (locationX == null || locationY == null || locationZ == null
+            || targetX == null || targetY == null || targetZ == null || fov == null) {
+            return false;
+        }
+
+        setCameraView(new CameraView(
+            new Vector3f(locationX, locationY, locationZ),
+            new Vector3f(targetX, targetY, targetZ),
+            fov
+        ));
+        return true;
+    }
+
+    private void showStatusMessage(String message, ColorRGBA color) {
+        if (statusText == null) {
+            return;
+        }
+
+        statusText.setText(message == null ? "" : message.trim());
+        statusText.setColor(color == null ? createHudNeutralColor() : color);
+        updateBitmapTextVisibility(statusText);
+        updateHudPositions();
+    }
+
+    private void clearStatusMessage() {
+        if (statusText == null) {
+            return;
+        }
+
+        statusText.setText("");
+        statusText.setColor(createHudNeutralColor());
+        statusText.setCullHint(Spatial.CullHint.Always);
     }
 
     private String buildHeadlineText() {
+        if (isExportedSceneMode()) {
+            return "Export 3D | " + resolveLoadedExportFileName();
+        }
         if (previewData == null) {
             return "";
         }
@@ -2515,6 +2829,48 @@ public class Room3DApplication extends SimpleApplication {
             return "Selection 3D | " + previewData.roomName();
         }
         return "Apercu 3D | " + previewData.roomName();
+    }
+
+    private void positionCameraForExportedScene() {
+        sceneRoot.updateLogicalState(0f);
+        sceneRoot.updateGeometricState();
+
+        BoundingVolume worldBound = sceneRoot.getWorldBound();
+        if (!(worldBound instanceof BoundingBox boundingBox)) {
+            cam.setLocation(new Vector3f(0f, 6f, 14f));
+            cam.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
+            cam.setFrustumFar(350f);
+            updateCameraLens();
+            return;
+        }
+
+        Vector3f center = boundingBox.getCenter().clone();
+        float baseRadius = Math.max(
+            1f,
+            Math.max(
+                boundingBox.getXExtent(),
+                Math.max(boundingBox.getYExtent(), boundingBox.getZExtent())
+            )
+        );
+        float cameraDistance = Math.max(EXPORTED_SCENE_CAMERA_MIN_DISTANCE, baseRadius * 2.2f);
+        Vector3f target = center.add(0f, Math.max(0.8f, baseRadius * 0.12f), -baseRadius * 0.08f);
+        Vector3f location = target.add(-cameraDistance * 0.82f, Math.max(5.6f, baseRadius * 1.24f), cameraDistance);
+
+        cam.setLocation(location);
+        cam.lookAt(target, Vector3f.UNIT_Y);
+        cam.setFrustumFar(Math.max(350f, cameraDistance * 12f));
+        updateCameraLens();
+    }
+
+    private boolean isExportedSceneMode() {
+        return loadedExportPath != null;
+    }
+
+    private String resolveLoadedExportFileName() {
+        if (loadedExportPath == null || loadedExportPath.getFileName() == null) {
+            return "modele .j3o";
+        }
+        return loadedExportPath.getFileName().toString();
     }
 
     private int countSeats(RoomSeatVisualState state) {
@@ -2558,18 +2914,22 @@ public class Room3DApplication extends SimpleApplication {
             return;
         }
 
-        CameraPreset newHoveredPreset = findCameraPresetAtCursor(inputManager.getCursorPosition());
-        if (newHoveredPreset == hoveredCameraPreset) {
+        Vector2f cursorPosition = inputManager.getCursorPosition();
+        CameraPreset newHoveredPreset = findCameraPresetAtCursor(cursorPosition);
+        boolean newHoveredExportButton = isExportButtonAtCursor(cursorPosition);
+        if (newHoveredPreset == hoveredCameraPreset && newHoveredExportButton == hoveredExportButton) {
             return;
         }
 
         hoveredCameraPreset = newHoveredPreset;
+        hoveredExportButton = newHoveredExportButton;
         updateCameraPresetButtonStyles();
+        updateExportButtonStyle();
     }
 
     private void handlePrimarySeatInteraction(boolean isPressed) {
         if (isPressed) {
-            if (activeCameraTransition != null && findCameraPresetAtCursor(inputManager.getCursorPosition()) == null) {
+            if (activeCameraTransition != null && !isCursorOverHudButton(inputManager.getCursorPosition())) {
                 activeCameraTransition = null;
                 activeCameraTransitionElapsed = 0f;
             }
@@ -2593,6 +2953,11 @@ public class Room3DApplication extends SimpleApplication {
         CameraPreset clickedPreset = findCameraPresetAtCursor(inputManager.getCursorPosition());
         if (clickedPreset != null) {
             applyCameraPreset(clickedPreset, true);
+            return;
+        }
+
+        if (isExportButtonAtCursor(inputManager.getCursorPosition())) {
+            exportCurrentScene();
             return;
         }
 
@@ -2622,6 +2987,28 @@ public class Room3DApplication extends SimpleApplication {
         }
 
         return null;
+    }
+
+    private boolean isExportButtonAtCursor(Vector2f cursorPosition) {
+        return exportButton != null && isCursorInsideButton(cursorPosition, exportButton);
+    }
+
+    private boolean isCursorOverHudButton(Vector2f cursorPosition) {
+        return findCameraPresetAtCursor(cursorPosition) != null || isExportButtonAtCursor(cursorPosition);
+    }
+
+    private boolean isCursorInsideButton(Vector2f cursorPosition, HudActionButton button) {
+        if (cursorPosition == null || button == null) {
+            return false;
+        }
+
+        Vector3f buttonPosition = button.node().getLocalTranslation();
+        float x = buttonPosition.x;
+        float y = buttonPosition.y;
+        return cursorPosition.x >= x
+            && cursorPosition.x <= x + button.width()
+            && cursorPosition.y >= y
+            && cursorPosition.y <= y + button.height();
     }
 
     private Node findSeatNodeAtCursor() {
@@ -2956,6 +3343,15 @@ public class Room3DApplication extends SimpleApplication {
 
     private record CameraPresetButton(
         CameraPreset preset,
+        Node node,
+        Geometry background,
+        BitmapText label,
+        float width,
+        float height
+    ) {
+    }
+
+    private record HudActionButton(
         Node node,
         Geometry background,
         BitmapText label,

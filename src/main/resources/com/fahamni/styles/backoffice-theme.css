@@ -808,6 +808,34 @@
             -fx-effect: none;
         }
 
+        .backoffice-room-export-button {
+            -fx-background-color: linear-gradient(to bottom, #fbfbfc 0%, #e9edf2 100%);
+            -fx-border-color: #bcc6d3;
+            -fx-border-width: 1px;
+            -fx-text-fill: #4f6075;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 7px 13px;
+            -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
+            -fx-cursor: hand;
+            -fx-effect: dropshadow(gaussian, rgba(72, 91, 120, 0.14), 10, 0.18, 0, 3);
+        }
+
+        .backoffice-room-export-button:hover {
+            -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #eef1f5 100%);
+            -fx-border-color: #a8b5c5;
+            -fx-text-fill: #435468;
+            -fx-effect: dropshadow(gaussian, rgba(72, 91, 120, 0.2), 12, 0.20, 0, 4);
+        }
+
+        .backoffice-room-export-button:pressed {
+            -fx-background-color: linear-gradient(to bottom, #e2e7ed 0%, #d3dbe4 100%);
+            -fx-border-color: #95a4b7;
+            -fx-text-fill: #39495b;
+            -fx-effect: none;
+        }
+
         .infrastructure-header, .infrastructure-panel, .infrastructure-note, .infrastructure-stat-card, .infrastructure-detail-panel {
             -fx-background-color: rgba(255, 255, 255, 0.92);
             -fx-border-color: #dbe5f6;

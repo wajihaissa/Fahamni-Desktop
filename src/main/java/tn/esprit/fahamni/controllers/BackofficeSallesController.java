@@ -38,6 +38,7 @@ import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.room3d.Room3DPreviewData;
 import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DExportService;
 import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
 import tn.esprit.fahamni.services.AiRoomDesignService;
 import tn.esprit.fahamni.services.AdminEquipementService;
@@ -163,6 +164,7 @@ public class BackofficeSallesController {
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
+    private final Room3DExportService room3DExportService = new Room3DExportService();
     private final AiRoomDesignService aiRoomDesignService = new AiRoomDesignService(salleService);
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipementCatalog = FXCollections.observableArrayList();
@@ -404,6 +406,41 @@ public class BackofficeSallesController {
             showFeedback("L'apercu 3D a ete ouvert ou actualise dans une fenetre dediee.", true);
         } catch (IllegalArgumentException | IllegalStateException exception) {
             showFeedback("Apercu 3D impossible : " + resolveMessage(exception), false);
+        }
+    }
+
+    @FXML
+    private void handleOpenExportedSalle3D() {
+        hideFeedback();
+
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Ouvrir un export 3D .j3o");
+        fileChooser.getExtensionFilters().setAll(
+            new javafx.stage.FileChooser.ExtensionFilter("Exports 3D Fahamni (*.j3o)", "*.j3o")
+        );
+
+        java.io.File exportDirectory = room3DExportService.getExportDirectory().toFile();
+        if (exportDirectory.isDirectory()) {
+            fileChooser.setInitialDirectory(exportDirectory);
+        } else {
+            java.io.File projectDirectory = new java.io.File(System.getProperty("user.dir", "."));
+            if (projectDirectory.isDirectory()) {
+                fileChooser.setInitialDirectory(projectDirectory);
+            }
+        }
+
+        java.io.File selectedFile = fileChooser.showOpenDialog(
+            feedbackLabel == null || feedbackLabel.getScene() == null ? null : feedbackLabel.getScene().getWindow()
+        );
+        if (selectedFile == null) {
+            return;
+        }
+
+        try {
+            Room3DViewerLauncher.showExportedScene(selectedFile.toPath());
+            showFeedback("L'export 3D selectionne a ete ouvert dans le viewer.", true);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            showFeedback("Ouverture .j3o impossible : " + resolveMessage(exception), false);
         }
     }
 

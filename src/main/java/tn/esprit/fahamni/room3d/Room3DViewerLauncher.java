@@ -2,6 +2,7 @@ package tn.esprit.fahamni.room3d;
 
 import com.jme3.system.AppSettings;
 
+import java.nio.file.Path;
 import java.util.Objects;
 
 public final class Room3DViewerLauncher {
@@ -36,6 +37,32 @@ public final class Room3DViewerLauncher {
             activeApplication = application;
 
             Thread renderThread = new Thread(() -> startApplication(application, previewData), "fahamni-room-3d");
+            renderThread.setDaemon(true);
+            renderThread.setUncaughtExceptionHandler((thread, throwable) -> onApplicationClosed(application));
+            renderThread.start();
+        }
+    }
+
+    public static void showExportedScene(Path exportPath) {
+        Objects.requireNonNull(exportPath, "exportPath");
+
+        synchronized (LOCK) {
+            clearSelectedSeatSnapshotLocked();
+            activeViewerReady = false;
+
+            if (activeApplication != null) {
+                Room3DApplication application = activeApplication;
+                activeApplication.enqueue(() -> {
+                    application.updateExportedScene(exportPath);
+                    return null;
+                });
+                return;
+            }
+
+            Room3DApplication application = new Room3DApplication(exportPath);
+            activeApplication = application;
+
+            Thread renderThread = new Thread(() -> startApplication(application, buildWindowTitle(exportPath)), "fahamni-room-3d");
             renderThread.setDaemon(true);
             renderThread.setUncaughtExceptionHandler((thread, throwable) -> onApplicationClosed(application));
             renderThread.start();
@@ -152,9 +179,13 @@ public final class Room3DViewerLauncher {
     }
 
     private static void startApplication(Room3DApplication application, Room3DPreviewData previewData) {
+        startApplication(application, buildWindowTitle(previewData));
+    }
+
+    private static void startApplication(Room3DApplication application, String windowTitle) {
         try {
             AppSettings settings = new AppSettings(true);
-            settings.setTitle(buildWindowTitle(previewData));
+            settings.setTitle(windowTitle);
             settings.setResizable(true);
             settings.setResolution(1280, 720);
             settings.setSamples(8);
@@ -195,5 +226,12 @@ public final class Room3DViewerLauncher {
             return "Fahamni - Conception 3D de salle";
         }
         return "Fahamni - Apercu 3D de salle";
+    }
+
+    private static String buildWindowTitle(Path exportPath) {
+        String fileName = exportPath == null || exportPath.getFileName() == null
+            ? "modele .j3o"
+            : exportPath.getFileName().toString();
+        return "Fahamni - Export 3D - " + fileName;
     }
 }
