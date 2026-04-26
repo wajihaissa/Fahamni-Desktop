@@ -16,6 +16,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import tn.esprit.fahamni.services.conference.CallRoomService;
@@ -32,6 +33,9 @@ public class VideoChatController {
 
     @FXML
     private ImageView remoteCameraView;
+
+    @FXML
+    private BorderPane rootPane;
 
     @FXML
     private TextField myPortField;
@@ -75,6 +79,9 @@ public class VideoChatController {
     private volatile UdpAudioReceiver udpAudioReceiver;
     private volatile boolean callRunning;
     private volatile boolean cameraEnabled = true;
+    private volatile boolean previewStarted;
+    private volatile String currentPeerIp;
+    private volatile int currentPeerAudioPort = -1;
 
     private volatile boolean pollingHostRoom;
     private Thread pollThread;
@@ -109,19 +116,9 @@ public class VideoChatController {
         cameraOffButton.setText("Camera On");
 
         applyHoverEffects();
-
-        // Always keep local preview on.
-        localCameraService.startPreview(
-            localCameraView::setImage,
-            bufferedImage -> {
-                if (callRunning && udpVideoSender != null && cameraEnabled) {
-                    udpVideoSender.sendFrame(bufferedImage);
-                }
-            }
-        );
-
-        localCameraView.sceneProperty().addListener((obsScene, oldScene, newScene) -> {
+        rootPane.sceneProperty().addListener((obsScene, oldScene, newScene) -> {
             if (newScene == null) {
+                shutdownAll();
                 return;
             }
             Window window = newScene.getWindow();
@@ -146,6 +143,7 @@ public class VideoChatController {
             String localIp = resolveLocalIpAddress();
 
             String roomCode = callRoomService.createRoom(localIp, myVideoPort);
+            ensureLocalPreviewStarted();
             currentRoomCode = roomCode;
             roomCodeValueLabel.setText(roomCode);
             callStatusLabel.setStyle("-fx-text-fill: #fde68a; -fx-font-size: 12px; -fx-background-color: rgba(120,53,15,0.75); -fx-background-radius: 10; -fx-padding: 7 10;");
@@ -185,6 +183,7 @@ public class VideoChatController {
                 return;
             }
 
+            ensureLocalPreviewStarted();
             currentRoomCode = roomCode;
             roomCodeValueLabel.setText(roomCode);
             startMediaSession(hostEndpoint.getIp(), hostEndpoint.getVideoPort(), myVideoPort);
@@ -233,6 +232,11 @@ public class VideoChatController {
         }
 
         remoteCameraView.setImage(null);
+        localCameraView.setImage(null);
+        localCameraService.stopPreview();
+        previewStarted = false;
+        currentPeerIp = null;
+        currentPeerAudioPort = -1;
         currentRoomCode = null;
         roomCodeValueLabel.setText("-");
         muteMicButton.setSelected(false);
@@ -247,16 +251,40 @@ public class VideoChatController {
 
     @FXML
     private void toggleMuteMic() {
-        muteMicButton.setText(muteMicButton.isSelected() ? "Mic Muted" : "Mute Mic");
-        if (udpAudioSender != null) {
-            udpAudioSender.setMuted(muteMicButton.isSelected());
+        if (muteMicButton.isSelected()) {
+            muteMicButton.setText("Mic Off");
+            stopAudioSender();
+            return;
+        }
+
+        muteMicButton.setText("Mute Mic");
+        if (callRunning) {
+            try {
+                startAudioSender();
+            } catch (Exception e) {
+                muteMicButton.setSelected(true);
+                muteMicButton.setText("Mic Off");
+                showError("Could not turn microphone back on: " + e.getMessage());
+            }
         }
     }
 
     @FXML
     private void toggleCamera() {
-        cameraEnabled = !cameraOffButton.isSelected();
-        cameraOffButton.setText(cameraOffButton.isSelected() ? "Camera Off" : "Camera On");
+        if (cameraOffButton.isSelected()) {
+            cameraEnabled = false;
+            cameraOffButton.setText("Camera Off");
+            localCameraService.stopPreview();
+            previewStarted = false;
+            localCameraView.setImage(null);
+            return;
+        }
+
+        cameraEnabled = true;
+        cameraOffButton.setText("Camera On");
+        if (currentRoomCode != null || callRunning) {
+            ensureLocalPreviewStarted();
+        }
     }
 
     private void startPollingForGuest(String roomCode, int myVideoPort) {
@@ -316,6 +344,8 @@ public class VideoChatController {
         UdpAudioSender nextAudioSender = null;
 
         try {
+            currentPeerIp = targetIp;
+            currentPeerAudioPort = targetAudioPort;
             nextVideoReceiver = new UdpVideoReceiver(myVideoPort);
             nextVideoReceiver.start(remoteCameraView::setImage);
 
@@ -324,9 +354,10 @@ public class VideoChatController {
             nextAudioReceiver = new UdpAudioReceiver(myAudioPort);
             nextAudioReceiver.start();
 
-            nextAudioSender = new UdpAudioSender(targetIp, targetAudioPort);
-            nextAudioSender.setMuted(muteMicButton.isSelected());
-            nextAudioSender.start();
+            if (!muteMicButton.isSelected()) {
+                nextAudioSender = new UdpAudioSender(targetIp, targetAudioPort);
+                nextAudioSender.start();
+            }
 
             udpVideoReceiver = nextVideoReceiver;
             udpVideoSender = nextVideoSender;
@@ -349,6 +380,8 @@ public class VideoChatController {
             if (nextAudioReceiver != null) {
                 nextAudioReceiver.stop();
             }
+            currentPeerIp = null;
+            currentPeerAudioPort = -1;
             throw e;
         }
     }
@@ -391,6 +424,13 @@ public class VideoChatController {
     private void shutdownAll() {
         endCall();
         localCameraService.stopPreview();
+        previewStarted = false;
+        if (localCameraView != null) {
+            localCameraView.setImage(null);
+        }
+        if (remoteCameraView != null) {
+            remoteCameraView.setImage(null);
+        }
     }
 
     private void startWaitingAnimation() {
@@ -471,6 +511,38 @@ public class VideoChatController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void ensureLocalPreviewStarted() {
+        if (previewStarted || !cameraEnabled) {
+            return;
+        }
+
+        localCameraService.startPreview(
+            localCameraView::setImage,
+            bufferedImage -> {
+                if (callRunning && udpVideoSender != null && cameraEnabled) {
+                    udpVideoSender.sendFrame(bufferedImage);
+                }
+            }
+        );
+        previewStarted = true;
+    }
+
+    private void startAudioSender() throws Exception {
+        if (!callRunning || currentPeerIp == null || currentPeerAudioPort <= 0 || udpAudioSender != null) {
+            return;
+        }
+        UdpAudioSender sender = new UdpAudioSender(currentPeerIp, currentPeerAudioPort);
+        sender.start();
+        udpAudioSender = sender;
+    }
+
+    private void stopAudioSender() {
+        if (udpAudioSender != null) {
+            udpAudioSender.stop();
+            udpAudioSender = null;
+        }
     }
 
     private int parseVideoPort() {

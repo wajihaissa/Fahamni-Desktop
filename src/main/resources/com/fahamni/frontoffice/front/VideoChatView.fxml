@@ -13,7 +13,8 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17"
+<BorderPane fx:id="rootPane"
+            xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.VideoChatController"
             style="-fx-background-color: linear-gradient(to bottom, #0b1220, #121b2f);">
