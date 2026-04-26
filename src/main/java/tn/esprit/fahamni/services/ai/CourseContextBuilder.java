@@ -13,14 +13,18 @@ import tn.esprit.fahamni.entities.Matiere;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class CourseContextBuilder {
 
@@ -354,11 +358,44 @@ public class CourseContextBuilder {
 
         pb.redirectErrorStream(true);
         Process process = pb.start();
-        byte[] logs = process.getInputStream().readAllBytes();
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new RuntimeException("FFmpeg failed with exit code " + exitCode + ": " + new String(logs, StandardCharsets.UTF_8));
+
+        // Read logs line-by-line with bounded memory (max 100 lines)
+        String logs = readProcessLogsWithLimit(process.getInputStream(), 100);
+
+        // Wait for process with 60-second timeout
+        boolean finished = process.waitFor(60, TimeUnit.SECONDS);
+        if (!finished) {
+            process.destroy();
+            throw new IOException("FFmpeg process timed out after 60 seconds");
         }
+
+        int exitCode = process.exitValue();
+        if (exitCode != 0) {
+            throw new RuntimeException("FFmpeg failed with exit code " + exitCode + ": " + logs);
+        }
+    }
+
+    /**
+     * Read process output stream line-by-line with a maximum line limit to prevent memory bloat.
+     * Closes the stream properly in all cases.
+     */
+    private String readProcessLogsWithLimit(InputStream inputStream, int maxLines) {
+        StringBuilder logs = new StringBuilder();
+        int lineCount = 0;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null && lineCount < maxLines) {
+                logs.append(line).append("\n");
+                lineCount++;
+            }
+            // If more lines exist beyond limit, add indicator
+            if (line != null) {
+                logs.append("[... output truncated ...]");
+            }
+        } catch (IOException e) {
+            logs.append("(Error reading logs: ").append(e.getMessage()).append(")");
+        }
+        return logs.toString();
     }
 
     private boolean isFfmpegAvailable() {
