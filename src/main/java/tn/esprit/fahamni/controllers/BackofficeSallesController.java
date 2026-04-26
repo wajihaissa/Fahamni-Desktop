@@ -18,6 +18,8 @@ import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
@@ -43,6 +45,7 @@ import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
 import tn.esprit.fahamni.services.AiRoomDesignService;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.GoogleMapsLocationService;
 import tn.esprit.fahamni.services.SalleEquipementService;
 
 import java.sql.SQLException;
@@ -116,6 +119,12 @@ public class BackofficeSallesController {
     private TextField localisationField;
 
     @FXML
+    private Button resolveLocationButton;
+
+    @FXML
+    private Label locationAssistLabel;
+
+    @FXML
     private ComboBox<String> batimentComboBox;
 
     @FXML
@@ -166,11 +175,15 @@ public class BackofficeSallesController {
     private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
     private final Room3DExportService room3DExportService = new Room3DExportService();
     private final AiRoomDesignService aiRoomDesignService = new AiRoomDesignService(salleService);
+    private final GoogleMapsLocationService googleMapsLocationService = new GoogleMapsLocationService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipementCatalog = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final ObservableList<Salle> displayedSalles = FXCollections.observableArrayList();
     private final Map<Integer, FixedEquipmentSelectionControls> fixedEquipmentSelectionControls = new LinkedHashMap<>();
+    private GoogleMapsLocationService.ResolvedLocation resolvedMainLocation;
+    private Task<?> locationLookupTask;
+    private boolean locationFieldSyncMuted;
     private int currentPageIndex;
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
 
@@ -445,6 +458,355 @@ public class BackofficeSallesController {
     }
 
     @FXML
+    private void handleResolveLocation() {
+        hideFeedback();
+
+        if (!googleMapsLocationService.isConfigured()) {
+            showLocationAssistMessage(
+                "GOOGLE_MAPS_API_KEY absente. Configurez la cle avant d'utiliser la verification Google Maps.",
+                "error"
+            );
+            return;
+        }
+
+        final String rawLocation;
+        try {
+            rawLocation = requireText(localisationField.getText(), "Saisissez d'abord une adresse ou un nom d'etablissement.");
+        } catch (IllegalArgumentException exception) {
+            showLocationAssistMessage(resolveMessage(exception), "error");
+            return;
+        }
+
+        startLocationLookup(rawLocation);
+    }
+
+    private void startLocationLookup(String rawLocation) {
+        Task<LocationLookupOutcome> lookupTask = new Task<>() {
+            @Override
+            protected LocationLookupOutcome call() {
+                List<GoogleMapsLocationService.LocationSuggestion> suggestions = googleMapsLocationService.autocomplete(rawLocation);
+                if (!suggestions.isEmpty()) {
+                    return new LocationLookupOutcome(suggestions, null);
+                }
+                return new LocationLookupOutcome(List.of(), googleMapsLocationService.geocodeAddress(rawLocation));
+            }
+        };
+
+        locationLookupTask = lookupTask;
+        updateLocationLookupState(true, "Recherche Google Maps en cours...");
+
+        lookupTask.setOnSucceeded(event -> {
+            if (locationLookupTask != lookupTask) {
+                return;
+            }
+
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+
+            LocationLookupOutcome outcome = lookupTask.getValue();
+            if (outcome == null) {
+                showLocationAssistMessage("Aucune reponse exploitable n'a ete retournee par Google Maps.", "error");
+                return;
+            }
+
+            if (outcome.resolvedLocation() != null) {
+                applyResolvedMainLocation(outcome.resolvedLocation());
+                return;
+            }
+
+            if (outcome.suggestions().isEmpty()) {
+                showLocationAssistMessage(
+                    "Aucune suggestion n'a ete trouvee. Essayez une adresse plus complete ou un nom d'etablissement plus precis.",
+                    "error"
+                );
+                return;
+            }
+
+            Optional<GoogleMapsLocationService.LocationSuggestion> selection = showLocationSuggestionDialog(outcome.suggestions(), rawLocation);
+            if (selection.isEmpty()) {
+                showLocationAssistMessage("Selection annulee. Aucune modification n'a ete appliquee.", null);
+                return;
+            }
+
+            startLocationGeocoding(selection.get());
+        });
+
+        lookupTask.setOnFailed(event -> handleLocationLookupFailure(lookupTask, "Verification impossible : "));
+        lookupTask.setOnCancelled(event -> {
+            if (locationLookupTask != lookupTask) {
+                return;
+            }
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+            showLocationAssistMessage("Verification annulee.", null);
+        });
+
+        Thread lookupThread = new Thread(lookupTask, "fahamni-google-maps-lookup");
+        lookupThread.setDaemon(true);
+        lookupThread.start();
+    }
+
+    private void startLocationGeocoding(GoogleMapsLocationService.LocationSuggestion suggestion) {
+        Task<GoogleMapsLocationService.ResolvedLocation> geocodingTask = new Task<>() {
+            @Override
+            protected GoogleMapsLocationService.ResolvedLocation call() {
+                return googleMapsLocationService.geocodePlaceId(suggestion.placeId());
+            }
+        };
+
+        locationLookupTask = geocodingTask;
+        updateLocationLookupState(true, "Validation de l'adresse selectionnee...");
+
+        geocodingTask.setOnSucceeded(event -> {
+            if (locationLookupTask != geocodingTask) {
+                return;
+            }
+
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+            applyResolvedMainLocation(geocodingTask.getValue());
+        });
+
+        geocodingTask.setOnFailed(event -> handleLocationLookupFailure(geocodingTask, "Validation impossible : "));
+        geocodingTask.setOnCancelled(event -> {
+            if (locationLookupTask != geocodingTask) {
+                return;
+            }
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+            showLocationAssistMessage("Validation annulee.", null);
+        });
+
+        Thread geocodingThread = new Thread(geocodingTask, "fahamni-google-maps-geocode");
+        geocodingThread.setDaemon(true);
+        geocodingThread.start();
+    }
+
+    private void handleLocationLookupFailure(Task<?> failedTask, String prefix) {
+        if (locationLookupTask != failedTask) {
+            return;
+        }
+
+        locationLookupTask = null;
+        updateLocationLookupState(false, null);
+        showLocationAssistMessage(prefix + resolveThrowableMessage(failedTask.getException()), "error");
+    }
+
+    private Optional<GoogleMapsLocationService.LocationSuggestion> showLocationSuggestionDialog(
+        List<GoogleMapsLocationService.LocationSuggestion> suggestions,
+        String rawLocation
+    ) {
+        Dialog<GoogleMapsLocationService.LocationSuggestion> dialog = new Dialog<>();
+        dialog.setTitle("Suggestions Google Maps");
+        dialog.setHeaderText(null);
+        dialog.setResizable(true);
+
+        ButtonType confirmButtonType = new ButtonType("Utiliser cette adresse", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL, confirmButtonType);
+        applyCurrentTheme(dialog.getDialogPane());
+        dialog.getDialogPane().getStyleClass().add("backoffice-location-dialog");
+
+        Label titleLabel = new Label("Choisissez l'adresse la plus proche");
+        titleLabel.getStyleClass().add("backoffice-location-dialog-title");
+
+        Label introLabel = buildDialogIntro(
+            "Google Maps a trouve plusieurs correspondances pour \"" + rawLocation + "\"."
+        );
+        introLabel.getStyleClass().add("backoffice-location-dialog-copy");
+
+        Label suggestionCountChip = new Label(
+            suggestions.size() + (suggestions.size() > 1 ? " suggestions" : " suggestion")
+        );
+        suggestionCountChip.getStyleClass().setAll("workspace-chip", "backoffice-location-dialog-chip");
+
+        Region heroSpacer = new Region();
+        HBox.setHgrow(heroSpacer, Priority.ALWAYS);
+
+        HBox heroHeader = new HBox(12.0, titleLabel, heroSpacer, suggestionCountChip);
+        heroHeader.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        VBox heroBlock = new VBox(8.0, heroHeader, introLabel);
+        heroBlock.getStyleClass().add("backoffice-location-dialog-hero");
+
+        ListView<GoogleMapsLocationService.LocationSuggestion> listView = new ListView<>(FXCollections.observableArrayList(suggestions));
+        listView.setPrefHeight(Math.min(280.0, Math.max(180.0, suggestions.size() * 52.0)));
+        listView.getStyleClass().add("backoffice-location-dialog-list");
+        listView.setCellFactory(view -> new ListCell<>() {
+            @Override
+            protected void updateItem(GoogleMapsLocationService.LocationSuggestion item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                Label badgeLabel = new Label("Google Maps");
+                badgeLabel.getStyleClass().add("backoffice-location-suggestion-chip");
+
+                Label primaryLabel = new Label(extractLocationSuggestionPrimary(item.displayText()));
+                primaryLabel.setWrapText(true);
+                primaryLabel.getStyleClass().add("backoffice-location-suggestion-title");
+
+                Label secondaryLabel = new Label(extractLocationSuggestionSecondary(item.displayText()));
+                secondaryLabel.setWrapText(true);
+                secondaryLabel.getStyleClass().add("backoffice-location-suggestion-copy");
+
+                VBox textBlock = new VBox(4.0, primaryLabel, secondaryLabel);
+                textBlock.setFillWidth(true);
+
+                Region cardSpacer = new Region();
+                HBox.setHgrow(cardSpacer, Priority.ALWAYS);
+
+                HBox card = new HBox(12.0, textBlock, cardSpacer, badgeLabel);
+                card.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                card.getStyleClass().add("backoffice-location-suggestion-card");
+
+                setText(null);
+                setGraphic(card);
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            }
+        });
+        listView.getSelectionModel().clearSelection();
+        listView.setOnMouseClicked(event -> {
+            if (event.getClickCount() > 1 && listView.getSelectionModel().getSelectedItem() != null) {
+                dialog.setResult(listView.getSelectionModel().getSelectedItem());
+                dialog.close();
+            }
+        });
+
+        Label helperTitle = new Label("A noter");
+        helperTitle.getStyleClass().add("backoffice-location-dialog-note-title");
+
+        Label helperLabel = new Label(
+            "Les suggestions Google Maps valident l'adresse generale. Les details internes comme le bloc, l'etage ou la salle restent geres localement."
+        );
+        helperLabel.setWrapText(true);
+        helperLabel.getStyleClass().add("backoffice-location-dialog-note-copy");
+
+        VBox helperCard = new VBox(4.0, helperTitle, helperLabel);
+        helperCard.getStyleClass().add("backoffice-location-dialog-note");
+
+        VBox content = new VBox(14.0, heroBlock, listView, helperCard);
+        content.setFillWidth(true);
+        content.getStyleClass().add("backoffice-location-dialog-content");
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefWidth(660.0);
+
+        Button confirmButton = (Button) dialog.getDialogPane().lookupButton(confirmButtonType);
+        if (confirmButton != null) {
+            confirmButton.getStyleClass().addAll("backoffice-primary-button", "backoffice-dialog-save-button");
+            confirmButton.disableProperty().bind(listView.getSelectionModel().selectedItemProperty().isNull());
+            confirmButton.setDefaultButton(true);
+        }
+
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().addAll("backoffice-secondary-button", "backoffice-dialog-cancel-button");
+            cancelButton.setCancelButton(true);
+        }
+
+        dialog.setResultConverter(buttonType ->
+            buttonType == confirmButtonType ? listView.getSelectionModel().getSelectedItem() : null
+        );
+
+        Optional<GoogleMapsLocationService.LocationSuggestion> selection = dialog.showAndWait();
+        if (confirmButton != null) {
+            confirmButton.disableProperty().unbind();
+        }
+        return selection;
+    }
+
+    private String extractLocationSuggestionPrimary(String displayText) {
+        String normalized = firstNonBlank(displayText, "Adresse suggeree");
+        int commaIndex = normalized.indexOf(',');
+        if (commaIndex <= 0) {
+            return normalized;
+        }
+        return normalized.substring(0, commaIndex).trim();
+    }
+
+    private String extractLocationSuggestionSecondary(String displayText) {
+        String normalized = firstNonBlank(displayText, "");
+        int commaIndex = normalized.indexOf(',');
+        if (commaIndex <= 0 || commaIndex >= normalized.length() - 1) {
+            return "Correspondance Google Maps prete a etre validee.";
+        }
+        return normalized.substring(commaIndex + 1).trim();
+    }
+
+    private void applyResolvedMainLocation(GoogleMapsLocationService.ResolvedLocation resolvedLocation) {
+        if (resolvedLocation == null) {
+            showLocationAssistMessage("Google Maps n'a retourne aucun detail exploitable.", "error");
+            return;
+        }
+
+        resolvedMainLocation = resolvedLocation;
+        locationFieldSyncMuted = true;
+        localisationField.setText(resolvedLocation.formattedAddress());
+        localisationField.positionCaret(localisationField.getText().length());
+        locationFieldSyncMuted = false;
+
+        String prefix = resolvedLocation.partialMatch() ? "Adresse rapprochee validee" : "Adresse validee";
+        showLocationAssistMessage(
+            prefix
+                + " via Google Maps. Coordonnees: "
+                + resolvedLocation.coordinatesLabel()
+                + ". Utilisez Batiment et Etage pour les details internes.",
+            "success"
+        );
+    }
+
+    private void handleMainLocationEdited(String oldValue, String newValue) {
+        if (locationFieldSyncMuted || Objects.equals(trimToNull(oldValue), trimToNull(newValue))) {
+            return;
+        }
+
+        resolvedMainLocation = null;
+        hideLocationAssistMessage();
+    }
+
+    private void updateLocationLookupState(boolean running, String progressMessage) {
+        if (resolveLocationButton != null) {
+            resolveLocationButton.setDisable(running);
+        }
+
+        if (running && progressMessage != null) {
+            showLocationAssistMessage(progressMessage, null);
+        }
+    }
+
+    private void resetMainLocationResolutionState() {
+        resolvedMainLocation = null;
+        hideLocationAssistMessage();
+    }
+
+    private void showLocationAssistMessage(String message, String tone) {
+        if (locationAssistLabel == null) {
+            return;
+        }
+
+        locationAssistLabel.setText(firstNonBlank(message, ""));
+        locationAssistLabel.getStyleClass().setAll("backoffice-inline-note");
+        if ("success".equals(tone) || "error".equals(tone)) {
+            locationAssistLabel.getStyleClass().add(tone);
+        }
+        locationAssistLabel.setManaged(true);
+        locationAssistLabel.setVisible(true);
+    }
+
+    private void hideLocationAssistMessage() {
+        if (locationAssistLabel == null) {
+            return;
+        }
+
+        locationAssistLabel.setText("");
+        locationAssistLabel.getStyleClass().setAll("backoffice-inline-note");
+        locationAssistLabel.setManaged(false);
+        locationAssistLabel.setVisible(false);
+    }
+
+    @FXML
     private void handlePreviousPage() {
         if (currentPageIndex <= 0) {
             return;
@@ -484,6 +846,7 @@ public class BackofficeSallesController {
         typeComboBox.valueProperty().addListener((obs, oldValue, newValue) ->
             refreshDispositionOptions(newValue, dispositionComboBox == null ? null : dispositionComboBox.getValue())
         );
+        localisationField.textProperty().addListener((obs, oldValue, newValue) -> handleMainLocationEdited(oldValue, newValue));
     }
 
     private void configurePagination() {
@@ -520,11 +883,13 @@ public class BackofficeSallesController {
 
     private void populateForm(Salle salle) {
         if (salle == null) {
+            resetMainLocationResolutionState();
             updateSelectionBadge(null);
             return;
         }
 
         applySalleDraftToControls(salle, mainFormControls());
+        resetMainLocationResolutionState();
         updateFixedEquipmentSummary(salle.getIdSalle());
         updateSelectionBadge(salle);
     }
@@ -542,6 +907,7 @@ public class BackofficeSallesController {
         statutDetailleField.clear();
         descriptionArea.clear();
         updateFixedEquipmentSummary(null);
+        resetMainLocationResolutionState();
 
         updateSelectionBadge(null);
     }
@@ -2368,6 +2734,12 @@ public class BackofficeSallesController {
                 ? "aucun"
                 : selectedFixedEquipmentSummary.trim();
         }
+    }
+
+    private record LocationLookupOutcome(
+        List<GoogleMapsLocationService.LocationSuggestion> suggestions,
+        GoogleMapsLocationService.ResolvedLocation resolvedLocation
+    ) {
     }
 
     private record PromptSuggestion(String label, String prompt) {

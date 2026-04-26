@@ -20,6 +20,8 @@ build/
 /nbbuild/
 /nbproject/private/
 /.nb-gradle/
+/exports/
+exports/
 
 # OS files
 *.log
