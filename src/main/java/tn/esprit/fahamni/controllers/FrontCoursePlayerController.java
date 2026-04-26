@@ -256,6 +256,9 @@ public class FrontCoursePlayerController {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle(videoTitle);
 
+        MediaPlayer mediaPlayer = null;
+        boolean isStageShown = false;
+
         try {
             String mediaSource;
             if (videoPath.startsWith("http://") || videoPath.startsWith("https://")) {
@@ -270,7 +273,7 @@ public class FrontCoursePlayerController {
             }
 
             Media media = new Media(mediaSource);
-            MediaPlayer mediaPlayer = new MediaPlayer(media);
+            mediaPlayer = new MediaPlayer(media);
             MediaView mediaView = new MediaView(mediaPlayer);
             mediaView.setPreserveRatio(true);
 
@@ -361,9 +364,15 @@ public class FrontCoursePlayerController {
 
             stage.setScene(scene);
             stage.show();
+            isStageShown = true;
             mediaPlayer.play();
         } catch (Exception e) {
             showError("Impossible d'ouvrir la vidéo.", e);
+        } finally {
+            // If stage failed to display, ensure MediaPlayer resources are cleaned up
+            if (!isStageShown && mediaPlayer != null) {
+                mediaPlayer.dispose();
+            }
         }
     }
 
