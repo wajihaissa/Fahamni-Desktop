@@ -5,16 +5,29 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 import tn.esprit.fahamni.Models.User;
+import tn.esprit.fahamni.services.FaceRecognitionService;
+import tn.esprit.fahamni.services.TwoFactorAuthService;
 import tn.esprit.fahamni.services.UserAccountService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+import tn.esprit.fahamni.utils.WebcamCaptureDialog;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -35,6 +48,9 @@ public class ProfileSettingsController {
 
     @FXML
     private Label sidebarProfileEmailLabel;
+
+    @FXML
+    private Label profilePictureStatusLabel;
 
     @FXML
     private Label contentTitleLabel;
@@ -102,7 +118,45 @@ public class ProfileSettingsController {
     @FXML
     private Label feedbackLabel;
 
+    @FXML
+    private Label faceEngineStatusLabel;
+
+    @FXML
+    private Label faceEnrollmentStatusLabel;
+
+    @FXML
+    private Label faceEnrolledAtLabel;
+
+    @FXML
+    private Label twoFactorStatusLabel;
+
+    @FXML
+    private Label twoFactorConfirmedAtLabel;
+
+    @FXML
+    private ImageView twoFactorQrImageView;
+
+    @FXML
+    private VBox twoFactorSetupBox;
+
+    @FXML
+    private Label twoFactorSecretLabel;
+
+    @FXML
+    private TextField twoFactorCodeField;
+
+    @FXML
+    private TextArea recoveryCodesArea;
+
+    @FXML
+    private VBox recoveryCodesBox;
+
+    @FXML
+    private TextField disableTwoFactorCodeField;
+
     private final UserAccountService accountService = new UserAccountService();
+    private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
+    private final TwoFactorAuthService twoFactorAuthService = new TwoFactorAuthService();
     private Consumer<User> onProfileUpdated;
     private Runnable onAccountDeleted;
 
@@ -147,7 +201,27 @@ public class ProfileSettingsController {
 
     @FXML
     private void handleChooseProfilePicture() {
-        showFeedback("Le televersement de photo sera branche dans une prochaine etape.", true);
+        hideFeedback();
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choisir une photo de profil");
+        fileChooser.getExtensionFilters().setAll(
+            new FileChooser.ExtensionFilter("Images", "*.jpg", "*.jpeg", "*.png", "*.webp")
+        );
+
+        File selectedFile = fileChooser.showOpenDialog(profileAvatarLabel.getScene().getWindow());
+        if (selectedFile == null) {
+            return;
+        }
+
+        OperationResult result = accountService.updateCurrentAvatar(selectedFile);
+        if (!result.isSuccess()) {
+            showFeedback(result.getMessage(), false);
+            return;
+        }
+
+        refreshViewFromSession();
+        showFeedback(result.getMessage(), true);
     }
 
     @FXML
@@ -158,6 +232,8 @@ public class ProfileSettingsController {
         OperationResult result = accountService.updateCurrentUser(
             fullName,
             emailField.getText(),
+            phoneField.getText(),
+            bioArea.getText(),
             "",
             ""
         );
@@ -168,8 +244,7 @@ public class ProfileSettingsController {
         }
 
         refreshViewFromSession();
-        String message = result.getMessage() + " Les champs photo, telephone et bio restent des elements UI pour l'instant.";
-        showFeedback(message, true);
+        showFeedback(result.getMessage(), true);
 
         if (onProfileUpdated != null) {
             onProfileUpdated.accept(UserSession.getCurrentUser());
@@ -184,12 +259,108 @@ public class ProfileSettingsController {
 
     @FXML
     private void handleSaveCertifications() {
-        showFeedback("La section certifications est prete cote interface. Le branchement API viendra plus tard.", true);
+        hideFeedback();
+        OperationResult result = accountService.updateCurrentCertifications(certificationsArea.getText());
+        if (result.isSuccess()) {
+            refreshViewFromSession();
+        }
+        showFeedback(result.getMessage(), result.isSuccess());
     }
 
     @FXML
-    private void handleSecurityPlaceholderAction() {
-        showFeedback("Les actions de securite sont affichees cote interface. Nous brancherons l'API plus tard.", true);
+    private void handleEnrollFaceId() {
+        hideFeedback();
+
+        WebcamCaptureDialog.CaptureResult captureResult = WebcamCaptureDialog.captureJpeg(
+            profileAvatarLabel.getScene().getWindow(),
+            "Enroler Face ID",
+            "Prenez un selfie net avec une seule personne visible. Nous enregistrerons uniquement le face_token retourne par Face++."
+        );
+        if (!captureResult.hasImage()) {
+            if (captureResult.message() != null) {
+                showFeedback(captureResult.message(), false);
+            }
+            return;
+        }
+
+        OperationResult result = faceRecognitionService.enrollCurrentUserFace(captureResult.imageBytes());
+        refreshFaceStatus();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
+    private void handleRemoveFaceId() {
+        hideFeedback();
+        OperationResult result = faceRecognitionService.removeCurrentUserFace();
+        refreshFaceStatus();
+        showFeedback(result.getMessage(), result.isSuccess());
+    }
+
+    @FXML
+    private void handleChangePassword() {
+        hideFeedback();
+
+        Dialog<PasswordChangePayload> dialog = createChangePasswordDialog();
+        Optional<PasswordChangePayload> result = dialog.showAndWait();
+        if (result.isEmpty()) {
+            return;
+        }
+
+        PasswordChangePayload payload = result.get();
+        OperationResult updateResult = accountService.updateCurrentPassword(payload.newPassword(), payload.confirmPassword());
+        showFeedback(updateResult.getMessage(), updateResult.isSuccess());
+    }
+
+    @FXML
+    private void handleStartTwoFactorSetup() {
+        hideFeedback();
+        TwoFactorAuthService.SetupStartResult result = twoFactorAuthService.startSetupForCurrentUser();
+        if (!result.success()) {
+            showFeedback(result.message(), false);
+            refreshTwoFactorStatus();
+            return;
+        }
+
+        applyTwoFactorPendingPayload(result.payload());
+        showFeedback(result.message(), true);
+        refreshTwoFactorStatus();
+    }
+
+    @FXML
+    private void handleConfirmTwoFactor() {
+        hideFeedback();
+        TwoFactorAuthService.SetupConfirmResult result = twoFactorAuthService.confirmSetupForCurrentUser(twoFactorCodeField.getText());
+        if (!result.success()) {
+            showTwoFactorAlert("Activation 2FA impossible", result.message(), false);
+            showFeedback(result.message(), false);
+            refreshTwoFactorStatus();
+            return;
+        }
+
+        recoveryCodesArea.setText(String.join(System.lineSeparator(), result.recoveryCodes()));
+        recoveryCodesBox.setManaged(true);
+        recoveryCodesBox.setVisible(true);
+        twoFactorCodeField.clear();
+        clearTwoFactorPendingUi();
+        refreshTwoFactorStatus();
+        showTwoFactorAlert("2FA activee", result.message(), true);
+        showFeedback(result.message(), true);
+    }
+
+    @FXML
+    private void handleDisableTwoFactor() {
+        hideFeedback();
+        OperationResult result = twoFactorAuthService.disableCurrentUser(disableTwoFactorCodeField.getText());
+        if (result.isSuccess()) {
+            disableTwoFactorCodeField.clear();
+            clearTwoFactorPendingUi();
+            recoveryCodesArea.clear();
+            recoveryCodesBox.setManaged(false);
+            recoveryCodesBox.setVisible(false);
+        }
+        refreshTwoFactorStatus();
+        showTwoFactorAlert(result.isSuccess() ? "2FA desactivee" : "Desactivation 2FA impossible", result.getMessage(), result.isSuccess());
+        showFeedback(result.getMessage(), result.isSuccess());
     }
 
     @FXML
@@ -220,20 +391,24 @@ public class ProfileSettingsController {
     private void refreshViewFromSession() {
         User currentUser = UserSession.getCurrentUser();
         if (currentUser == null) {
-            profileAvatarLabel.setText("FS");
+            applyAvatar(profileAvatarLabel, null, 56);
             sidebarProfileNameLabel.setText("Etudiant Fahamni");
             sidebarProfileEmailLabel.setText("Aucun compte connecte");
+            profilePictureStatusLabel.setText("Aucun fichier choisi");
             firstNameField.clear();
             lastNameField.clear();
             emailField.clear();
             phoneField.clear();
             bioArea.clear();
+            certificationsArea.clear();
             roleField.clear();
             applyAccountOverview(new UserAccountService.AccountOverview("Inconnu", "Aucun role", "Non disponible", "Non disponible"));
+            refreshFaceStatus();
+            refreshTwoFactorStatus();
             return;
         }
 
-        profileAvatarLabel.setText(UserSession.getInitials());
+        applyAvatar(profileAvatarLabel, accountService.getCurrentAvatarPath(), 56);
         sidebarProfileNameLabel.setText(currentUser.getFullName());
         sidebarProfileEmailLabel.setText(currentUser.getEmail());
 
@@ -242,8 +417,16 @@ public class ProfileSettingsController {
         lastNameField.setText(nameParts[1]);
         emailField.setText(currentUser.getEmail());
         roleField.setText(UserSession.getRoleLabel());
+        profilePictureStatusLabel.setText(accountService.getCurrentAvatarStatus());
+
+        UserAccountService.ProfileDetails profileDetails = accountService.getCurrentProfileDetails();
+        phoneField.setText(profileDetails.phoneNumber());
+        bioArea.setText(profileDetails.bio());
+        certificationsArea.setText(profileDetails.certifications());
 
         applyAccountOverview(accountService.getCurrentAccountOverview());
+        refreshFaceStatus();
+        refreshTwoFactorStatus();
     }
 
     private void applyAccountOverview(UserAccountService.AccountOverview overview) {
@@ -266,20 +449,20 @@ public class ProfileSettingsController {
 
         switch (section) {
             case PERSONAL_INFO -> {
-                contentTitleLabel.setText("Personal Info");
-                contentSubtitleLabel.setText("Update your personal details and profile information.");
+                contentTitleLabel.setText("Informations personnelles");
+                contentSubtitleLabel.setText("Mets a jour tes informations personnelles et ton profil.");
             }
             case ACCOUNT_SETTINGS -> {
-                contentTitleLabel.setText("Account Settings");
-                contentSubtitleLabel.setText("These values are managed from the backoffice by administrators only.");
+                contentTitleLabel.setText("Parametres du compte");
+                contentSubtitleLabel.setText("Ces valeurs sont gerees uniquement depuis le backoffice par les administrateurs.");
             }
             case CERTIFICATIONS -> {
-                contentTitleLabel.setText("Certifications & Credentials");
-                contentSubtitleLabel.setText("Prepare your certifications area now. The backend hookup can come later.");
+                contentTitleLabel.setText("Certifications et justificatifs");
+                contentSubtitleLabel.setText("Enregistre tes certifications et pieces utiles directement sur ton profil.");
             }
             case SECURITY -> {
-                contentTitleLabel.setText("Security Settings");
-                contentSubtitleLabel.setText("The action buttons are ready. We will connect the security APIs when you ask for them.");
+                contentTitleLabel.setText("Parametres de securite");
+                contentSubtitleLabel.setText("Gere Face ID, la 2FA et le mot de passe depuis un seul espace.");
             }
         }
     }
@@ -349,5 +532,141 @@ public class ProfileSettingsController {
         feedbackLabel.getStyleClass().setAll("backoffice-feedback");
         feedbackLabel.setManaged(false);
         feedbackLabel.setVisible(false);
+    }
+
+    private void showTwoFactorAlert(String header, String message, boolean success) {
+        Alert alert = new Alert(success ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR);
+        alert.setTitle("Authenticator 2FA");
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private Dialog<PasswordChangePayload> createChangePasswordDialog() {
+        Dialog<PasswordChangePayload> dialog = new Dialog<>();
+        dialog.setTitle("Changer le mot de passe");
+        dialog.setHeaderText("Choisissez un nouveau mot de passe");
+
+        DialogPane dialogPane = dialog.getDialogPane();
+        ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButtonType = new ButtonType("Mettre a jour", ButtonBar.ButtonData.OK_DONE);
+        dialogPane.getButtonTypes().setAll(cancelButtonType, confirmButtonType);
+
+        Label firstLabel = new Label("Nouveau mot de passe");
+        PasswordField firstField = new PasswordField();
+        firstField.setPromptText("Nouveau mot de passe");
+
+        Label secondLabel = new Label("Confirmer le mot de passe");
+        PasswordField secondField = new PasswordField();
+        secondField.setPromptText("Confirmer le mot de passe");
+
+        VBox content = new VBox(10.0, firstLabel, firstField, secondLabel, secondField);
+        dialogPane.setContent(content);
+        dialog.setResultConverter(buttonType ->
+            buttonType == confirmButtonType ? new PasswordChangePayload(firstField.getText(), secondField.getText()) : null
+        );
+
+        Window owner = profileAvatarLabel != null && profileAvatarLabel.getScene() != null ? profileAvatarLabel.getScene().getWindow() : null;
+        if (owner != null) {
+            dialog.initOwner(owner);
+        }
+
+        return dialog;
+    }
+
+    private void refreshFaceStatus() {
+        FaceRecognitionService.FaceStatus faceStatus = faceRecognitionService.getCurrentFaceStatus();
+        if (faceEngineStatusLabel != null) {
+            faceEngineStatusLabel.setText(faceStatus.engineStatus());
+        }
+        if (faceEnrollmentStatusLabel != null) {
+            faceEnrollmentStatusLabel.setText(faceStatus.faceStatus());
+        }
+        if (faceEnrolledAtLabel != null) {
+            faceEnrolledAtLabel.setText("Enregistre le : " + faceStatus.enrolledAt());
+        }
+    }
+
+    private void refreshTwoFactorStatus() {
+        TwoFactorAuthService.TwoFactorStatus status = twoFactorAuthService.getCurrentStatus();
+        if (twoFactorStatusLabel != null) {
+            twoFactorStatusLabel.setText(status.enabled() ? "Statut : Active" : "Statut : Desactivee");
+        }
+        if (twoFactorConfirmedAtLabel != null) {
+            twoFactorConfirmedAtLabel.setText("Confirmee le : " + status.confirmedAt());
+        }
+
+        if (status.setupPending() && status.pendingPayload() != null) {
+            applyTwoFactorPendingPayload(status.pendingPayload());
+        } else {
+            clearTwoFactorPendingUi();
+        }
+    }
+
+    private void applyTwoFactorPendingPayload(TwoFactorAuthService.SetupPayload payload) {
+        if (payload == null) {
+            clearTwoFactorPendingUi();
+            return;
+        }
+
+        if (twoFactorQrImageView != null) {
+            twoFactorQrImageView.setImage(payload.qrCodeImage());
+        }
+        if (twoFactorSecretLabel != null) {
+            twoFactorSecretLabel.setText(payload.secret());
+        }
+        if (twoFactorSetupBox != null) {
+            twoFactorSetupBox.setManaged(true);
+            twoFactorSetupBox.setVisible(true);
+        }
+    }
+
+    private void clearTwoFactorPendingUi() {
+        if (twoFactorQrImageView != null) {
+            twoFactorQrImageView.setImage(null);
+        }
+        if (twoFactorSecretLabel != null) {
+            twoFactorSecretLabel.setText("Aucun secret genere pour le moment.");
+        }
+        if (twoFactorSetupBox != null) {
+            twoFactorSetupBox.setManaged(false);
+            twoFactorSetupBox.setVisible(false);
+        }
+    }
+
+    private void applyAvatar(Label label, Path avatarPath, double size) {
+        if (label == null) {
+            return;
+        }
+
+        if (avatarPath == null) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        Image image = new Image(avatarPath.toUri().toString(), size, size, false, true);
+        if (image.isError()) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(size);
+        imageView.setFitHeight(size);
+        imageView.setPreserveRatio(false);
+        imageView.setSmooth(true);
+
+        Circle clip = new Circle(size / 2);
+        clip.setCenterX(size / 2);
+        clip.setCenterY(size / 2);
+        imageView.setClip(clip);
+
+        label.setText("");
+        label.setGraphic(imageView);
+    }
+
+    private record PasswordChangePayload(String newPassword, String confirmPassword) {
     }
 }

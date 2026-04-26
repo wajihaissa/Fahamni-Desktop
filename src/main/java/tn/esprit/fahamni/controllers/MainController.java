@@ -1,8 +1,16 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.ParallelTransition;
+import javafx.animation.ScaleTransition;
+import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import tn.esprit.fahamni.services.NotificationService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.FrontOfficeMotion;
+import tn.esprit.fahamni.utils.FrontOfficeNavigation;
+import tn.esprit.fahamni.utils.FrontOfficeThemePreference;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
@@ -15,6 +23,8 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
@@ -23,17 +33,29 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Popup;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import javafx.util.Duration;
 import tn.esprit.fahamni.Models.Notification;
+import tn.esprit.fahamni.services.UserAccountService;
 
 public class MainController {
 
+    private static final String THEME_MOON_ICON =
+        "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c3.87 0 7.18-2.45 8.44-5.88-.65.28-1.36.43-2.12.43-2.97 0-5.38-2.41-5.38-5.38 0-2.7 1.99-4.94 4.58-5.33A8.96 8.96 0 0 0 12 3z";
+    private static final String THEME_SUN_ICON =
+        "M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm8.04-18.95l-1.41-1.41-1.8 1.79 1.42 1.42 1.79-1.8zM17.24 19.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 13h3v-2h-3v2zm-8-8h-2v3h2V5zm0 4a3 3 0 100 6 3 3 0 000-6zm-7.03 10.66l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z";
+
     private final NotificationService notifService = new NotificationService();
+    private final UserAccountService userAccountService = new UserAccountService();
 
     @FXML private BorderPane rootPane;
     @FXML private AnchorPane contentPane;
@@ -48,6 +70,9 @@ public class MainController {
     @FXML private Button messengerButton;
     @FXML private Button quizButton;
     @FXML private Button blogButton;
+    @FXML private Button aboutButton;
+    @FXML private Button themeToggleButton;
+    @FXML private SVGPath themeToggleIcon;
     @FXML private Button accountButton;
     @FXML private Label profileAvatarLabel;
     @FXML private Label profileNameLabel;
@@ -65,8 +90,12 @@ public class MainController {
         }
         System.out.println("MainController initialized");
         SessionCreationContext.registerNavigator(this::showReservations);
+        FrontOfficeNavigation.registerNavigator(this::openDestination);
         refreshCurrentUserSummary();
+        applyThemeMode();
         initializeAccountMenu();
+        installContentClip();
+        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
         showDashboard();
         refreshBlogBadge();
     }
@@ -145,6 +174,19 @@ public class MainController {
     }
 
     @FXML
+    private void showAbout() {
+        loadView("AboutView.fxml", "A propos de Fahamni");
+        setActiveButton(aboutButton);
+    }
+
+    @FXML
+    private void toggleTheme() {
+        FrontOfficeThemePreference.toggle();
+        applyThemeMode();
+        playThemeSwitchAnimation();
+    }
+
+    @FXML
     private void toggleAlertsPopup() {
         if (alertButton == null) {
             return;
@@ -159,35 +201,44 @@ public class MainController {
                 ? notifService.getAllForUser(userId)
                 : new ArrayList<>();
         long unreadCount = notifications.stream().filter(notification -> !notification.isRead()).count();
+        boolean lightTheme = FrontOfficeThemePreference.isLightMode();
 
         VBox container = new VBox(0);
         container.setStyle(
-            "-fx-background-color: white; -fx-background-radius: 14;" +
-            "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);" +
-            "-fx-border-color: #e3e6ef; -fx-border-radius: 14; -fx-border-width: 1;");
+            lightTheme
+                ? "-fx-background-color: rgba(253,255,255,0.98); -fx-background-radius: 18;" +
+                  "-fx-effect: dropshadow(gaussian,rgba(32,56,84,0.16),28,0.18,0,10);" +
+                  "-fx-border-color: rgba(84,122,165,0.14); -fx-border-radius: 18; -fx-border-width: 1;"
+                : "-fx-background-color: rgba(8,14,23,0.98); -fx-background-radius: 18;" +
+                  "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.42),30,0.22,0,10);" +
+                  "-fx-border-color: rgba(142,192,255,0.15); -fx-border-radius: 18; -fx-border-width: 1;");
         container.setPrefWidth(340);
 
         HBox header = new HBox(8);
         header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         header.setPadding(new Insets(14, 16, 12, 16));
-        header.setStyle("-fx-background-color: linear-gradient(to right,#6b5dd3,#5068d1);" +
-                        "-fx-background-radius: 14 14 0 0;");
+        header.setStyle(lightTheme
+                ? "-fx-background-color: linear-gradient(to right,#edf5ff,#f8fbff);" +
+                  "-fx-background-radius: 18 18 0 0;"
+                : "-fx-background-color: linear-gradient(to right,#10304a,#0c1f33);" +
+                  "-fx-background-radius: 18 18 0 0;");
         Label titleLabel = new Label("Notifications");
-        titleLabel.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white;");
+        titleLabel.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: "
+                + (lightTheme ? "#15263a;" : "#f3f8ff;"));
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         String countText = unreadCount > 0
-                ? unreadCount + " non lu(s)"
+                ? unreadCount + " non lues"
                 : (notifications.isEmpty() ? "Aucune" : notifications.size() + " au total");
         Label countLabel = new Label(countText);
-        countLabel.setStyle("-fx-font-size: 11; -fx-text-fill: rgba(255,255,255,0.85);");
+        countLabel.setStyle("-fx-font-size: 11; -fx-text-fill: " + (lightTheme ? "#6d8198;" : "#92a7bf;"));
         header.getChildren().addAll(titleLabel, spacer, countLabel);
         container.getChildren().add(header);
 
         if (notifications.isEmpty()) {
             Label emptyLabel = new Label("Aucune notification pour le moment.");
             emptyLabel.setPadding(new Insets(24, 16, 24, 16));
-            emptyLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12;");
+            emptyLabel.setStyle("-fx-text-fill: " + (lightTheme ? "#7288a0;" : "#8fa6bf;") + "-fx-font-size: 12;");
             container.getChildren().add(emptyLabel);
         } else {
             ScrollPane scroll = new ScrollPane();
@@ -207,8 +258,12 @@ public class MainController {
                 VBox item = new VBox(4);
                 item.setPadding(new Insets(10, 16, 10, 16));
                 String background = isUnread
-                        ? (approved ? "#f0fdf4" : (refused ? "#fff1f2" : "#f3f1ff"))
-                        : "#f8fafc";
+                        ? (approved
+                            ? (lightTheme ? "rgba(90,205,151,0.14)" : "rgba(50,120,94,0.20)")
+                            : (refused
+                                ? (lightTheme ? "rgba(255,166,184,0.18)" : "rgba(140,54,73,0.20)")
+                                : (lightTheme ? "rgba(99,178,255,0.14)" : "rgba(41,74,109,0.26)")))
+                        : (lightTheme ? "rgba(15,34,52,0.03)" : "rgba(255,255,255,0.03)");
                 item.setStyle("-fx-background-color: " + background + ";");
 
                 HBox row = new HBox(8);
@@ -220,8 +275,8 @@ public class MainController {
                 Label message = new Label(notification.getMessage() != null ? notification.getMessage() : "");
                 message.setWrapText(true);
                 String messageColor = isUnread
-                        ? (approved ? "#166534" : (refused ? "#9f1239" : "#4c1d95"))
-                        : "#64748b";
+                        ? (approved ? "#c5ffe0" : (refused ? "#ffd4db" : "#e8f5ff"))
+                        : "#92a7bf";
                 message.setStyle("-fx-font-size: 12; -fx-text-fill: " + messageColor + ";");
                 message.setMaxWidth(230);
                 HBox.setHgrow(message, Priority.ALWAYS);
@@ -230,7 +285,7 @@ public class MainController {
                 rightBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
                 if (isUnread) {
                     Label badge = new Label("Nouveau");
-                    badge.setStyle("-fx-background-color: #d1435b; -fx-text-fill: white;" +
+                    badge.setStyle("-fx-background-color: rgba(79,216,255,0.18); -fx-text-fill: #c6f7ff;" +
                             "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;" +
                             "-fx-padding: 1 5;");
                     rightBox.getChildren().add(badge);
@@ -238,7 +293,7 @@ public class MainController {
                 row.getChildren().addAll(icon, message, rightBox);
 
                 Label date = new Label(notification.getCreatedAt() != null ? notification.getCreatedAt().format(NOTIF_FMT) : "");
-                date.setStyle("-fx-font-size: 10; -fx-text-fill: #94a3b8;");
+                date.setStyle("-fx-font-size: 10; -fx-text-fill: #7f95ad;");
 
                 item.getChildren().addAll(row, date);
                 list.getChildren().add(item);
@@ -257,9 +312,9 @@ public class MainController {
                 Button markReadButton = new Button("Tout marquer comme lu");
                 markReadButton.setMaxWidth(Double.MAX_VALUE);
                 markReadButton.setStyle(
-                    "-fx-background-color: #f8f7ff; -fx-text-fill: #5f49bf;" +
+                    "-fx-background-color: rgba(255,255,255,0.04); -fx-text-fill: #d6e7f8;" +
                     "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
-                    "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
+                    "-fx-cursor: hand; -fx-border-color: rgba(255,255,255,0.08);" +
                     "-fx-border-width: 1 0 0 0;");
                 markReadButton.setOnAction(event -> {
                     notifService.markAllReadForUser(userId);
@@ -329,7 +384,7 @@ public class MainController {
             displayView(view, title);
         } catch (Exception e) {
             e.printStackTrace();
-            Label placeholder = new Label("View not implemented yet: " + fxmlFile);
+            Label placeholder = new Label("Vue non implemente encore : " + fxmlFile);
             placeholder.getStyleClass().add("content-placeholder");
             displayView(placeholder, title);
         }
@@ -354,19 +409,116 @@ public class MainController {
 
     private void displayView(Node view, String title) {
         contentPane.getChildren().clear();
+        if (view instanceof Region region) {
+            region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        }
         AnchorPane.setTopAnchor(view, 0.0);
         AnchorPane.setBottomAnchor(view, 0.0);
         AnchorPane.setLeftAnchor(view, 0.0);
         AnchorPane.setRightAnchor(view, 0.0);
         contentPane.getChildren().add(view);
+        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
+        playViewTransition(view);
         if (pageTitle != null) {
             pageTitle.setText(title);
         }
     }
 
+    private void openDestination(FrontOfficeNavigation.Destination destination) {
+        if (destination == null) {
+            return;
+        }
+
+        switch (destination) {
+            case DASHBOARD -> showDashboard();
+            case RESERVATIONS -> showReservations();
+            case CALENDAR -> showSeances();
+            case INFRASTRUCTURE -> showSallesEquipements();
+            case PLANNER -> showPlanner();
+            case QUIZ -> showQuiz();
+            case BLOG -> showBlog();
+            case ABOUT -> showAbout();
+            case PROFILE -> showProfile();
+            case SETTINGS -> showSettings();
+        }
+    }
+
+    private void applyThemeMode() {
+        FrontOfficeThemePreference.apply(rootPane);
+        boolean lightMode = FrontOfficeThemePreference.isLightMode();
+        if (themeToggleButton != null) {
+            themeToggleButton.setText("");
+            themeToggleButton.setAccessibleText(lightMode ? "Passer en mode sombre" : "Passer en mode clair");
+        }
+        if (themeToggleIcon != null) {
+            themeToggleIcon.setContent(lightMode ? THEME_MOON_ICON : THEME_SUN_ICON);
+        }
+        refreshAccountMenuTheme();
+        if (alertsPopup != null && alertsPopup.isShowing()) {
+            alertsPopup.hide();
+        }
+    }
+
+    private void refreshAccountMenuTheme() {
+        if (accountMenu == null) {
+            return;
+        }
+
+        accountMenu.getStyleClass().remove("light-context-menu");
+        if (FrontOfficeThemePreference.isLightMode()) {
+            accountMenu.getStyleClass().add("light-context-menu");
+        }
+    }
+
+    private void playThemeSwitchAnimation() {
+        if (rootPane == null) {
+            return;
+        }
+
+        rootPane.setOpacity(0.94);
+        rootPane.setScaleX(0.994);
+        rootPane.setScaleY(0.994);
+
+        FadeTransition fadeTransition = new FadeTransition(Duration.millis(220), rootPane);
+        fadeTransition.setFromValue(0.94);
+        fadeTransition.setToValue(1.0);
+
+        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(220), rootPane);
+        scaleTransition.setFromX(0.994);
+        scaleTransition.setFromY(0.994);
+        scaleTransition.setToX(1.0);
+        scaleTransition.setToY(1.0);
+
+        new ParallelTransition(fadeTransition, scaleTransition).play();
+    }
+
+    private void playViewTransition(Node view) {
+        if (view == null) {
+            return;
+        }
+
+        view.setOpacity(0.0);
+
+        FadeTransition fadeTransition = new FadeTransition(Duration.millis(320), view);
+        fadeTransition.setFromValue(0.0);
+        fadeTransition.setToValue(1.0);
+        fadeTransition.play();
+    }
+
+    private void installContentClip() {
+        if (contentPane == null) {
+            return;
+        }
+
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(contentPane.widthProperty());
+        clip.heightProperty().bind(contentPane.heightProperty());
+        contentPane.setClip(clip);
+    }
+
     private void refreshCurrentUserSummary() {
         try {
-            profileAvatarLabel.setText(UserSession.getInitials());
+            applyAvatar(profileAvatarLabel, userAccountService.getCurrentAvatarPath(), 34);
             profileNameLabel.setText(UserSession.getDisplayName());
             profileRoleLabel.setText(UserSession.getRoleLabel());
         } catch (Exception e) {
@@ -395,6 +547,7 @@ public class MainController {
         accountMenu.getStyleClass().add("front-navbar-context-menu");
         accountMenu.setAutoHide(true);
         accountMenu.setAutoFix(true);
+        refreshAccountMenuTheme();
     }
 
     private void hideAccountMenuInstant() {
@@ -412,6 +565,7 @@ public class MainController {
         removeActiveClass(messengerButton);
         removeActiveClass(quizButton);
         removeActiveClass(blogButton);
+        removeActiveClass(aboutButton);
 
         if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");
@@ -422,5 +576,38 @@ public class MainController {
         if (button != null) {
             button.getStyleClass().remove("active");
         }
+    }
+
+    private void applyAvatar(Label label, Path avatarPath, double size) {
+        if (label == null) {
+            return;
+        }
+
+        if (avatarPath == null) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        Image image = new Image(avatarPath.toUri().toString(), size, size, false, true);
+        if (image.isError()) {
+            label.setGraphic(null);
+            label.setText(UserSession.getInitials());
+            return;
+        }
+
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(size);
+        imageView.setFitHeight(size);
+        imageView.setPreserveRatio(false);
+        imageView.setSmooth(true);
+
+        Circle clip = new Circle(size / 2);
+        clip.setCenterX(size / 2);
+        clip.setCenterY(size / 2);
+        imageView.setClip(clip);
+
+        label.setText("");
+        label.setGraphic(imageView);
     }
 }
