@@ -61,6 +61,7 @@ public class MainController {
         System.out.println("MainController initialized");
         SessionCreationContext.registerNavigator(this::showReservations);
         refreshCurrentUserSummary();
+        refreshFrontOfficeAccess();
         initializeAccountMenu();
         showDashboard();
         refreshBlogBadge();
@@ -111,6 +112,10 @@ public class MainController {
 
     @FXML
     private void showSallesEquipements() {
+        if (!canAccessSallesEquipements()) {
+            showDashboard();
+            return;
+        }
         loadView("SallesEquipementsView.fxml", "Salles & Materiel");
         setActiveButton(sallesEquipementsButton);
     }
@@ -358,9 +363,25 @@ public class MainController {
             profileAvatarLabel.setText(UserSession.getInitials());
             profileNameLabel.setText(UserSession.getDisplayName());
             profileRoleLabel.setText(UserSession.getRoleLabel());
+            refreshFrontOfficeAccess();
         } catch (Exception e) {
             System.err.println("refreshCurrentUserSummary: " + e.getMessage());
         }
+    }
+
+    private void refreshFrontOfficeAccess() {
+        boolean showInfrastructure = canAccessSallesEquipements();
+        if (sallesEquipementsButton != null) {
+            sallesEquipementsButton.setManaged(showInfrastructure);
+            sallesEquipementsButton.setVisible(showInfrastructure);
+            if (!showInfrastructure) {
+                sallesEquipementsButton.getStyleClass().remove("active");
+            }
+        }
+    }
+
+    private boolean canAccessSallesEquipements() {
+        return !UserSession.isCurrentStudent();
     }
 
     private void initializeAccountMenu() {
