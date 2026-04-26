@@ -8,7 +8,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import javafx.beans.binding.Bindings;
+import javafx.collections.MapChangeListener;
 import javafx.event.ActionEvent;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -16,6 +19,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
@@ -29,6 +33,7 @@ import javafx.scene.media.MediaView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import org.bytedeco.javacv.FFmpegFrameGrabber;
 import tn.esprit.fahamni.Models.Category;
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.CategoryService;
@@ -38,6 +43,8 @@ import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.ViewNavigator;
 
 public class FrontCoursePlayerController {
+
+    private static final double VIDEO_CONTROL_BAR_HEIGHT = 60.0;
 
     @FXML
     private Label courseTitleLabel;
@@ -51,20 +58,37 @@ public class FrontCoursePlayerController {
     @FXML
     private VBox chaptersContainer;
 
+    @FXML
+    private StackPane rootStack;
+
+    @FXML
+    private VBox courseAiPanel;
+
+    @FXML
+    private AnchorPane courseAiContent;
+
+    @FXML
+    private Button courseAiFab;
+
     private final CategoryService categoryService = new CategoryService();
     private Matiere currentMatiere;
     private long lastUpdateTime = 0;
+    private ChatbotController courseChatbotController;
+    private boolean courseAiLoaded;
 
     public void setMatiere(Matiere matiere) {
         this.currentMatiere = matiere;
         // Store in application state so other views (e.g., Chatbot) can access the current course
         ApplicationState.getInstance().setCurrentMatiere(matiere);
         renderCourse();
+        syncCourseAiContext();
     }
 
     @FXML
     private void goBackToCourses(ActionEvent event) {
         try {
+            shutdownCourseAi();
+
             Node coursesView = SceneManager.loadView(
                 Main.class,
                 SceneManager.frontofficeView("FrontMatiereView.fxml")
@@ -94,6 +118,22 @@ public class FrontCoursePlayerController {
             System.err.println("Error going back to courses: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             e.printStackTrace();
             showError("Impossible de revenir a la liste des cours: " + e.getMessage(), e);
+        }
+    }
+
+    @FXML
+    private void toggleCourseAi() {
+        try {
+            ensureCourseAiLoaded();
+            boolean shouldShow = !courseAiPanel.isVisible();
+            courseAiPanel.setVisible(shouldShow);
+            courseAiPanel.setManaged(shouldShow);
+            courseAiFab.setText(shouldShow ? "Masquer AI" : "AI du cours");
+            if (shouldShow) {
+                syncCourseAiContext();
+            }
+        } catch (Exception e) {
+            showError("Impossible d'ouvrir l'assistant du cours.", e);
         }
     }
 
@@ -278,8 +318,9 @@ public class FrontCoursePlayerController {
 
             // Create Media with safe URI
             Media media = new Media(mediaSource);
-            mediaPlayer = new MediaPlayer(media);
-            MediaView mediaView = new MediaView(mediaPlayer);
+            final MediaPlayer player = new MediaPlayer(media);
+            mediaPlayer = player;
+            MediaView mediaView = new MediaView(player);
             mediaView.setPreserveRatio(true);
 
             BorderPane root = new BorderPane();
@@ -295,28 +336,30 @@ public class FrontCoursePlayerController {
             Slider volumeSlider = new Slider(0, 1, 0.7);
             volumeSlider.setPrefWidth(160);
             final boolean[] userSeeking = {false};
+            final Scene[] videoScene = new Scene[1];
 
-            mediaPlayer.setVolume(volumeSlider.getValue());
-            volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> mediaPlayer.setVolume(newVal.doubleValue()));
+            player.setVolume(volumeSlider.getValue());
+            volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> player.setVolume(newVal.doubleValue()));
 
             playPauseBtn.setOnAction(e -> {
-                MediaPlayer.Status status = mediaPlayer.getStatus();
+                MediaPlayer.Status status = player.getStatus();
                 if (status == MediaPlayer.Status.PLAYING) {
-                    mediaPlayer.pause();
+                    player.pause();
                     playPauseBtn.setText("Play");
                 } else {
-                    mediaPlayer.play();
+                    player.play();
                     playPauseBtn.setText("Pause");
                 }
             });
 
             stopBtn.setOnAction(e -> {
-                mediaPlayer.stop();
+                player.stop();
                 playPauseBtn.setText("Play");
             });
 
-            mediaPlayer.setOnReady(() -> {
-                Duration totalDuration = mediaPlayer.getTotalDuration();
+            player.setOnReady(() -> {
+                applyBestKnownRotation(media, mediaView, videoScene[0], mediaSource);
+                Duration totalDuration = player.getTotalDuration();
                 double totalSeconds = Math.max(1, totalDuration.toSeconds());
                 seekSlider.setMin(0);
                 seekSlider.setMax(totalSeconds);
@@ -324,7 +367,7 @@ public class FrontCoursePlayerController {
                 totalDurationLabel.setText(formatDuration(totalDuration));
             });
 
-            mediaPlayer.currentTimeProperty().addListener((obs, oldVal, newVal) -> {
+            player.currentTimeProperty().addListener((obs, oldVal, newVal) -> {
                 long now = System.currentTimeMillis();
                 if (now - lastUpdateTime < 500) {
                     return;
@@ -340,14 +383,14 @@ public class FrontCoursePlayerController {
             seekSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
                 userSeeking[0] = isChanging;
                 if (!isChanging) {
-                    mediaPlayer.seek(Duration.seconds(seekSlider.getValue()));
+                    player.seek(Duration.seconds(seekSlider.getValue()));
                 }
             });
 
             seekSlider.setOnMousePressed(e -> userSeeking[0] = true);
             seekSlider.setOnMouseReleased(e -> {
                 userSeeking[0] = false;
-                mediaPlayer.seek(Duration.seconds(seekSlider.getValue()));
+                player.seek(Duration.seconds(seekSlider.getValue()));
             });
 
             HBox controls = new HBox(
@@ -365,18 +408,18 @@ public class FrontCoursePlayerController {
             root.setBottom(controls);
 
             Scene scene = new Scene(root, 900, 540);
-            mediaView.fitWidthProperty().bind(scene.widthProperty());
-            mediaView.fitHeightProperty().bind(scene.heightProperty().subtract(60));
+            videoScene[0] = scene;
+            configureVideoOrientation(media, mediaView, scene, mediaSource);
 
             stage.setOnCloseRequest(e -> {
-                mediaPlayer.stop();
-                mediaPlayer.dispose();
+                player.stop();
+                player.dispose();
             });
 
             stage.setScene(scene);
             stage.show();
             isStageShown = true;
-            mediaPlayer.play();
+            player.play();
         } catch (Exception e) {
             showError("Impossible d'ouvrir la vidéo.", e);
         } finally {
@@ -385,6 +428,112 @@ public class FrontCoursePlayerController {
                 mediaPlayer.dispose();
             }
         }
+    }
+
+    private void configureVideoOrientation(Media media, MediaView mediaView, Scene scene, String mediaSource) {
+        applyMediaViewRotation(mediaView, scene, 0);
+
+        MapChangeListener<String, Object> metadataListener = change -> {
+            if (!change.wasAdded()) {
+                return;
+            }
+
+            Double metadataRotation = parseRotationMetadata(change.getKey(), change.getValueAdded());
+            if (metadataRotation != null) {
+                applyMediaViewRotation(mediaView, scene, metadataRotation);
+            }
+        };
+        media.getMetadata().addListener(metadataListener);
+    }
+
+    private void applyBestKnownRotation(Media media, MediaView mediaView, Scene scene, String mediaSource) {
+        if (scene == null) {
+            return;
+        }
+
+        Double rotationFromMetadata = null;
+        for (String key : media.getMetadata().keySet()) {
+            rotationFromMetadata = parseRotationMetadata(key, media.getMetadata().get(key));
+            if (rotationFromMetadata != null) {
+                break;
+            }
+        }
+
+        double finalRotation = rotationFromMetadata != null
+            ? rotationFromMetadata
+            : readVideoRotation(mediaSource);
+        applyMediaViewRotation(mediaView, scene, finalRotation);
+    }
+
+    private Double parseRotationMetadata(String key, Object value) {
+        if (key == null || value == null) {
+            return null;
+        }
+
+        String normalizedKey = key.trim().toLowerCase();
+        if (!normalizedKey.contains("rotate") && !normalizedKey.contains("orientation")) {
+            return null;
+        }
+
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+
+        try {
+            return Double.parseDouble(String.valueOf(value).trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private double readVideoRotation(String mediaSource) {
+        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(mediaSource)) {
+            grabber.start();
+            String rotate = grabber.getVideoMetadata("rotate");
+            if (rotate == null || rotate.isBlank()) {
+                return 0;
+            }
+            return Double.parseDouble(rotate.trim());
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private void applyMediaViewRotation(MediaView mediaView, Scene scene, double rotation) {
+        double normalizedRotation = normalizeRotation(rotation);
+        mediaView.setRotate(normalizedRotation);
+
+        boolean quarterTurn = Math.abs(normalizedRotation) == 90 || Math.abs(normalizedRotation) == 270;
+        mediaView.fitWidthProperty().unbind();
+        mediaView.fitHeightProperty().unbind();
+        mediaView.fitWidthProperty().bind(Bindings.createDoubleBinding(
+            () -> quarterTurn ? Math.max(0, scene.getHeight() - VIDEO_CONTROL_BAR_HEIGHT) : scene.getWidth(),
+            scene.widthProperty(),
+            scene.heightProperty()
+        ));
+        mediaView.fitHeightProperty().bind(Bindings.createDoubleBinding(
+            () -> quarterTurn ? scene.getWidth() : Math.max(0, scene.getHeight() - VIDEO_CONTROL_BAR_HEIGHT),
+            scene.widthProperty(),
+            scene.heightProperty()
+        ));
+    }
+
+    private double normalizeRotation(double rotation) {
+        double normalized = rotation % 360;
+        if (normalized < 0) {
+            normalized += 360;
+        }
+
+        if (normalized >= 315 || normalized < 45) {
+            return 0;
+        }
+        if (normalized < 135) {
+            return 90;
+        }
+        if (normalized < 225) {
+            return 180;
+        }
+        return 270;
     }
 
     private String formatDuration(Duration duration) {
@@ -648,6 +797,38 @@ public class FrontCoursePlayerController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void ensureCourseAiLoaded() throws Exception {
+        if (courseAiLoaded) {
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(Main.class.getResource("/tn/esprit/fahamni/views/ChatbotView.fxml"));
+        Node chatbotNode = loader.load();
+        courseChatbotController = loader.getController();
+
+        courseAiContent.getChildren().setAll(chatbotNode);
+        AnchorPane.setTopAnchor(chatbotNode, 0.0);
+        AnchorPane.setBottomAnchor(chatbotNode, 0.0);
+        AnchorPane.setLeftAnchor(chatbotNode, 0.0);
+        AnchorPane.setRightAnchor(chatbotNode, 0.0);
+
+        courseAiLoaded = true;
+    }
+
+    private void syncCourseAiContext() {
+        if (!courseAiLoaded || courseChatbotController == null || currentMatiere == null) {
+            return;
+        }
+
+        courseChatbotController.setMatiere(currentMatiere);
+    }
+
+    private void shutdownCourseAi() {
+        if (courseChatbotController != null) {
+            courseChatbotController.shutdown();
+        }
     }
 
     private static class ChapterNode {

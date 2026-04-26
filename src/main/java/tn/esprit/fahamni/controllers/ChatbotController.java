@@ -29,6 +29,7 @@ public class ChatbotController implements Initializable {
     private final CourseContextBuilder courseContextBuilder = new CourseContextBuilder();
     private final AtomicReference<String> courseContext = new AtomicReference<>("");
     private final AtomicBoolean isContextLoaded = new AtomicBoolean(false);
+    private final AtomicReference<Integer> loadedMatiereId = new AtomicReference<>(null);
     private final ExecutorService chatExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "ChatbotWorker");
         t.setDaemon(true);
@@ -99,6 +100,12 @@ public class ChatbotController implements Initializable {
             return;
         }
 
+        Integer nextMatiereId = matiere.getId() > 0 ? matiere.getId() : null;
+        if (nextMatiereId != null && nextMatiereId.equals(loadedMatiereId.get()) && isContextLoaded.get()) {
+            return;
+        }
+
+        loadedMatiereId.set(nextMatiereId);
         addMessageToUI(
             "Fahamni AI is reading the course materials (PDFs, Links, Videos). This might take a moment...",
             false
@@ -143,7 +150,7 @@ public class ChatbotController implements Initializable {
     }
 
     public void addMessageToUI(String text, boolean isUser) {
-        addMessageRow(text, isUser);
+        runOnFxThread(() -> addMessageRow(text, isUser));
     }
 
     private HBox addMessageRow(String text, boolean isUser) {
@@ -177,6 +184,14 @@ public class ChatbotController implements Initializable {
     public void shutdown() {
         if (chatExecutor != null && !chatExecutor.isShutdown()) {
             chatExecutor.shutdown();
+        }
+    }
+
+    private void runOnFxThread(Runnable action) {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            Platform.runLater(action);
         }
     }
 }

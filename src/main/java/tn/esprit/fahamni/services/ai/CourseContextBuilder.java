@@ -43,6 +43,7 @@ public class CourseContextBuilder {
 
     private static boolean isFfmpegAvailable = false;
     private static boolean hasCheckedFfmpeg = false;
+    private static Model sharedVoskModel = null;
 
     private final LanguageDetector languageDetector = LanguageDetectorBuilder
         .fromLanguages(Language.ENGLISH, Language.FRENCH)
@@ -305,9 +306,19 @@ public class CourseContextBuilder {
             return "";
         }
 
-        try (Model model = new Model(modelPath);
-             AudioInputStream ais = AudioSystem.getAudioInputStream(wavFile);
-             Recognizer recognizer = new Recognizer(model, 16000f)) {
+        try {
+            synchronized (CourseContextBuilder.class) {
+                if (sharedVoskModel == null) {
+                    sharedVoskModel = new Model(modelPath);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to load Vosk model for resource [" + resourceName + "]: " + e.getMessage());
+            return "";
+        }
+
+        try (AudioInputStream ais = AudioSystem.getAudioInputStream(wavFile);
+             Recognizer recognizer = new Recognizer(sharedVoskModel, 16000f)) {
 
             byte[] buffer = new byte[4096];
             StringBuilder text = new StringBuilder();

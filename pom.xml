@@ -72,7 +72,7 @@
             <version>1.17.2</version>
         </dependency>
         <dependency>
-            <groupId>com.alphacep</groupId>
+            <groupId>com.alphacephei</groupId>
             <artifactId>vosk</artifactId>
             <version>0.3.32</version>
         </dependency>

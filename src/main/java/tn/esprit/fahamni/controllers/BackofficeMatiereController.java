@@ -37,6 +37,9 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import tn.esprit.fahamni.Models.Category;
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.CategoryService;
@@ -395,20 +398,28 @@ public class BackofficeMatiereController implements Initializable {
             return;
         }
 
-        // Track the matiere being edited
-        selectedMatiere = matiere;
+        Matiere hydratedMatiere = matiere;
+        if (matiere.getId() > 0) {
+            Matiere reloadedMatiere = matiereService.findById(matiere.getId());
+            if (reloadedMatiere != null) {
+                hydratedMatiere = reloadedMatiere;
+            }
+        }
 
-        titreField.setText(matiere.getTitre());
-        descriptionArea.setText(matiere.getDescription());
-        selectedImagePath = matiere.getCoverImage();
+        // Track the matiere being edited
+        selectedMatiere = hydratedMatiere;
+
+        titreField.setText(hydratedMatiere.getTitre());
+        descriptionArea.setText(hydratedMatiere.getDescription());
+        selectedImagePath = hydratedMatiere.getCoverImage();
         imagePathLabel.setText(selectedImagePath == null || selectedImagePath.isBlank() ? "Aucune image sélectionnée" : selectedImagePath);
         
         courseBuilderContainer.getChildren().clear();
         categoryTagsContainer.getChildren().clear();
-        loadCategoriesForMatiere(matiere);
+        loadCategoriesForMatiere(hydratedMatiere);
         
-        if (matiere.getStructure() != null && !matiere.getStructure().isEmpty()) {
-            loadJsonToUI(matiere.getStructure());
+        if (hydratedMatiere.getStructure() != null && !hydratedMatiere.getStructure().isEmpty()) {
+            loadJsonToUI(hydratedMatiere.getStructure());
         }
     }
 
@@ -900,39 +911,39 @@ public class BackofficeMatiereController implements Initializable {
 
     private void loadJsonToUI(String json) {
         try {
-            // Handle null or empty JSON
             if (json == null || json.trim().isEmpty()) {
                 courseBuilderContainer.getChildren().clear();
                 return;
             }
-            
-            // Simple manual parsing for JSON structure
+
             courseBuilderContainer.getChildren().clear();
-            
-            // Extract chapters
-            int chaptersStart = json.indexOf("[");
-            int chaptersEnd = json.lastIndexOf("]");
-            if (chaptersStart < 0 || chaptersEnd < 0) {
-                System.err.println("Warning: No valid JSON array found. Starting with empty builder.");
+
+            Object parsedRoot = new JSONTokener(json).nextValue();
+            JSONArray chapters;
+
+            if (parsedRoot instanceof JSONObject) {
+                chapters = ((JSONObject) parsedRoot).optJSONArray("chapters");
+            } else if (parsedRoot instanceof JSONArray) {
+                chapters = (JSONArray) parsedRoot;
+            } else {
                 return;
             }
-            
-            String chaptersContent = json.substring(chaptersStart + 1, chaptersEnd);
-            String[] chapters = splitSafely(chaptersContent, "},{");
-            
-            for (String chapter : chapters) {
-                chapter = chapter.trim().replaceAll("[{}\\[\\]]", "");
-                if (chapter.isEmpty()) continue;
-                
-                // Extract chapter title
-                int titleStart = chapter.indexOf("\"title\":\"") + 9;
-                int titleEnd = chapter.indexOf("\"", titleStart);
-                String chapterTitle = titleEnd > titleStart ? unescapeJson(chapter.substring(titleStart, titleEnd)) : "";
-                
+
+            if (chapters == null) {
+                return;
+            }
+
+            for (int chapterIndex = 0; chapterIndex < chapters.length(); chapterIndex++) {
+                JSONObject chapterObject = chapters.optJSONObject(chapterIndex);
+                if (chapterObject == null) {
+                    continue;
+                }
+
                 createChapterNode();
                 VBox lastChapter = (VBox) courseBuilderContainer.getChildren().get(courseBuilderContainer.getChildren().size() - 1);
-                
-                // Set chapter title
+
+                String chapterTitle = chapterObject.optString("title", "");
+                VBox sectionsContainer = null;
                 for (Node node : lastChapter.getChildren()) {
                     if (node instanceof HBox) {
                         HBox header = (HBox) node;
@@ -941,116 +952,65 @@ public class BackofficeMatiereController implements Initializable {
                                 ((TextField) headerChild).setText(chapterTitle);
                             }
                         }
-                    } else if (node instanceof VBox) {
-                        // Extract and create sections
-                        VBox sectionsContainer = (VBox) node;
-                        int sectionsStart = chapter.indexOf("[");
-                        int sectionsEnd = chapter.lastIndexOf("]");
-                        if (sectionsStart > 0 && sectionsEnd > sectionsStart) {
-                            String sectionsContent = chapter.substring(sectionsStart + 1, sectionsEnd);
-                            String[] sections = splitSafely(sectionsContent, "},{");
-                            
-                            for (String section : sections) {
-                                section = section.trim().replaceAll("[{}\\[\\]]", "");
-                                if (section.isEmpty()) continue;
-                                
-                                int secTitleStart = section.indexOf("\"title\":\"") + 9;
-                                int secTitleEnd = section.indexOf("\"", secTitleStart);
-                                String sectionTitle = secTitleEnd > secTitleStart ? unescapeJson(section.substring(secTitleStart, secTitleEnd)) : "";
-                                
-                                createSectionNode(sectionsContainer);
-                                VBox lastSection = (VBox) sectionsContainer.getChildren().get(sectionsContainer.getChildren().size() - 1);
-                                
-                                // Set section title and load resources
-                                VBox resourcesContainer = null;
-                                for (Node secNode : lastSection.getChildren()) {
-                                    if (secNode instanceof HBox) {
-                                        HBox secHeader = (HBox) secNode;
-                                        for (Node secHeaderChild : secHeader.getChildren()) {
-                                            if (secHeaderChild instanceof TextField) {
-                                                ((TextField) secHeaderChild).setText(sectionTitle);
-                                            }
-                                        }
-                                    } else if (secNode instanceof VBox && resourcesContainer == null) {
-                                        resourcesContainer = (VBox) secNode;
-                                    }
-                                }
-                                
-                                // Load resources from JSON
-                                if (resourcesContainer != null) {
-                                    int resourcesStart = section.indexOf("[", section.indexOf("resources"));
-                                    int resourcesEnd = section.lastIndexOf("]");
-                                    if (resourcesStart > 0 && resourcesEnd > resourcesStart) {
-                                        String resourcesContent = section.substring(resourcesStart + 1, resourcesEnd);
-                                        String[] resources = splitSafely(resourcesContent, "},{");
-                                        
-                                        for (String resource : resources) {
-                                            resource = resource.trim().replaceAll("[{}\\[\\]]", "");
-                                            if (resource.isEmpty()) continue;
-                                            
-                                            // Extract resource type, name, and path
-                                            int typeStart = resource.indexOf("\"type\":\"") + 8;
-                                            int typeEnd = resource.indexOf("\"", typeStart);
-                                            String type = typeEnd > typeStart ? unescapeJson(resource.substring(typeStart, typeEnd)) : "";
-                                            
-                                            int nameStart = resource.indexOf("\"name\":\"") + 8;
-                                            int nameEnd = resource.indexOf("\"", nameStart);
-                                            String name = nameEnd > nameStart ? unescapeJson(resource.substring(nameStart, nameEnd)) : "";
-                                            
-                                            int pathStart = resource.indexOf("\"path\":\"") + 8;
-                                            int pathEnd = resource.indexOf("\"", pathStart);
-                                            String path = pathEnd > pathStart ? unescapeJson(resource.substring(pathStart, pathEnd)) : "";
-                                            
-                                            createResourceNode(type, name, path, resourcesContainer);
-                                        }
-                                    }
+                    } else if (node instanceof VBox && sectionsContainer == null) {
+                        sectionsContainer = (VBox) node;
+                    }
+                }
+
+                JSONArray sections = chapterObject.optJSONArray("sections");
+                if (sections == null || sectionsContainer == null) {
+                    continue;
+                }
+
+                for (int sectionIndex = 0; sectionIndex < sections.length(); sectionIndex++) {
+                    JSONObject sectionObject = sections.optJSONObject(sectionIndex);
+                    if (sectionObject == null) {
+                        continue;
+                    }
+
+                    createSectionNode(sectionsContainer);
+                    VBox lastSection = (VBox) sectionsContainer.getChildren().get(sectionsContainer.getChildren().size() - 1);
+                    String sectionTitle = sectionObject.optString("title", "");
+
+                    VBox resourcesContainer = null;
+                    for (Node sectionNode : lastSection.getChildren()) {
+                        if (sectionNode instanceof HBox) {
+                            HBox sectionHeader = (HBox) sectionNode;
+                            for (Node headerChild : sectionHeader.getChildren()) {
+                                if (headerChild instanceof TextField) {
+                                    ((TextField) headerChild).setText(sectionTitle);
                                 }
                             }
+                        } else if (sectionNode instanceof VBox && resourcesContainer == null) {
+                            resourcesContainer = (VBox) sectionNode;
                         }
+                    }
+
+                    JSONArray resources = sectionObject.optJSONArray("resources");
+                    if (resources == null || resourcesContainer == null) {
+                        continue;
+                    }
+
+                    for (int resourceIndex = 0; resourceIndex < resources.length(); resourceIndex++) {
+                        JSONObject resourceObject = resources.optJSONObject(resourceIndex);
+                        if (resourceObject == null) {
+                            continue;
+                        }
+
+                        createResourceNode(
+                            resourceObject.optString("type", ""),
+                            resourceObject.optString("name", ""),
+                            resourceObject.optString("path", ""),
+                            resourcesContainer
+                        );
                     }
                 }
             }
-        } catch (StringIndexOutOfBoundsException e) {
-            // Likely legacy or malformed JSON format
-            System.err.println("Warning: JSON format incompatible with current parser. Detected legacy or malformed data. Starting with empty builder.");
-            System.err.println("Details: " + e.getMessage());
-            courseBuilderContainer.getChildren().clear();
         } catch (Exception e) {
-            // Catch all other parsing errors gracefully
             System.err.println("Warning: Error parsing JSON structure (may be legacy format): " + e.getMessage());
-            System.err.println("Starting with empty builder. You can rebuild the course structure manually.");
             courseBuilderContainer.getChildren().clear();
         }
-    }
-
-    private String[] splitSafely(String str, String delimiter) {
-        java.util.List<String> parts = new java.util.ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        int depth = 0;
-        
-        for (int i = 0; i < str.length(); i++) {
-            char c = str.charAt(i);
-            if (c == '{' || c == '[') depth++;
-            else if (c == '}' || c == ']') depth--;
-            
-            if (str.startsWith(delimiter, i) && depth == 0) {
-                parts.add(current.toString());
-                current = new StringBuilder();
-                i += delimiter.length() - 1;
-            } else {
-                current.append(c);
-            }
-        }
-        
-        parts.add(current.toString());
-        return parts.toArray(new String[0]);
-    }
-
-    private String unescapeJson(String str) {
-        if (str == null) return "";
-        return str.replace("\\\"", "\"").replace("\\n", "\n").replace("\\r", "\r").replace("\\\\", "\\");
     }
 }
-
 
 

@@ -1,49 +1,97 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="tn.esprit.fahamni.controllers.FrontCoursePlayerController"
-            style="-fx-background-color: linear-gradient(to bottom, #f8fafc, #eef2ff);">
+<StackPane fx:id="rootStack"
+           xmlns="http://javafx.com/javafx/17"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="tn.esprit.fahamni.controllers.FrontCoursePlayerController"
+           style="-fx-background-color: linear-gradient(to bottom, #f8fafc, #eef2ff);">
 
-    <top>
-        <VBox spacing="10.0" style="-fx-padding: 20 24 12 24;">
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <Button text="← Retour aux cours"
-                        onAction="#goBackToCourses"
-                        style="-fx-background-color: #334155; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
-                <Region HBox.hgrow="ALWAYS"/>
-            </HBox>
+    <children>
+        <BorderPane style="-fx-background-color: transparent;">
+            <top>
+                <VBox spacing="10.0" style="-fx-padding: 20 24 12 24;">
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Button text="&#x2190; Retour aux cours"
+                                onAction="#goBackToCourses"
+                                style="-fx-background-color: #334155; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                    </HBox>
 
-            <Label fx:id="courseTitleLabel"
-                   text="Lecteur de cours"
-                   style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
+                    <Label fx:id="courseTitleLabel"
+                           text="Lecteur de cours"
+                           style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
 
-            <Label fx:id="courseDescriptionLabel"
-                   text="Selectionnez un chapitre et explorez les ressources."
-                   wrapText="true"
-                   style="-fx-font-size: 14px; -fx-text-fill: #475569;"/>
+                    <Label fx:id="courseDescriptionLabel"
+                           text="Selectionnez un chapitre et explorez les ressources."
+                           wrapText="true"
+                           style="-fx-font-size: 14px; -fx-text-fill: #475569;"/>
 
-            <FlowPane fx:id="courseCategoriesContainer" hgap="8.0" vgap="8.0"/>
+                    <FlowPane fx:id="courseCategoriesContainer" hgap="8.0" vgap="8.0"/>
+                </VBox>
+            </top>
+
+            <center>
+                <ScrollPane fitToWidth="true"
+                            hbarPolicy="NEVER"
+                            style="-fx-background-color: transparent; -fx-control-inner-background: transparent;">
+                    <content>
+                        <VBox fx:id="chaptersContainer" spacing="14.0" style="-fx-padding: 20;"/>
+                    </content>
+                </ScrollPane>
+            </center>
+        </BorderPane>
+
+        <VBox fx:id="courseAiPanel"
+              managed="false"
+              maxWidth="380.0"
+              minWidth="380.0"
+              prefWidth="380.0"
+              style="-fx-background-color: white; -fx-border-color: #cbd5e1; -fx-border-width: 0 0 0 1; -fx-effect: dropshadow(three-pass-box, rgba(15,23,42,0.16), 16, 0, -4, 0);"
+              visible="false"
+              StackPane.alignment="CENTER_RIGHT">
+            <StackPane.margin>
+                <Insets top="16.0" right="16.0" bottom="16.0" left="16.0"/>
+            </StackPane.margin>
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="10.0" style="-fx-padding: 14 16 10 16; -fx-border-color: transparent transparent #e2e8f0 transparent; -fx-border-width: 0 0 1 0;">
+                    <children>
+                        <VBox spacing="2.0">
+                            <children>
+                                <Label text="Assistant du cours" style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
+                                <Label text="Questions reponsees avec le contexte de cette matiere." style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+                            </children>
+                        </VBox>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Fermer"
+                                onAction="#toggleCourseAi"
+                                style="-fx-background-color: #e2e8f0; -fx-text-fill: #0f172a; -fx-font-weight: bold; -fx-background-radius: 8;"/>
+                    </children>
+                </HBox>
+                <AnchorPane fx:id="courseAiContent" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;"/>
+            </children>
         </VBox>
-    </top>
 
-    <center>
-        <ScrollPane fitToWidth="true"
-                    hbarPolicy="NEVER"
-                    style="-fx-background-color: transparent; -fx-control-inner-background: transparent;">
-            <content>
-                <VBox fx:id="chaptersContainer" spacing="14.0" style="-fx-padding: 20;"/>
-            </content>
-        </ScrollPane>
-    </center>
+        <Button fx:id="courseAiFab"
+                onAction="#toggleCourseAi"
+                style="-fx-background-color: #0f766e; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 24; -fx-padding: 12 18;"
+                text="AI du cours"
+                StackPane.alignment="BOTTOM_RIGHT">
+            <StackPane.margin>
+                <Insets top="0.0" right="24.0" bottom="24.0" left="0.0"/>
+            </StackPane.margin>
+        </Button>
+    </children>
 
-</BorderPane>
+</StackPane>
