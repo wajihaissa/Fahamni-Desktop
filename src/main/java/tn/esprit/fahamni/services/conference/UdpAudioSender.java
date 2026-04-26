@@ -21,6 +21,7 @@ public class UdpAudioSender {
     private TargetDataLine microphoneLine;
     private Thread sendThread;
     private volatile boolean running;
+    private volatile boolean muted;
 
     public UdpAudioSender(String targetIp, int targetPort) throws Exception {
         this.targetAddress = InetAddress.getByName(targetIp);
@@ -47,6 +48,10 @@ public class UdpAudioSender {
                 try {
                     int bytesRead = microphoneLine.read(audioBuffer, 0, audioBuffer.length);
                     if (bytesRead <= 0) {
+                        continue;
+                    }
+
+                    if (muted) {
                         continue;
                     }
 
@@ -77,5 +82,13 @@ public class UdpAudioSender {
             socket.close();
             socket = null;
         }
+    }
+
+    public void setMuted(boolean muted) {
+        this.muted = muted;
+    }
+
+    public boolean isMuted() {
+        return muted;
     }
 }

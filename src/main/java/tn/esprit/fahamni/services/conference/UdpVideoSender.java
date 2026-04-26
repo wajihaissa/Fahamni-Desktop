@@ -4,10 +4,12 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -16,12 +18,14 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 
 public class UdpVideoSender {
 
-    // Keep payload below practical UDP limit to reduce drop/fragmentation risk.
-    private static final int MAX_UDP_PAYLOAD = 60_000;
+    private static final int HEADER_SIZE = 8;
+    private static final int MAX_PACKET_SIZE = 1200;
+    private static final int MAX_CHUNK_PAYLOAD = MAX_PACKET_SIZE - HEADER_SIZE;
 
     private final DatagramSocket socket;
     private final InetAddress targetAddress;
     private final int targetPort;
+    private final AtomicInteger frameCounter = new AtomicInteger();
 
     public UdpVideoSender(String targetIp, int targetPort) throws Exception {
         this.socket = new DatagramSocket();
@@ -42,23 +46,36 @@ public class UdpVideoSender {
             byte[] jpegBytes = encodeJpeg(resizedFrame, 0.45f);
 
             // If too large, try one more aggressive compression pass.
-            if (jpegBytes.length > MAX_UDP_PAYLOAD) {
+            if (jpegBytes.length > MAX_CHUNK_PAYLOAD * 65535) {
                 BufferedImage smallerFrame = resizeFrame(sourceFrame, 240, 180);
                 jpegBytes = encodeJpeg(smallerFrame, 0.35f);
             }
 
-            // Drop frame if still too large; next frame will follow quickly.
-            if (jpegBytes.length > MAX_UDP_PAYLOAD) {
+            int totalChunks = (int) Math.ceil((double) jpegBytes.length / MAX_CHUNK_PAYLOAD);
+            if (totalChunks <= 0 || totalChunks > 65535) {
                 return;
             }
 
-            DatagramPacket packet = new DatagramPacket(
-                jpegBytes,
-                jpegBytes.length,
-                targetAddress,
-                targetPort
-            );
-            socket.send(packet);
+            int frameId = frameCounter.incrementAndGet();
+            for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                int offset = chunkIndex * MAX_CHUNK_PAYLOAD;
+                int chunkLength = Math.min(MAX_CHUNK_PAYLOAD, jpegBytes.length - offset);
+                byte[] packetBytes = new byte[HEADER_SIZE + chunkLength];
+
+                ByteBuffer.wrap(packetBytes)
+                    .putInt(frameId)
+                    .putShort((short) chunkIndex)
+                    .putShort((short) totalChunks)
+                    .put(jpegBytes, offset, chunkLength);
+
+                DatagramPacket packet = new DatagramPacket(
+                    packetBytes,
+                    packetBytes.length,
+                    targetAddress,
+                    targetPort
+                );
+                socket.send(packet);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

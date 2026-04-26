@@ -86,6 +86,9 @@ public class LocalCameraService {
      */
     public void stopPreview() {
         running = false;
+        if (previewThread != null) {
+            previewThread.interrupt();
+        }
     }
 
     private void stopInternal() {
@@ -99,6 +102,7 @@ public class LocalCameraService {
         } finally {
             frameGrabber = null;
             frameConverter = null;
+            previewThread = null;
         }
     }
 }

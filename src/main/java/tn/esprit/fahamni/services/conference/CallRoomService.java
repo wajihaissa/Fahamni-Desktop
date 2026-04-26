@@ -17,7 +17,7 @@ public class CallRoomService {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
-    public String createRoom(String hostIp, int hostPort) {
+    public synchronized String createRoom(String hostIp, int hostPort) {
         if (cnx == null) {
             throw new RuntimeException("Database connection is not available");
         }
@@ -45,7 +45,7 @@ public class CallRoomService {
         throw new RuntimeException("Could not generate a unique room code. Please retry.");
     }
 
-    public void clearStaleRooms() {
+    public synchronized void clearStaleRooms() {
         if (cnx == null) {
             return;
         }
@@ -58,7 +58,7 @@ public class CallRoomService {
         }
     }
 
-    public void closeRoom(String roomCode) {
+    public synchronized void closeRoom(String roomCode) {
         if (cnx == null || roomCode == null || roomCode.isBlank()) {
             return;
         }
@@ -72,7 +72,7 @@ public class CallRoomService {
         }
     }
 
-    public PeerEndpoint joinRoom(String roomCode, String guestIp, int guestPort) {
+    public synchronized PeerEndpoint joinRoom(String roomCode, String guestIp, int guestPort) {
         if (cnx == null) {
             throw new RuntimeException("Database connection is not available");
         }
@@ -113,7 +113,7 @@ public class CallRoomService {
         }
     }
 
-    public PeerEndpoint pollForGuest(String roomCode) {
+    public synchronized PeerEndpoint pollForGuest(String roomCode) {
         if (cnx == null) {
             throw new RuntimeException("Database connection is not available");
         }

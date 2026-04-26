@@ -74,6 +74,7 @@ public class VideoChatController {
     private volatile UdpAudioSender udpAudioSender;
     private volatile UdpAudioReceiver udpAudioReceiver;
     private volatile boolean callRunning;
+    private volatile boolean cameraEnabled = true;
 
     private volatile boolean pollingHostRoom;
     private Thread pollThread;
@@ -98,9 +99,14 @@ public class VideoChatController {
         localIpLabel.setText("Local IP: " + resolveLocalIpAddress());
         roomCodeValueLabel.setText("-");
         callStatusLabel.setText("Idle");
+        callStatusLabel.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 12px; -fx-background-color: rgba(30,41,59,0.9); -fx-background-radius: 10; -fx-padding: 7 10;");
         toastLabel.setVisible(false);
         toastLabel.setManaged(false);
         toastLabel.setOpacity(0);
+        muteMicButton.setSelected(false);
+        cameraOffButton.setSelected(false);
+        muteMicButton.setText("Mute Mic");
+        cameraOffButton.setText("Camera On");
 
         applyHoverEffects();
 
@@ -108,7 +114,7 @@ public class VideoChatController {
         localCameraService.startPreview(
             localCameraView::setImage,
             bufferedImage -> {
-                if (callRunning && udpVideoSender != null) {
+                if (callRunning && udpVideoSender != null && cameraEnabled) {
                     udpVideoSender.sendFrame(bufferedImage);
                 }
             }
@@ -136,7 +142,7 @@ public class VideoChatController {
         endCall();
 
         try {
-            int myVideoPort = Integer.parseInt(myPortField.getText().trim());
+            int myVideoPort = parseVideoPort();
             String localIp = resolveLocalIpAddress();
 
             String roomCode = callRoomService.createRoom(localIp, myVideoPort);
@@ -147,7 +153,7 @@ public class VideoChatController {
 
             startPollingForGuest(roomCode, myVideoPort);
         } catch (NumberFormatException e) {
-            showError("My Video Port must be a valid number.");
+            showError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showError("Could not create room: " + e.getMessage());
@@ -164,9 +170,13 @@ public class VideoChatController {
             showError("Please enter a room code.");
             return;
         }
+        if (!roomCode.matches("\\d{6}")) {
+            showError("Room code must be exactly 6 digits.");
+            return;
+        }
 
         try {
-            int myVideoPort = Integer.parseInt(myPortField.getText().trim());
+            int myVideoPort = parseVideoPort();
             String localIp = resolveLocalIpAddress();
 
             CallRoomService.PeerEndpoint hostEndpoint = callRoomService.joinRoom(roomCode, localIp, myVideoPort);
@@ -181,7 +191,7 @@ public class VideoChatController {
             callStatusLabel.setText("Connected as guest.");
             showJoinToast("Joined room " + roomCode + " successfully");
         } catch (NumberFormatException e) {
-            showError("My Video Port must be a valid number.");
+            showError(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showError("Could not join room: " + e.getMessage());
@@ -225,19 +235,27 @@ public class VideoChatController {
         remoteCameraView.setImage(null);
         currentRoomCode = null;
         roomCodeValueLabel.setText("-");
+        muteMicButton.setSelected(false);
+        muteMicButton.setText("Mute Mic");
+        cameraEnabled = true;
+        cameraOffButton.setSelected(false);
+        cameraOffButton.setText("Camera On");
         if (callStatusLabel != null) {
-            callStatusLabel.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 12px; -fx-background-color: rgba(30,41,59,0.9); -fx-background-radius: 10; -fx-padding: 7 10;");
-            callStatusLabel.setText("Idle");
+            updateCallStatus("Idle", "#f8fafc", "rgba(30,41,59,0.9)");
         }
     }
 
     @FXML
     private void toggleMuteMic() {
         muteMicButton.setText(muteMicButton.isSelected() ? "Mic Muted" : "Mute Mic");
+        if (udpAudioSender != null) {
+            udpAudioSender.setMuted(muteMicButton.isSelected());
+        }
     }
 
     @FXML
     private void toggleCamera() {
+        cameraEnabled = !cameraOffButton.isSelected();
         cameraOffButton.setText(cameraOffButton.isSelected() ? "Camera Off" : "Camera On");
     }
 
@@ -266,6 +284,13 @@ public class VideoChatController {
                     break;
                 } catch (Exception e) {
                     e.printStackTrace();
+                    Platform.runLater(() -> {
+                        if (!callRunning && roomCode.equals(currentRoomCode)) {
+                            stopWaitingAnimation();
+                            updateCallStatus("Room polling failed.", "#fecaca", "rgba(127,29,29,0.85)");
+                            showError("Could not keep waiting for a guest: " + e.getMessage());
+                        }
+                    });
                     break;
                 }
             }
@@ -285,20 +310,47 @@ public class VideoChatController {
 
         stopWaitingAnimation();
 
-        udpVideoReceiver = new UdpVideoReceiver(myVideoPort);
-        udpVideoReceiver.start(remoteCameraView::setImage);
+        UdpVideoReceiver nextVideoReceiver = null;
+        UdpVideoSender nextVideoSender = null;
+        UdpAudioReceiver nextAudioReceiver = null;
+        UdpAudioSender nextAudioSender = null;
 
-        udpVideoSender = new UdpVideoSender(targetIp, targetVideoPort);
+        try {
+            nextVideoReceiver = new UdpVideoReceiver(myVideoPort);
+            nextVideoReceiver.start(remoteCameraView::setImage);
 
-        udpAudioReceiver = new UdpAudioReceiver(myAudioPort);
-        udpAudioReceiver.start();
+            nextVideoSender = new UdpVideoSender(targetIp, targetVideoPort);
 
-        udpAudioSender = new UdpAudioSender(targetIp, targetAudioPort);
-        udpAudioSender.start();
+            nextAudioReceiver = new UdpAudioReceiver(myAudioPort);
+            nextAudioReceiver.start();
 
-        callRunning = true;
-        stopPollingHostRoom();
-        callStatusLabel.setStyle("-fx-text-fill: #d1fae5; -fx-font-size: 12px; -fx-background-color: rgba(6,95,70,0.85); -fx-background-radius: 10; -fx-padding: 7 10;");
+            nextAudioSender = new UdpAudioSender(targetIp, targetAudioPort);
+            nextAudioSender.setMuted(muteMicButton.isSelected());
+            nextAudioSender.start();
+
+            udpVideoReceiver = nextVideoReceiver;
+            udpVideoSender = nextVideoSender;
+            udpAudioReceiver = nextAudioReceiver;
+            udpAudioSender = nextAudioSender;
+
+            callRunning = true;
+            stopPollingHostRoom();
+            updateCallStatus("Call connected.", "#d1fae5", "rgba(6,95,70,0.85)");
+        } catch (Exception e) {
+            if (nextVideoSender != null) {
+                nextVideoSender.close();
+            }
+            if (nextVideoReceiver != null) {
+                nextVideoReceiver.stop();
+            }
+            if (nextAudioSender != null) {
+                nextAudioSender.stop();
+            }
+            if (nextAudioReceiver != null) {
+                nextAudioReceiver.stop();
+            }
+            throw e;
+        }
     }
 
     private void stopPollingHostRoom() {
@@ -388,6 +440,17 @@ public class VideoChatController {
         sequence.play();
     }
 
+    private void updateCallStatus(String text, String textColor, String backgroundColor) {
+        callStatusLabel.setText(text);
+        callStatusLabel.setStyle(
+            "-fx-text-fill: " + textColor + "; "
+                + "-fx-font-size: 12px; "
+                + "-fx-background-color: " + backgroundColor + "; "
+                + "-fx-background-radius: 10; "
+                + "-fx-padding: 7 10;"
+        );
+    }
+
     private void applyHoverEffects() {
         bindButtonHover(createRoomButton, CREATE_BASE_STYLE, CREATE_HOVER_STYLE);
         bindButtonHover(joinRoomButton, JOIN_BASE_STYLE, JOIN_HOVER_STYLE);
@@ -408,5 +471,20 @@ public class VideoChatController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private int parseVideoPort() {
+        int port;
+        try {
+            port = Integer.parseInt(myPortField.getText().trim());
+        } catch (Exception e) {
+            throw new NumberFormatException("My Video Port must be a valid number.");
+        }
+
+        if (port < 1024 || port > 65534) {
+            throw new NumberFormatException("My Video Port must be between 1024 and 65534.");
+        }
+
+        return port;
     }
 }
