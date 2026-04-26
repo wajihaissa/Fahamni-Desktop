@@ -2287,6 +2287,9 @@ public class Room3DApplication extends SimpleApplication {
         if (previewData == null) {
             return "";
         }
+        if (previewData.isDesignReview()) {
+            return "";
+        }
         if (previewData.summaryNote() != null) {
             return previewData.summaryNote();
         }
@@ -2316,6 +2319,9 @@ public class Room3DApplication extends SimpleApplication {
 
     private String buildLegendText() {
         if (previewData == null) {
+            return "";
+        }
+        if (previewData.isDesignReview()) {
             return "";
         }
         if (previewData.legendNote() != null) {

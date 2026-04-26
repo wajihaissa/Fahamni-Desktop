@@ -11,14 +11,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class AiRoomDesignApiClient {
 
-    private static final int MAX_OUTPUT_TOKENS = 1200;
+    private static final int MAX_GENERATION_ATTEMPTS = 2;
+    private static final int MAX_OUTPUT_TOKENS = 1600;
     private static final Pattern SENSITIVE_TOKEN_PATTERN = Pattern.compile("\\b(?:sk-[A-Za-z0-9_-]+|AIza[A-Za-z0-9_-]{10,})\\b");
 
     private final AiApiConfig config;
@@ -38,39 +41,46 @@ public class AiRoomDesignApiClient {
     public DesignSuggestion generateRoomDesign(String instructions, String prompt) {
         config.validate();
 
-        try {
-            HttpRequest request = buildRequest(instructions, prompt);
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException(resolveErrorMessage(response.body(), response.statusCode()));
+        for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+            try {
+                return executeGenerationAttempt(instructions, prompt);
+            } catch (RetryableGeminiResponseException exception) {
+                if (attempt >= MAX_GENERATION_ATTEMPTS) {
+                    throw new IllegalStateException("Erreur de lecture de la reponse Gemini: " + exception.getMessage(), exception);
+                }
+            } catch (IOException exception) {
+                throw new IllegalStateException("Erreur de lecture de la reponse Gemini: " + exception.getMessage(), exception);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Appel Gemini interrompu.", exception);
             }
-
-            JsonNode root = objectMapper.readTree(response.body());
-            String outputText = extractOutputText(root);
-            if (outputText == null || outputText.isBlank()) {
-                throw new IllegalStateException(resolveMissingOutputMessage(root));
-            }
-
-            JsonNode suggestionNode = objectMapper.readTree(outputText);
-            return new DesignSuggestion(
-                suggestionNode.path("room_name").asText(null),
-                suggestionNode.path("building").asText(null),
-                suggestionNode.path("location").asText(null),
-                suggestionNode.path("room_type").asText(null),
-                suggestionNode.path("disposition").asText(null),
-                suggestionNode.path("capacity").asInt(0),
-                suggestionNode.path("accessible").asBoolean(false),
-                suggestionNode.path("summary").asText(null),
-                suggestionNode.path("rationale").asText(null),
-                readEquipmentPreferences(suggestionNode.path("equipment_preferences"))
-            );
-        } catch (IOException exception) {
-            throw new IllegalStateException("Erreur de lecture de la reponse Gemini: " + exception.getMessage(), exception);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Appel Gemini interrompu.", exception);
         }
+
+        throw new IllegalStateException("La reponse Gemini n'a pas pu etre interpretee apres plusieurs tentatives.");
+    }
+
+    private DesignSuggestion executeGenerationAttempt(String instructions, String prompt) throws IOException, InterruptedException {
+        HttpRequest request = buildRequest(instructions, prompt);
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new IllegalStateException(resolveErrorMessage(response.body(), response.statusCode()));
+        }
+
+        JsonNode root = objectMapper.readTree(response.body());
+        JsonNode suggestionNode = extractSuggestionNode(root);
+        return new DesignSuggestion(
+            suggestionNode.path("room_name").asText(null),
+            suggestionNode.path("building").asText(null),
+            suggestionNode.path("location").asText(null),
+            suggestionNode.path("room_type").asText(null),
+            suggestionNode.path("disposition").asText(null),
+            suggestionNode.path("capacity").asInt(0),
+            suggestionNode.path("accessible").asBoolean(false),
+            suggestionNode.path("summary").asText(null),
+            suggestionNode.path("rationale").asText(null),
+            readEquipmentPreferences(suggestionNode.path("equipment_preferences"))
+        );
     }
 
     private HttpRequest buildRequest(String instructions, String prompt) throws IOException {
@@ -155,13 +165,42 @@ public class AiRoomDesignApiClient {
         return schema;
     }
 
-    private String extractOutputText(JsonNode root) {
-        JsonNode candidates = root.path("candidates");
-        if (!candidates.isArray()) {
-            return null;
+    private JsonNode extractSuggestionNode(JsonNode root) throws IOException {
+        List<String> candidateTexts = extractCandidateTexts(root);
+        if (candidateTexts.isEmpty()) {
+            throw new IllegalStateException(resolveMissingOutputMessage(root));
         }
 
-        StringBuilder builder = new StringBuilder();
+        IOException lastParsingException = null;
+        for (String candidateText : candidateTexts) {
+            if (candidateText == null || candidateText.isBlank()) {
+                continue;
+            }
+
+            try {
+                return parseStructuredOutput(candidateText);
+            } catch (IOException exception) {
+                lastParsingException = exception;
+            }
+        }
+
+        String finishReason = resolveFinishReason(root);
+        String errorMessage = lastParsingException == null
+            ? "reponse JSON vide ou invalide"
+            : sanitizeSensitiveData(lastParsingException.getMessage());
+        if ("MAX_TOKENS".equalsIgnoreCase(finishReason) || finishReason == null || finishReason.isBlank() || "STOP".equalsIgnoreCase(finishReason)) {
+            throw new RetryableGeminiResponseException(errorMessage, lastParsingException);
+        }
+        throw new IllegalStateException("Reponse Gemini non exploitable (finishReason=" + finishReason + "): " + errorMessage, lastParsingException);
+    }
+
+    private List<String> extractCandidateTexts(JsonNode root) {
+        List<String> texts = new ArrayList<>();
+        JsonNode candidates = root.path("candidates");
+        if (!candidates.isArray()) {
+            return texts;
+        }
+
         for (JsonNode candidate : candidates) {
             JsonNode content = candidate.path("content");
             JsonNode parts = content.path("parts");
@@ -169,6 +208,7 @@ public class AiRoomDesignApiClient {
                 continue;
             }
 
+            StringBuilder builder = new StringBuilder();
             for (JsonNode part : parts) {
                 String text = part.path("text").asText(null);
                 if (text != null && !text.isBlank()) {
@@ -178,9 +218,249 @@ public class AiRoomDesignApiClient {
                     builder.append(text);
                 }
             }
+
+            if (!builder.isEmpty()) {
+                texts.add(builder.toString());
+            }
         }
 
-        return builder.isEmpty() ? null : builder.toString();
+        return texts;
+    }
+
+    private JsonNode parseStructuredOutput(String rawOutputText) throws IOException {
+        String sanitizedText = sanitizeStructuredOutput(rawOutputText);
+        if (sanitizedText.isBlank()) {
+            throw new IOException("reponse JSON vide");
+        }
+
+        IOException lastException = null;
+        for (String candidate : buildJsonParsingCandidates(sanitizedText)) {
+            if (candidate == null || candidate.isBlank()) {
+                continue;
+            }
+
+            try {
+                return objectMapper.readTree(candidate);
+            } catch (IOException exception) {
+                lastException = exception;
+            }
+        }
+
+        throw lastException == null ? new IOException("reponse JSON invalide") : lastException;
+    }
+
+    private String sanitizeStructuredOutput(String rawOutputText) {
+        if (rawOutputText == null) {
+            return "";
+        }
+
+        String sanitized = rawOutputText.trim().replace("\uFEFF", "");
+        if (sanitized.startsWith("```")) {
+            sanitized = sanitized.replaceFirst("^```(?:json)?\\s*", "");
+            sanitized = sanitized.replaceFirst("\\s*```$", "");
+        }
+        return sanitized.trim();
+    }
+
+    private String extractFirstJsonObject(String rawOutputText) {
+        if (rawOutputText == null || rawOutputText.isBlank()) {
+            return null;
+        }
+
+        int startIndex = -1;
+        int depth = 0;
+        boolean insideString = false;
+        boolean escaping = false;
+        for (int index = 0; index < rawOutputText.length(); index++) {
+            char current = rawOutputText.charAt(index);
+
+            if (escaping) {
+                escaping = false;
+                continue;
+            }
+            if (current == '\\') {
+                escaping = true;
+                continue;
+            }
+            if (current == '"') {
+                insideString = !insideString;
+                continue;
+            }
+            if (insideString) {
+                continue;
+            }
+
+            if (current == '{') {
+                if (depth == 0) {
+                    startIndex = index;
+                }
+                depth++;
+            } else if (current == '}') {
+                if (depth == 0) {
+                    continue;
+                }
+                depth--;
+                if (depth == 0 && startIndex >= 0) {
+                    return rawOutputText.substring(startIndex, index + 1);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private List<String> buildJsonParsingCandidates(String sanitizedText) {
+        List<String> candidates = new ArrayList<>();
+        appendCandidate(candidates, sanitizedText);
+
+        String extractedJsonObject = extractFirstJsonObject(sanitizedText);
+        appendCandidate(candidates, extractedJsonObject);
+        appendCandidate(candidates, repairStructuredOutput(sanitizedText));
+        appendCandidate(candidates, repairStructuredOutput(extractedJsonObject));
+        return candidates;
+    }
+
+    private void appendCandidate(List<String> candidates, String candidate) {
+        if (candidate == null) {
+            return;
+        }
+
+        String normalizedCandidate = candidate.trim();
+        if (normalizedCandidate.isBlank() || candidates.contains(normalizedCandidate)) {
+            return;
+        }
+        candidates.add(normalizedCandidate);
+    }
+
+    private String repairStructuredOutput(String rawOutputText) {
+        if (rawOutputText == null || rawOutputText.isBlank()) {
+            return null;
+        }
+
+        int startIndex = rawOutputText.indexOf('{');
+        if (startIndex < 0) {
+            return null;
+        }
+
+        String source = rawOutputText.substring(startIndex);
+        StringBuilder repaired = new StringBuilder(source.length() + 16);
+        Deque<Character> structureStack = new ArrayDeque<>();
+        boolean insideString = false;
+        boolean escaping = false;
+
+        for (int index = 0; index < source.length(); index++) {
+            char current = source.charAt(index);
+
+            if (insideString) {
+                if (escaping) {
+                    repaired.append(current);
+                    escaping = false;
+                    continue;
+                }
+                if (current == '\\') {
+                    repaired.append(current);
+                    escaping = true;
+                    continue;
+                }
+                if (current == '\r') {
+                    continue;
+                }
+                if (current == '\n') {
+                    repaired.append("\\n");
+                    continue;
+                }
+                if (current == '\t') {
+                    repaired.append("\\t");
+                    continue;
+                }
+
+                repaired.append(current);
+                if (current == '"') {
+                    insideString = false;
+                }
+                continue;
+            }
+
+            if (current == '"') {
+                repaired.append(current);
+                insideString = true;
+                continue;
+            }
+
+            if (current == '{' || current == '[') {
+                repaired.append(current);
+                structureStack.push(current);
+                continue;
+            }
+
+            if (current == '}' || current == ']') {
+                normalizeDanglingJsonToken(repaired);
+                if (!structureStack.isEmpty()) {
+                    char expectedOpeningToken = current == '}' ? '{' : '[';
+                    if (structureStack.peek() == expectedOpeningToken) {
+                        structureStack.pop();
+                        repaired.append(current);
+                    }
+                }
+                continue;
+            }
+
+            repaired.append(current);
+        }
+
+        if (insideString) {
+            repaired.append('"');
+        }
+
+        while (!structureStack.isEmpty()) {
+            normalizeDanglingJsonToken(repaired);
+            repaired.append(structureStack.pop() == '{' ? '}' : ']');
+        }
+
+        return repaired.toString().trim();
+    }
+
+    private void normalizeDanglingJsonToken(StringBuilder builder) {
+        while (true) {
+            int lastMeaningfulIndex = findLastMeaningfulCharacterIndex(builder);
+            if (lastMeaningfulIndex < 0) {
+                return;
+            }
+
+            char lastMeaningfulCharacter = builder.charAt(lastMeaningfulIndex);
+            if (lastMeaningfulCharacter == ',') {
+                builder.deleteCharAt(lastMeaningfulIndex);
+                continue;
+            }
+            if (lastMeaningfulCharacter == ':') {
+                builder.insert(lastMeaningfulIndex + 1, "\"\"");
+            }
+            return;
+        }
+    }
+
+    private int findLastMeaningfulCharacterIndex(StringBuilder builder) {
+        for (int index = builder.length() - 1; index >= 0; index--) {
+            if (!Character.isWhitespace(builder.charAt(index))) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private String resolveFinishReason(JsonNode root) {
+        JsonNode candidates = root.path("candidates");
+        if (!candidates.isArray()) {
+            return null;
+        }
+
+        for (JsonNode candidate : candidates) {
+            String finishReason = candidate.path("finishReason").asText(null);
+            if (finishReason != null && !finishReason.isBlank()) {
+                return finishReason.trim();
+            }
+        }
+        return null;
     }
 
     private List<String> readEquipmentPreferences(JsonNode node) {
@@ -269,6 +549,12 @@ public class AiRoomDesignApiClient {
 
             String normalized = value.trim();
             return normalized.isEmpty() ? null : normalized;
+        }
+    }
+
+    private static final class RetryableGeminiResponseException extends IOException {
+        private RetryableGeminiResponseException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

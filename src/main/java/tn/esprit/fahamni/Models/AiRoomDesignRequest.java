@@ -4,6 +4,7 @@ public record AiRoomDesignRequest(
     String brief,
     String preferredName,
     String preferredBuilding,
+    Integer preferredFloor,
     String preferredLocation,
     int preferredCapacity,
     String preferredType,
@@ -16,6 +17,7 @@ public record AiRoomDesignRequest(
         brief = normalizeText(brief);
         preferredName = normalizeText(preferredName);
         preferredBuilding = normalizeText(preferredBuilding);
+        preferredFloor = normalizeFloor(preferredFloor);
         preferredLocation = normalizeText(preferredLocation);
         preferredCapacity = Math.max(1, preferredCapacity);
         preferredType = normalizeText(preferredType);
@@ -29,6 +31,7 @@ public record AiRoomDesignRequest(
             brief,
             preferredName,
             preferredBuilding,
+            preferredFloor,
             preferredLocation,
             preferredCapacity,
             preferredType,
@@ -56,5 +59,9 @@ public record AiRoomDesignRequest(
 
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static Integer normalizeFloor(Integer value) {
+        return value == null || value < 0 ? null : value;
     }
 }

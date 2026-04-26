@@ -2423,12 +2423,57 @@
             -fx-text-fill: #5f789d;
         }
 
+        .ai-dialog-suggestions {
+            -fx-padding: 2px 0 0 0;
+        }
+
+        .button.ai-dialog-suggestion-button {
+            -fx-padding: 6px 12px;
+            -fx-font-size: 11px;
+            -fx-background-radius: 999px;
+            -fx-border-radius: 999px;
+        }
+
         .ai-dialog-prompt-actions {
             -fx-alignment: center-right;
         }
 
+        .ai-dialog-status-banner {
+            -fx-background-color: linear-gradient(to right, rgba(243, 249, 255, 0.98), rgba(255, 252, 247, 0.98));
+            -fx-border-color: rgba(201, 219, 241, 0.98);
+            -fx-border-width: 1px;
+            -fx-background-radius: 14px;
+            -fx-border-radius: 14px;
+            -fx-padding: 12px 14px;
+        }
+
+        .ai-dialog-status-title {
+            -fx-text-fill: #234774;
+            -fx-font-size: 13px;
+            -fx-font-weight: 700;
+        }
+
+        .ai-dialog-status-copy {
+            -fx-text-fill: #5f789d;
+            -fx-font-size: 11px;
+        }
+
         .ai-dialog-section-title {
             -fx-text-fill: #234774;
+        }
+
+        .button.ai-dialog-variant-button,
+        .button.ai-dialog-cancel-generation-button {
+            -fx-padding: 7px 12px;
+            -fx-font-size: 12px;
+        }
+
+        .ai-dialog-progress {
+            -fx-progress-color: #c78f72;
+        }
+
+        .ai-dialog-button-spinner {
+            -fx-progress-color: #8a5a45;
         }
 
         .button.ai-dialog-generate-button {
