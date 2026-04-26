@@ -13,13 +13,18 @@ public class AdminUser {
     private String createdAt;
     private String reviewedAt;
     private String fraudRisk;
+    private int fraudScore;
     private String fraudReason;
+    private String fraudSignals;
+    private String fraudRecommendation;
+    private String fraudCheckedAt;
     private String reviewNote;
     private String adminInsight;
 
     public AdminUser(int id, String fullName, String email, String role, String status, String reviewStatus,
                      String profileStatus, String linkedProfileStatus, String createdAt, String reviewedAt,
-                     String fraudRisk, String fraudReason, String reviewNote, String adminInsight) {
+                     String fraudRisk, int fraudScore, String fraudReason, String fraudSignals,
+                     String fraudRecommendation, String fraudCheckedAt, String reviewNote, String adminInsight) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
@@ -31,7 +36,11 @@ public class AdminUser {
         this.createdAt = createdAt;
         this.reviewedAt = reviewedAt;
         this.fraudRisk = fraudRisk;
+        this.fraudScore = fraudScore;
         this.fraudReason = fraudReason;
+        this.fraudSignals = fraudSignals;
+        this.fraudRecommendation = fraudRecommendation;
+        this.fraudCheckedAt = fraudCheckedAt;
         this.reviewNote = reviewNote;
         this.adminInsight = adminInsight;
     }
@@ -49,7 +58,11 @@ public class AdminUser {
             "Non disponible",
             "Non disponible",
             "LOW",
-            "No review notes yet.",
+            12,
+            "LOW risk (12/100). No significant risk signals found.",
+            "No significant risk signals found.",
+            "Safe to approve with the standard workflow.",
+            "Non disponible",
             "",
             "No insights available."
         );
@@ -139,12 +152,44 @@ public class AdminUser {
         this.fraudRisk = fraudRisk;
     }
 
+    public int getFraudScore() {
+        return fraudScore;
+    }
+
+    public void setFraudScore(int fraudScore) {
+        this.fraudScore = fraudScore;
+    }
+
     public String getFraudReason() {
         return fraudReason;
     }
 
     public void setFraudReason(String fraudReason) {
         this.fraudReason = fraudReason;
+    }
+
+    public String getFraudSignals() {
+        return fraudSignals;
+    }
+
+    public void setFraudSignals(String fraudSignals) {
+        this.fraudSignals = fraudSignals;
+    }
+
+    public String getFraudRecommendation() {
+        return fraudRecommendation;
+    }
+
+    public void setFraudRecommendation(String fraudRecommendation) {
+        this.fraudRecommendation = fraudRecommendation;
+    }
+
+    public String getFraudCheckedAt() {
+        return fraudCheckedAt;
+    }
+
+    public void setFraudCheckedAt(String fraudCheckedAt) {
+        this.fraudCheckedAt = fraudCheckedAt;
     }
 
     public String getReviewNote() {

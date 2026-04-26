@@ -22,6 +22,16 @@ import java.util.List;
 
 public class AdminUserService implements IServices<AdminUser> {
 
+    public record RiskAnalysis(
+        int score,
+        String level,
+        String summary,
+        String signals,
+        String recommendation,
+        LocalDateTime checkedAt
+    ) {
+    }
+
     public record AdminUserInsights(
         int pendingCount,
         int approvedCount,
@@ -130,8 +140,9 @@ public class AdminUserService implements IServices<AdminUser> {
                     boolean accountActive = resultSet.getBoolean("status");
                     boolean profileActive = resultSet.getBoolean("profile_active");
                     boolean linkedStudentProfile = resultSet.getBoolean("linked_student_profile");
-                    String fraudRisk = inferFraudRisk(fullName, email);
-                    String fraudReason = inferFraudReason(fullName, email, fraudRisk);
+                    RiskAnalysis riskAnalysis = analyzeRisk(fullName, email, role, reviewStatusDb, accountActive, profileActive);
+                    String fraudRisk = riskAnalysis.level();
+                    String fraudReason = riskAnalysis.summary();
                     String reviewStatus = mapReviewStatus(reviewStatusDb);
                     String accountStatus = mapAccountStatus(accountActive);
                     String profileStatus = profileActive ? PROFILE_ON : PROFILE_OFF;
@@ -160,7 +171,11 @@ public class AdminUserService implements IServices<AdminUser> {
                         createdAt,
                         reviewedAt,
                         fraudRisk,
+                        riskAnalysis.score(),
                         fraudReason,
+                        riskAnalysis.signals(),
+                        riskAnalysis.recommendation(),
+                        formatDate(riskAnalysis.checkedAt()),
                         reviewNote,
                         insight
                     ));
@@ -229,8 +244,16 @@ public class AdminUserService implements IServices<AdminUser> {
             String normalizedReviewStatus = normalizeReviewStatus(reviewStatus);
             String normalizedAccountStatus = normalizeAccountStatus(status, normalizedReviewStatus);
             String normalizedProfileStatus = normalizeProfileStatus(profileStatus);
+            RiskAnalysis riskAnalysis = analyzeRisk(
+                normalizedFullName,
+                normalizedEmail,
+                normalizedRole,
+                normalizedReviewStatus,
+                toDatabaseAccountStatus(normalizedAccountStatus),
+                toDatabaseProfileStatus(normalizedProfileStatus)
+            );
             String approvalGuard = validateApprovalGate(
-                inferFraudRisk(normalizedFullName, normalizedEmail),
+                riskAnalysis.level(),
                 mapReviewStatus(normalizedReviewStatus)
             );
             if (approvalGuard != null && REVIEW_APPROVED_DB.equals(normalizedReviewStatus)) {
@@ -354,9 +377,17 @@ public class AdminUserService implements IServices<AdminUser> {
             String normalizedReviewStatus = normalizeReviewStatus(reviewStatus);
             String normalizedAccountStatus = normalizeAccountStatus(status, normalizedReviewStatus);
             String normalizedProfileStatus = normalizeProfileStatus(profileStatus);
+            RiskAnalysis riskAnalysis = analyzeRisk(
+                normalizedFullName,
+                normalizedEmail,
+                normalizedRole,
+                normalizedReviewStatus,
+                toDatabaseAccountStatus(normalizedAccountStatus),
+                toDatabaseProfileStatus(normalizedProfileStatus)
+            );
 
             String approvalGuard = validateApprovalGate(
-                inferFraudRisk(normalizedFullName, normalizedEmail),
+                riskAnalysis.level(),
                 mapReviewStatus(normalizedReviewStatus)
             );
             if (approvalGuard != null && REVIEW_APPROVED_DB.equals(normalizedReviewStatus)) {
@@ -616,6 +647,15 @@ public class AdminUserService implements IServices<AdminUser> {
             throw new SQLException(result.getMessage());
         }
         return new ArrayList<>(users);
+    }
+
+    public RiskAnalysis previewRiskAnalysis(String fullName, String email, String role, String reviewStatus,
+                                            String accountStatus, String profileStatus) {
+        String resolvedRole = role == null || role.isBlank() ? "Student" : role.trim();
+        String resolvedReviewStatus = normalizeReviewStatus(reviewStatus);
+        boolean accountActive = "Active".equalsIgnoreCase(accountStatus);
+        boolean profileActive = !PROFILE_OFF.equalsIgnoreCase(profileStatus);
+        return analyzeRisk(fullName, email, resolvedRole, resolvedReviewStatus, accountActive, profileActive);
     }
 
     private OperationResult updateAccountStatus(AdminUser user, String targetStatus, boolean skipRefresh) {
@@ -936,74 +976,155 @@ public class AdminUserService implements IServices<AdminUser> {
         return value.toLocalDateTime().format(DATE_TIME_FORMATTER);
     }
 
-    private String inferFraudRisk(String fullName, String email) {
-        int riskScore = 10;
+    private String formatDate(LocalDateTime value) {
+        if (value == null) {
+            return "Non disponible";
+        }
+        return value.format(DATE_TIME_FORMATTER);
+    }
+
+    private RiskAnalysis analyzeRisk(String fullName, String email, String role, String reviewStatus,
+                                     boolean accountActive, boolean profileActive) {
+        int riskScore = 12;
+        List<String> signals = new ArrayList<>();
         String normalizedName = fullName == null ? "" : fullName.trim();
         String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
         String localPart = normalizedEmail.contains("@")
             ? normalizedEmail.substring(0, normalizedEmail.indexOf('@'))
             : normalizedEmail;
+        String domainPart = normalizedEmail.contains("@")
+            ? normalizedEmail.substring(normalizedEmail.indexOf('@') + 1)
+            : "";
+        String normalizedRole = role == null ? "Student" : role.trim();
+        String normalizedReviewStatus = normalizeReviewStatus(reviewStatus);
 
-        if (!normalizedName.contains(" ")) {
-            riskScore += 20;
+        if (normalizedName.isBlank()) {
+            riskScore += 40;
+            signals.add("Missing full name.");
+        } else {
+            if (!normalizedName.contains(" ")) {
+                riskScore += 18;
+                signals.add("Single-token full name.");
+            }
+
+            if (normalizedName.length() < 8) {
+                riskScore += 20;
+                signals.add("Full name is very short.");
+            }
+
+            if (normalizedName.matches(".*(.)\\1\\1.*")) {
+                riskScore += 12;
+                signals.add("Repeated characters detected in the name.");
+            }
         }
 
-        if (normalizedName.length() < 8) {
-            riskScore += 25;
+        if (!normalizedEmail.contains("@") || domainPart.isBlank()) {
+            riskScore += 40;
+            signals.add("Email format looks incomplete.");
+        } else {
+            if (normalizedEmail.matches(".*\\d{4,}.*")) {
+                riskScore += 18;
+                signals.add("Email contains a long numeric suffix.");
+            }
+
+            if (localPart.length() < 5) {
+                riskScore += 10;
+                signals.add("Email prefix is unusually short.");
+            }
+
+            if (localPart.matches(".*(.)\\1\\1.*")) {
+                riskScore += 10;
+                signals.add("Email prefix has repeated characters.");
+            }
+
+            if (localPart.contains("..") || localPart.contains("__") || localPart.contains("--")) {
+                riskScore += 8;
+                signals.add("Email prefix uses repeated separators.");
+            }
+
+            if (containsSuspiciousKeyword(localPart) || containsSuspiciousKeyword(normalizedName.toLowerCase())) {
+                riskScore += 24;
+                signals.add("Test or disposable-style keywords were detected.");
+            }
+
+            if (isPublicMailbox(domainPart)) {
+                riskScore += 6;
+                signals.add("Public email provider used for registration.");
+            }
         }
 
-        if (normalizedEmail.matches(".*\\d{4,}.*")) {
-            riskScore += 20;
+        if ("Administrator".equalsIgnoreCase(normalizedRole) && isPublicMailbox(domainPart)) {
+            riskScore += 12;
+            signals.add("Administrator account uses a public mailbox.");
         }
 
-        if (localPart.length() < 5) {
-            riskScore += 10;
+        if (REVIEW_PENDING_DB.equals(normalizedReviewStatus)) {
+            riskScore += 4;
+            signals.add("Account has not passed manual review yet.");
         }
 
-        if (normalizedEmail.endsWith("@gmail.com")
-            || normalizedEmail.endsWith("@yahoo.com")
-            || normalizedEmail.endsWith("@outlook.com")) {
-            riskScore += 5;
+        if (!profileActive && REVIEW_APPROVED_DB.equals(normalizedReviewStatus) && accountActive) {
+            riskScore += 4;
+            signals.add("Profile is hidden while the account remains active.");
         }
 
-        if (riskScore >= 70) {
+        riskScore = Math.min(99, riskScore);
+        String level = resolveRiskLevel(riskScore);
+        if (signals.isEmpty()) {
+            signals.add("No significant risk signals found.");
+        }
+
+        String recommendation = buildRiskRecommendation(level, normalizedReviewStatus, accountActive);
+        String summary = level + " risk (" + riskScore + "/100). " + String.join(" ", signals);
+        return new RiskAnalysis(
+            riskScore,
+            level,
+            summary,
+            String.join("; ", signals),
+            recommendation,
+            LocalDateTime.now()
+        );
+    }
+
+    private boolean isPublicMailbox(String domainPart) {
+        return "gmail.com".equalsIgnoreCase(domainPart)
+            || "yahoo.com".equalsIgnoreCase(domainPart)
+            || "outlook.com".equalsIgnoreCase(domainPart)
+            || "hotmail.com".equalsIgnoreCase(domainPart)
+            || "icloud.com".equalsIgnoreCase(domainPart);
+    }
+
+    private boolean containsSuspiciousKeyword(String value) {
+        String normalized = value == null ? "" : value.toLowerCase();
+        return normalized.contains("test")
+            || normalized.contains("fake")
+            || normalized.contains("demo")
+            || normalized.contains("temp")
+            || normalized.contains("bot")
+            || normalized.contains("spam");
+    }
+
+    private String resolveRiskLevel(int riskScore) {
+        if (riskScore >= 75) {
             return "HIGH";
         }
-        if (riskScore >= 40) {
+        if (riskScore >= 45) {
             return "MEDIUM";
         }
         return "LOW";
     }
 
-    private String inferFraudReason(String fullName, String email, String risk) {
-        List<String> reasons = new ArrayList<>();
-        String normalizedName = fullName == null ? "" : fullName.trim();
-        String normalizedEmail = email == null ? "" : email.trim();
-        String localPart = normalizedEmail.contains("@")
-            ? normalizedEmail.substring(0, normalizedEmail.indexOf('@'))
-            : normalizedEmail;
-
-        if (!normalizedName.contains(" ")) {
-            reasons.add("Full name is a single token.");
+    private String buildRiskRecommendation(String riskLevel, String reviewStatus, boolean accountActive) {
+        if ("HIGH".equalsIgnoreCase(riskLevel)) {
+            if (accountActive && REVIEW_APPROVED_DB.equals(reviewStatus)) {
+                return "Suspend access and request a manual identity check before keeping this account active.";
+            }
+            return "Hold approval and require a manual identity review before activation.";
         }
-
-        if (normalizedName.length() < 8) {
-            reasons.add("Full name is very short.");
+        if ("MEDIUM".equalsIgnoreCase(riskLevel)) {
+            return "Ask for a quick document or email verification before final approval.";
         }
-
-        if (normalizedEmail.matches(".*\\d{4,}.*")) {
-            reasons.add("Email contains a long numeric suffix.");
-        }
-
-        if (localPart.length() < 5) {
-            reasons.add("Email prefix is unusually short.");
-        }
-
-        if (reasons.isEmpty()) {
-            reasons.add("No blocking signals detected.");
-        }
-
-        return risk + " review: " + String.join(" ", reasons);
+        return "Safe to approve with the standard workflow.";
     }
 
     private String buildAdminInsight(String role, String reviewStatus, String accountStatus, String profileStatus,

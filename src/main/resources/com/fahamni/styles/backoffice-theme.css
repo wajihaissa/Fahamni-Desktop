@@ -615,6 +615,33 @@
             -fx-padding: 12px 14px;
         }
 
+        .backoffice-users-ai-review-panel {
+            -fx-background-color: linear-gradient(to bottom right, #f7fbff 0%, #eef5ff 100%);
+            -fx-border-color: #cfe0fb;
+        }
+
+        .backoffice-users-ai-label {
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #557095;
+        }
+
+        .backoffice-users-ai-value {
+            -fx-font-size: 18px;
+            -fx-font-weight: bold;
+            -fx-text-fill: #203d67;
+        }
+
+        .backoffice-users-ai-copy {
+            -fx-font-size: 12px;
+            -fx-text-fill: #506785;
+        }
+
+        .backoffice-users-ai-meta {
+            -fx-font-size: 11px;
+            -fx-text-fill: #7890af;
+        }
+
         .profile-settings-shell {
             -fx-background-color: rgba(255, 255, 255, 0.95);
             -fx-border-color: #dbe5f6;

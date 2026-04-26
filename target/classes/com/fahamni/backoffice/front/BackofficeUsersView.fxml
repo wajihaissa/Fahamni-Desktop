@@ -53,6 +53,14 @@
                         <Label text="Linked Profiles" styleClass="backoffice-users-insight-label"/>
                         <Label fx:id="linkedProfilesValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
                     </VBox>
+                    <VBox minWidth="140.0" prefWidth="150.0" spacing="6.0" styleClass="backoffice-users-insight-card">
+                        <Label text="Medium Risk" styleClass="backoffice-users-insight-label"/>
+                        <Label fx:id="mediumRiskValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
+                    </VBox>
+                    <VBox minWidth="140.0" prefWidth="150.0" spacing="6.0" styleClass="backoffice-users-insight-card">
+                        <Label text="High Risk" styleClass="backoffice-users-insight-label"/>
+                        <Label fx:id="highRiskValueLabel" text="0" styleClass="backoffice-users-insight-value"/>
+                    </VBox>
                 </FlowPane>
 
                 <VBox minWidth="320.0" prefWidth="380.0" spacing="8.0" styleClass="backoffice-users-summary-card">
@@ -132,6 +140,7 @@
                                styleClass="backoffice-panel-copy"/>
                     </VBox>
                     <Button onAction="#handleRefreshUsers" styleClass="backoffice-secondary-button" text="Refresh"/>
+                    <Button onAction="#handleRunAiReview" styleClass="backoffice-secondary-button" text="Run AI Review"/>
                     <Button onAction="#handleResetForm" styleClass="backoffice-secondary-button" text="Reset Form"/>
                 </HBox>
 
@@ -183,13 +192,41 @@
                     </VBox>
                 </HBox>
 
-                <VBox spacing="8.0" styleClass="backoffice-users-editor-insight-panel">
-                    <Label text="Selected User Insight" styleClass="backoffice-form-label"/>
-                    <Label fx:id="selectedUserInsightLabel"
-                           text="Select one user to inspect tailored admin guidance."
-                           wrapText="true"
-                           styleClass="backoffice-panel-copy"/>
-                </VBox>
+                <HBox spacing="14.0">
+                    <VBox spacing="8.0" styleClass="backoffice-users-editor-insight-panel" HBox.hgrow="ALWAYS">
+                        <Label text="Selected User Insight" styleClass="backoffice-form-label"/>
+                        <Label fx:id="selectedUserInsightLabel"
+                               text="Select one user to inspect tailored admin guidance."
+                               wrapText="true"
+                               styleClass="backoffice-panel-copy"/>
+                    </VBox>
+
+                    <VBox spacing="10.0" styleClass="backoffice-users-editor-insight-panel backoffice-users-ai-review-panel" HBox.hgrow="ALWAYS">
+                        <Label text="AI Risk Review" styleClass="backoffice-form-label"/>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <Label fx:id="selectedUserRiskBadgeLabel" text="LOW - 0/100" styleClass="backoffice-risk-chip"/>
+                            <VBox spacing="2.0">
+                                <Label text="Risk Score" styleClass="backoffice-users-ai-label"/>
+                                <Label fx:id="selectedUserRiskScoreLabel" text="No analysis yet" styleClass="backoffice-users-ai-value"/>
+                            </VBox>
+                        </HBox>
+                        <VBox spacing="4.0">
+                            <Label text="Signals" styleClass="backoffice-users-ai-label"/>
+                            <Label fx:id="selectedUserSignalsLabel"
+                                   text="Select one user or fill in the editor, then run AI review to inspect the current risk signals."
+                                   wrapText="true"
+                                   styleClass="backoffice-users-ai-copy"/>
+                        </VBox>
+                        <VBox spacing="4.0">
+                            <Label text="Recommendation" styleClass="backoffice-users-ai-label"/>
+                            <Label fx:id="selectedUserRecommendationLabel"
+                                   text="No recommendation yet."
+                                   wrapText="true"
+                                   styleClass="backoffice-users-ai-copy"/>
+                        </VBox>
+                        <Label fx:id="selectedUserCheckedAtLabel" text="Not checked" styleClass="backoffice-users-ai-meta"/>
+                    </VBox>
+                </HBox>
 
                 <HBox spacing="10.0">
                     <Button onAction="#handleCreateUser" styleClass="backoffice-primary-button" text="Create User"/>

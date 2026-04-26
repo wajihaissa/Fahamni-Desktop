@@ -91,7 +91,6 @@ tn\esprit\fahamni\services\AdminEquipementService.class
 tn\esprit\fahamni\controllers\MainController.class
 tn\esprit\fahamni\services\AdminSessionService.class
 tn\esprit\fahamni\utils\FrontOfficeNavigation.class
-tn\esprit\fahamni\controllers\BackofficeMainController.class
 tn\esprit\fahamni\controllers\ProfileSettingsController$Section.class
 tn\esprit\fahamni\utils\BackOfficeUiTheme.class
 tn\esprit\fahamni\controllers\BackofficeArticlesController$5.class
@@ -125,7 +124,6 @@ tn\esprit\fahamni\services\SessionCreationContext$Navigator.class
 tn\esprit\fahamni\controllers\BackofficeUsersController$2.class
 tn\esprit\fahamni\services\TwoFactorAuthService$SetupStartResult.class
 tn\esprit\fahamni\services\UserAccountService.class
-tn\esprit\fahamni\services\AdminArticlesService.class
 tn\esprit\fahamni\Models\ChatMessage.class
 tn\esprit\fahamni\controllers\PlannerController.class
 tn\esprit\fahamni\controllers\ProfileSettingsController.class
@@ -143,7 +141,6 @@ tn\esprit\fahamni\services\ActivityLogService.class
 tn\esprit\fahamni\Models\Article.class
 tn\esprit\fahamni\utils\JwtService$JwtClaims.class
 tn\esprit\fahamni\controllers\LoginController$ResetPasswordPayload.class
-tn\esprit\fahamni\controllers\BackofficeArticlesController.class
 tn\esprit\fahamni\Models\MaintenanceSalle.class
 tn\esprit\fahamni\controllers\LoginController.class
 tn\esprit\fahamni\utils\UserSession.class

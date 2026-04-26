@@ -26,10 +26,13 @@ import tn.esprit.fahamni.Models.AdminUser;
 import tn.esprit.fahamni.services.AdminUserService;
 import tn.esprit.fahamni.utils.OperationResult;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BackofficeUsersController {
+
+    private static final DateTimeFormatter AI_CHECK_FORMATTER = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
 
     @FXML
     private VBox pendingRegistrationsContainer;
@@ -137,10 +140,31 @@ public class BackofficeUsersController {
     private Label linkedProfilesValueLabel;
 
     @FXML
+    private Label mediumRiskValueLabel;
+
+    @FXML
+    private Label highRiskValueLabel;
+
+    @FXML
     private Label insightsSummaryLabel;
 
     @FXML
     private Label selectedUserInsightLabel;
+
+    @FXML
+    private Label selectedUserRiskBadgeLabel;
+
+    @FXML
+    private Label selectedUserRiskScoreLabel;
+
+    @FXML
+    private Label selectedUserSignalsLabel;
+
+    @FXML
+    private Label selectedUserRecommendationLabel;
+
+    @FXML
+    private Label selectedUserCheckedAtLabel;
 
     private final AdminUserService userService = new AdminUserService();
     private final ObservableList<AdminUser> pendingUsers = FXCollections.observableArrayList();
@@ -239,6 +263,27 @@ public class BackofficeUsersController {
         usersTable.getSelectionModel().clearSelection();
         clearForm();
         hideFeedback();
+    }
+
+    @FXML
+    private void handleRunAiReview() {
+        hideFeedback();
+        AdminUserService.RiskAnalysis riskAnalysis = userService.previewRiskAnalysis(
+            fullNameField.getText(),
+            emailField.getText(),
+            roleComboBox.getValue(),
+            reviewStatusComboBox.getValue(),
+            statusComboBox.getValue(),
+            profileStatusComboBox.getValue()
+        );
+        applyRiskAnalysisPreview(riskAnalysis);
+
+        AdminUser selectedUser = getSingleSelectedUser();
+        if (selectedUser != null) {
+            showFeedback("AI risk review refreshed for the selected account.", true);
+        } else {
+            showFeedback("AI risk preview generated from the current editor inputs.", true);
+        }
     }
 
     @FXML
@@ -445,14 +490,19 @@ public class BackofficeUsersController {
     }
 
     private Label createRiskBadge(AdminUser user) {
-        Label badge = new Label(user.getFraudRisk());
-        badge.getStyleClass().add("backoffice-risk-chip");
-        if ("MEDIUM".equalsIgnoreCase(user.getFraudRisk())) {
+        Label badge = new Label();
+        styleRiskBadge(badge, user.getFraudRisk(), user.getFraudScore());
+        return badge;
+    }
+
+    private void styleRiskBadge(Label badge, String riskLevel, int riskScore) {
+        badge.setText((riskLevel == null ? "LOW" : riskLevel) + " - " + riskScore + "/100");
+        badge.getStyleClass().setAll("backoffice-risk-chip");
+        if ("MEDIUM".equalsIgnoreCase(riskLevel)) {
             badge.getStyleClass().add("medium");
-        } else if ("HIGH".equalsIgnoreCase(user.getFraudRisk())) {
+        } else if ("HIGH".equalsIgnoreCase(riskLevel)) {
             badge.getStyleClass().add("high");
         }
-        return badge;
     }
 
     private String resolveReviewStatusStyle(String reviewStatus) {
@@ -489,6 +539,7 @@ public class BackofficeUsersController {
         updateInsights();
         updateSelectionSummary();
         selectedUserInsightLabel.setText("Select one user to inspect tailored admin guidance.");
+        resetRiskPreview();
     }
 
     private void applyFilters() {
@@ -562,6 +613,7 @@ public class BackofficeUsersController {
         confirmPasswordField.clear();
         selectedUserInsightLabel.setText(user.getAdminInsight());
         Tooltip.install(selectedUserInsightLabel, new Tooltip(user.getFraudReason()));
+        applyUserRiskSnapshot(user);
     }
 
     private void clearForm() {
@@ -574,6 +626,7 @@ public class BackofficeUsersController {
         reviewStatusComboBox.setValue("Approved");
         profileStatusComboBox.setValue("Profile On");
         selectedUserInsightLabel.setText("Select one user to inspect tailored admin guidance.");
+        resetRiskPreview();
     }
 
     private void refreshPendingRegistrations() {
@@ -667,6 +720,8 @@ public class BackofficeUsersController {
         approvedCountValueLabel.setText(String.valueOf(insights.approvedCount()));
         declinedCountValueLabel.setText(String.valueOf(insights.declinedCount()));
         linkedProfilesValueLabel.setText(String.valueOf(insights.linkedStudentProfiles()));
+        mediumRiskValueLabel.setText(String.valueOf(insights.mediumRiskCount()));
+        highRiskValueLabel.setText(String.valueOf(insights.highRiskCount()));
         insightsSummaryLabel.setText(insights.summary());
     }
 
@@ -691,6 +746,41 @@ public class BackofficeUsersController {
         passwordField.clear();
         confirmPasswordField.clear();
         selectedUserInsightLabel.setText("Bulk selection active. Use the action bar above the table to update the selected users.");
+        resetRiskPreview();
+    }
+
+    private void applyUserRiskSnapshot(AdminUser user) {
+        if (user == null) {
+            resetRiskPreview();
+            return;
+        }
+
+        styleRiskBadge(selectedUserRiskBadgeLabel, user.getFraudRisk(), user.getFraudScore());
+        selectedUserRiskScoreLabel.setText(user.getFraudScore() + "/100");
+        selectedUserSignalsLabel.setText(user.getFraudSignals());
+        selectedUserRecommendationLabel.setText(user.getFraudRecommendation());
+        selectedUserCheckedAtLabel.setText(user.getFraudCheckedAt());
+    }
+
+    private void applyRiskAnalysisPreview(AdminUserService.RiskAnalysis riskAnalysis) {
+        if (riskAnalysis == null) {
+            resetRiskPreview();
+            return;
+        }
+
+        styleRiskBadge(selectedUserRiskBadgeLabel, riskAnalysis.level(), riskAnalysis.score());
+        selectedUserRiskScoreLabel.setText(riskAnalysis.score() + "/100");
+        selectedUserSignalsLabel.setText(riskAnalysis.signals());
+        selectedUserRecommendationLabel.setText(riskAnalysis.recommendation());
+        selectedUserCheckedAtLabel.setText("Checked " + riskAnalysis.checkedAt().format(AI_CHECK_FORMATTER));
+    }
+
+    private void resetRiskPreview() {
+        styleRiskBadge(selectedUserRiskBadgeLabel, "LOW", 0);
+        selectedUserRiskScoreLabel.setText("No analysis yet");
+        selectedUserSignalsLabel.setText("Select one user or fill in the editor, then run AI review to inspect the current risk signals.");
+        selectedUserRecommendationLabel.setText("No recommendation yet.");
+        selectedUserCheckedAtLabel.setText("Not checked");
     }
 
     private void performBulkAction(String actionId) {
