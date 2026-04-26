@@ -9,15 +9,24 @@ import java.util.List;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Slider;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.util.Duration;
 import tn.esprit.fahamni.Models.Category;
 import tn.esprit.fahamni.entities.Matiere;
 import tn.esprit.fahamni.services.CategoryService;
@@ -217,6 +226,11 @@ public class FrontCoursePlayerController {
                 return;
             }
 
+            if (isVideoType(resource.type)) {
+                openVideoModal(path, safe(resource.name, "Vidéo"));
+                return;
+            }
+
             if (path.startsWith("http://") || path.startsWith("https://") || "lien".equalsIgnoreCase(resource.type)) {
                 Desktop.getDesktop().browse(new URI(path));
                 return;
@@ -232,6 +246,144 @@ public class FrontCoursePlayerController {
         } catch (Exception e) {
             showError("Impossible d'ouvrir la ressource.", e);
         }
+    }
+
+    private void openVideoModal(String videoPath, String videoTitle) {
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setTitle(videoTitle);
+
+        try {
+            String mediaSource;
+            if (videoPath.startsWith("http://") || videoPath.startsWith("https://")) {
+                mediaSource = videoPath;
+            } else {
+                File resolvedFile = resolveResourceFile(videoPath);
+                if (resolvedFile == null || !resolvedFile.exists()) {
+                    showWarning("Fichier vidéo introuvable: " + videoPath);
+                    return;
+                }
+                mediaSource = resolvedFile.toURI().toString();
+            }
+
+            Media media = new Media(mediaSource);
+            MediaPlayer mediaPlayer = new MediaPlayer(media);
+            MediaView mediaView = new MediaView(mediaPlayer);
+            mediaView.setPreserveRatio(true);
+
+            BorderPane root = new BorderPane();
+            root.setCenter(mediaView);
+
+            Button playPauseBtn = new Button("Pause");
+            Button stopBtn = new Button("Stop");
+            Label currentTimeLabel = new Label("00:00");
+            Slider seekSlider = new Slider(0, 100, 0);
+            seekSlider.setPrefWidth(260);
+            seekSlider.setMaxWidth(Double.MAX_VALUE);
+            Label totalDurationLabel = new Label("00:00");
+            Slider volumeSlider = new Slider(0, 1, 0.7);
+            volumeSlider.setPrefWidth(160);
+            final boolean[] userSeeking = {false};
+
+            mediaPlayer.setVolume(volumeSlider.getValue());
+            volumeSlider.valueProperty().addListener((obs, oldVal, newVal) -> mediaPlayer.setVolume(newVal.doubleValue()));
+
+            playPauseBtn.setOnAction(e -> {
+                MediaPlayer.Status status = mediaPlayer.getStatus();
+                if (status == MediaPlayer.Status.PLAYING) {
+                    mediaPlayer.pause();
+                    playPauseBtn.setText("Play");
+                } else {
+                    mediaPlayer.play();
+                    playPauseBtn.setText("Pause");
+                }
+            });
+
+            stopBtn.setOnAction(e -> {
+                mediaPlayer.stop();
+                playPauseBtn.setText("Play");
+            });
+
+            mediaPlayer.setOnReady(() -> {
+                Duration totalDuration = mediaPlayer.getTotalDuration();
+                double totalSeconds = Math.max(1, totalDuration.toSeconds());
+                seekSlider.setMin(0);
+                seekSlider.setMax(totalSeconds);
+                seekSlider.setValue(0);
+                totalDurationLabel.setText(formatDuration(totalDuration));
+            });
+
+            mediaPlayer.currentTimeProperty().addListener((obs, oldVal, newVal) -> {
+                currentTimeLabel.setText(formatDuration(newVal));
+                if (!userSeeking[0]) {
+                    seekSlider.setValue(newVal.toSeconds());
+                }
+            });
+
+            seekSlider.valueChangingProperty().addListener((obs, wasChanging, isChanging) -> {
+                userSeeking[0] = isChanging;
+                if (!isChanging) {
+                    mediaPlayer.seek(Duration.seconds(seekSlider.getValue()));
+                }
+            });
+
+            seekSlider.setOnMousePressed(e -> userSeeking[0] = true);
+            seekSlider.setOnMouseReleased(e -> {
+                userSeeking[0] = false;
+                mediaPlayer.seek(Duration.seconds(seekSlider.getValue()));
+            });
+
+            HBox controls = new HBox(
+                10,
+                playPauseBtn,
+                stopBtn,
+                currentTimeLabel,
+                seekSlider,
+                totalDurationLabel,
+                new Label("Volume"),
+                volumeSlider
+            );
+            HBox.setHgrow(seekSlider, Priority.ALWAYS);
+            controls.setStyle("-fx-padding: 10; -fx-alignment: center-left; -fx-background-color: #f1f5f9;");
+            root.setBottom(controls);
+
+            Scene scene = new Scene(root, 900, 540);
+            mediaView.fitWidthProperty().bind(scene.widthProperty());
+            mediaView.fitHeightProperty().bind(scene.heightProperty().subtract(60));
+
+            stage.setOnCloseRequest(e -> {
+                mediaPlayer.stop();
+                mediaPlayer.dispose();
+            });
+
+            stage.setScene(scene);
+            stage.show();
+            mediaPlayer.play();
+        } catch (Exception e) {
+            showError("Impossible d'ouvrir la vidéo.", e);
+        }
+    }
+
+    private String formatDuration(Duration duration) {
+        if (duration == null || duration.isUnknown() || duration.lessThanOrEqualTo(Duration.ZERO)) {
+            return "00:00";
+        }
+        int totalSeconds = (int) Math.floor(duration.toSeconds());
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+        if (hours > 0) {
+            return String.format("%d:%02d:%02d", hours, minutes, seconds);
+        }
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    private boolean isVideoType(String type) {
+        if (type == null) {
+            return false;
+        }
+        String normalized = type.trim().toLowerCase();
+        return "vidéo".equals(normalized) || "video".equals(normalized);
     }
 
     private File resolveResourceFile(String path) {
