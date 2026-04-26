@@ -32,9 +32,11 @@ public class ReservationService {
     public static final String PAYMENT_STATUS_COMPLETED = "completed";
     public static final String PAYMENT_STATUS_FAILED = "failed";
     public static final String PAYMENT_STATUS_EXPIRED = "expired";
+    private static final String PAYMENT_PROVIDER = "stripe";
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
-    private final KonnectPaymentService konnectPaymentService = new KonnectPaymentService();
+    private final StripePaymentService stripePaymentService = new StripePaymentService();
+    private final PaymentReceiptEmailService paymentReceiptEmailService = new PaymentReceiptEmailService();
 
     private final List<Reservation> reservations = new ArrayList<>(List.of(
         new Reservation("Mathematics - Algebra Fundamentals", "Ahmed Ben Ali",
@@ -115,7 +117,7 @@ public class ReservationService {
             return new ReservationCreationResult(
                 true,
                 paymentRequired
-                    ? "Reservation creee. Un paiement Konnect Sandbox est requis avant validation par le tuteur."
+                    ? "Reservation creee. Un paiement Stripe est requis avant validation par le tuteur."
                     : "Reservation envoyee avec succes. Statut: en attente.",
                 reservationId,
                 paymentRequired
@@ -125,7 +127,7 @@ public class ReservationService {
         }
     }
 
-    public PaymentLaunchResult startKonnectSandboxPayment(int reservationId, int participantId) {
+    public PaymentLaunchResult startStripeCheckoutPayment(int reservationId, int participantId) {
         if (cnx == null) {
             return PaymentLaunchResult.failure("Connexion a la base indisponible.");
         }
@@ -175,7 +177,7 @@ public class ReservationService {
                 if (currentPayment != null && PAYMENT_STATUS_COMPLETED.equals(currentPayment.status())) {
                     return new PaymentLaunchResult(
                         true,
-                        "Le paiement Konnect est deja confirme pour cette reservation.",
+                        "Le paiement Stripe est deja confirme pour cette reservation.",
                         reservationId,
                         currentPayment.paymentRef(),
                         currentPayment.paymentUrl(),
@@ -183,17 +185,14 @@ public class ReservationService {
                     );
                 }
 
-                String[] nameParts = splitFullName(rs.getString("full_name"));
-                KonnectPaymentService.CreatePaymentRequest request = new KonnectPaymentService.CreatePaymentRequest(
-                    buildKonnectOrderId(reservationId),
-                    amountMillimes,
+                StripePaymentService.CreatePaymentRequest request = new StripePaymentService.CreatePaymentRequest(
+                    buildStripeCheckoutOrderId(reservationId),
+                    price.doubleValue(),
                     "Reservation Fahamni - " + safeText(rs.getString("matiere")),
-                    rs.getString("email"),
-                    nameParts[0],
-                    nameParts[1]
+                    rs.getString("email")
                 );
 
-                KonnectPaymentService.PaymentInitialization initialization = konnectPaymentService.initializePayment(request);
+                StripePaymentService.PaymentInitialization initialization = stripePaymentService.initializePayment(request);
                 if (!initialization.success()) {
                     return PaymentLaunchResult.failure(initialization.message());
                 }
@@ -202,10 +201,10 @@ public class ReservationService {
                     reservationId,
                     amountMillimes,
                     PAYMENT_STATUS_PENDING,
-                    initialization.paymentRef(),
-                    initialization.paymentUrl(),
-                    null,
-                    null,
+                    initialization.sessionId(),
+                    initialization.checkoutUrl(),
+                    initialization.sessionStatus(),
+                    initialization.paymentStatus(),
                     initialization.providerPayload(),
                     LocalDateTime.now(),
                     null,
@@ -214,10 +213,10 @@ public class ReservationService {
 
                 return new PaymentLaunchResult(
                     true,
-                    "Paiement Konnect Sandbox initialise. Finalisez le paiement dans la page ouverte.",
+                    "Paiement Stripe initialise. Finalisez le paiement dans la fenetre ouverte.",
                     reservationId,
-                    initialization.paymentRef(),
-                    initialization.paymentUrl(),
+                    initialization.sessionId(),
+                    initialization.checkoutUrl(),
                     PAYMENT_STATUS_PENDING
                 );
             }
@@ -260,49 +259,57 @@ public class ReservationService {
 
                 String currentStatus = normalizePaymentStatus(rs.getString("payment_status"));
                 if (currentStatus == null) {
-                    return PaymentVerificationResult.failure("Aucun paiement Konnect n'est encore initialise pour cette reservation.");
+                    return PaymentVerificationResult.failure("Aucun paiement Stripe n'est encore initialise pour cette reservation.");
                 }
                 if (PAYMENT_STATUS_COMPLETED.equals(currentStatus)) {
+                    ReceiptEmailDispatchResult receiptDispatchResult = ensurePaymentReceiptSent(reservationId);
                     return new PaymentVerificationResult(
                         true,
-                        "Le paiement Konnect est deja confirme.",
+                        appendDetailMessage("Le paiement Stripe est deja confirme.", receiptDispatchResult.message()),
                         currentStatus,
                         rs.getString("payment_ref"),
                         rs.getString("payment_url")
                     );
                 }
 
-                KonnectPaymentService.PaymentStatusCheck statusCheck =
-                    konnectPaymentService.fetchPaymentDetails(rs.getString("payment_ref"));
-                if (!statusCheck.success()) {
-                    return PaymentVerificationResult.failure(statusCheck.message());
+                StripePaymentService.PaymentSessionDetails sessionDetails =
+                    stripePaymentService.fetchCheckoutSession(rs.getString("payment_ref"));
+                if (!sessionDetails.success()) {
+                    return PaymentVerificationResult.failure(sessionDetails.message());
                 }
 
-                String normalizedStatus = normalizePaymentStatus(statusCheck.normalizedStatus());
+                String normalizedStatus = normalizePaymentStatus(sessionDetails.normalizedStatus());
+                String providerStatus = sessionDetails.sessionStatus();
+                String transactionStatus = sessionDetails.paymentStatus();
+                String providerPayload = sessionDetails.providerPayload();
+                String paymentUrl = sessionDetails.checkoutUrl() != null ? sessionDetails.checkoutUrl() : rs.getString("payment_url");
+
                 LocalDateTime checkedAt = LocalDateTime.now();
                 LocalDateTime completedAt = PAYMENT_STATUS_COMPLETED.equals(normalizedStatus) ? checkedAt : null;
                 upsertPaymentSnapshot(
                     reservationId,
-                    statusCheck.amountMillimes() != null
-                        ? statusCheck.amountMillimes()
-                        : rs.getInt("amount_millimes"),
+                    rs.getInt("amount_millimes"),
                     normalizedStatus,
-                    statusCheck.paymentRef(),
-                    statusCheck.paymentUrl() != null ? statusCheck.paymentUrl() : rs.getString("payment_url"),
-                    statusCheck.providerStatus(),
-                    statusCheck.transactionStatus(),
-                    statusCheck.providerPayload(),
+                    rs.getString("payment_ref"),
+                    paymentUrl,
+                    providerStatus,
+                    transactionStatus,
+                    providerPayload,
                     null,
                     checkedAt,
                     completedAt
                 );
 
+                ReceiptEmailDispatchResult receiptDispatchResult = PAYMENT_STATUS_COMPLETED.equals(normalizedStatus)
+                    ? ensurePaymentReceiptSent(reservationId)
+                    : ReceiptEmailDispatchResult.none();
+
                 return new PaymentVerificationResult(
                     true,
-                    buildPaymentVerificationMessage(normalizedStatus),
+                    appendDetailMessage(buildPaymentVerificationMessage(normalizedStatus), receiptDispatchResult.message()),
                     normalizedStatus,
-                    statusCheck.paymentRef(),
-                    statusCheck.paymentUrl() != null ? statusCheck.paymentUrl() : rs.getString("payment_url")
+                    rs.getString("payment_ref"),
+                    paymentUrl
                 );
             }
         } catch (SQLException exception) {
@@ -964,7 +971,8 @@ public class ReservationService {
         }
 
         public boolean requiresPayment() {
-            return paymentAmountMillimes != null && paymentAmountMillimes > 0;
+            return (paymentAmountMillimes != null && paymentAmountMillimes > 0)
+                || (sessionPriceTnd != null && sessionPriceTnd > 0.0);
         }
 
         public boolean isPaymentCompleted() {
@@ -1028,8 +1036,30 @@ public class ReservationService {
         String transactionStatus,
         LocalDateTime initiatedAt,
         LocalDateTime lastCheckedAt,
-        LocalDateTime completedAt
+        LocalDateTime completedAt,
+        String receiptEmail,
+        LocalDateTime receiptEmailSentAt
     ) {
+    }
+
+    private record PaymentReceiptContext(
+        int reservationId,
+        String participantName,
+        String participantEmail,
+        String tutorName,
+        String seanceTitle,
+        LocalDateTime seanceStartAt,
+        int durationMin,
+        int amountMillimes,
+        String paymentRef,
+        LocalDateTime paymentCompletedAt
+    ) {
+    }
+
+    private record ReceiptEmailDispatchResult(String message) {
+        private static ReceiptEmailDispatchResult none() {
+            return new ReceiptEmailDispatchResult(null);
+        }
     }
 
     public record ReservationStats(int total, int pending, int accepted, int refused) {
@@ -1080,7 +1110,7 @@ public class ReservationService {
                 if (PAYMENT_STATUS_COMPLETED.equals(paymentStatus)) {
                     return null;
                 }
-                return "Le paiement Konnect doit etre confirme avant d'accepter cette reservation.";
+                return "Le paiement Stripe doit etre confirme avant d'accepter cette reservation.";
             }
         }
     }
@@ -1101,7 +1131,9 @@ public class ReservationService {
                 transaction_status,
                 initiated_at,
                 last_checked_at,
-                completed_at
+                completed_at,
+                receipt_email,
+                receipt_email_sent_at
             FROM reservation_payment
             WHERE reservation_id = ?
             """;
@@ -1121,9 +1153,136 @@ public class ReservationService {
                     rs.getString("transaction_status"),
                     readDateTime(rs, "initiated_at"),
                     readDateTime(rs, "last_checked_at"),
+                    readDateTime(rs, "completed_at"),
+                    rs.getString("receipt_email"),
+                    readDateTime(rs, "receipt_email_sent_at")
+                );
+            }
+        }
+    }
+
+    private ReceiptEmailDispatchResult ensurePaymentReceiptSent(int reservationId) throws SQLException {
+        PaymentSnapshot snapshot = findPaymentSnapshot(reservationId);
+        if (snapshot == null || !PAYMENT_STATUS_COMPLETED.equals(snapshot.status())) {
+            return ReceiptEmailDispatchResult.none();
+        }
+        if (snapshot.receiptEmailSentAt() != null) {
+            String sentTo = safeText(snapshot.receiptEmail());
+            return new ReceiptEmailDispatchResult(
+                sentTo.isEmpty()
+                    ? "Le recu a deja ete envoye."
+                    : "Le recu a deja ete envoye a " + sentTo + "."
+            );
+        }
+
+        PaymentReceiptContext context = findPaymentReceiptContext(reservationId);
+        if (context == null) {
+            return new ReceiptEmailDispatchResult(
+                "Le paiement est valide, mais les informations du recu sont introuvables."
+            );
+        }
+
+        String participantEmail = safeText(context.participantEmail());
+        if (participantEmail.isEmpty()) {
+            return new ReceiptEmailDispatchResult(
+                "Le paiement est valide, mais aucune adresse email n'est disponible pour le recu."
+            );
+        }
+        if (!paymentReceiptEmailService.isConfigured()) {
+            return new ReceiptEmailDispatchResult(
+                "Le paiement est valide, mais l'envoi du recu email n'est pas configure."
+            );
+        }
+
+        PaymentReceiptEmailService.EmailDeliveryResult emailDeliveryResult = paymentReceiptEmailService.sendPaymentReceipt(
+            new PaymentReceiptEmailService.PaymentReceipt(
+                context.reservationId(),
+                context.participantName(),
+                context.participantEmail(),
+                context.tutorName(),
+                context.seanceTitle(),
+                context.seanceStartAt(),
+                context.durationMin(),
+                context.amountMillimes(),
+                context.paymentRef(),
+                context.paymentCompletedAt()
+            )
+        );
+        if (!emailDeliveryResult.success()) {
+            return new ReceiptEmailDispatchResult(
+                "Le paiement est valide, mais le recu email n'a pas pu etre envoye: "
+                    + emailDeliveryResult.message()
+            );
+        }
+
+        markReceiptEmailSent(reservationId, participantEmail, LocalDateTime.now());
+        return new ReceiptEmailDispatchResult("Un recu a ete envoye a " + participantEmail + ".");
+    }
+
+    private PaymentReceiptContext findPaymentReceiptContext(int reservationId) throws SQLException {
+        if (reservationId <= 0 || cnx == null) {
+            return null;
+        }
+
+        String sql = """
+            SELECT
+                r.id AS reservation_id,
+                student.full_name AS participant_name,
+                student.email AS participant_email,
+                tutor.full_name AS tutor_name,
+                s.matiere,
+                s.start_at,
+                s.duration_min,
+                p.amount_millimes,
+                p.payment_ref,
+                p.completed_at
+            FROM reservation r
+            INNER JOIN seance s ON s.id = r.seance_id
+            INNER JOIN user student ON student.id = r.participant_id
+            LEFT JOIN user tutor ON tutor.id = s.tuteur_id
+            INNER JOIN reservation_payment p ON p.reservation_id = r.id
+            WHERE r.id = ?
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setInt(1, reservationId);
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                return new PaymentReceiptContext(
+                    rs.getInt("reservation_id"),
+                    rs.getString("participant_name"),
+                    rs.getString("participant_email"),
+                    rs.getString("tutor_name"),
+                    rs.getString("matiere"),
+                    readDateTime(rs, "start_at"),
+                    rs.getInt("duration_min"),
+                    rs.getInt("amount_millimes"),
+                    rs.getString("payment_ref"),
                     readDateTime(rs, "completed_at")
                 );
             }
+        }
+    }
+
+    private void markReceiptEmailSent(int reservationId, String email, LocalDateTime sentAt) throws SQLException {
+        if (reservationId <= 0 || cnx == null || sentAt == null) {
+            return;
+        }
+
+        String sql = """
+            UPDATE reservation_payment
+            SET receipt_email = ?,
+                receipt_email_sent_at = ?,
+                updated_at = ?
+            WHERE reservation_id = ?
+            """;
+        try (PreparedStatement pst = cnx.prepareStatement(sql)) {
+            pst.setString(1, email);
+            pst.setTimestamp(2, toTimestamp(sentAt));
+            pst.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+            pst.setInt(4, reservationId);
+            pst.executeUpdate();
         }
     }
 
@@ -1152,22 +1311,23 @@ public class ReservationService {
                     provider_status, transaction_status, provider_payload, initiated_at, last_checked_at,
                     completed_at, created_at, updated_at
                 )
-                VALUES (?, 'konnect', ?, 'TND', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, 'TND', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
             try (PreparedStatement pst = cnx.prepareStatement(sql)) {
                 pst.setInt(1, reservationId);
-                pst.setInt(2, amountMillimes);
-                pst.setString(3, normalizePaymentStatus(status));
-                pst.setString(4, paymentRef);
-                pst.setString(5, paymentUrl);
-                pst.setString(6, providerStatus);
-                pst.setString(7, transactionStatus);
-                pst.setString(8, providerPayload);
-                pst.setTimestamp(9, toTimestamp(initiatedAt));
-                pst.setTimestamp(10, toTimestamp(lastCheckedAt));
-                pst.setTimestamp(11, toTimestamp(completedAt));
-                pst.setTimestamp(12, Timestamp.valueOf(now));
+                pst.setString(2, PAYMENT_PROVIDER);
+                pst.setInt(3, amountMillimes);
+                pst.setString(4, normalizePaymentStatus(status));
+                pst.setString(5, paymentRef);
+                pst.setString(6, paymentUrl);
+                pst.setString(7, providerStatus);
+                pst.setString(8, transactionStatus);
+                pst.setString(9, providerPayload);
+                pst.setTimestamp(10, toTimestamp(initiatedAt));
+                pst.setTimestamp(11, toTimestamp(lastCheckedAt));
+                pst.setTimestamp(12, toTimestamp(completedAt));
                 pst.setTimestamp(13, Timestamp.valueOf(now));
+                pst.setTimestamp(14, Timestamp.valueOf(now));
                 pst.executeUpdate();
             }
             return;
@@ -1175,7 +1335,8 @@ public class ReservationService {
 
         sql = """
             UPDATE reservation_payment
-            SET amount_millimes = ?,
+            SET provider = ?,
+                amount_millimes = ?,
                 status = ?,
                 payment_ref = ?,
                 payment_url = ?,
@@ -1189,18 +1350,19 @@ public class ReservationService {
             WHERE reservation_id = ?
             """;
         try (PreparedStatement pst = cnx.prepareStatement(sql)) {
-            pst.setInt(1, amountMillimes > 0 ? amountMillimes : existing.amountMillimes());
-            pst.setString(2, normalizePaymentStatus(status));
-            pst.setString(3, paymentRef != null ? paymentRef : existing.paymentRef());
-            pst.setString(4, paymentUrl != null ? paymentUrl : existing.paymentUrl());
-            pst.setString(5, providerStatus != null ? providerStatus : existing.providerStatus());
-            pst.setString(6, transactionStatus != null ? transactionStatus : existing.transactionStatus());
-            pst.setString(7, providerPayload);
-            pst.setTimestamp(8, toTimestamp(initiatedAt));
-            pst.setTimestamp(9, toTimestamp(lastCheckedAt));
-            pst.setTimestamp(10, toTimestamp(completedAt));
-            pst.setTimestamp(11, Timestamp.valueOf(now));
-            pst.setInt(12, reservationId);
+            pst.setString(1, PAYMENT_PROVIDER);
+            pst.setInt(2, amountMillimes > 0 ? amountMillimes : existing.amountMillimes());
+            pst.setString(3, normalizePaymentStatus(status));
+            pst.setString(4, paymentRef != null ? paymentRef : existing.paymentRef());
+            pst.setString(5, paymentUrl != null ? paymentUrl : existing.paymentUrl());
+            pst.setString(6, providerStatus != null ? providerStatus : existing.providerStatus());
+            pst.setString(7, transactionStatus != null ? transactionStatus : existing.transactionStatus());
+            pst.setString(8, providerPayload);
+            pst.setTimestamp(9, toTimestamp(initiatedAt));
+            pst.setTimestamp(10, toTimestamp(lastCheckedAt));
+            pst.setTimestamp(11, toTimestamp(completedAt));
+            pst.setTimestamp(12, Timestamp.valueOf(now));
+            pst.setInt(13, reservationId);
             pst.executeUpdate();
         }
     }
@@ -1222,7 +1384,7 @@ public class ReservationService {
                     """
                     CREATE TABLE reservation_payment (
                         reservation_id INT PRIMARY KEY,
-                        provider VARCHAR(30) NOT NULL DEFAULT 'konnect',
+                        provider VARCHAR(30) NOT NULL DEFAULT 'stripe',
                         amount_millimes INT NOT NULL,
                         currency_token VARCHAR(10) NOT NULL DEFAULT 'TND',
                         status VARCHAR(30) NOT NULL DEFAULT 'pending',
@@ -1234,6 +1396,8 @@ public class ReservationService {
                         initiated_at DATETIME NULL,
                         last_checked_at DATETIME NULL,
                         completed_at DATETIME NULL,
+                        receipt_email VARCHAR(255) NULL,
+                        receipt_email_sent_at DATETIME NULL,
                         created_at DATETIME NOT NULL,
                         updated_at DATETIME NULL,
                         CONSTRAINT fk_reservation_payment_reservation
@@ -1241,6 +1405,18 @@ public class ReservationService {
                             ON DELETE CASCADE
                     )
                     """
+                );
+            }
+            if (!DatabaseSchemaUtils.columnExists(cnx, "reservation_payment", "receipt_email")) {
+                DatabaseSchemaUtils.executeDdl(
+                    cnx,
+                    "ALTER TABLE reservation_payment ADD COLUMN receipt_email VARCHAR(255) NULL AFTER completed_at"
+                );
+            }
+            if (!DatabaseSchemaUtils.columnExists(cnx, "reservation_payment", "receipt_email_sent_at")) {
+                DatabaseSchemaUtils.executeDdl(
+                    cnx,
+                    "ALTER TABLE reservation_payment ADD COLUMN receipt_email_sent_at DATETIME NULL AFTER receipt_email"
                 );
             }
         } catch (SQLException exception) {
@@ -1260,30 +1436,34 @@ public class ReservationService {
         return priceTnd.multiply(BigDecimal.valueOf(1000L)).intValue();
     }
 
-    private String[] splitFullName(String fullName) {
-        String normalized = safeText(fullName);
-        String[] parts = normalized.split("\\s+", 2);
-        String firstName = parts.length > 0 ? parts[0] : "Client";
-        String lastName = parts.length > 1 ? parts[1] : "Fahamni";
-        return new String[]{firstName, lastName};
-    }
-
-    private String buildKonnectOrderId(int reservationId) {
+    private String buildStripeCheckoutOrderId(int reservationId) {
         return "fahamni-reservation-" + reservationId + "-" + System.currentTimeMillis();
     }
 
     private String buildPaymentVerificationMessage(String paymentStatus) {
         String normalizedStatus = normalizePaymentStatus(paymentStatus);
         if (PAYMENT_STATUS_COMPLETED.equals(normalizedStatus)) {
-            return "Paiement Konnect confirme avec succes.";
+            return "Paiement Stripe confirme avec succes.";
         }
         if (PAYMENT_STATUS_FAILED.equals(normalizedStatus)) {
-            return "Le paiement Konnect a echoue. Vous pouvez relancer un nouveau lien.";
+            return "Le paiement Stripe a echoue. Vous pouvez relancer un nouveau lien.";
         }
         if (PAYMENT_STATUS_EXPIRED.equals(normalizedStatus)) {
-            return "Le lien de paiement Konnect a expire. Generez un nouveau lien.";
+            return "Le lien de paiement Stripe a expire. Generez un nouveau lien.";
         }
-        return "Le paiement Konnect est encore en attente. Verifiez apres finalisation dans le navigateur.";
+        return "Le paiement Stripe est encore en attente. Verifiez apres finalisation dans le navigateur.";
+    }
+
+    private String appendDetailMessage(String baseMessage, String detailMessage) {
+        String normalizedBaseMessage = safeText(baseMessage);
+        String normalizedDetailMessage = safeText(detailMessage);
+        if (normalizedDetailMessage.isEmpty()) {
+            return normalizedBaseMessage;
+        }
+        if (normalizedBaseMessage.isEmpty()) {
+            return normalizedDetailMessage;
+        }
+        return normalizedBaseMessage + " " + normalizedDetailMessage;
     }
 
     private String normalizePaymentStatus(String status) {

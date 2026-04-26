@@ -56,6 +56,7 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.layout.FlowPane;
@@ -70,6 +71,11 @@ import javafx.scene.shape.Arc;
 import javafx.scene.shape.ArcType;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.sql.SQLException;
 import java.awt.Desktop;
@@ -99,6 +105,7 @@ public class ReservationController {
     private static final String RATING_DIALOG_STYLESHEET = "/com/fahamni/styles/frontoffice-rating-dialog.css";
     private static final String MATCHING_DIALOG_STYLESHEET = "/com/fahamni/styles/frontoffice-matching-dialog.css";
     private static final String SESSION_EVALUATIONS_STYLESHEET = "/com/fahamni/styles/frontoffice-session-evaluations.css";
+    private static final String PAYMENT_DIALOG_STYLESHEET = "/com/fahamni/styles/frontoffice-reservation.css";
     private static final String SECTION_AVAILABLE_SESSIONS = "Seances disponibles";
     private static final String SECTION_ADD_SESSION = "Ajouter une seance";
     private static final String SECTION_MY_RESERVATIONS = "Mes reservations";
@@ -4388,14 +4395,19 @@ public class ReservationController {
 
         if (success && result.paymentRequired()) {
             ReservationService.PaymentLaunchResult paymentLaunchResult =
-                reservationService.startKonnectSandboxPayment(result.reservationId(), participantId);
+                reservationService.startStripeCheckoutPayment(result.reservationId(), participantId);
             if (paymentLaunchResult.success()) {
-                boolean opened = openExternalUrl(paymentLaunchResult.paymentUrl());
-                message = paymentLaunchResult.message()
-                    + (opened
-                    ? " Revenez ensuite dans Mes reservations pour verifier le statut."
-                    : " Ouvrez manuellement ce lien: " + safeText(paymentLaunchResult.paymentUrl()));
+                ReservationService.PaymentVerificationResult paymentResult =
+                    openEmbeddedStripeCheckoutDialog(paymentLaunchResult, participantId);
+                if (paymentResult != null) {
+                    success = paymentResult.success();
+                    message = paymentResult.message();
+                } else {
+                    message = paymentLaunchResult.message()
+                        + " Finalisez le paiement Stripe dans la fenetre ouverte puis verifiez le statut si necessaire.";
+                }
             } else {
+                success = false;
                 message = result.message() + " " + paymentLaunchResult.message();
             }
         }
@@ -4483,7 +4495,7 @@ public class ReservationController {
         }
 
         if (reservation.canLaunchPayment()) {
-            Button payButton = new Button("Payer avec Konnect");
+            Button payButton = new Button("Payer avec Stripe");
             payButton.getStyleClass().add("backoffice-primary-button");
             payButton.setOnAction(event -> handleLaunchReservationPayment(reservation));
             actionRow.getChildren().add(payButton);
@@ -4548,43 +4560,48 @@ public class ReservationController {
             return "Paiement: aucun paiement requis pour cette seance.";
         }
         if (reservation.isPaymentCompleted()) {
-            String summary = "Paiement: confirme via Konnect Sandbox";
+            String summary = "Paiement: confirme via Stripe";
             if (reservation.paymentCompletedAt() != null) {
                 summary = summary + " le " + formatDateTimeOrPlaceholder(reservation.paymentCompletedAt());
             }
             return summary + ".";
         }
         if (ReservationService.PAYMENT_STATUS_FAILED.equals(reservation.paymentStatus())) {
-            return "Paiement: tentative echouee. Relancez un nouveau lien Konnect Sandbox.";
+            return "Paiement: tentative echouee. Relancez un nouveau lien Stripe.";
         }
         if (ReservationService.PAYMENT_STATUS_EXPIRED.equals(reservation.paymentStatus())) {
-            return "Paiement: lien expire. Generez un nouveau lien Konnect Sandbox.";
+            return "Paiement: lien expire. Generez un nouveau lien Stripe.";
         }
         if (reservation.paymentInitiatedAt() != null) {
             return "Paiement: en attente depuis le " + formatDateTimeOrPlaceholder(reservation.paymentInitiatedAt())
-                + ". Finalisez le checkout Konnect puis verifiez le statut.";
+                + ". Finalisez le checkout Stripe puis verifiez le statut.";
         }
-        return "Paiement: en attente d'initialisation Konnect Sandbox.";
+        return "Paiement: en attente d'initialisation Stripe.";
     }
 
     private void handleLaunchReservationPayment(StudentReservationItem reservation) {
         if (reservation == null) {
             return;
         }
-        ReservationService.PaymentLaunchResult result = reservationService.startKonnectSandboxPayment(
+        ReservationService.PaymentLaunchResult result = reservationService.startStripeCheckoutPayment(
             reservation.id(),
             getCurrentReservationParticipantId()
         );
-        loadStudentReservations();
         if (result.success()) {
-            boolean opened = openExternalUrl(result.paymentUrl());
-            String message = result.message()
-                + (opened
-                ? " Revenez ensuite ici pour verifier le statut du paiement."
-                : " Ouvrez manuellement ce lien: " + safeText(result.paymentUrl()));
-            showStudentReservationsFeedback(message, true);
+            ReservationService.PaymentVerificationResult paymentResult =
+                openEmbeddedStripeCheckoutDialog(result, getCurrentReservationParticipantId());
+            loadStudentReservations();
+            if (paymentResult != null) {
+                showStudentReservationsFeedback(paymentResult.message(), paymentResult.success());
+                return;
+            }
+            showStudentReservationsFeedback(
+                result.message() + " Finalisez le paiement Stripe dans la fenetre ouverte puis verifiez le statut si necessaire.",
+                true
+            );
             return;
         }
+        loadStudentReservations();
         showStudentReservationsFeedback(result.message(), false);
     }
 
@@ -5964,6 +5981,437 @@ public class ReservationController {
 
     private String formatDateTime(LocalDateTime value) {
         return value != null ? value.format(DISPLAY_FORMATTER) : "";
+    }
+
+    private ReservationService.PaymentVerificationResult openEmbeddedStripeCheckoutDialog(
+        ReservationService.PaymentLaunchResult launchResult,
+        int participantId
+    ) {
+        if (launchResult == null || !launchResult.success()) {
+            return ReservationService.PaymentVerificationResult.failure("Session Stripe invalide pour le paiement.");
+        }
+
+        String checkoutUrl = normalizeText(launchResult.paymentUrl());
+        if (checkoutUrl == null) {
+            return ReservationService.PaymentVerificationResult.failure(
+                "Stripe Checkout n'a pas retourne de lien de paiement exploitable."
+            );
+        }
+
+        ReservationService.PaymentVerificationResult[] resultHolder = new ReservationService.PaymentVerificationResult[1];
+        StudentReservationItem reservationSummary = findStudentReservationItem(participantId, launchResult.reservationId());
+        String amountLabel = resolvePaymentDialogAmount(reservationSummary);
+        String sessionTitle = reservationSummary != null
+            ? safeText(reservationSummary.seanceTitle())
+            : "Reservation Fahamni";
+        String currentUserEmail = UserSession.hasCurrentUser()
+            ? safeText(UserSession.getCurrentUser().getEmail())
+            : "Email non renseigne";
+        String currentUserName = UserSession.hasCurrentUser()
+            ? safeText(UserSession.getCurrentUser().getFullName())
+            : "Utilisateur Fahamni";
+        String cardholderPreview = currentUserName.toUpperCase(Locale.ROOT);
+        String cardNumberPreview = resolvePaymentPreviewCardNumber();
+        String expiryPreview = isStripeTestMode() ? "12/34" : "MM / YY";
+        String cvvPreview = isStripeTestMode() ? "123" : "***";
+        boolean[] loadFailedHolder = new boolean[1];
+
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        Window owner = resolveReservationWindow();
+        if (owner != null) {
+            stage.initOwner(owner);
+        }
+        stage.setTitle("Paiement Stripe");
+        stage.setMinWidth(980.0);
+        stage.setMinHeight(720.0);
+
+        Label statusLabel = new Label("Chargement du formulaire Stripe...");
+        statusLabel.getStyleClass().add("payment-dialog-status-label");
+        statusLabel.setWrapText(true);
+
+        ProgressBar loadingBar = new ProgressBar();
+        loadingBar.setMaxWidth(Double.MAX_VALUE);
+        loadingBar.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+        loadingBar.getStyleClass().add("payment-dialog-loading-bar");
+
+        VBox statusCard = new VBox(10.0, statusLabel, loadingBar);
+        statusCard.getStyleClass().add("payment-dialog-status-card");
+
+        WebView webView = new WebView();
+        webView.setContextMenuEnabled(false);
+        webView.setMinSize(560.0, 380.0);
+        webView.setPrefHeight(420.0);
+
+        StackPane webViewShell = new StackPane(webView);
+        webViewShell.getStyleClass().add("payment-dialog-browser-shell");
+        VBox.setVgrow(webViewShell, Priority.ALWAYS);
+
+        HBox stepperRow = new HBox(
+            buildPaymentStepItem("YOUR ORDER", false),
+            buildPaymentStepItem("SHIPPING DETAILS", false),
+            buildPaymentStepItem("PAYMENT DETAILS", true),
+            buildPaymentStepItem("CONFIRMATION", false)
+        );
+        stepperRow.getStyleClass().add("payment-dialog-stepper");
+
+        Label previewCaption = new Label("Card Preview");
+        previewCaption.getStyleClass().add("payment-dialog-preview-caption");
+
+        Label previewCopy = new Label("Apercu visuel inspire du checkout, la saisie reelle reste securisee dans Stripe.");
+        previewCopy.getStyleClass().add("payment-dialog-preview-copy");
+        previewCopy.setWrapText(true);
+
+        Region cardChip = new Region();
+        cardChip.getStyleClass().add("payment-dialog-card-chip");
+
+        Label cardBrand = new Label("VISA");
+        cardBrand.getStyleClass().add("payment-dialog-card-brand");
+
+        Region cardHeaderSpacer = new Region();
+        HBox.setHgrow(cardHeaderSpacer, Priority.ALWAYS);
+        HBox cardHeader = new HBox(cardChip, cardHeaderSpacer, cardBrand);
+        cardHeader.setAlignment(Pos.CENTER_LEFT);
+
+        Label cardNumberLabel = new Label(cardNumberPreview);
+        cardNumberLabel.getStyleClass().add("payment-dialog-card-number");
+
+        Label cardholderLabel = new Label(cardholderPreview);
+        cardholderLabel.getStyleClass().add("payment-dialog-card-meta-value");
+
+        Label expiryLabel = new Label(expiryPreview);
+        expiryLabel.getStyleClass().add("payment-dialog-card-meta-value");
+
+        Label cardholderCaption = new Label("CARD HOLDER");
+        cardholderCaption.getStyleClass().add("payment-dialog-card-meta-caption");
+
+        Label expiryCaption = new Label("VALID THRU");
+        expiryCaption.getStyleClass().add("payment-dialog-card-meta-caption");
+
+        VBox cardholderBlock = new VBox(4.0, cardholderCaption, cardholderLabel);
+        VBox expiryBlock = new VBox(4.0, expiryCaption, expiryLabel);
+        Region cardFooterSpacer = new Region();
+        HBox.setHgrow(cardFooterSpacer, Priority.ALWAYS);
+        HBox cardFooter = new HBox(cardholderBlock, cardFooterSpacer, expiryBlock);
+        cardFooter.setAlignment(Pos.BOTTOM_LEFT);
+
+        VBox visualCard = new VBox(28.0, cardHeader, cardNumberLabel, cardFooter);
+        visualCard.getStyleClass().add("payment-dialog-visual-card");
+
+        Button previousStepButton = new Button("< Retour");
+        previousStepButton.getStyleClass().add("payment-dialog-link-button");
+        previousStepButton.setOnAction(event -> stage.close());
+
+        VBox previewPanel = new VBox(18.0, previewCaption, previewCopy, visualCard, previousStepButton);
+        previewPanel.getStyleClass().add("payment-dialog-preview-panel");
+        previewPanel.setPrefWidth(280.0);
+        previewPanel.setMinWidth(260.0);
+
+        Label formTitle = new Label("Payment Details");
+        formTitle.getStyleClass().add("payment-dialog-form-title");
+
+        VBox nameField = buildPaymentDetailField("Name on Card", currentUserName, false);
+        VBox cardField = buildPaymentDetailField("Card Number", cardNumberPreview, false);
+        HBox inlineFieldRow = new HBox(
+            16.0,
+            buildPaymentDetailField("Valid Through", expiryPreview, true),
+            buildPaymentDetailField("CVV", cvvPreview, true)
+        );
+        inlineFieldRow.getStyleClass().add("payment-dialog-inline-fields");
+
+        Label detailHint = new Label(
+            "Les champs reels seront completes dans Stripe Checkout juste en dessous."
+        );
+        detailHint.getStyleClass().add("payment-dialog-detail-hint");
+        detailHint.setWrapText(true);
+
+        VBox detailStack = new VBox(16.0, nameField, cardField, inlineFieldRow, detailHint);
+        if (isStripeTestMode()) {
+            Label testModeHint = new Label("Mode test: 4242 4242 4242 4242 | date future | CVC libre.");
+            testModeHint.getStyleClass().addAll("payment-dialog-detail-hint", "payment-dialog-detail-hint-test");
+            testModeHint.setWrapText(true);
+            detailStack.getChildren().add(testModeHint);
+        }
+
+        Button openBrowserButton = new Button("Ouvrir dans le navigateur");
+        openBrowserButton.getStyleClass().add("backoffice-secondary-button");
+        openBrowserButton.setOnAction(event -> {
+            boolean opened = openExternalUrl(checkoutUrl);
+            statusLabel.setText(
+                opened
+                    ? "Le navigateur par defaut a ete ouvert. Finalisez le paiement puis revenez ici pour verifier."
+                    : "Impossible d'ouvrir le navigateur automatiquement sur cette machine."
+            );
+        });
+
+        Button payButton = new Button("Payer " + amountLabel);
+        payButton.getStyleClass().add("payment-dialog-pay-button");
+        payButton.setMaxWidth(Double.MAX_VALUE);
+        payButton.setOnAction(event -> {
+            if (loadFailedHolder[0]) {
+                boolean opened = openExternalUrl(checkoutUrl);
+                statusLabel.setText(
+                    opened
+                        ? "Le navigateur a ete ouvert. Finalisez le paiement puis revenez verifier le statut."
+                        : "Impossible d'ouvrir le navigateur automatiquement sur cette machine."
+                );
+                return;
+            }
+            if (loadingBar.isVisible()) {
+                statusLabel.setText("Le formulaire Stripe est encore en chargement...");
+                return;
+            }
+            webView.requestFocus();
+            statusLabel.setText("Completez maintenant les champs de carte dans Stripe Checkout ci-dessous.");
+        });
+
+        VBox detailPanel = new VBox(18.0, formTitle, detailStack, payButton);
+        detailPanel.getStyleClass().add("payment-dialog-details-panel");
+        HBox.setHgrow(detailPanel, Priority.ALWAYS);
+
+        Button verifyButton = new Button("Verifier le paiement");
+        verifyButton.getStyleClass().add("backoffice-primary-button");
+        verifyButton.setOnAction(event -> {
+            statusLabel.setText("Verification du paiement en cours...");
+            ReservationService.PaymentVerificationResult verificationResult =
+                reservationService.refreshReservationPaymentStatus(launchResult.reservationId(), participantId);
+            if (!verificationResult.success()) {
+                statusLabel.setText(verificationResult.message());
+                return;
+            }
+            if (isTerminalPaymentStatus(verificationResult.paymentStatus())) {
+                resultHolder[0] = verificationResult;
+                stage.close();
+                return;
+            }
+            statusLabel.setText(verificationResult.message());
+        });
+
+        Button closeButton = new Button("Fermer");
+        closeButton.getStyleClass().add("backoffice-secondary-button");
+        closeButton.setOnAction(event -> stage.close());
+
+        HBox actionRow = new HBox(10.0, closeButton, openBrowserButton, verifyButton);
+        actionRow.setAlignment(Pos.CENTER_RIGHT);
+        actionRow.getStyleClass().add("payment-dialog-action-row");
+
+        HBox overviewRow = new HBox(24.0, previewPanel, detailPanel);
+        overviewRow.getStyleClass().add("payment-dialog-overview-row");
+        HBox.setHgrow(detailPanel, Priority.ALWAYS);
+
+        Label checkoutTitle = new Label("Stripe Checkout");
+        checkoutTitle.getStyleClass().add("payment-dialog-checkout-title");
+
+        Label checkoutCopy = new Label(
+            "Saisissez ici vos informations bancaires. Le paiement et le recu seront ensuite verifies automatiquement."
+        );
+        checkoutCopy.getStyleClass().add("payment-dialog-checkout-copy");
+        checkoutCopy.setWrapText(true);
+
+        VBox checkoutHeader = new VBox(4.0, checkoutTitle, checkoutCopy);
+        checkoutHeader.getStyleClass().add("payment-dialog-checkout-header");
+
+        VBox checkoutPanel = new VBox(14.0, checkoutHeader, statusCard, webViewShell, actionRow);
+        checkoutPanel.getStyleClass().add("payment-dialog-checkout-panel");
+        VBox.setVgrow(webViewShell, Priority.ALWAYS);
+
+        VBox card = new VBox(16.0, stepperRow, overviewRow, checkoutPanel);
+        card.getStyleClass().add("payment-dialog-card");
+
+        StackPane root = new StackPane(card);
+        root.getStyleClass().add("payment-dialog-root");
+        root.setPadding(new Insets(10.0));
+
+        Scene scene = new Scene(root, 1040.0, 760.0);
+        applyCurrentTheme(scene);
+        appendSceneStylesheet(scene, PAYMENT_DIALOG_STYLESHEET);
+        stage.setScene(scene);
+
+        WebEngine webEngine = webView.getEngine();
+        String successPrefix = normalizeText(resolveStripeSuccessUrlPrefix());
+        String cancelPrefix = normalizeText(resolveStripeCancelUrlPrefix());
+
+        webEngine.locationProperty().addListener((observable, previous, current) -> {
+            String currentUrl = normalizeText(current);
+            if (currentUrl == null) {
+                return;
+            }
+            if (successPrefix != null && currentUrl.startsWith(successPrefix)) {
+                statusLabel.setText("Paiement confirme. Verification en cours...");
+                resultHolder[0] = reservationService.refreshReservationPaymentStatus(
+                    launchResult.reservationId(),
+                    participantId
+                );
+                stage.close();
+                return;
+            }
+            if (cancelPrefix != null && currentUrl.startsWith(cancelPrefix)) {
+                resultHolder[0] = ReservationService.PaymentVerificationResult.failure(
+                    "Paiement Stripe annule. Vous pouvez relancer le checkout."
+                );
+                stage.close();
+                return;
+            }
+            if (currentUrl.startsWith("https://checkout.stripe.com/")) {
+                statusLabel.setText("Formulaire Stripe pret. Saisissez vos informations bancaires dans Checkout.");
+                loadingBar.setVisible(false);
+                loadingBar.setManaged(false);
+            }
+        });
+
+        webEngine.getLoadWorker().exceptionProperty().addListener((observable, previous, current) -> {
+            if (current != null) {
+                loadFailedHolder[0] = true;
+                loadingBar.setVisible(false);
+                loadingBar.setManaged(false);
+                statusLabel.setText(
+                    "Impossible d'afficher Stripe dans la fenetre integree. Utilisez le bouton navigateur."
+                );
+            }
+        });
+
+        stage.setOnCloseRequest(event -> {
+            if (resultHolder[0] == null) {
+                resultHolder[0] = ReservationService.PaymentVerificationResult.failure(
+                    "Paiement Stripe interrompu avant confirmation."
+                );
+            }
+        });
+
+        webEngine.load(checkoutUrl);
+        stage.showAndWait();
+        return resultHolder[0];
+    }
+
+    private Window resolveReservationWindow() {
+        if (studentReservationsContainer != null && studentReservationsContainer.getScene() != null) {
+            return studentReservationsContainer.getScene().getWindow();
+        }
+        if (recentSessionsContainer != null && recentSessionsContainer.getScene() != null) {
+            return recentSessionsContainer.getScene().getWindow();
+        }
+        if (reservationActionFeedbackLabel != null && reservationActionFeedbackLabel.getScene() != null) {
+            return reservationActionFeedbackLabel.getScene().getWindow();
+        }
+        if (studentReservationsFeedbackLabel != null && studentReservationsFeedbackLabel.getScene() != null) {
+            return studentReservationsFeedbackLabel.getScene().getWindow();
+        }
+        return null;
+    }
+
+    private String resolveStripeSuccessUrlPrefix() {
+        String configured = normalizeText(tn.esprit.fahamni.utils.LocalConfig.get("STRIPE_SUCCESS_URL"));
+        if (configured == null) {
+            return null;
+        }
+        int tokenIndex = configured.indexOf("{CHECKOUT_SESSION_ID}");
+        return tokenIndex >= 0 ? configured.substring(0, tokenIndex) : configured;
+    }
+
+    private String resolveStripeCancelUrlPrefix() {
+        return normalizeText(tn.esprit.fahamni.utils.LocalConfig.get("STRIPE_CANCEL_URL"));
+    }
+
+    private void applyCurrentTheme(Scene scene) {
+        if (scene == null) {
+            return;
+        }
+        Window owner = resolveReservationWindow();
+        if (owner == null || owner.getScene() == null) {
+            return;
+        }
+        scene.getStylesheets().setAll(owner.getScene().getStylesheets());
+    }
+
+    private void appendSceneStylesheet(Scene scene, String stylesheetPath) {
+        if (scene == null || stylesheetPath == null || stylesheetPath.isBlank()) {
+            return;
+        }
+
+        URL resource = getClass().getResource(stylesheetPath);
+        if (resource == null) {
+            return;
+        }
+
+        String stylesheet = resource.toExternalForm();
+        if (!scene.getStylesheets().contains(stylesheet)) {
+            scene.getStylesheets().add(stylesheet);
+        }
+    }
+
+    private StudentReservationItem findStudentReservationItem(int participantId, int reservationId) {
+        return reservationService.getStudentReservations(participantId).stream()
+            .filter(item -> item.id() == reservationId)
+            .findFirst()
+            .orElse(null);
+    }
+
+    private VBox buildPaymentStepItem(String title, boolean active) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("payment-dialog-step-title");
+
+        Region line = new Region();
+        line.getStyleClass().add("payment-dialog-step-line");
+
+        VBox item = new VBox(8.0, titleLabel, line);
+        item.getStyleClass().add("payment-dialog-step-item");
+        if (active) {
+            item.getStyleClass().add("active");
+            titleLabel.getStyleClass().add("active");
+            line.getStyleClass().add("active");
+        }
+        item.setAlignment(Pos.CENTER);
+        item.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(item, Priority.ALWAYS);
+        return item;
+    }
+
+    private VBox buildPaymentDetailField(String labelText, String valueText, boolean compact) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("payment-dialog-field-label");
+
+        Label value = new Label(valueText);
+        value.getStyleClass().add("payment-dialog-field-value");
+
+        Region divider = new Region();
+        divider.getStyleClass().add("payment-dialog-field-divider");
+
+        VBox field = new VBox(5.0, label, value, divider);
+        field.getStyleClass().add("payment-dialog-detail-field");
+        if (compact) {
+            field.getStyleClass().add("compact");
+        }
+        field.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(field, Priority.ALWAYS);
+        return field;
+    }
+
+    private String resolvePaymentDialogAmount(StudentReservationItem reservation) {
+        if (reservation == null) {
+            return "Montant a confirmer";
+        }
+        if (reservation.sessionPriceTnd() != null && reservation.sessionPriceTnd() > 0.0) {
+            return formatSessionPrice(reservation.sessionPriceTnd());
+        }
+        if (reservation.paymentAmountMillimes() != null && reservation.paymentAmountMillimes() > 0) {
+            return formatPriceTnd(reservation.paymentAmountMillimes() / 1000.0) + " TND";
+        }
+        return "Montant a confirmer";
+    }
+
+    private String resolvePaymentPreviewCardNumber() {
+        return "XXXX XXXX XXXX XXXX";
+    }
+
+    private boolean isStripeTestMode() {
+        String secretKey = normalizeText(tn.esprit.fahamni.utils.LocalConfig.get("STRIPE_SECRET_KEY"));
+        return secretKey != null && secretKey.startsWith("sk_test_");
+    }
+
+    private boolean isTerminalPaymentStatus(String paymentStatus) {
+        return ReservationService.PAYMENT_STATUS_COMPLETED.equals(paymentStatus)
+            || ReservationService.PAYMENT_STATUS_FAILED.equals(paymentStatus)
+            || ReservationService.PAYMENT_STATUS_EXPIRED.equals(paymentStatus);
     }
 
     private boolean openExternalUrl(String url) {

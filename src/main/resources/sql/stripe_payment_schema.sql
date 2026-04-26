@@ -3,7 +3,7 @@ ALTER TABLE seance
 
 CREATE TABLE IF NOT EXISTS reservation_payment (
     reservation_id INT PRIMARY KEY,
-    provider VARCHAR(30) NOT NULL DEFAULT 'konnect',
+    provider VARCHAR(30) NOT NULL DEFAULT 'stripe',
     amount_millimes INT NOT NULL,
     currency_token VARCHAR(10) NOT NULL DEFAULT 'TND',
     status VARCHAR(30) NOT NULL DEFAULT 'pending',
@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS reservation_payment (
     initiated_at DATETIME NULL,
     last_checked_at DATETIME NULL,
     completed_at DATETIME NULL,
+    receipt_email VARCHAR(255) NULL,
+    receipt_email_sent_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NULL,
     CONSTRAINT fk_reservation_payment_reservation
