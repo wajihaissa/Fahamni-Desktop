@@ -1,6 +1,8 @@
 package tn.esprit.fahamni.controllers;
 
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
@@ -309,10 +311,29 @@ public class VideoChatController {
 
     private String resolveLocalIpAddress() {
         try {
-            return InetAddress.getLocalHost().getHostAddress();
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface networkInterface = interfaces.nextElement();
+
+                if (!networkInterface.isUp() || networkInterface.isLoopback() || networkInterface.isVirtual()) {
+                    continue;
+                }
+
+                Enumeration<InetAddress> addresses = networkInterface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+                    String ip = address.getHostAddress();
+
+                    // Keep only valid IPv4 LAN addresses. Ignore IPv6 and APIPA fallback ranges.
+                    if (!ip.contains(":") && !ip.startsWith("169.254")) {
+                        return ip;
+                    }
+                }
+            }
         } catch (Exception e) {
-            return "127.0.0.1";
+            e.printStackTrace();
         }
+        return "127.0.0.1";
     }
 
     private void shutdownAll() {

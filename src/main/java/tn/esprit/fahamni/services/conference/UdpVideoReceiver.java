@@ -39,6 +39,7 @@ public class UdpVideoReceiver {
                 try {
                     DatagramPacket packet = new DatagramPacket(receiveBuffer, receiveBuffer.length);
                     socket.receive(packet);
+                    System.out.println("[VIDEO RX] Received frame: " + packet.getLength() + " bytes");
 
                     BufferedImage bufferedImage = ImageIO.read(
                         new ByteArrayInputStream(packet.getData(), 0, packet.getLength())
