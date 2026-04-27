@@ -1,5 +1,8 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -22,14 +25,17 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.Popup;
+import javafx.util.Duration;
 import tn.esprit.fahamni.Models.Notification;
 import tn.esprit.fahamni.services.NotificationService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.services.UserAccountService;
 import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.ApplicationState;
 import tn.esprit.fahamni.utils.FrontOfficeNavigation;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
+import tn.esprit.fahamni.utils.ViewNavigator;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -38,6 +44,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainController {
+
+    private static final double GLOBAL_AI_PANEL_WIDTH = 400.0;
+    private static final DateTimeFormatter NOTIF_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
@@ -52,17 +61,27 @@ public class MainController {
     @FXML private Button seancesButton;
     @FXML private Button sallesEquipementsButton;
     @FXML private Button plannerButton;
+    @FXML private Button messengerButton;
     @FXML private Button quizButton;
     @FXML private Button blogButton;
     @FXML private Button aboutButton;
+    @FXML private Button coursButton;
+    @FXML private Button callLabButton;
+    @FXML private Button aiButton;
     @FXML private Button accountButton;
     @FXML private Label profileAvatarLabel;
     @FXML private Label profileNameLabel;
     @FXML private Label profileRoleLabel;
+    @FXML private VBox globalAiPanel;
+    @FXML private AnchorPane globalAiContent;
+    @FXML private Button globalAiFab;
+    @FXML private Region globalAiScrim;
 
     private ContextMenu accountMenu;
     private Popup alertsPopup;
-    private static final DateTimeFormatter NOTIF_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private GlobalChatbotController globalChatbotController;
+    private boolean globalAiLoaded;
+    private boolean globalAiOpen;
 
     @FXML
     private void initialize() {
@@ -74,8 +93,23 @@ public class MainController {
         System.out.println("MainController initialized");
         SessionCreationContext.registerNavigator(this::showReservations);
         FrontOfficeNavigation.registerNavigator(this::openDestination);
+        ViewNavigator.getInstance().initialize(contentPane, pageTitle);
+        ApplicationState.getInstance().setCurrentView("Accueil");
         refreshCurrentUserSummary();
         initializeAccountMenu();
+
+        if (globalAiPanel != null) {
+            globalAiPanel.setManaged(false);
+            globalAiPanel.setVisible(false);
+            globalAiPanel.setTranslateX(GLOBAL_AI_PANEL_WIDTH);
+        }
+        if (globalAiScrim != null) {
+            globalAiScrim.setManaged(false);
+            globalAiScrim.setVisible(false);
+            globalAiScrim.setMouseTransparent(true);
+            globalAiScrim.setOpacity(0);
+        }
+
         showDashboard();
         refreshBlogBadge();
     }
@@ -100,8 +134,8 @@ public class MainController {
                 alertNotifBadge.setVisible(false);
                 alertNotifBadge.setManaged(false);
             }
-        } catch (Exception e) {
-            System.err.println("refreshBlogBadge: " + e.getMessage());
+        } catch (Exception exception) {
+            System.err.println("refreshBlogBadge: " + exception.getMessage());
         }
     }
 
@@ -140,6 +174,12 @@ public class MainController {
     }
 
     @FXML
+    private void showMessenger() {
+        loadView("MessengerView.fxml", "Messagerie");
+        setActiveButton(messengerButton);
+    }
+
+    @FXML
     private void showQuiz() {
         loadView("QuizView.fxml", "Quiz");
         setActiveButton(quizButton);
@@ -158,6 +198,23 @@ public class MainController {
     }
 
     @FXML
+    private void showCours() {
+        loadView("FrontMatiereView.fxml", "Cours");
+        setActiveButton(coursButton);
+    }
+
+    @FXML
+    private void showCallLab() {
+        loadView("VideoChatView.fxml", "Call Lab");
+        setActiveButton(callLabButton);
+    }
+
+    @FXML
+    private void showFahamniAi() {
+        toggleGlobalAi();
+    }
+
+    @FXML
     private void toggleAlertsPopup() {
         if (alertButton == null) {
             return;
@@ -169,29 +226,30 @@ public class MainController {
 
         int userId = UserSession.hasCurrentUser() ? UserSession.getCurrentUserId() : 0;
         List<Notification> notifications = userId > 0
-                ? notifService.getAllForUser(userId)
-                : new ArrayList<>();
+            ? notifService.getAllForUser(userId)
+            : new ArrayList<>();
         long unreadCount = notifications.stream().filter(notification -> !notification.isRead()).count();
 
         VBox container = new VBox(0);
         container.setStyle(
-            "-fx-background-color: white; -fx-background-radius: 14;" +
-            "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);" +
-            "-fx-border-color: #e3e6ef; -fx-border-radius: 14; -fx-border-width: 1;");
+            "-fx-background-color: white; -fx-background-radius: 14;"
+                + "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);"
+                + "-fx-border-color: #e3e6ef; -fx-border-radius: 14; -fx-border-width: 1;");
         container.setPrefWidth(340);
 
         HBox header = new HBox(8);
         header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         header.setPadding(new Insets(14, 16, 12, 16));
-        header.setStyle("-fx-background-color: linear-gradient(to right,#6b5dd3,#5068d1);" +
-                        "-fx-background-radius: 14 14 0 0;");
+        header.setStyle(
+            "-fx-background-color: linear-gradient(to right,#6b5dd3,#5068d1);"
+                + "-fx-background-radius: 14 14 0 0;");
         Label titleLabel = new Label("Notifications");
         titleLabel.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         String countText = unreadCount > 0
-                ? unreadCount + " non lu(s)"
-                : (notifications.isEmpty() ? "Aucune" : notifications.size() + " au total");
+            ? unreadCount + " non lu(s)"
+            : (notifications.isEmpty() ? "Aucune" : notifications.size() + " au total");
         Label countLabel = new Label(countText);
         countLabel.setStyle("-fx-font-size: 11; -fx-text-fill: rgba(255,255,255,0.85);");
         header.getChildren().addAll(titleLabel, spacer, countLabel);
@@ -210,53 +268,58 @@ public class MainController {
             scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
             VBox list = new VBox(0);
-            for (int i = 0; i < notifications.size(); i++) {
-                Notification notification = notifications.get(i);
+            for (int index = 0; index < notifications.size(); index++) {
+                Notification notification = notifications.get(index);
                 boolean approved = notification.getMessage() != null
-                        && (notification.getMessage().contains("approuve") || notification.getMessage().contains("publie"));
-                boolean refused = notification.getMessage() != null && notification.getMessage().contains("refuse");
-                boolean isUnread = !notification.isRead();
+                    && (notification.getMessage().contains("approuve")
+                    || notification.getMessage().contains("publie"));
+                boolean refused = notification.getMessage() != null
+                    && notification.getMessage().contains("refuse");
+                boolean unread = !notification.isRead();
 
                 VBox item = new VBox(4);
                 item.setPadding(new Insets(10, 16, 10, 16));
-                String background = isUnread
-                        ? (approved ? "#f0fdf4" : (refused ? "#fff1f2" : "#f3f1ff"))
-                        : "#f8fafc";
+                String background = unread
+                    ? (approved ? "#f0fdf4" : (refused ? "#fff1f2" : "#f3f1ff"))
+                    : "#f8fafc";
                 item.setStyle("-fx-background-color: " + background + ";");
 
                 HBox row = new HBox(8);
                 row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-                Label icon = new Label(approved ? "✓" : (refused ? "✕" : "•"));
-                icon.setStyle("-fx-font-size: 15; -fx-text-fill: " +
-                        (approved ? "#198754" : (refused ? "#d1435b" : "#5f49bf")) + ";");
+                Label icon = new Label(approved ? "\u2713" : (refused ? "\u2715" : "\u2022"));
+                icon.setStyle(
+                    "-fx-font-size: 15; -fx-text-fill: "
+                        + (approved ? "#198754" : (refused ? "#d1435b" : "#5f49bf")) + ";");
 
                 Label message = new Label(notification.getMessage() != null ? notification.getMessage() : "");
                 message.setWrapText(true);
-                String messageColor = isUnread
-                        ? (approved ? "#166534" : (refused ? "#9f1239" : "#4c1d95"))
-                        : "#64748b";
+                String messageColor = unread
+                    ? (approved ? "#166534" : (refused ? "#9f1239" : "#4c1d95"))
+                    : "#64748b";
                 message.setStyle("-fx-font-size: 12; -fx-text-fill: " + messageColor + ";");
                 message.setMaxWidth(230);
                 HBox.setHgrow(message, Priority.ALWAYS);
 
                 HBox rightBox = new HBox(4);
                 rightBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
-                if (isUnread) {
+                if (unread) {
                     Label badge = new Label("Nouveau");
-                    badge.setStyle("-fx-background-color: #d1435b; -fx-text-fill: white;" +
-                            "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;" +
-                            "-fx-padding: 1 5;");
+                    badge.setStyle(
+                        "-fx-background-color: #d1435b; -fx-text-fill: white;"
+                            + "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;"
+                            + "-fx-padding: 1 5;");
                     rightBox.getChildren().add(badge);
                 }
                 row.getChildren().addAll(icon, message, rightBox);
 
-                Label date = new Label(notification.getCreatedAt() != null ? notification.getCreatedAt().format(NOTIF_FMT) : "");
+                Label date = new Label(
+                    notification.getCreatedAt() != null ? notification.getCreatedAt().format(NOTIF_FMT) : "");
                 date.setStyle("-fx-font-size: 10; -fx-text-fill: #94a3b8;");
 
                 item.getChildren().addAll(row, date);
                 list.getChildren().add(item);
 
-                if (i < notifications.size() - 1) {
+                if (index < notifications.size() - 1) {
                     Separator separator = new Separator();
                     separator.setStyle("-fx-opacity: 0.3;");
                     list.getChildren().add(separator);
@@ -270,10 +333,10 @@ public class MainController {
                 Button markReadButton = new Button("Tout marquer comme lu");
                 markReadButton.setMaxWidth(Double.MAX_VALUE);
                 markReadButton.setStyle(
-                    "-fx-background-color: #f8f7ff; -fx-text-fill: #5f49bf;" +
-                    "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
-                    "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
-                    "-fx-border-width: 1 0 0 0;");
+                    "-fx-background-color: #f8f7ff; -fx-text-fill: #5f49bf;"
+                        + "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;"
+                        + "-fx-cursor: hand; -fx-border-color: #e2e8f0;"
+                        + "-fx-border-width: 1 0 0 0;");
                 markReadButton.setOnAction(event -> {
                     notifService.markAllReadForUser(userId);
                     if (alertsPopup != null) {
@@ -324,24 +387,51 @@ public class MainController {
     }
 
     @FXML
+    private void toggleGlobalAi() {
+        runOnFxThread(() -> {
+            try {
+                ensureGlobalAiLoaded();
+                if (globalAiOpen) {
+                    closeGlobalAi();
+                } else {
+                    openGlobalAi();
+                }
+            } catch (Exception exception) {
+                exception.printStackTrace();
+                Label placeholder = new Label("Failed to load Fahamni AI: " + exception.getMessage());
+                placeholder.getStyleClass().add("content-placeholder");
+                contentPane.getChildren().clear();
+                contentPane.getChildren().add(placeholder);
+            }
+        });
+    }
+
+    @FXML
     private void handleLogout() {
         hideAccountMenuInstant();
         SessionCreationContext.clearPendingSelection();
         UserSession.clear();
         try {
+            if (globalChatbotController != null) {
+                globalChatbotController.shutdown();
+            }
             Main.showLogin();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
     }
 
     private void loadView(String fxmlFile, String title) {
         hideAccountMenuInstant();
         try {
-            Node view = SceneManager.loadView(Main.class, SceneManager.frontofficeView(fxmlFile));
-            displayView(view, title);
-        } catch (Exception e) {
-            e.printStackTrace();
+            closeGlobalAiIfOpen();
+            ApplicationState.getInstance().setCurrentView(title);
+            if ("FrontMatiereView.fxml".equals(fxmlFile) || !title.startsWith("Cours")) {
+                ApplicationState.getInstance().clearCurrentMatiere();
+            }
+            ViewNavigator.getInstance().loadView(SceneManager.frontofficeView(fxmlFile), title);
+        } catch (Exception exception) {
+            exception.printStackTrace();
             Label placeholder = new Label("View not implemented yet: " + fxmlFile);
             placeholder.getStyleClass().add("content-placeholder");
             displayView(placeholder, title);
@@ -349,16 +439,20 @@ public class MainController {
     }
 
     private void loadProfileSettingsView(String title, boolean settingsMode) {
+        closeGlobalAiIfOpen();
+        ApplicationState.getInstance().setCurrentView(title);
+        ApplicationState.getInstance().clearCurrentMatiere();
         try {
-            FXMLLoader loader = new FXMLLoader(Main.class.getResource(SceneManager.frontofficeView("ProfileSettingsView.fxml")));
+            FXMLLoader loader =
+                new FXMLLoader(Main.class.getResource(SceneManager.frontofficeView("ProfileSettingsView.fxml")));
             Node view = loader.load();
             ProfileSettingsController controller = loader.getController();
             controller.configure(settingsMode);
             controller.setOnProfileUpdated(updatedUser -> refreshCurrentUserSummary());
             controller.setOnAccountDeleted(this::handleLogout);
             displayView(view, title);
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException exception) {
+            exception.printStackTrace();
             Label placeholder = new Label("Impossible de charger le panneau de compte.");
             placeholder.getStyleClass().add("content-placeholder");
             displayView(placeholder, title);
@@ -402,8 +496,8 @@ public class MainController {
             profileNameLabel.setText(UserSession.getDisplayName());
             profileRoleLabel.setText(UserSession.getRoleLabel());
             refreshFrontOfficeAccess();
-        } catch (Exception e) {
-            System.err.println("refreshCurrentUserSummary: " + e.getMessage());
+        } catch (Exception exception) {
+            System.err.println("refreshCurrentUserSummary: " + exception.getMessage());
         }
     }
 
@@ -451,15 +545,123 @@ public class MainController {
         }
     }
 
+    private void ensureGlobalAiLoaded() throws Exception {
+        if (globalAiLoaded) {
+            if (globalChatbotController != null) {
+                globalChatbotController.refreshContextBadge();
+            }
+            return;
+        }
+        if (globalAiContent == null) {
+            return;
+        }
+
+        FXMLLoader loader = new FXMLLoader(Main.class.getResource("/tn/esprit/fahamni/views/GlobalChatbotView.fxml"));
+        Node chatbotView = loader.load();
+        globalChatbotController = loader.getController();
+
+        globalAiContent.getChildren().setAll(chatbotView);
+        AnchorPane.setTopAnchor(chatbotView, 0.0);
+        AnchorPane.setBottomAnchor(chatbotView, 0.0);
+        AnchorPane.setLeftAnchor(chatbotView, 0.0);
+        AnchorPane.setRightAnchor(chatbotView, 0.0);
+
+        globalAiLoaded = true;
+    }
+
+    private void openGlobalAi() {
+        if (globalAiPanel == null || globalAiScrim == null || globalAiFab == null) {
+            return;
+        }
+
+        globalAiOpen = true;
+        if (globalChatbotController != null) {
+            globalChatbotController.refreshContextBadge();
+        }
+
+        globalAiPanel.setManaged(true);
+        globalAiPanel.setVisible(true);
+        globalAiPanel.setTranslateX(GLOBAL_AI_PANEL_WIDTH);
+
+        globalAiScrim.setManaged(true);
+        globalAiScrim.setVisible(true);
+        globalAiScrim.setMouseTransparent(false);
+        globalAiScrim.setOnMouseClicked(event -> closeGlobalAi());
+        globalAiScrim.setOpacity(0);
+
+        globalAiFab.setText("Close Guide");
+        setAiButtonActive(true);
+
+        TranslateTransition slideIn = new TranslateTransition(Duration.millis(240), globalAiPanel);
+        slideIn.setFromX(GLOBAL_AI_PANEL_WIDTH);
+        slideIn.setToX(0);
+        slideIn.play();
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(200), globalAiScrim);
+        fadeIn.setFromValue(0);
+        fadeIn.setToValue(1);
+        fadeIn.play();
+    }
+
+    private void closeGlobalAi() {
+        if (globalAiPanel == null || globalAiScrim == null || globalAiFab == null) {
+            globalAiOpen = false;
+            return;
+        }
+
+        globalAiOpen = false;
+        globalAiFab.setText("Ask Fahamni");
+        setAiButtonActive(false);
+
+        TranslateTransition slideOut = new TranslateTransition(Duration.millis(220), globalAiPanel);
+        slideOut.setFromX(globalAiPanel.getTranslateX());
+        slideOut.setToX(GLOBAL_AI_PANEL_WIDTH);
+        slideOut.setOnFinished(event -> {
+            globalAiPanel.setVisible(false);
+            globalAiPanel.setManaged(false);
+        });
+        slideOut.play();
+
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(180), globalAiScrim);
+        fadeOut.setFromValue(globalAiScrim.getOpacity());
+        fadeOut.setToValue(0);
+        fadeOut.setOnFinished(event -> {
+            globalAiScrim.setVisible(false);
+            globalAiScrim.setManaged(false);
+            globalAiScrim.setMouseTransparent(true);
+        });
+        fadeOut.play();
+    }
+
+    private void closeGlobalAiIfOpen() {
+        if (globalAiOpen) {
+            closeGlobalAi();
+        }
+    }
+
+    private void setAiButtonActive(boolean active) {
+        if (aiButton == null) {
+            return;
+        }
+        aiButton.getStyleClass().remove("active");
+        if (active) {
+            aiButton.getStyleClass().add("active");
+        }
+    }
+
     private void setActiveButton(Button activeButton) {
         removeActiveClass(dashboardButton);
         removeActiveClass(reservationsButton);
         removeActiveClass(seancesButton);
         removeActiveClass(sallesEquipementsButton);
         removeActiveClass(plannerButton);
+        removeActiveClass(messengerButton);
         removeActiveClass(quizButton);
         removeActiveClass(blogButton);
         removeActiveClass(aboutButton);
+        removeActiveClass(coursButton);
+        removeActiveClass(callLabButton);
+        removeActiveClass(aiButton);
 
         if (activeButton != null && !activeButton.getStyleClass().contains("active")) {
             activeButton.getStyleClass().add("active");
@@ -503,5 +705,13 @@ public class MainController {
 
         label.setText("");
         label.setGraphic(imageView);
+    }
+
+    private void runOnFxThread(Runnable action) {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            Platform.runLater(action);
+        }
     }
 }

@@ -22,6 +22,7 @@ build/
 /.nb-gradle/
 /exports/
 exports/
+
 # OS files
 *.log
 *.tmp
