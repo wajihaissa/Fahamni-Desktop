@@ -17,7 +17,7 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+<ScrollPane id="backofficeSallesRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.BackofficeSallesController">
@@ -28,7 +28,11 @@
             </padding>
 
             <VBox spacing="6.0" styleClass="backoffice-header-block">
-                <Label text="Gestion des salles" styleClass="backoffice-panel-title"/>
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <Label text="Gestion des salles" styleClass="backoffice-panel-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button onAction="#handleOpenExportedSalle3D" text="Ouvrir export .j3o" styleClass="backoffice-room-export-button"/>
+                </HBox>
                 <Label text="Centralisez vos espaces, leur disponibilite et les informations utiles pour l'exploitation." styleClass="backoffice-panel-copy"/>
             </VBox>
 
@@ -116,7 +120,12 @@
                 </VBox>
 
                 <VBox spacing="12.0" styleClass="backoffice-panel" prefWidth="430.0" minWidth="430.0">
-                    <Label text="Fiche salle" styleClass="backoffice-section-title"/>
+                    <HBox alignment="CENTER_LEFT" spacing="12.0">
+                        <Label text="Fiche salle" styleClass="backoffice-section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button onAction="#handleDesignSalleWithAi" text="Concevoir avec AI" styleClass="backoffice-primary-button"/>
+                        <Button onAction="#handlePreviewSalle3D" text="Apercu 3D" styleClass="backoffice-room-feature-button"/>
+                    </HBox>
 
                     <HBox spacing="12.0">
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
@@ -130,15 +139,24 @@
                         </VBox>
                     </HBox>
 
-                    <HBox spacing="12.0">
-                        <VBox spacing="6.0" HBox.hgrow="ALWAYS">
-                            <Label text="Localisation *" styleClass="backoffice-form-label"/>
-                            <TextField fx:id="localisationField" promptText="Ex: Bloc B - Aile Est" styleClass="backoffice-form-input"/>
-                        </VBox>
+                    <VBox spacing="6.0">
+                        <Label text="Localisation *" styleClass="backoffice-form-label"/>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <TextField fx:id="localisationField" promptText="Ex: ESPRIT, Ariana" styleClass="backoffice-form-input" HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="resolveLocationButton" minWidth="120.0" prefWidth="120.0" onAction="#handleResolveLocation" text="Verifier" styleClass="backoffice-room-preview-button"/>
+                        </HBox>
+                        <Label fx:id="locationAssistLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-inline-note"/>
+                    </VBox>
 
+                    <HBox alignment="TOP_LEFT" spacing="12.0">
                         <VBox spacing="6.0" HBox.hgrow="ALWAYS">
                             <Label text="Batiment *" styleClass="backoffice-form-label"/>
-                            <ComboBox fx:id="batimentComboBox" promptText="Choisir un batiment" styleClass="backoffice-form-input"/>
+                            <ComboBox fx:id="batimentComboBox" promptText="Choisir un batiment" maxWidth="Infinity" styleClass="backoffice-form-input"/>
+                        </VBox>
+
+                        <VBox alignment="BOTTOM_LEFT" spacing="6.0" prefWidth="156.0" minWidth="156.0">
+                            <Label text="Accessibilite" styleClass="backoffice-form-label"/>
+                            <CheckBox fx:id="accesHandicapeCheckBox" text="Acces handicape" styleClass="backoffice-check"/>
                         </VBox>
                     </HBox>
 
@@ -165,11 +183,6 @@
                             <ComboBox fx:id="dispositionComboBox" promptText="Optionnelle" styleClass="backoffice-form-input"/>
                         </VBox>
                     </HBox>
-
-                    <VBox alignment="BOTTOM_LEFT" spacing="6.0">
-                        <Label text="Accessibilite" styleClass="backoffice-form-label"/>
-                        <CheckBox fx:id="accesHandicapeCheckBox" text="Acces handicape" styleClass="backoffice-check"/>
-                    </VBox>
 
                     <VBox spacing="6.0">
                         <Label text="Statut detaille" styleClass="backoffice-form-label"/>

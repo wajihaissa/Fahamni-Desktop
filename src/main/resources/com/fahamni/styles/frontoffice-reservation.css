@@ -467,6 +467,50 @@
     -fx-text-fill: #5b49be;
 }
 
+#tutorDiscoveryRoot .reservation-content .action-button.accept {
+    -fx-background-color: #edf9f2;
+    -fx-border-color: #bfe7cc;
+    -fx-border-width: 1px;
+    -fx-text-fill: #239158;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-effect: none;
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.accept:hover {
+    -fx-background-color: #e2f5ea;
+    -fx-border-color: #a9dbbb;
+    -fx-text-fill: #1d7f4d;
+    -fx-effect: none;
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action {
+    -fx-background-color: linear-gradient(to bottom, #fff5fb 0%, #f6e7fb 100%);
+    -fx-border-color: #e3c5eb;
+    -fx-border-width: 1px;
+    -fx-text-fill: #934e88;
+    -fx-font-weight: bold;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(194, 151, 213, 0.18), 12, 0.18, 0, 4);
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action:hover {
+    -fx-background-color: linear-gradient(to bottom, #fff8fc 0%, #efd8f7 100%);
+    -fx-border-color: #d5afe3;
+    -fx-text-fill: #82407a;
+    -fx-effect: dropshadow(gaussian, rgba(194, 151, 213, 0.24), 14, 0.22, 0, 5);
+}
+
+#tutorDiscoveryRoot .reservation-content .action-button.secondary.infrastructure-room-3d-action:pressed {
+    -fx-background-color: linear-gradient(to bottom, #f2def5 0%, #e4c7ef 100%);
+    -fx-border-color: #c999d7;
+    -fx-text-fill: #74396f;
+    -fx-effect: none;
+}
+
 #tutorDiscoveryRoot .reservation-content .backoffice-page-button.active-page {
     -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
     -fx-text-fill: white;
@@ -727,4 +771,579 @@
 .payment-dialog-action-row {
     -fx-padding: 2px 0 0 0;
     -fx-spacing: 8px;
+}
+
+#tutorDiscoveryRoot.seat-selection-root,
+#tutorDiscoveryRoot .seat-selection-root {
+    -fx-background-color: transparent;
+}
+
+.seat-selection-dialog {
+    -fx-background-color:
+        radial-gradient(center 12% 10%, radius 38%, rgba(125, 108, 224, 0.14) 0%, rgba(125, 108, 224, 0.00) 70%),
+        radial-gradient(center 88% 18%, radius 34%, rgba(76, 103, 203, 0.14) 0%, rgba(76, 103, 203, 0.00) 72%),
+        linear-gradient(to bottom, #f9f8ff 0%, #f2f5ff 52%, #eef4fb 100%);
+    -fx-background-radius: 32px;
+    -fx-border-color: #d9def5;
+    -fx-border-width: 1px;
+    -fx-border-radius: 32px;
+    -fx-padding: 0;
+}
+
+.seat-selection-dialog > .content.label {
+    -fx-padding: 0;
+}
+
+.seat-selection-dialog:header .header-panel {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.seat-selection-dialog-scroll-shell {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-color: transparent;
+    -fx-padding: 16px 18px 12px 18px;
+}
+
+.seat-selection-dialog-scroll-shell > .viewport {
+    -fx-background-color: transparent;
+}
+
+.seat-selection-dialog .button-bar {
+    -fx-background-color: rgba(255, 255, 255, 0.98);
+    -fx-border-color: #dbe2f3 transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 14px 20px 18px 20px;
+}
+
+.seat-selection-dialog .button-bar .container {
+    -fx-spacing: 12px;
+}
+
+.seat-selection-dialog .button-bar .button {
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 11px 22px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-cursor: hand;
+}
+
+.seat-selection-dialog .button-bar .button.backoffice-primary-button {
+    -fx-background-color: linear-gradient(to right, #6d5bd1 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(93, 76, 199, 0.24), 18, 0.16, 0, 5);
+}
+
+.seat-selection-dialog .button-bar .button.backoffice-secondary-button {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f7f8ff 100%);
+    -fx-text-fill: #4d5d85;
+    -fx-border-color: #d8def2;
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.infrastructure-room-3d-action,
+.seat-selection-dialog .button-bar .button.reservation-dialog-3d-button {
+    -fx-background-color: linear-gradient(to bottom, #fff5fb 0%, #f6e7fb 100%);
+    -fx-border-color: #e3c5eb;
+    -fx-border-width: 1px;
+    -fx-text-fill: #934e88;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(185, 122, 186, 0.16), 14, 0.18, 0, 4);
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.infrastructure-room-3d-action:hover,
+.seat-selection-dialog .button-bar .button.reservation-dialog-3d-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #ffeefd 0%, #f2defa 100%);
+    -fx-border-color: #d7b2e4;
+    -fx-text-fill: #8a437d;
+    -fx-effect: dropshadow(gaussian, rgba(185, 122, 186, 0.22), 16, 0.20, 0, 5);
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.reservation-dialog-2d-button,
+.seat-selection-dialog .button-bar .button.reservation-dialog-2d-button {
+    -fx-background-color: linear-gradient(to bottom, #f5efff 0%, #ece3ff 100%);
+    -fx-border-color: #d9c9f5;
+    -fx-border-width: 1px;
+    -fx-text-fill: #694ab9;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(109, 91, 209, 0.14), 14, 0.18, 0, 4);
+}
+
+.seat-selection-dialog .button-bar .button.action-button.secondary.reservation-dialog-2d-button:hover,
+.seat-selection-dialog .button-bar .button.reservation-dialog-2d-button:hover {
+    -fx-background-color: linear-gradient(to bottom, #f1e7ff 0%, #e6d8ff 100%);
+    -fx-border-color: #ccb7f2;
+    -fx-text-fill: #5e3fb1;
+    -fx-effect: dropshadow(gaussian, rgba(109, 91, 209, 0.20), 16, 0.20, 0, 5);
+}
+
+.seat-selection-dialog .button-bar .button:hover {
+    -fx-effect: dropshadow(gaussian, rgba(93, 76, 199, 0.16), 16, 0.16, 0, 4);
+}
+
+.seat-selection-dialog .button-bar .button:focused {
+    -fx-border-color: #7263d9;
+    -fx-border-width: 1.2px;
+}
+
+.reservation-dialog-shell {
+    -fx-background-color: transparent;
+    -fx-padding: 18px 20px 8px 20px;
+    -fx-spacing: 14px;
+}
+
+.reservation-dialog-hero {
+    -fx-alignment: center-left;
+    -fx-background-color:
+        linear-gradient(to right, rgba(109, 91, 209, 0.12) 0%, rgba(76, 103, 203, 0.10) 42%, rgba(255, 255, 255, 0.98) 100%),
+        linear-gradient(to bottom, #ffffff 0%, #f9fbff 100%);
+    -fx-background-radius: 24px;
+    -fx-border-color: #d8dff2;
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-padding: 16px 18px;
+    -fx-effect: dropshadow(gaussian, rgba(91, 84, 161, 0.10), 16, 0.12, 0, 4);
+}
+
+.reservation-dialog-kicker {
+    -fx-font-size: 10px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #7c73b0;
+}
+
+.reservation-dialog-title {
+    -fx-font-size: 22px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #2a2854;
+}
+
+.reservation-dialog-copy,
+.reservation-dialog-card-copy {
+    -fx-font-size: 12px;
+    -fx-text-fill: #667392;
+}
+
+.reservation-dialog-card {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8faff 100%);
+    -fx-border-color: #dbe2f1;
+    -fx-border-width: 1px;
+    -fx-background-radius: 20px;
+    -fx-border-radius: 20px;
+    -fx-padding: 14px 16px;
+    -fx-effect: dropshadow(gaussian, rgba(18, 28, 56, 0.05), 12, 0.14, 0, 3);
+}
+
+.reservation-dialog-card-highlight {
+    -fx-background-color:
+        linear-gradient(to right, rgba(109, 91, 209, 0.10) 0%, rgba(76, 103, 203, 0.08) 100%),
+        linear-gradient(to bottom, #ffffff 0%, #f7f9ff 100%);
+    -fx-border-color: #d3dcf5;
+}
+
+.reservation-dialog-note-card {
+    -fx-background-color: linear-gradient(to right, #fcfcff 0%, #f5f8ff 100%);
+}
+
+.reservation-dialog-option-card {
+    -fx-min-width: 0px;
+    -fx-pref-width: 0px;
+}
+
+.reservation-dialog-card-title {
+    -fx-font-size: 14px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #2b344c;
+}
+
+.reservation-dialog-inline-chip {
+    -fx-padding: 6px 11px;
+    -fx-font-size: 11px;
+}
+
+.reservation-dialog-status-badge {
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 10px 12px;
+    -fx-border-width: 1px;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.reservation-dialog-status-live {
+    -fx-background-color: linear-gradient(to right, #eef2ff 0%, #f5f7ff 100%);
+    -fx-border-color: #d4dcfa;
+    -fx-text-fill: #4757a0;
+}
+
+.reservation-dialog-status-ready {
+    -fx-background-color: linear-gradient(to right, #eef9f1 0%, #f5fcf7 100%);
+    -fx-border-color: #cfe7d7;
+    -fx-text-fill: #2f7b4c;
+}
+
+.reservation-dialog-status-offline {
+    -fx-background-color: linear-gradient(to right, #f6f7fb 0%, #fafbfe 100%);
+    -fx-border-color: #dfe4ee;
+    -fx-text-fill: #707c92;
+}
+
+.reservation-dialog-selection-value {
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 12px 14px;
+    -fx-border-width: 1px;
+    -fx-font-size: 12px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+.reservation-dialog-selection-value-active {
+    -fx-background-color: linear-gradient(to right, #edf1ff 0%, #f4f6ff 100%);
+    -fx-border-color: #d5ddf7;
+    -fx-text-fill: #36446d;
+}
+
+.reservation-dialog-selection-value-muted {
+    -fx-background-color: linear-gradient(to bottom, #fbfcff 0%, #f5f7fc 100%);
+    -fx-border-color: #e1e6ef;
+    -fx-text-fill: #7e889f;
+}
+
+#tutorDiscoveryRoot .seat-selection-hero {
+    -fx-alignment: center-left;
+    -fx-background-color:
+        linear-gradient(to right, rgba(109, 91, 209, 0.10) 0%, rgba(76, 103, 203, 0.10) 38%, rgba(255, 255, 255, 0.94) 100%),
+        linear-gradient(to right, #ffffff 0%, #fbfbff 100%);
+    -fx-background-radius: 24px;
+    -fx-border-color: #d7def1;
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-padding: 16px 18px;
+    -fx-effect: dropshadow(gaussian, rgba(91, 84, 161, 0.10), 16, 0.12, 0, 4);
+}
+
+#tutorDiscoveryRoot .seat-selection-title {
+    -fx-font-size: 24px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #2a2854;
+}
+
+#tutorDiscoveryRoot .seat-selection-subtitle {
+    -fx-font-size: 12px;
+    -fx-text-fill: #66729a;
+    -fx-max-width: 600px;
+}
+
+#tutorDiscoveryRoot .seat-selection-chip-row {
+    -fx-padding: 2px 0 0 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-chip {
+    -fx-background-color: linear-gradient(to bottom, #f5f3ff 0%, #eef1ff 100%);
+    -fx-text-fill: #5d51bb;
+    -fx-border-color: #d7cff9;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 12px;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+#tutorDiscoveryRoot .seat-selection-stat-chip {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #47506f;
+    -fx-border-color: #d6ddf0;
+}
+
+#tutorDiscoveryRoot .seat-selection-stat-chip-strong {
+    -fx-background-color: linear-gradient(to right, #6d5bd1 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-disposition-panel {
+    -fx-alignment: top-right;
+    -fx-min-width: 255px;
+    -fx-pref-width: 255px;
+}
+
+#tutorDiscoveryRoot .seat-selection-selected-chip {
+    -fx-background-color: linear-gradient(to bottom, #f2f4f7 0%, #e7ebf0 100%);
+    -fx-border-color: #d4dbe3;
+    -fx-border-width: 1px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 10px 14px;
+    -fx-text-fill: #425363;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-max-width: 250px;
+    -fx-alignment: center;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-card {
+    -fx-background-color:
+        radial-gradient(center 10% 0%, radius 42%, rgba(109, 91, 209, 0.08) 0%, rgba(109, 91, 209, 0.00) 72%),
+        radial-gradient(center 92% 8%, radius 34%, rgba(76, 103, 203, 0.07) 0%, rgba(76, 103, 203, 0.00) 74%),
+        linear-gradient(to bottom, #ffffff 0%, #fbfbff 100%);
+    -fx-background-radius: 28px;
+    -fx-border-color: #dbe1f2;
+    -fx-border-width: 1px;
+    -fx-border-radius: 28px;
+    -fx-padding: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(81, 72, 153, 0.10), 20, 0.14, 0, 4);
+}
+
+#tutorDiscoveryRoot .seat-selection-map-header {
+    -fx-padding: 0 0 2px 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-title {
+    -fx-font-size: 20px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-text-fill: #27255d;
+}
+
+#tutorDiscoveryRoot .seat-selection-map-subtitle {
+    -fx-text-fill: #6f78a0;
+    -fx-font-size: 11px;
+}
+
+#tutorDiscoveryRoot .seat-selection-layout-chip {
+    -fx-background-color: linear-gradient(to bottom, #f4f2ff 0%, #ecefff 100%);
+    -fx-text-fill: #5c52ba;
+    -fx-border-color: #d9d1fa;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 12px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-font-size: 11px;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll .scroll-bar:horizontal,
+#tutorDiscoveryRoot .seat-selection-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll .track {
+    -fx-background-color: #e6e8f7;
+    -fx-background-radius: 999px;
+}
+
+#tutorDiscoveryRoot .seat-selection-scroll .thumb {
+    -fx-background-color: #afb8ec;
+    -fx-background-radius: 999px;
+}
+
+#tutorDiscoveryRoot .seat-selection-grid-shell {
+    -fx-background-color:
+        linear-gradient(to bottom, #fcfbff 0%, #f8f9ff 100%);
+    -fx-background-radius: 24px;
+    -fx-border-color: #dde3f3;
+    -fx-border-width: 1px;
+    -fx-border-radius: 24px;
+    -fx-padding: 12px 10px;
+}
+
+#tutorDiscoveryRoot .seat-selection-grid {
+    -fx-alignment: center;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+#tutorDiscoveryRoot .seat-grid-axis-label {
+    -fx-text-fill: #7f86ba;
+    -fx-font-size: 9px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-alignment: center;
+    -fx-max-width: Infinity;
+}
+
+#tutorDiscoveryRoot .seat-grid-empty-state {
+    -fx-text-fill: #687786;
+    -fx-background-color: rgba(255, 255, 255, 0.96);
+    -fx-background-radius: 18px;
+    -fx-border-color: #dbe3ea;
+    -fx-border-width: 1px;
+    -fx-border-radius: 18px;
+    -fx-padding: 20px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage-shell {
+    -fx-padding: 0 42px 2px 42px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage-line {
+    -fx-min-height: 3px;
+    -fx-pref-height: 3px;
+    -fx-max-height: 3px;
+    -fx-background-color: linear-gradient(to right, rgba(109, 91, 209, 0.04) 0%, #a8b3f2 50%, rgba(109, 91, 209, 0.04) 100%);
+    -fx-background-radius: 999px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f2f4ff 100%);
+    -fx-background-radius: 999px;
+    -fx-border-color: #d7ddf2;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-padding: 7px 18px;
+}
+
+#tutorDiscoveryRoot .seat-selection-stage-label {
+    -fx-text-fill: #636cb1;
+    -fx-font-size: 9px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+#tutorDiscoveryRoot .seat-map-button {
+    -fx-min-width: 28px;
+    -fx-pref-width: 28px;
+    -fx-max-width: 28px;
+    -fx-min-height: 28px;
+    -fx-pref-height: 28px;
+    -fx-max-height: 28px;
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 9px;
+    -fx-border-radius: 9px;
+    -fx-border-width: 1px;
+    -fx-font-size: 0px;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+    -fx-text-fill: transparent;
+    -fx-effect: dropshadow(gaussian, rgba(59, 72, 84, 0.04), 7, 0.14, 0, 1);
+}
+
+#tutorDiscoveryRoot .seat-map-button:disabled {
+    -fx-opacity: 1;
+}
+
+#tutorDiscoveryRoot .seat-map-button.available {
+    -fx-background-color: linear-gradient(to bottom, #f3f5ff 0%, #e7edff 100%);
+    -fx-border-color: #c6d0ff;
+}
+
+#tutorDiscoveryRoot .seat-map-button.available:hover {
+    -fx-background-color: linear-gradient(to bottom, #ecefff 0%, #dde5ff 100%);
+    -fx-border-color: #8fa0f2;
+    -fx-effect: dropshadow(gaussian, rgba(93, 96, 214, 0.18), 10, 0.22, 0, 2);
+}
+
+#tutorDiscoveryRoot .seat-map-button.occupied {
+    -fx-background-color: linear-gradient(to bottom, #ffe7ea 0%, #ffc7d0 100%);
+    -fx-border-color: #ec96a6;
+}
+
+#tutorDiscoveryRoot .seat-map-button.blocked {
+    -fx-background-color: linear-gradient(to bottom, #ffe7e7 0%, #ffcaca 100%);
+    -fx-border-color: #ef9f9f;
+}
+
+#tutorDiscoveryRoot .seat-map-button.selected,
+#tutorDiscoveryRoot .seat-map-button.selected:hover,
+#tutorDiscoveryRoot .seat-map-button.selected:armed {
+    -fx-background-color: linear-gradient(to bottom, #7a67e0 0%, #526bdb 100%);
+    -fx-border-color: #5b62d4;
+    -fx-effect: dropshadow(gaussian, rgba(93, 76, 199, 0.28), 12, 0.24, 0, 2);
+}
+
+#tutorDiscoveryRoot .seat-selection-color-legend {
+    -fx-padding: 2px 0 0 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-label {
+    -fx-text-fill: #5d63a8;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+    -fx-padding: 4px 6px 0 0;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge,
+#tutorDiscoveryRoot .seat-selection-legend-badge-available,
+#tutorDiscoveryRoot .seat-selection-legend-badge-occupied,
+#tutorDiscoveryRoot .seat-selection-legend-badge-selected {
+    -fx-alignment: center-left;
+    -fx-padding: 8px 12px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge.available,
+#tutorDiscoveryRoot .seat-selection-legend-badge-available {
+    -fx-background-color: linear-gradient(to bottom, #eff2ff 0%, #e6ecff 100%);
+    -fx-border-color: #c9d3ff;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge.occupied,
+#tutorDiscoveryRoot .seat-selection-legend-badge-occupied {
+    -fx-background-color: linear-gradient(to bottom, #ffecef 0%, #ffd4db 100%);
+    -fx-border-color: #efadb9;
+}
+
+#tutorDiscoveryRoot .seat-selection-legend-badge.selected,
+#tutorDiscoveryRoot .seat-selection-legend-badge-selected {
+    -fx-background-color: linear-gradient(to bottom, #f0ecff 0%, #e6e0ff 100%);
+    -fx-border-color: #d0c4ff;
+}
+
+#tutorDiscoveryRoot .seat-selection-color-text {
+    -fx-text-fill: #49537d;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI Semibold";
+}
+
+#tutorDiscoveryRoot .seat-legend-dot,
+#tutorDiscoveryRoot .seat-legend-dot-available,
+#tutorDiscoveryRoot .seat-legend-dot-occupied,
+#tutorDiscoveryRoot .seat-legend-dot-selected {
+    -fx-min-width: 10px;
+    -fx-pref-width: 10px;
+    -fx-max-width: 10px;
+    -fx-min-height: 10px;
+    -fx-pref-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1px;
+}
+
+#tutorDiscoveryRoot .seat-legend-dot.available,
+#tutorDiscoveryRoot .seat-legend-dot-available {
+    -fx-background-color: #8295f3;
+    -fx-border-color: #7285e1;
+}
+
+#tutorDiscoveryRoot .seat-legend-dot.occupied,
+#tutorDiscoveryRoot .seat-legend-dot-occupied {
+    -fx-background-color: #e8889a;
+    -fx-border-color: #d77286;
+}
+
+#tutorDiscoveryRoot .seat-legend-dot.selected,
+#tutorDiscoveryRoot .seat-legend-dot-selected {
+    -fx-background-color: #6d5bd1;
+    -fx-border-color: #5b48bd;
+}
+
+#tutorDiscoveryRoot .seat-selection-hint {
+    -fx-background-color: linear-gradient(to right, #f5f4ff 0%, #edf2ff 100%);
+    -fx-border-color: #d8def4;
+    -fx-border-width: 1px;
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 10px 14px;
+    -fx-text-fill: #5f6ca2;
+    -fx-font-size: 11px;
 }

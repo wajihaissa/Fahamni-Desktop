@@ -662,9 +662,10 @@ public class SeanceService implements IServices<Seance> {
     private String buildConflictMessage(Seance conflictingSeance) {
         String subject = normalizeText(conflictingSeance.getMatiere());
         String safeSubject = subject != null ? subject : "sans titre";
-        return "Conflit d'horaire: ce tuteur a deja une seance \"" + safeSubject
+        LocalDateTime endAt = calculateEndAt(conflictingSeance.getStartAt(), conflictingSeance.getDurationMin());
+        return "Conflit d'horaire: vous avez deja une seance \"" + safeSubject
             + "\" prevue le " + formatDateTime(conflictingSeance.getStartAt())
-            + " pour " + conflictingSeance.getDurationMin() + " min.";
+            + " et se termine le " + formatDateTime(endAt) + ".";
     }
 
     private void normalizeInfrastructureFields(Seance seance) {

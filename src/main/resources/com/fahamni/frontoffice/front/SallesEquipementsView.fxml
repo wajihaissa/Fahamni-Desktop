@@ -18,7 +18,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<ScrollPane id="infrastructureCatalogRoot" fitToWidth="true" styleClass="infrastructure-scroll"
+<ScrollPane fx:id="catalogScrollPane" id="infrastructureCatalogRoot" fitToWidth="true" styleClass="infrastructure-scroll"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.SallesEquipementsController">
@@ -99,14 +99,14 @@
 
         <HBox spacing="20.0" alignment="TOP_LEFT" styleClass="infrastructure-body">
             <VBox spacing="14.0" HBox.hgrow="ALWAYS" styleClass="infrastructure-main-column">
-                <TabPane tabClosingPolicy="UNAVAILABLE">
+                <TabPane fx:id="catalogTabPane" tabClosingPolicy="UNAVAILABLE">
                     <styleClass>
                         <String fx:value="reservation-tabs"/>
                         <String fx:value="infrastructure-tabs"/>
                     </styleClass>
                     <tabs>
                         <Tab text="Salles">
-                            <VBox spacing="16.0">
+                            <VBox fx:id="roomTabContent" spacing="16.0">
                                 <styleClass>
                                     <String fx:value="infrastructure-panel"/>
                                     <String fx:value="infrastructure-catalog-panel"/>
@@ -130,11 +130,25 @@
                                 </HBox>
 
                                 <GridPane fx:id="roomCardsContainer" hgap="14.0" vgap="14.0"/>
+
+                                <HBox fx:id="roomPaginationBar" alignment="CENTER_LEFT" spacing="12.0">
+                                    <styleClass>
+                                        <String fx:value="pagination-bar"/>
+                                        <String fx:value="infrastructure-pagination-bar"/>
+                                    </styleClass>
+                                    <Label fx:id="roomPaginationSummaryLabel" text="Aucune salle a afficher" styleClass="pagination-summary"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Button fx:id="roomPreviousPageButton" text="Precedent" onAction="#handlePreviousRoomPage" styleClass="backoffice-secondary-button"/>
+                                    <HBox fx:id="roomPageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                                    <Button fx:id="roomNextPageButton" text="Suivant" onAction="#handleNextRoomPage" styleClass="backoffice-secondary-button"/>
+                                    <Label text="Par page" styleClass="pagination-per-page-label"/>
+                                    <ComboBox fx:id="roomPageSizeComboBox" prefWidth="92.0" styleClass="pagination-page-size-combo"/>
+                                </HBox>
                             </VBox>
                         </Tab>
 
                         <Tab text="Materiel">
-                            <VBox spacing="16.0">
+                            <VBox fx:id="equipmentTabContent" spacing="16.0">
                                 <styleClass>
                                     <String fx:value="infrastructure-panel"/>
                                     <String fx:value="infrastructure-catalog-panel"/>
@@ -157,6 +171,20 @@
                                 </HBox>
 
                                 <GridPane fx:id="equipmentCardsContainer" hgap="14.0" vgap="14.0"/>
+
+                                <HBox fx:id="equipmentPaginationBar" alignment="CENTER_LEFT" spacing="12.0">
+                                    <styleClass>
+                                        <String fx:value="pagination-bar"/>
+                                        <String fx:value="infrastructure-pagination-bar"/>
+                                    </styleClass>
+                                    <Label fx:id="equipmentPaginationSummaryLabel" text="Aucun equipement a afficher" styleClass="pagination-summary"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Button fx:id="equipmentPreviousPageButton" text="Precedent" onAction="#handlePreviousEquipmentPage" styleClass="backoffice-secondary-button"/>
+                                    <HBox fx:id="equipmentPageButtonsContainer" alignment="CENTER" spacing="8.0"/>
+                                    <Button fx:id="equipmentNextPageButton" text="Suivant" onAction="#handleNextEquipmentPage" styleClass="backoffice-secondary-button"/>
+                                    <Label text="Par page" styleClass="pagination-per-page-label"/>
+                                    <ComboBox fx:id="equipmentPageSizeComboBox" prefWidth="92.0" styleClass="pagination-page-size-combo"/>
+                                </HBox>
                             </VBox>
                         </Tab>
                     </tabs>
@@ -185,6 +213,27 @@
                 <VBox spacing="8.0" styleClass="infrastructure-detail-section">
                     <Label text="Description" styleClass="infrastructure-detail-section-title"/>
                     <Label fx:id="detailDescriptionLabel" text="Aucun element selectionne." wrapText="true" styleClass="infrastructure-detail-section-copy"/>
+                </VBox>
+
+                <VBox fx:id="room3DSpotlightContainer" spacing="10.0" managed="false" visible="false">
+                    <styleClass>
+                        <String fx:value="infrastructure-detail-preview"/>
+                        <String fx:value="infrastructure-room-3d-panel"/>
+                    </styleClass>
+                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                        <Label text="Studio 3D" styleClass="infrastructure-detail-section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="room3DModeLabel" text="Modele genere" styleClass="infrastructure-room-3d-chip"/>
+                    </HBox>
+                    <Label fx:id="room3DHeadlineLabel" text="Explorez la salle en immersion." wrapText="true" styleClass="infrastructure-room-3d-title"/>
+                    <Label fx:id="room3DCopyLabel" text="Le moteur 3D reprend la disposition et la capacite de la salle selectionnee." wrapText="true" styleClass="infrastructure-room-3d-copy"/>
+                    <FlowPane fx:id="room3DHighlightsContainer" hgap="10.0" vgap="10.0" prefWrapLength="304.0"/>
+                    <Button fx:id="room3DPreviewButton" text="Explorer la salle en 3D" maxWidth="Infinity" onAction="#handlePreviewSelectedRoom3D">
+                        <styleClass>
+                            <String fx:value="backoffice-primary-button"/>
+                            <String fx:value="infrastructure-room-3d-button"/>
+                        </styleClass>
+                    </Button>
                 </VBox>
 
                 <VBox spacing="8.0" styleClass="infrastructure-detail-section">

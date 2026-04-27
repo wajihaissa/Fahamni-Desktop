@@ -1,18 +1,5 @@
 package tn.esprit.fahamni.controllers;
 
-import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
-import javafx.animation.ScaleTransition;
-import javafx.animation.TranslateTransition;
-import javafx.application.Platform;
-import tn.esprit.fahamni.services.NotificationService;
-import tn.esprit.fahamni.services.SessionCreationContext;
-import tn.esprit.fahamni.test.Main;
-import tn.esprit.fahamni.utils.FrontOfficeMotion;
-import tn.esprit.fahamni.utils.FrontOfficeNavigation;
-import tn.esprit.fahamni.utils.FrontOfficeThemePreference;
-import tn.esprit.fahamni.utils.SceneManager;
-import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -21,8 +8,10 @@ import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
@@ -31,24 +20,24 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.SVGPath;
 import javafx.stage.Popup;
+import tn.esprit.fahamni.Models.Notification;
+import tn.esprit.fahamni.services.NotificationService;
+import tn.esprit.fahamni.services.SessionCreationContext;
+import tn.esprit.fahamni.services.UserAccountService;
+import tn.esprit.fahamni.test.Main;
+import tn.esprit.fahamni.utils.FrontOfficeNavigation;
+import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.UserSession;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import javafx.util.Duration;
-import tn.esprit.fahamni.Models.Notification;
-import tn.esprit.fahamni.services.UserAccountService;
 
 public class MainController {
-
 
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
@@ -63,7 +52,6 @@ public class MainController {
     @FXML private Button seancesButton;
     @FXML private Button sallesEquipementsButton;
     @FXML private Button plannerButton;
-    @FXML private Button messengerButton;
     @FXML private Button quizButton;
     @FXML private Button blogButton;
     @FXML private Button aboutButton;
@@ -82,14 +70,12 @@ public class MainController {
             handleLogout();
             return;
         }
+
         System.out.println("MainController initialized");
         SessionCreationContext.registerNavigator(this::showReservations);
         FrontOfficeNavigation.registerNavigator(this::openDestination);
         refreshCurrentUserSummary();
-        applyThemeMode();
         initializeAccountMenu();
-        installContentClip();
-        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
         showDashboard();
         refreshBlogBadge();
     }
@@ -139,6 +125,10 @@ public class MainController {
 
     @FXML
     private void showSallesEquipements() {
+        if (!canAccessSallesEquipements()) {
+            showDashboard();
+            return;
+        }
         loadView("SallesEquipementsView.fxml", "Salles & Materiel");
         setActiveButton(sallesEquipementsButton);
     }
@@ -147,12 +137,6 @@ public class MainController {
     private void showPlanner() {
         loadView("PlannerView.fxml", "Planner de revision");
         setActiveButton(plannerButton);
-    }
-
-    @FXML
-    private void showMessenger() {
-        loadView("MessengerView.fxml", "Messagerie");
-        setActiveButton(messengerButton);
     }
 
     @FXML
@@ -173,7 +157,6 @@ public class MainController {
         setActiveButton(aboutButton);
     }
 
-
     @FXML
     private void toggleAlertsPopup() {
         if (alertButton == null) {
@@ -189,44 +172,35 @@ public class MainController {
                 ? notifService.getAllForUser(userId)
                 : new ArrayList<>();
         long unreadCount = notifications.stream().filter(notification -> !notification.isRead()).count();
-        boolean lightTheme = FrontOfficeThemePreference.isLightMode();
 
         VBox container = new VBox(0);
         container.setStyle(
-            lightTheme
-                ? "-fx-background-color: rgba(253,255,255,0.98); -fx-background-radius: 18;" +
-                  "-fx-effect: dropshadow(gaussian,rgba(32,56,84,0.16),28,0.18,0,10);" +
-                  "-fx-border-color: rgba(84,122,165,0.14); -fx-border-radius: 18; -fx-border-width: 1;"
-                : "-fx-background-color: rgba(8,14,23,0.98); -fx-background-radius: 18;" +
-                  "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.42),30,0.22,0,10);" +
-                  "-fx-border-color: rgba(142,192,255,0.15); -fx-border-radius: 18; -fx-border-width: 1;");
+            "-fx-background-color: white; -fx-background-radius: 14;" +
+            "-fx-effect: dropshadow(gaussian,rgba(0,0,0,0.18),18,0,0,4);" +
+            "-fx-border-color: #e3e6ef; -fx-border-radius: 14; -fx-border-width: 1;");
         container.setPrefWidth(340);
 
         HBox header = new HBox(8);
         header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         header.setPadding(new Insets(14, 16, 12, 16));
-        header.setStyle(lightTheme
-                ? "-fx-background-color: linear-gradient(to right,#edf5ff,#f8fbff);" +
-                  "-fx-background-radius: 18 18 0 0;"
-                : "-fx-background-color: linear-gradient(to right,#10304a,#0c1f33);" +
-                  "-fx-background-radius: 18 18 0 0;");
+        header.setStyle("-fx-background-color: linear-gradient(to right,#6b5dd3,#5068d1);" +
+                        "-fx-background-radius: 14 14 0 0;");
         Label titleLabel = new Label("Notifications");
-        titleLabel.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: "
-                + (lightTheme ? "#15263a;" : "#f3f8ff;"));
+        titleLabel.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white;");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         String countText = unreadCount > 0
-                ? unreadCount + " non lues"
+                ? unreadCount + " non lu(s)"
                 : (notifications.isEmpty() ? "Aucune" : notifications.size() + " au total");
         Label countLabel = new Label(countText);
-        countLabel.setStyle("-fx-font-size: 11; -fx-text-fill: " + (lightTheme ? "#6d8198;" : "#92a7bf;"));
+        countLabel.setStyle("-fx-font-size: 11; -fx-text-fill: rgba(255,255,255,0.85);");
         header.getChildren().addAll(titleLabel, spacer, countLabel);
         container.getChildren().add(header);
 
         if (notifications.isEmpty()) {
             Label emptyLabel = new Label("Aucune notification pour le moment.");
             emptyLabel.setPadding(new Insets(24, 16, 24, 16));
-            emptyLabel.setStyle("-fx-text-fill: " + (lightTheme ? "#7288a0;" : "#8fa6bf;") + "-fx-font-size: 12;");
+            emptyLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12;");
             container.getChildren().add(emptyLabel);
         } else {
             ScrollPane scroll = new ScrollPane();
@@ -238,44 +212,29 @@ public class MainController {
             VBox list = new VBox(0);
             for (int i = 0; i < notifications.size(); i++) {
                 Notification notification = notifications.get(i);
-                String msg = notification.getMessage() != null ? notification.getMessage() : "";
-                boolean approved  = msg.contains("approuve") || msg.contains("publie");
-                boolean refused   = msg.contains("refuse");
-                boolean profanity = msg.contains("Commentaire") && (msg.contains("bloqué") || msg.contains("interdit") || msg.contains("⚠"));
-                boolean isUnread  = !notification.isRead();
+                boolean approved = notification.getMessage() != null
+                        && (notification.getMessage().contains("approuve") || notification.getMessage().contains("publie"));
+                boolean refused = notification.getMessage() != null && notification.getMessage().contains("refuse");
+                boolean isUnread = !notification.isRead();
 
                 VBox item = new VBox(4);
                 item.setPadding(new Insets(10, 16, 10, 16));
-                String background;
-                if (!isUnread) {
-                    background = lightTheme ? "rgba(15,34,52,0.03)" : "rgba(255,255,255,0.03)";
-                } else if (profanity) {
-                    background = lightTheme ? "rgba(255,140,0,0.12)" : "rgba(200,80,0,0.22)";
-                } else if (approved) {
-                    background = lightTheme ? "rgba(90,205,151,0.14)" : "rgba(50,120,94,0.20)";
-                } else if (refused) {
-                    background = lightTheme ? "rgba(255,166,184,0.18)" : "rgba(140,54,73,0.20)";
-                } else {
-                    background = lightTheme ? "rgba(99,178,255,0.14)" : "rgba(41,74,109,0.26)";
-                }
-                String borderLeft = profanity && isUnread ? "-fx-border-color: #e67e22; -fx-border-width: 0 0 0 3;" : "";
-                item.setStyle("-fx-background-color: " + background + "; " + borderLeft);
+                String background = isUnread
+                        ? (approved ? "#f0fdf4" : (refused ? "#fff1f2" : "#f3f1ff"))
+                        : "#f8fafc";
+                item.setStyle("-fx-background-color: " + background + ";");
 
                 HBox row = new HBox(8);
                 row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-                String iconText  = profanity ? "⚠" : (approved ? "✓" : (refused ? "✕" : "•"));
-                String iconColor = profanity ? "#e67e22" : (approved ? "#198754" : (refused ? "#d1435b" : "#5f49bf"));
-                Label icon = new Label(iconText);
-                icon.setStyle("-fx-font-size: 15; -fx-text-fill: " + iconColor + ";");
+                Label icon = new Label(approved ? "✓" : (refused ? "✕" : "•"));
+                icon.setStyle("-fx-font-size: 15; -fx-text-fill: " +
+                        (approved ? "#198754" : (refused ? "#d1435b" : "#5f49bf")) + ";");
 
-                Label message = new Label(msg);
+                Label message = new Label(notification.getMessage() != null ? notification.getMessage() : "");
                 message.setWrapText(true);
-                String messageColor;
-                if (!isUnread)       messageColor = "#92a7bf";
-                else if (profanity)  messageColor = lightTheme ? "#a04400" : "#ffb347";
-                else if (approved)   messageColor = "#c5ffe0";
-                else if (refused)    messageColor = "#ffd4db";
-                else                 messageColor = "#e8f5ff";
+                String messageColor = isUnread
+                        ? (approved ? "#166534" : (refused ? "#9f1239" : "#4c1d95"))
+                        : "#64748b";
                 message.setStyle("-fx-font-size: 12; -fx-text-fill: " + messageColor + ";");
                 message.setMaxWidth(230);
                 HBox.setHgrow(message, Priority.ALWAYS);
@@ -283,11 +242,8 @@ public class MainController {
                 HBox rightBox = new HBox(4);
                 rightBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
                 if (isUnread) {
-                    String badgeText  = profanity ? "Signalé" : "Nouveau";
-                    String badgeBg    = profanity ? "rgba(230,126,34,0.22)" : "rgba(79,216,255,0.18)";
-                    String badgeColor = profanity ? "#e67e22" : "#c6f7ff";
-                    Label badge = new Label(badgeText);
-                    badge.setStyle("-fx-background-color: " + badgeBg + "; -fx-text-fill: " + badgeColor + ";" +
+                    Label badge = new Label("Nouveau");
+                    badge.setStyle("-fx-background-color: #d1435b; -fx-text-fill: white;" +
                             "-fx-font-size: 9; -fx-font-weight: bold; -fx-background-radius: 6;" +
                             "-fx-padding: 1 5;");
                     rightBox.getChildren().add(badge);
@@ -295,7 +251,7 @@ public class MainController {
                 row.getChildren().addAll(icon, message, rightBox);
 
                 Label date = new Label(notification.getCreatedAt() != null ? notification.getCreatedAt().format(NOTIF_FMT) : "");
-                date.setStyle("-fx-font-size: 10; -fx-text-fill: #7f95ad;");
+                date.setStyle("-fx-font-size: 10; -fx-text-fill: #94a3b8;");
 
                 item.getChildren().addAll(row, date);
                 list.getChildren().add(item);
@@ -314,9 +270,9 @@ public class MainController {
                 Button markReadButton = new Button("Tout marquer comme lu");
                 markReadButton.setMaxWidth(Double.MAX_VALUE);
                 markReadButton.setStyle(
-                    "-fx-background-color: rgba(255,255,255,0.04); -fx-text-fill: #d6e7f8;" +
+                    "-fx-background-color: #f8f7ff; -fx-text-fill: #5f49bf;" +
                     "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
-                    "-fx-cursor: hand; -fx-border-color: rgba(255,255,255,0.08);" +
+                    "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
                     "-fx-border-width: 1 0 0 0;");
                 markReadButton.setOnAction(event -> {
                     notifService.markAllReadForUser(userId);
@@ -386,7 +342,7 @@ public class MainController {
             displayView(view, title);
         } catch (Exception e) {
             e.printStackTrace();
-            Label placeholder = new Label("Vue non implemente encore : " + fxmlFile);
+            Label placeholder = new Label("View not implemented yet: " + fxmlFile);
             placeholder.getStyleClass().add("content-placeholder");
             displayView(placeholder, title);
         }
@@ -411,16 +367,11 @@ public class MainController {
 
     private void displayView(Node view, String title) {
         contentPane.getChildren().clear();
-        if (view instanceof Region region) {
-            region.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
-        }
         AnchorPane.setTopAnchor(view, 0.0);
         AnchorPane.setBottomAnchor(view, 0.0);
         AnchorPane.setLeftAnchor(view, 0.0);
         AnchorPane.setRightAnchor(view, 0.0);
         contentPane.getChildren().add(view);
-        Platform.runLater(() -> FrontOfficeMotion.installInteractiveMotion(rootPane));
-        playViewTransition(view);
         if (pageTitle != null) {
             pageTitle.setText(title);
         }
@@ -445,79 +396,30 @@ public class MainController {
         }
     }
 
-    private void applyThemeMode() {
-        FrontOfficeThemePreference.apply(rootPane);
-        refreshAccountMenuTheme();
-        if (alertsPopup != null && alertsPopup.isShowing()) {
-            alertsPopup.hide();
-        }
-    }
-
-    private void refreshAccountMenuTheme() {
-        if (accountMenu == null) {
-            return;
-        }
-
-        accountMenu.getStyleClass().remove("light-context-menu");
-        if (FrontOfficeThemePreference.isLightMode()) {
-            accountMenu.getStyleClass().add("light-context-menu");
-        }
-    }
-
-    private void playThemeSwitchAnimation() {
-        if (rootPane == null) {
-            return;
-        }
-
-        rootPane.setOpacity(0.94);
-        rootPane.setScaleX(0.994);
-        rootPane.setScaleY(0.994);
-
-        FadeTransition fadeTransition = new FadeTransition(Duration.millis(220), rootPane);
-        fadeTransition.setFromValue(0.94);
-        fadeTransition.setToValue(1.0);
-
-        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(220), rootPane);
-        scaleTransition.setFromX(0.994);
-        scaleTransition.setFromY(0.994);
-        scaleTransition.setToX(1.0);
-        scaleTransition.setToY(1.0);
-
-        new ParallelTransition(fadeTransition, scaleTransition).play();
-    }
-
-    private void playViewTransition(Node view) {
-        if (view == null) {
-            return;
-        }
-
-        view.setOpacity(0.0);
-
-        FadeTransition fadeTransition = new FadeTransition(Duration.millis(320), view);
-        fadeTransition.setFromValue(0.0);
-        fadeTransition.setToValue(1.0);
-        fadeTransition.play();
-    }
-
-    private void installContentClip() {
-        if (contentPane == null) {
-            return;
-        }
-
-        Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(contentPane.widthProperty());
-        clip.heightProperty().bind(contentPane.heightProperty());
-        contentPane.setClip(clip);
-    }
-
     private void refreshCurrentUserSummary() {
         try {
             applyAvatar(profileAvatarLabel, userAccountService.getCurrentAvatarPath(), 34);
             profileNameLabel.setText(UserSession.getDisplayName());
             profileRoleLabel.setText(UserSession.getRoleLabel());
+            refreshFrontOfficeAccess();
         } catch (Exception e) {
             System.err.println("refreshCurrentUserSummary: " + e.getMessage());
         }
+    }
+
+    private void refreshFrontOfficeAccess() {
+        boolean showInfrastructure = canAccessSallesEquipements();
+        if (sallesEquipementsButton != null) {
+            sallesEquipementsButton.setManaged(showInfrastructure);
+            sallesEquipementsButton.setVisible(showInfrastructure);
+            if (!showInfrastructure) {
+                sallesEquipementsButton.getStyleClass().remove("active");
+            }
+        }
+    }
+
+    private boolean canAccessSallesEquipements() {
+        return !UserSession.isCurrentStudent();
     }
 
     private void initializeAccountMenu() {
@@ -541,7 +443,6 @@ public class MainController {
         accountMenu.getStyleClass().add("front-navbar-context-menu");
         accountMenu.setAutoHide(true);
         accountMenu.setAutoFix(true);
-        refreshAccountMenuTheme();
     }
 
     private void hideAccountMenuInstant() {
@@ -556,7 +457,6 @@ public class MainController {
         removeActiveClass(seancesButton);
         removeActiveClass(sallesEquipementsButton);
         removeActiveClass(plannerButton);
-        removeActiveClass(messengerButton);
         removeActiveClass(quizButton);
         removeActiveClass(blogButton);
         removeActiveClass(aboutButton);

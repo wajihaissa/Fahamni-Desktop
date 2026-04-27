@@ -70,8 +70,6 @@
                         </Button>
                         <VBox fx:id="infrastructureSubmenu" managed="false" visible="false" spacing="4.0" styleClass="backoffice-subnav">
                             <Button fx:id="sallesButton" maxWidth="Infinity" text="Salles" onAction="#showSalles" styleClass="backoffice-subnav-button"/>
-                            <Button fx:id="reclamationsButton" maxWidth="Infinity" text="Reclamations" onAction="#showReclamations" styleClass="backoffice-subnav-button"/>
-                            <Button fx:id="maintenanceButton" maxWidth="Infinity" text="Maintenance" onAction="#showMaintenance" styleClass="backoffice-subnav-button"/>
                             <Button fx:id="equipementsButton" maxWidth="Infinity" text="Equipements" onAction="#showEquipements" styleClass="backoffice-subnav-button"/>
                             <Button fx:id="infrastructureStatsButton" maxWidth="Infinity" text="Statistiques" onAction="#showInfrastructureStats" styleClass="backoffice-subnav-button"/>
                         </VBox>

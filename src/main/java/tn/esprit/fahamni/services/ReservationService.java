@@ -1,8 +1,9 @@
 package tn.esprit.fahamni.services;
 
-import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.Models.Place;
 import tn.esprit.fahamni.Models.Reservation;
 import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
+import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 
@@ -11,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -23,6 +25,7 @@ public class ReservationService {
     public static final int STATUS_PENDING = 0;
     public static final int STATUS_ACCEPTED = 1;
     public static final int STATUS_REFUSED = 3;
+
     private static final int LEGACY_ACCEPTED_STATUS = 2;
     public static final int MIN_STUDENT_RATING = 1;
     public static final int MAX_STUDENT_RATING = 5;
@@ -33,6 +36,60 @@ public class ReservationService {
     public static final String PAYMENT_STATUS_FAILED = "failed";
     public static final String PAYMENT_STATUS_EXPIRED = "expired";
     private static final String PAYMENT_PROVIDER = "stripe";
+    private static final String PLACE_STATUS_AVAILABLE = "disponible";
+    private static final String SELECT_SEAT_OPTIONS_BY_SEANCE_SQL = """
+        SELECT
+            p.idPlace,
+            p.numero,
+            p.rang,
+            p.colonne,
+            p.etat,
+            p.idSalle,
+            CASE WHEN active_reservation.id IS NULL THEN 0 ELSE 1 END AS reserved
+        FROM place p
+        INNER JOIN seance s ON s.salle_id = p.idSalle
+        LEFT JOIN reservation_place rp
+            ON rp.idSeance = s.id AND rp.idPlace = p.idPlace
+        LEFT JOIN reservation active_reservation
+            ON active_reservation.id = rp.idReservation
+           AND active_reservation.cancell_at IS NULL
+           AND active_reservation.status <> ?
+        WHERE s.id = ?
+        ORDER BY p.rang ASC, p.colonne ASC, p.numero ASC
+        """;
+    private static final String SELECT_PLACE_BY_SEANCE_AND_ID_SQL = """
+        SELECT
+            p.idPlace,
+            p.numero,
+            p.rang,
+            p.colonne,
+            p.etat,
+            p.idSalle,
+            CASE WHEN active_reservation.id IS NULL THEN 0 ELSE 1 END AS reserved
+        FROM place p
+        LEFT JOIN reservation_place rp
+            ON rp.idSeance = ? AND rp.idPlace = p.idPlace
+        LEFT JOIN reservation active_reservation
+            ON active_reservation.id = rp.idReservation
+           AND active_reservation.cancell_at IS NULL
+           AND active_reservation.status <> ?
+        WHERE p.idPlace = ? AND p.idSalle = ?
+        """;
+    private static final String COUNT_PLACES_BY_SALLE_SQL =
+        "SELECT COUNT(*) AS total FROM place WHERE idSalle = ?";
+    private static final String INSERT_RESERVATION_SQL = """
+        INSERT INTO reservation (
+            status, reserved_at, cancell_at, notes, seance_id, participant_id,
+            confirmation_email_sent_at, acceptance_email_sent_at, reminder_email_sent_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """;
+    private static final String INSERT_RESERVATION_PLACE_SQL = """
+        INSERT INTO reservation_place (idReservation, idSeance, idPlace, created_at)
+        VALUES (?, ?, ?, ?)
+        """;
+    private static final String DELETE_RESERVATION_PLACE_BY_RESERVATION_SQL =
+        "DELETE FROM reservation_place WHERE idReservation = ?";
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final StripePaymentService stripePaymentService = new StripePaymentService();
@@ -81,7 +138,18 @@ public class ReservationService {
             : OperationResult.failure(result.message());
     }
 
+    public OperationResult reserveSeance(Seance seance, int participantId, Integer selectedPlaceId) {
+        ReservationCreationResult result = reserveSeanceDetailed(seance, participantId, selectedPlaceId);
+        return result.success()
+            ? OperationResult.success(result.message())
+            : OperationResult.failure(result.message());
+    }
+
     public ReservationCreationResult reserveSeanceDetailed(Seance seance, int participantId) {
+        return reserveSeanceDetailed(seance, participantId, null);
+    }
+
+    public ReservationCreationResult reserveSeanceDetailed(Seance seance, int participantId, Integer selectedPlaceId) {
         if (cnx == null) {
             return ReservationCreationResult.failure("Connexion a la base indisponible.");
         }
@@ -112,18 +180,44 @@ public class ReservationService {
                 return ReservationCreationResult.failure("Cette seance est complete.");
             }
 
-            int reservationId = insertReservation(seance.getId(), participantId);
+            Connection connection = requireConnection();
+            boolean initialAutoCommit = connection.getAutoCommit();
             boolean paymentRequired = seance.getPrice() > 0.0;
-            return new ReservationCreationResult(
-                true,
-                paymentRequired
-                    ? "Reservation creee. Un paiement Stripe est requis avant validation par le tuteur."
-                    : "Reservation envoyee avec succes. Statut: en attente.",
-                reservationId,
-                paymentRequired
-            );
-        } catch (SQLException e) {
-            return ReservationCreationResult.failure("Reservation impossible: " + e.getMessage());
+
+            try {
+                connection.setAutoCommit(false);
+
+                SelectedPlace selectedPlace = null;
+                if (seance.isPresentiel()) {
+                    selectedPlace = validateSelectedPlace(connection, seance, selectedPlaceId);
+                }
+
+                int reservationId = insertReservation(connection, seance.getId(), participantId);
+                if (selectedPlace != null) {
+                    insertReservationPlace(connection, reservationId, seance.getId(), selectedPlace.id());
+                }
+
+                connection.commit();
+
+                String successMessage = selectedPlace == null
+                    ? "Reservation envoyee avec succes. Statut: en attente."
+                    : "Reservation envoyee avec succes. " + selectedPlace.label() + " est bloquee pour cette seance. Statut: en attente.";
+                if (paymentRequired) {
+                    successMessage = selectedPlace == null
+                        ? "Reservation creee. Un paiement Stripe est requis avant validation par le tuteur."
+                        : "Reservation creee. " + selectedPlace.label()
+                            + " est bloquee pour cette seance. Un paiement Stripe est requis avant validation par le tuteur.";
+                }
+
+                return new ReservationCreationResult(true, successMessage, reservationId, paymentRequired);
+            } catch (SQLException | RuntimeException exception) {
+                connection.rollback();
+                return ReservationCreationResult.failure(resolveReservationFailureMessage(exception));
+            } finally {
+                connection.setAutoCommit(initialAutoCommit);
+            }
+        } catch (SQLException exception) {
+            return ReservationCreationResult.failure("Reservation impossible: " + exception.getMessage());
         }
     }
 
@@ -317,6 +411,52 @@ public class ReservationService {
         }
     }
 
+    public List<SeatSelectionOption> getSeatSelectionOptions(Seance seance) {
+        if (seance == null || seance.getId() <= 0 || !seance.isPresentiel() || cnx == null) {
+            return List.of();
+        }
+
+        List<SeatSelectionOption> options = new ArrayList<>();
+        try (PreparedStatement pst = cnx.prepareStatement(SELECT_SEAT_OPTIONS_BY_SEANCE_SQL)) {
+            pst.setInt(1, STATUS_REFUSED);
+            pst.setInt(2, seance.getId());
+            try (ResultSet rs = pst.executeQuery()) {
+                while (rs.next()) {
+                    Place place = new Place(
+                        rs.getInt("idPlace"),
+                        rs.getInt("numero"),
+                        rs.getInt("rang"),
+                        rs.getInt("colonne"),
+                        rs.getString("etat"),
+                        rs.getInt("idSalle")
+                    );
+                    options.add(new SeatSelectionOption(place, rs.getInt("reserved") > 0));
+                }
+            }
+            return options;
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Chargement du plan de salle impossible: " + exception.getMessage(), exception);
+        }
+    }
+
+    public int countConfiguredSeatsBySalle(Integer salleId) {
+        if (salleId == null || salleId <= 0 || cnx == null) {
+            return 0;
+        }
+
+        try (PreparedStatement pst = cnx.prepareStatement(COUNT_PLACES_BY_SALLE_SQL)) {
+            pst.setInt(1, salleId);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next() ? rs.getInt("total") : 0;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException(
+                "Chargement du nombre de places de la salle impossible: " + exception.getMessage(),
+                exception
+            );
+        }
+    }
+
     public List<TutorReservationRequest> getTutorReservationRequests(int tutorId) {
         List<TutorReservationRequest> requests = new ArrayList<>();
         if (tutorId <= 0 || cnx == null) {
@@ -346,10 +486,16 @@ public class ReservationService {
                 r.student_review,
                 r.rated_at,
                 u.full_name AS participant_name,
-                u.email AS participant_email
+                u.email AS participant_email,
+                CASE
+                    WHEN p.idPlace IS NULL THEN NULL
+                    ELSE CONCAT('Place ', p.numero, ' (rang ', p.rang, ', colonne ', p.colonne, ')')
+                END AS place_label
             FROM reservation r
             INNER JOIN seance s ON s.id = r.seance_id
             INNER JOIN user u ON u.id = r.participant_id
+            LEFT JOIN reservation_place rp ON rp.idReservation = r.id
+            LEFT JOIN place p ON p.idPlace = rp.idPlace
             WHERE s.tuteur_id = ? AND r.cancell_at IS NULL
             ORDER BY
                 CASE WHEN r.status = 0 THEN 0 ELSE 1 END,
@@ -376,7 +522,8 @@ public class ReservationService {
                         rs.getInt("accepted_reservations"),
                         getNullableInteger(rs, "student_rating"),
                         rs.getString("student_review"),
-                        readDateTime(rs, "rated_at")
+                        readDateTime(rs, "rated_at"),
+                        rs.getString("place_label")
                     ));
                 }
             }
@@ -415,10 +562,16 @@ public class ReservationService {
                 p.payment_ref,
                 p.payment_url,
                 p.initiated_at,
-                p.completed_at
+                p.completed_at,
+                CASE
+                    WHEN place.idPlace IS NULL THEN NULL
+                    ELSE CONCAT('Place ', place.numero, ' (rang ', place.rang, ', colonne ', place.colonne, ')')
+                END AS place_label
             FROM reservation r
             INNER JOIN seance s ON s.id = r.seance_id
             LEFT JOIN reservation_payment p ON p.reservation_id = r.id
+            LEFT JOIN reservation_place rp ON rp.idReservation = r.id
+            LEFT JOIN place place ON place.idPlace = rp.idPlace
             WHERE r.participant_id = ? AND r.cancell_at IS NULL
             ORDER BY
                 CASE
@@ -456,7 +609,8 @@ public class ReservationService {
                         readDateTime(rs, "completed_at"),
                         getNullableInteger(rs, "student_rating"),
                         rs.getString("student_review"),
-                        readDateTime(rs, "rated_at")
+                        readDateTime(rs, "rated_at"),
+                        rs.getString("place_label")
                     ));
                 }
             }
@@ -686,18 +840,35 @@ public class ReservationService {
             WHERE id = ? AND status = ? AND cancell_at IS NULL
             """;
 
-        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
-            pst.setInt(1, STATUS_REFUSED);
-            pst.setInt(2, reservationId);
-            pst.setInt(3, STATUS_PENDING);
+        Connection connection = requireConnection();
+        try {
+            boolean initialAutoCommit = connection.getAutoCommit();
+            try {
+                connection.setAutoCommit(false);
 
-            int updatedRows = pst.executeUpdate();
-            if (updatedRows == 0) {
-                return OperationResult.failure("Aucune reservation mise a jour.");
+                try (PreparedStatement pst = connection.prepareStatement(updateSql)) {
+                    pst.setInt(1, STATUS_REFUSED);
+                    pst.setInt(2, reservationId);
+                    pst.setInt(3, STATUS_PENDING);
+
+                    int updatedRows = pst.executeUpdate();
+                    if (updatedRows == 0) {
+                        connection.rollback();
+                        return OperationResult.failure("Aucune reservation mise a jour.");
+                    }
+                }
+
+                deleteReservationPlaceByReservationId(connection, reservationId);
+                connection.commit();
+                return OperationResult.success("Reservation refusee avec succes.");
+            } catch (SQLException exception) {
+                connection.rollback();
+                return OperationResult.failure("Refus impossible: " + exception.getMessage());
+            } finally {
+                connection.setAutoCommit(initialAutoCommit);
             }
-            return OperationResult.success("Reservation refusee avec succes.");
-        } catch (SQLException e) {
-            return OperationResult.failure("Refus impossible: " + e.getMessage());
+        } catch (SQLException exception) {
+            return OperationResult.failure("Refus impossible: " + exception.getMessage());
         }
     }
 
@@ -751,19 +922,36 @@ public class ReservationService {
             WHERE id = ? AND participant_id = ? AND status = ? AND cancell_at IS NULL
             """;
 
-        try (PreparedStatement pst = cnx.prepareStatement(updateSql)) {
-            pst.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
-            pst.setInt(2, reservationId);
-            pst.setInt(3, participantId);
-            pst.setInt(4, STATUS_PENDING);
+        Connection connection = requireConnection();
+        try {
+            boolean initialAutoCommit = connection.getAutoCommit();
+            try {
+                connection.setAutoCommit(false);
 
-            int updatedRows = pst.executeUpdate();
-            if (updatedRows == 0) {
-                return OperationResult.failure("Aucune reservation annulee.");
+                try (PreparedStatement pst = connection.prepareStatement(updateSql)) {
+                    pst.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+                    pst.setInt(2, reservationId);
+                    pst.setInt(3, participantId);
+                    pst.setInt(4, STATUS_PENDING);
+
+                    int updatedRows = pst.executeUpdate();
+                    if (updatedRows == 0) {
+                        connection.rollback();
+                        return OperationResult.failure("Aucune reservation annulee.");
+                    }
+                }
+
+                deleteReservationPlaceByReservationId(connection, reservationId);
+                connection.commit();
+                return OperationResult.success("Reservation annulee avec succes.");
+            } catch (SQLException exception) {
+                connection.rollback();
+                return OperationResult.failure("Annulation impossible: " + exception.getMessage());
+            } finally {
+                connection.setAutoCommit(initialAutoCommit);
             }
-            return OperationResult.success("Reservation annulee avec succes.");
-        } catch (SQLException e) {
-            return OperationResult.failure("Annulation impossible: " + e.getMessage());
+        } catch (SQLException exception) {
+            return OperationResult.failure("Annulation impossible: " + exception.getMessage());
         }
     }
 
@@ -898,7 +1086,8 @@ public class ReservationService {
         int acceptedReservations,
         Integer studentRating,
         String studentReview,
-        LocalDateTime ratedAt
+        LocalDateTime ratedAt,
+        String placeLabel
     ) {
         public boolean isPending() {
             return status == STATUS_PENDING;
@@ -920,6 +1109,10 @@ public class ReservationService {
             return studentRating != null
                 && studentRating >= MIN_STUDENT_RATING
                 && studentRating <= MAX_STUDENT_RATING;
+        }
+
+        public boolean hasPlaceSelection() {
+            return placeLabel != null && !placeLabel.isBlank();
         }
     }
 
@@ -945,7 +1138,8 @@ public class ReservationService {
         LocalDateTime paymentCompletedAt,
         Integer studentRating,
         String studentReview,
-        LocalDateTime ratedAt
+        LocalDateTime ratedAt,
+        String placeLabel
     ) {
         public boolean isPending() {
             return status == STATUS_PENDING;
@@ -987,6 +1181,10 @@ public class ReservationService {
             return studentRating != null
                 && studentRating >= MIN_STUDENT_RATING
                 && studentRating <= MAX_STUDENT_RATING;
+        }
+
+        public boolean hasPlaceSelection() {
+            return placeLabel != null && !placeLabel.isBlank();
         }
     }
 
@@ -1495,6 +1693,50 @@ public class ReservationService {
         return value == null ? null : Timestamp.valueOf(value);
     }
 
+    public record SeatSelectionOption(Place place, boolean reserved) {
+        public int placeId() {
+            return place == null ? 0 : place.getIdPlace();
+        }
+
+        public int row() {
+            return place == null ? 1 : Math.max(1, place.getRang());
+        }
+
+        public int column() {
+            return place == null ? 1 : Math.max(1, place.getColonne());
+        }
+
+        public int rowIndex() {
+            return row() - 1;
+        }
+
+        public int columnIndex() {
+            return column() - 1;
+        }
+
+        public boolean selectable() {
+            return place != null && !reserved && ReservationService.isPlaceUsable(place.getEtat());
+        }
+
+        public String buttonLabel() {
+            return place == null ? "?" : "P" + place.getNumero();
+        }
+
+        public String displayLabel() {
+            return ReservationService.buildPlaceLabel(place);
+        }
+
+        public String positionLabel() {
+            if (place == null) {
+                return "Position inconnue";
+            }
+            return "Rang " + row() + " - Colonne " + column();
+        }
+    }
+
+    private record SelectedPlace(int id, String label) {
+    }
+
     private int countAcceptedReservationsBySeanceId(int seanceId) throws SQLException {
         String sql = """
             SELECT COUNT(*) AS total
@@ -1523,17 +1765,10 @@ public class ReservationService {
         }
     }
 
-    private int insertReservation(int seanceId, int participantId) throws SQLException {
-        String sql = """
-            INSERT INTO reservation (
-                status, reserved_at, cancell_at, notes, seance_id, participant_id,
-                confirmation_email_sent_at, acceptance_email_sent_at, reminder_email_sent_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
-        try (PreparedStatement pst = cnx.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+    private int insertReservation(Connection connection, int seanceId, int participantId) throws SQLException {
+        try (PreparedStatement pst = connection.prepareStatement(INSERT_RESERVATION_SQL, Statement.RETURN_GENERATED_KEYS)) {
             LocalDateTime now = LocalDateTime.now();
-            pst.setInt(1, 0);
+            pst.setInt(1, STATUS_PENDING);
             pst.setTimestamp(2, Timestamp.valueOf(now));
             pst.setTimestamp(3, null);
             pst.setString(4, null);
@@ -1548,8 +1783,115 @@ public class ReservationService {
                     return generatedKeys.getInt(1);
                 }
             }
-            throw new SQLException("Identifiant reservation non genere.");
         }
+
+        throw new SQLException("Creation de reservation impossible: identifiant non genere.");
+    }
+
+    private void insertReservationPlace(Connection connection, int reservationId, int seanceId, int placeId) throws SQLException {
+        try (PreparedStatement pst = connection.prepareStatement(INSERT_RESERVATION_PLACE_SQL)) {
+            pst.setInt(1, reservationId);
+            pst.setInt(2, seanceId);
+            pst.setInt(3, placeId);
+            pst.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
+            pst.executeUpdate();
+        }
+    }
+
+    private void deleteReservationPlaceByReservationId(Connection connection, int reservationId) throws SQLException {
+        try (PreparedStatement pst = connection.prepareStatement(DELETE_RESERVATION_PLACE_BY_RESERVATION_SQL)) {
+            pst.setInt(1, reservationId);
+            pst.executeUpdate();
+        }
+    }
+
+    private SelectedPlace validateSelectedPlace(Connection connection, Seance seance, Integer selectedPlaceId) throws SQLException {
+        if (seance == null || !seance.isPresentiel()) {
+            return null;
+        }
+        if (seance.getSalleId() == null || seance.getSalleId() <= 0) {
+            throw new IllegalArgumentException("Cette seance presentielle ne reference aucune salle valide.");
+        }
+
+        int configuredPlaces = countPlacesForSalle(connection, seance.getSalleId());
+        if (configuredPlaces <= 0) {
+            throw new IllegalArgumentException("Aucune place n'est configuree pour la salle de cette seance.");
+        }
+        if (selectedPlaceId == null || selectedPlaceId <= 0) {
+            throw new IllegalArgumentException("Choisissez une place disponible avant de confirmer la reservation.");
+        }
+
+        try (PreparedStatement pst = connection.prepareStatement(SELECT_PLACE_BY_SEANCE_AND_ID_SQL)) {
+            pst.setInt(1, seance.getId());
+            pst.setInt(2, STATUS_REFUSED);
+            pst.setInt(3, selectedPlaceId);
+            pst.setInt(4, seance.getSalleId());
+
+            try (ResultSet rs = pst.executeQuery()) {
+                if (!rs.next()) {
+                    throw new IllegalArgumentException("La place selectionnee n'appartient pas a la salle de cette seance.");
+                }
+
+                Place place = new Place(
+                    rs.getInt("idPlace"),
+                    rs.getInt("numero"),
+                    rs.getInt("rang"),
+                    rs.getInt("colonne"),
+                    rs.getString("etat"),
+                    rs.getInt("idSalle")
+                );
+
+                if (!isPlaceUsable(place.getEtat())) {
+                    throw new IllegalArgumentException(buildPlaceLabel(place) + " est indisponible pour le moment.");
+                }
+                if (rs.getInt("reserved") > 0) {
+                    throw new IllegalArgumentException(buildPlaceLabel(place) + " vient d'etre reservee. Choisissez-en une autre.");
+                }
+
+                return new SelectedPlace(place.getIdPlace(), buildPlaceLabel(place));
+            }
+        }
+    }
+
+    private int countPlacesForSalle(Connection connection, int salleId) throws SQLException {
+        try (PreparedStatement pst = connection.prepareStatement(COUNT_PLACES_BY_SALLE_SQL)) {
+            pst.setInt(1, salleId);
+            try (ResultSet rs = pst.executeQuery()) {
+                return rs.next() ? rs.getInt("total") : 0;
+            }
+        }
+    }
+
+    private Connection requireConnection() {
+        if (cnx == null) {
+            throw new IllegalStateException("Connexion a la base de donnees indisponible.");
+        }
+        return cnx;
+    }
+
+    private String resolveReservationFailureMessage(Exception exception) {
+        if (exception instanceof SQLIntegrityConstraintViolationException || isSeatAlreadyTakenError(exception)) {
+            return "Cette place vient d'etre reservee par quelqu'un d'autre. Choisissez-en une autre.";
+        }
+
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return "Reservation impossible: une erreur technique est survenue.";
+        }
+
+        return "Reservation impossible: " + message;
+    }
+
+    private boolean isSeatAlreadyTakenError(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null) {
+            return false;
+        }
+
+        String lowered = message.toLowerCase();
+        return lowered.contains("uk_reservation_place_seance_place")
+            || lowered.contains("duplicate")
+            || lowered.contains("duplicata");
     }
 
     private LocalDateTime readDateTime(ResultSet rs, String columnName) throws SQLException {
@@ -1581,5 +1923,16 @@ public class ReservationService {
             );
         }
         return normalized;
+    }
+
+    private static boolean isPlaceUsable(String status) {
+        return status != null && PLACE_STATUS_AVAILABLE.equals(status.trim().toLowerCase());
+    }
+
+    private static String buildPlaceLabel(Place place) {
+        if (place == null) {
+            return "Place inconnue";
+        }
+        return "Place " + place.getNumero() + " (rang " + place.getRang() + ", colonne " + place.getColonne() + ")";
     }
 }

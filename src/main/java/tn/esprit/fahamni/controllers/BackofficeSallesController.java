@@ -6,6 +6,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
@@ -14,9 +15,13 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
@@ -27,30 +32,50 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.geometry.Pos;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.text.TextAlignment;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import tn.esprit.fahamni.Models.AiRoomDesignProposal;
+import tn.esprit.fahamni.Models.AiRoomDesignRequest;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
+import tn.esprit.fahamni.room3d.Room3DPreviewData;
+import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DExportService;
+import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
+import tn.esprit.fahamni.services.AiRoomDesignService;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
+import tn.esprit.fahamni.services.GoogleMapsLocationService;
 import tn.esprit.fahamni.services.SalleEquipementService;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import javafx.util.Duration;
+import java.util.function.Consumer;
 
 public class BackofficeSallesController {
     private static final int DEFAULT_ROWS_PER_PAGE = 20;
     private static final int MAX_VISIBLE_PAGE_BUTTONS = 7;
+    private static final List<PromptSuggestion> AI_PROMPT_SUGGESTIONS = List.of(
+        new PromptSuggestion("Conference", "Je veux une salle de conference pour 30 personnes, en U, avec ecran et acces handicape."),
+        new PromptSuggestion("Laboratoire", "Je veux un laboratoire informatique pour 24 etudiants avec postes fixes et circulation fluide."),
+        new PromptSuggestion("Amphi hybride", "Je veux un amphitheatre hybride pour presentations et captation video."),
+        new PromptSuggestion("Salle modulable", "Je veux une salle de cours lumineuse, modulaire, pour 35 places avec tableau interactif."),
+        new PromptSuggestion("Salle PMR", "Je veux une salle PMR pour ateliers collaboratifs avec mobilier flexible.")
+    );
 
     @FXML
     private TableView<Salle> sallesTable;
@@ -101,6 +126,12 @@ public class BackofficeSallesController {
     private TextField localisationField;
 
     @FXML
+    private Button resolveLocationButton;
+
+    @FXML
+    private Label locationAssistLabel;
+
+    @FXML
     private ComboBox<String> batimentComboBox;
 
     @FXML
@@ -148,12 +179,19 @@ public class BackofficeSallesController {
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
+    private final Room3DExportService room3DExportService = new Room3DExportService();
+    private final AiRoomDesignService aiRoomDesignService = new AiRoomDesignService(salleService);
+    private final GoogleMapsLocationService googleMapsLocationService = new GoogleMapsLocationService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipementCatalog = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final ObservableList<Salle> displayedSalles = FXCollections.observableArrayList();
     private final Map<Integer, FixedEquipmentSelectionControls> fixedEquipmentSelectionControls = new LinkedHashMap<>();
     private final PauseTransition recentSalleHighlight = new PauseTransition(Duration.seconds(4));
+    private GoogleMapsLocationService.ResolvedLocation resolvedMainLocation;
+    private Task<?> locationLookupTask;
+    private boolean locationFieldSyncMuted;
     private int currentPageIndex;
     private int rowsPerPage = DEFAULT_ROWS_PER_PAGE;
     private Integer highlightedSalleId;
@@ -186,7 +224,7 @@ public class BackofficeSallesController {
         hideFeedback();
 
         try {
-            Salle salle = buildSalle(0, null);
+            Salle salle = buildSalleFromControls(mainFormControls(), 0, null);
             salleService.add(salle);
 
             if (!loadSalles()) {
@@ -211,7 +249,7 @@ public class BackofficeSallesController {
         }
 
         try {
-            Salle salle = buildSalle(selectedSalle.getIdSalle(), selectedSalle.getDateDerniereMaintenance());
+            Salle salle = buildSalleFromControls(mainFormControls(), selectedSalle.getIdSalle(), selectedSalle.getDateDerniereMaintenance());
             if (!hasSalleDataChanged(selectedSalle, salle)) {
                 showFeedback("Aucune modification detectee pour cette salle.", true);
                 return;
@@ -267,6 +305,17 @@ public class BackofficeSallesController {
         sallesTable.getSelectionModel().clearSelection();
         clearForm();
         hideFeedback();
+    }
+
+    @FXML
+    private void handleDesignSalleWithAi() {
+        hideFeedback();
+
+        if (!loadEquipementCatalog()) {
+            return;
+        }
+
+        openAiRoomDesignDialog();
     }
 
     @FXML
@@ -366,6 +415,409 @@ public class BackofficeSallesController {
     }
 
     @FXML
+    private void handlePreviewSalle3D() {
+        hideFeedback();
+
+        try {
+            Salle selectedSalle = sallesTable == null ? null : sallesTable.getSelectionModel().getSelectedItem();
+            Salle previewSalle = buildSalleFromControls(
+                mainFormControls(),
+                selectedSalle == null ? 0 : selectedSalle.getIdSalle(),
+                selectedSalle == null ? null : selectedSalle.getDateDerniereMaintenance()
+            );
+            boolean preferGeneratedLayout = selectedSalle == null || hasSalleDataChanged(selectedSalle, previewSalle);
+            Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(previewSalle, preferGeneratedLayout));
+            showFeedback("L'apercu 3D a ete ouvert ou actualise dans une fenetre dediee.", true);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            showFeedback("Apercu 3D impossible : " + resolveMessage(exception), false);
+        }
+    }
+
+    @FXML
+    private void handleOpenExportedSalle3D() {
+        hideFeedback();
+
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Ouvrir un export 3D .j3o");
+        fileChooser.getExtensionFilters().setAll(
+            new javafx.stage.FileChooser.ExtensionFilter("Exports 3D Fahamni (*.j3o)", "*.j3o")
+        );
+
+        java.io.File exportDirectory = room3DExportService.getExportDirectory().toFile();
+        if (exportDirectory.isDirectory()) {
+            fileChooser.setInitialDirectory(exportDirectory);
+        } else {
+            java.io.File projectDirectory = new java.io.File(System.getProperty("user.dir", "."));
+            if (projectDirectory.isDirectory()) {
+                fileChooser.setInitialDirectory(projectDirectory);
+            }
+        }
+
+        java.io.File selectedFile = fileChooser.showOpenDialog(
+            feedbackLabel == null || feedbackLabel.getScene() == null ? null : feedbackLabel.getScene().getWindow()
+        );
+        if (selectedFile == null) {
+            return;
+        }
+
+        try {
+            Room3DViewerLauncher.showExportedScene(selectedFile.toPath());
+            showFeedback("L'export 3D selectionne a ete ouvert dans le viewer.", true);
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            showFeedback("Ouverture .j3o impossible : " + resolveMessage(exception), false);
+        }
+    }
+
+    @FXML
+    private void handleResolveLocation() {
+        hideFeedback();
+
+        if (!googleMapsLocationService.isConfigured()) {
+            showLocationAssistMessage(
+                "GOOGLE_MAPS_API_KEY absente. Configurez la cle avant d'utiliser la verification Google Maps.",
+                "error"
+            );
+            return;
+        }
+
+        final String rawLocation;
+        try {
+            rawLocation = requireText(localisationField.getText(), "Saisissez d'abord une adresse ou un nom d'etablissement.");
+        } catch (IllegalArgumentException exception) {
+            showLocationAssistMessage(resolveMessage(exception), "error");
+            return;
+        }
+
+        startLocationLookup(rawLocation);
+    }
+
+    private void startLocationLookup(String rawLocation) {
+        Task<LocationLookupOutcome> lookupTask = new Task<>() {
+            @Override
+            protected LocationLookupOutcome call() {
+                List<GoogleMapsLocationService.LocationSuggestion> suggestions = googleMapsLocationService.autocomplete(rawLocation);
+                if (!suggestions.isEmpty()) {
+                    return new LocationLookupOutcome(suggestions, null);
+                }
+                return new LocationLookupOutcome(List.of(), googleMapsLocationService.geocodeAddress(rawLocation));
+            }
+        };
+
+        locationLookupTask = lookupTask;
+        updateLocationLookupState(true, "Recherche Google Maps en cours...");
+
+        lookupTask.setOnSucceeded(event -> {
+            if (locationLookupTask != lookupTask) {
+                return;
+            }
+
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+
+            LocationLookupOutcome outcome = lookupTask.getValue();
+            if (outcome == null) {
+                showLocationAssistMessage("Aucune reponse exploitable n'a ete retournee par Google Maps.", "error");
+                return;
+            }
+
+            if (outcome.resolvedLocation() != null) {
+                applyResolvedMainLocation(outcome.resolvedLocation());
+                return;
+            }
+
+            if (outcome.suggestions().isEmpty()) {
+                showLocationAssistMessage(
+                    "Aucune suggestion n'a ete trouvee. Essayez une adresse plus complete ou un nom d'etablissement plus precis.",
+                    "error"
+                );
+                return;
+            }
+
+            Optional<GoogleMapsLocationService.LocationSuggestion> selection = showLocationSuggestionDialog(outcome.suggestions(), rawLocation);
+            if (selection.isEmpty()) {
+                showLocationAssistMessage("Selection annulee. Aucune modification n'a ete appliquee.", null);
+                return;
+            }
+
+            startLocationGeocoding(selection.get());
+        });
+
+        lookupTask.setOnFailed(event -> handleLocationLookupFailure(lookupTask, "Verification impossible : "));
+        lookupTask.setOnCancelled(event -> {
+            if (locationLookupTask != lookupTask) {
+                return;
+            }
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+            showLocationAssistMessage("Verification annulee.", null);
+        });
+
+        Thread lookupThread = new Thread(lookupTask, "fahamni-google-maps-lookup");
+        lookupThread.setDaemon(true);
+        lookupThread.start();
+    }
+
+    private void startLocationGeocoding(GoogleMapsLocationService.LocationSuggestion suggestion) {
+        Task<GoogleMapsLocationService.ResolvedLocation> geocodingTask = new Task<>() {
+            @Override
+            protected GoogleMapsLocationService.ResolvedLocation call() {
+                return googleMapsLocationService.geocodePlaceId(suggestion.placeId());
+            }
+        };
+
+        locationLookupTask = geocodingTask;
+        updateLocationLookupState(true, "Validation de l'adresse selectionnee...");
+
+        geocodingTask.setOnSucceeded(event -> {
+            if (locationLookupTask != geocodingTask) {
+                return;
+            }
+
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+            applyResolvedMainLocation(geocodingTask.getValue());
+        });
+
+        geocodingTask.setOnFailed(event -> handleLocationLookupFailure(geocodingTask, "Validation impossible : "));
+        geocodingTask.setOnCancelled(event -> {
+            if (locationLookupTask != geocodingTask) {
+                return;
+            }
+            locationLookupTask = null;
+            updateLocationLookupState(false, null);
+            showLocationAssistMessage("Validation annulee.", null);
+        });
+
+        Thread geocodingThread = new Thread(geocodingTask, "fahamni-google-maps-geocode");
+        geocodingThread.setDaemon(true);
+        geocodingThread.start();
+    }
+
+    private void handleLocationLookupFailure(Task<?> failedTask, String prefix) {
+        if (locationLookupTask != failedTask) {
+            return;
+        }
+
+        locationLookupTask = null;
+        updateLocationLookupState(false, null);
+        showLocationAssistMessage(prefix + resolveThrowableMessage(failedTask.getException()), "error");
+    }
+
+    private Optional<GoogleMapsLocationService.LocationSuggestion> showLocationSuggestionDialog(
+        List<GoogleMapsLocationService.LocationSuggestion> suggestions,
+        String rawLocation
+    ) {
+        Dialog<GoogleMapsLocationService.LocationSuggestion> dialog = new Dialog<>();
+        dialog.setTitle("Suggestions Google Maps");
+        dialog.setHeaderText(null);
+        dialog.setResizable(true);
+
+        ButtonType confirmButtonType = new ButtonType("Utiliser cette adresse", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL, confirmButtonType);
+        applyCurrentTheme(dialog.getDialogPane());
+        dialog.getDialogPane().getStyleClass().add("backoffice-location-dialog");
+
+        Label titleLabel = new Label("Choisissez l'adresse la plus proche");
+        titleLabel.getStyleClass().add("backoffice-location-dialog-title");
+
+        Label introLabel = buildDialogIntro(
+            "Google Maps a trouve plusieurs correspondances pour \"" + rawLocation + "\"."
+        );
+        introLabel.getStyleClass().add("backoffice-location-dialog-copy");
+
+        Label suggestionCountChip = new Label(
+            suggestions.size() + (suggestions.size() > 1 ? " suggestions" : " suggestion")
+        );
+        suggestionCountChip.getStyleClass().setAll("workspace-chip", "backoffice-location-dialog-chip");
+
+        Region heroSpacer = new Region();
+        HBox.setHgrow(heroSpacer, Priority.ALWAYS);
+
+        HBox heroHeader = new HBox(12.0, titleLabel, heroSpacer, suggestionCountChip);
+        heroHeader.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        VBox heroBlock = new VBox(8.0, heroHeader, introLabel);
+        heroBlock.getStyleClass().add("backoffice-location-dialog-hero");
+
+        ListView<GoogleMapsLocationService.LocationSuggestion> listView = new ListView<>(FXCollections.observableArrayList(suggestions));
+        listView.setPrefHeight(Math.min(280.0, Math.max(180.0, suggestions.size() * 52.0)));
+        listView.getStyleClass().add("backoffice-location-dialog-list");
+        listView.setCellFactory(view -> new ListCell<>() {
+            @Override
+            protected void updateItem(GoogleMapsLocationService.LocationSuggestion item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                    return;
+                }
+
+                Label badgeLabel = new Label("Google Maps");
+                badgeLabel.getStyleClass().add("backoffice-location-suggestion-chip");
+
+                Label primaryLabel = new Label(extractLocationSuggestionPrimary(item.displayText()));
+                primaryLabel.setWrapText(true);
+                primaryLabel.getStyleClass().add("backoffice-location-suggestion-title");
+
+                Label secondaryLabel = new Label(extractLocationSuggestionSecondary(item.displayText()));
+                secondaryLabel.setWrapText(true);
+                secondaryLabel.getStyleClass().add("backoffice-location-suggestion-copy");
+
+                VBox textBlock = new VBox(4.0, primaryLabel, secondaryLabel);
+                textBlock.setFillWidth(true);
+
+                Region cardSpacer = new Region();
+                HBox.setHgrow(cardSpacer, Priority.ALWAYS);
+
+                HBox card = new HBox(12.0, textBlock, cardSpacer, badgeLabel);
+                card.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                card.getStyleClass().add("backoffice-location-suggestion-card");
+
+                setText(null);
+                setGraphic(card);
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            }
+        });
+        listView.getSelectionModel().clearSelection();
+        listView.setOnMouseClicked(event -> {
+            if (event.getClickCount() > 1 && listView.getSelectionModel().getSelectedItem() != null) {
+                dialog.setResult(listView.getSelectionModel().getSelectedItem());
+                dialog.close();
+            }
+        });
+
+        Label helperTitle = new Label("A noter");
+        helperTitle.getStyleClass().add("backoffice-location-dialog-note-title");
+
+        Label helperLabel = new Label(
+            "Les suggestions Google Maps valident l'adresse generale. Les details internes comme le bloc, l'etage ou la salle restent geres localement."
+        );
+        helperLabel.setWrapText(true);
+        helperLabel.getStyleClass().add("backoffice-location-dialog-note-copy");
+
+        VBox helperCard = new VBox(4.0, helperTitle, helperLabel);
+        helperCard.getStyleClass().add("backoffice-location-dialog-note");
+
+        VBox content = new VBox(14.0, heroBlock, listView, helperCard);
+        content.setFillWidth(true);
+        content.getStyleClass().add("backoffice-location-dialog-content");
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefWidth(660.0);
+
+        Button confirmButton = (Button) dialog.getDialogPane().lookupButton(confirmButtonType);
+        if (confirmButton != null) {
+            confirmButton.getStyleClass().addAll("backoffice-primary-button", "backoffice-dialog-save-button");
+            confirmButton.disableProperty().bind(listView.getSelectionModel().selectedItemProperty().isNull());
+            confirmButton.setDefaultButton(true);
+        }
+
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().addAll("backoffice-secondary-button", "backoffice-dialog-cancel-button");
+            cancelButton.setCancelButton(true);
+        }
+
+        dialog.setResultConverter(buttonType ->
+            buttonType == confirmButtonType ? listView.getSelectionModel().getSelectedItem() : null
+        );
+
+        Optional<GoogleMapsLocationService.LocationSuggestion> selection = dialog.showAndWait();
+        if (confirmButton != null) {
+            confirmButton.disableProperty().unbind();
+        }
+        return selection;
+    }
+
+    private String extractLocationSuggestionPrimary(String displayText) {
+        String normalized = firstNonBlank(displayText, "Adresse suggeree");
+        int commaIndex = normalized.indexOf(',');
+        if (commaIndex <= 0) {
+            return normalized;
+        }
+        return normalized.substring(0, commaIndex).trim();
+    }
+
+    private String extractLocationSuggestionSecondary(String displayText) {
+        String normalized = firstNonBlank(displayText, "");
+        int commaIndex = normalized.indexOf(',');
+        if (commaIndex <= 0 || commaIndex >= normalized.length() - 1) {
+            return "Correspondance Google Maps prete a etre validee.";
+        }
+        return normalized.substring(commaIndex + 1).trim();
+    }
+
+    private void applyResolvedMainLocation(GoogleMapsLocationService.ResolvedLocation resolvedLocation) {
+        if (resolvedLocation == null) {
+            showLocationAssistMessage("Google Maps n'a retourne aucun detail exploitable.", "error");
+            return;
+        }
+
+        resolvedMainLocation = resolvedLocation;
+        locationFieldSyncMuted = true;
+        localisationField.setText(resolvedLocation.formattedAddress());
+        localisationField.positionCaret(localisationField.getText().length());
+        locationFieldSyncMuted = false;
+
+        String prefix = resolvedLocation.partialMatch() ? "Adresse rapprochee validee" : "Adresse validee";
+        showLocationAssistMessage(
+            prefix
+                + " via Google Maps. Coordonnees: "
+                + resolvedLocation.coordinatesLabel()
+                + ". Utilisez Batiment et Etage pour les details internes.",
+            "success"
+        );
+    }
+
+    private void handleMainLocationEdited(String oldValue, String newValue) {
+        if (locationFieldSyncMuted || Objects.equals(trimToNull(oldValue), trimToNull(newValue))) {
+            return;
+        }
+
+        resolvedMainLocation = null;
+        hideLocationAssistMessage();
+    }
+
+    private void updateLocationLookupState(boolean running, String progressMessage) {
+        if (resolveLocationButton != null) {
+            resolveLocationButton.setDisable(running);
+        }
+
+        if (running && progressMessage != null) {
+            showLocationAssistMessage(progressMessage, null);
+        }
+    }
+
+    private void resetMainLocationResolutionState() {
+        resolvedMainLocation = null;
+        hideLocationAssistMessage();
+    }
+
+    private void showLocationAssistMessage(String message, String tone) {
+        if (locationAssistLabel == null) {
+            return;
+        }
+
+        locationAssistLabel.setText(firstNonBlank(message, ""));
+        locationAssistLabel.getStyleClass().setAll("backoffice-inline-note");
+        if ("success".equals(tone) || "error".equals(tone)) {
+            locationAssistLabel.getStyleClass().add(tone);
+        }
+        locationAssistLabel.setManaged(true);
+        locationAssistLabel.setVisible(true);
+    }
+
+    private void hideLocationAssistMessage() {
+        if (locationAssistLabel == null) {
+            return;
+        }
+
+        locationAssistLabel.setText("");
+        locationAssistLabel.getStyleClass().setAll("backoffice-inline-note");
+        locationAssistLabel.setManaged(false);
+        locationAssistLabel.setVisible(false);
+    }
+
+    @FXML
     private void handlePreviousPage() {
         if (currentPageIndex <= 0) {
             return;
@@ -414,8 +866,11 @@ public class BackofficeSallesController {
         batimentComboBox.getItems().setAll(salleService.getAvailableBatiments());
         typeComboBox.getItems().setAll(salleService.getAvailableTypes());
         etatComboBox.getItems().setAll(salleService.getAvailableEtats());
-        dispositionComboBox.getItems().setAll(salleService.getAvailableDispositions());
         etageComboBox.getItems().setAll(0, 1, 2, 3, 4);
+        typeComboBox.valueProperty().addListener((obs, oldValue, newValue) ->
+            refreshDispositionOptions(newValue, dispositionComboBox == null ? null : dispositionComboBox.getValue())
+        );
+        localisationField.textProperty().addListener((obs, oldValue, newValue) -> handleMainLocationEdited(oldValue, newValue));
     }
 
     private void configurePagination() {
@@ -452,23 +907,14 @@ public class BackofficeSallesController {
 
     private void populateForm(Salle salle) {
         if (salle == null) {
+            resetMainLocationResolutionState();
             updateSelectionBadge(null);
             return;
         }
 
-        nomField.setText(salle.getNom());
-        capaciteSpinner.getValueFactory().setValue(salle.getCapacite());
-        localisationField.setText(salle.getLocalisation());
-        batimentComboBox.setValue(normalizeBatimentValue(salle.getBatiment()));
-        typeComboBox.setValue(salle.getTypeSalle());
-        etatComboBox.setValue(salle.getEtat());
-        etageComboBox.setValue(normalizeEtageValue(salle.getEtage()));
-        dispositionComboBox.setValue(salle.getTypeDisposition());
-        accesHandicapeCheckBox.setSelected(salle.isAccesHandicape());
-        statutDetailleField.setText(defaultString(salle.getStatutDetaille()));
-        descriptionArea.setText(defaultString(salle.getDescription()));
+        applySalleDraftToControls(salle, mainFormControls());
+        resetMainLocationResolutionState();
         updateFixedEquipmentSummary(salle.getIdSalle());
-
         updateSelectionBadge(salle);
     }
 
@@ -480,13 +926,64 @@ public class BackofficeSallesController {
         typeComboBox.setValue(typeComboBox.getItems().isEmpty() ? null : typeComboBox.getItems().get(0));
         etatComboBox.setValue(etatComboBox.getItems().isEmpty() ? null : etatComboBox.getItems().get(0));
         etageComboBox.setValue(null);
-        dispositionComboBox.setValue(null);
+        refreshDispositionOptions(typeComboBox.getValue(), null);
         accesHandicapeCheckBox.setSelected(false);
         statutDetailleField.clear();
         descriptionArea.clear();
         updateFixedEquipmentSummary(null);
+        resetMainLocationResolutionState();
 
         updateSelectionBadge(null);
+    }
+
+    private SalleFormControls mainFormControls() {
+        return new SalleFormControls(
+            nomField,
+            capaciteSpinner,
+            localisationField,
+            batimentComboBox,
+            typeComboBox,
+            etatComboBox,
+            etageComboBox,
+            dispositionComboBox,
+            accesHandicapeCheckBox,
+            statutDetailleField,
+            descriptionArea
+        );
+    }
+
+    private void applySalleDraftToControls(Salle salle, SalleFormControls controls) {
+        if (salle == null) {
+            return;
+        }
+
+        controls.nomField().setText(defaultString(salle.getNom()));
+        controls.capaciteSpinner().getValueFactory().setValue(Math.max(1, salle.getCapacite()));
+        controls.localisationField().setText(defaultString(salle.getLocalisation()));
+        controls.batimentComboBox().setValue(resolveAllowedValue(controls.batimentComboBox(), salle.getBatiment()));
+        controls.typeComboBox().setValue(resolveAllowedValue(controls.typeComboBox(), salle.getTypeSalle()));
+        controls.etatComboBox().setValue(resolveAllowedValue(controls.etatComboBox(), salle.getEtat()));
+        controls.etageComboBox().setValue(resolveAllowedValue(controls.etageComboBox(), normalizeEtageValue(salle.getEtage())));
+        refreshDispositionOptions(controls.dispositionComboBox(), salle.getTypeSalle(), salle.getTypeDisposition());
+        controls.accesHandicapeCheckBox().setSelected(salle.isAccesHandicape());
+        controls.statutDetailleField().setText(defaultString(salle.getStatutDetaille()));
+        controls.descriptionArea().setText(defaultString(salle.getDescription()));
+    }
+
+    private void refreshDispositionOptions(String typeSalle, String preferredDisposition) {
+        refreshDispositionOptions(dispositionComboBox, typeSalle, preferredDisposition);
+    }
+
+    private void refreshDispositionOptions(ComboBox<String> targetComboBox, String typeSalle, String preferredDisposition) {
+        if (targetComboBox == null) {
+            return;
+        }
+
+        targetComboBox.getItems().setAll(salleService.getAvailableDispositionsForType(typeSalle));
+        targetComboBox.setDisable(targetComboBox.getItems().size() <= 1);
+
+        String resolvedDisposition = salleService.resolveDispositionForType(typeSalle, preferredDisposition);
+        targetComboBox.setValue(resolvedDisposition);
     }
 
     private void applyFilter(String filterText) {
@@ -515,13 +1012,17 @@ public class BackofficeSallesController {
             || contains(salle.getEtat(), filterText);
     }
 
-    private Salle buildSalle(int idSalle, LocalDate maintenanceDate) {
-        String nom = requireText(nomField.getText(), "Le nom de la salle est obligatoire.");
-        int capacite = parsePositiveInteger(capaciteSpinner.getEditor().getText(), "La capacite doit etre un entier positif.");
-        String localisation = requireText(localisationField.getText(), "La localisation est obligatoire.");
-        String batiment = requireText(batimentComboBox.getValue(), "Le batiment est obligatoire.");
-        String typeSalle = requireText(typeComboBox.getValue(), "Le type de salle est obligatoire.");
-        String etat = requireText(etatComboBox.getValue(), "L'etat de la salle est obligatoire.");
+    private Salle buildSalleFromControls(SalleFormControls controls, int idSalle, LocalDate maintenanceDate) {
+        String nom = requireText(controls.nomField().getText(), "Le nom de la salle est obligatoire.");
+        int capacite = parsePositiveInteger(
+            controls.capaciteSpinner().getEditor().getText(),
+            "La capacite doit etre un entier positif."
+        );
+        String localisation = requireText(controls.localisationField().getText(), "La localisation est obligatoire.");
+        String batiment = requireText(controls.batimentComboBox().getValue(), "Le batiment est obligatoire.");
+        String typeSalle = requireText(controls.typeComboBox().getValue(), "Le type de salle est obligatoire.");
+        String etat = requireText(controls.etatComboBox().getValue(), "L'etat de la salle est obligatoire.");
+        String disposition = salleService.resolveDispositionForType(typeSalle, controls.dispositionComboBox().getValue());
 
         return new Salle(
             idSalle,
@@ -530,12 +1031,12 @@ public class BackofficeSallesController {
             localisation,
             typeSalle,
             etat,
-            trimToNull(descriptionArea.getText()),
+            trimToNull(controls.descriptionArea().getText()),
             batiment,
-            etageComboBox.getValue(),
-            trimToNull(dispositionComboBox.getValue()),
-            accesHandicapeCheckBox.isSelected(),
-            trimToNull(statutDetailleField.getText()),
+            controls.etageComboBox().getValue(),
+            disposition,
+            controls.accesHandicapeCheckBox().isSelected(),
+            trimToNull(controls.statutDetailleField().getText()),
             maintenanceDate
         );
     }
@@ -659,12 +1160,11 @@ public class BackofficeSallesController {
         return etage;
     }
 
-    private String normalizeBatimentValue(String batiment) {
-        String normalizedBatiment = trimToNull(batiment);
-        if (normalizedBatiment == null || !batimentComboBox.getItems().contains(normalizedBatiment)) {
+    private <T> T resolveAllowedValue(ComboBox<T> comboBox, T value) {
+        if (comboBox == null || value == null || !comboBox.getItems().contains(value)) {
             return null;
         }
-        return normalizedBatiment;
+        return value;
     }
 
     private boolean loadEquipementCatalog() {
@@ -686,24 +1186,46 @@ public class BackofficeSallesController {
     }
 
     private void renderFixedEquipmentChoices(VBox container, Label summaryLabel, int salleId) {
-        fixedEquipmentSelectionControls.clear();
+        renderFixedEquipmentChoices(container, summaryLabel, salleId, fixedEquipmentSelectionControls, null);
+    }
+
+    private void renderFixedEquipmentChoices(
+        VBox container,
+        Label summaryLabel,
+        int salleId,
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls,
+        Consumer<Map<Integer, Integer>> onSelectionChanged
+    ) {
+        selectionControls.clear();
         container.getChildren().clear();
 
         if (equipementCatalog.isEmpty()) {
             Label emptyLabel = buildDialogIntro("Aucun equipement n'est disponible pour une affectation fixe.");
             container.getChildren().add(emptyLabel);
-            updateDialogFixedEquipmentSummary(summaryLabel);
+            updateDialogFixedEquipmentSummary(summaryLabel, selectionControls);
             return;
         }
 
         for (Equipement equipement : equipementCatalog) {
-            container.getChildren().add(createFixedEquipmentChoiceCard(equipement, summaryLabel, salleId));
+            container.getChildren().add(
+                createFixedEquipmentChoiceCard(equipement, summaryLabel, salleId, selectionControls, onSelectionChanged)
+            );
         }
 
-        updateDialogFixedEquipmentSummary(summaryLabel);
+        updateDialogFixedEquipmentSummary(summaryLabel, selectionControls);
     }
 
     private VBox createFixedEquipmentChoiceCard(Equipement equipement, Label summaryLabel, int salleId) {
+        return createFixedEquipmentChoiceCard(equipement, summaryLabel, salleId, fixedEquipmentSelectionControls, null);
+    }
+
+    private VBox createFixedEquipmentChoiceCard(
+        Equipement equipement,
+        Label summaryLabel,
+        int salleId,
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls,
+        Consumer<Map<Integer, Integer>> onSelectionChanged
+    ) {
         VBox card = new VBox(8.0);
         card.getStyleClass().add("reservation-equipment-choice-card");
         card.setMaxWidth(Double.MAX_VALUE);
@@ -756,13 +1278,17 @@ public class BackofficeSallesController {
         stockLabel.getStyleClass().add("backoffice-panel-copy");
 
         FixedEquipmentSelectionControls controls = new FixedEquipmentSelectionControls(checkBox, quantitySpinner, card, selectable);
-        fixedEquipmentSelectionControls.put(equipement.getIdEquipement(), controls);
+        selectionControls.put(equipement.getIdEquipement(), controls);
 
         checkBox.selectedProperty().addListener((obs, oldValue, newValue) -> {
             updateFixedEquipmentSelectionState(controls);
-            updateDialogFixedEquipmentSummary(summaryLabel);
+            updateDialogFixedEquipmentSummary(summaryLabel, selectionControls);
+            notifyEquipmentSelectionChanged(selectionControls, onSelectionChanged);
         });
-        quantitySpinner.valueProperty().addListener((obs, oldValue, newValue) -> updateDialogFixedEquipmentSummary(summaryLabel));
+        quantitySpinner.valueProperty().addListener((obs, oldValue, newValue) -> {
+            updateDialogFixedEquipmentSummary(summaryLabel, selectionControls);
+            notifyEquipmentSelectionChanged(selectionControls, onSelectionChanged);
+        });
 
         card.getChildren().addAll(topRow, stockLabel);
         if (!selectable) {
@@ -807,17 +1333,30 @@ public class BackofficeSallesController {
     }
 
     private void clearFixedEquipmentSelection(Label summaryLabel) {
-        fixedEquipmentSelectionControls.values().forEach(controls -> {
+        clearFixedEquipmentSelection(summaryLabel, fixedEquipmentSelectionControls);
+    }
+
+    private void clearFixedEquipmentSelection(
+        Label summaryLabel,
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls
+    ) {
+        selectionControls.values().forEach(controls -> {
             controls.checkBox().setSelected(false);
             controls.quantitySpinner().getValueFactory().setValue(1);
             updateFixedEquipmentSelectionState(controls);
         });
-        updateDialogFixedEquipmentSummary(summaryLabel);
+        updateDialogFixedEquipmentSummary(summaryLabel, selectionControls);
     }
 
     private Map<Integer, Integer> getSelectedFixedEquipementQuantites() {
+        return getSelectedFixedEquipementQuantites(fixedEquipmentSelectionControls);
+    }
+
+    private Map<Integer, Integer> getSelectedFixedEquipementQuantites(
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls
+    ) {
         LinkedHashMap<Integer, Integer> equipementQuantites = new LinkedHashMap<>();
-        for (Map.Entry<Integer, FixedEquipmentSelectionControls> entry : fixedEquipmentSelectionControls.entrySet()) {
+        for (Map.Entry<Integer, FixedEquipmentSelectionControls> entry : selectionControls.entrySet()) {
             FixedEquipmentSelectionControls controls = entry.getValue();
             if (!controls.checkBox().isSelected()) {
                 continue;
@@ -842,7 +1381,14 @@ public class BackofficeSallesController {
     }
 
     private void updateDialogFixedEquipmentSummary(Label summaryLabel) {
-        Map<Integer, Integer> selectedQuantities = getSelectedFixedEquipementQuantites();
+        updateDialogFixedEquipmentSummary(summaryLabel, fixedEquipmentSelectionControls);
+    }
+
+    private void updateDialogFixedEquipmentSummary(
+        Label summaryLabel,
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls
+    ) {
+        Map<Integer, Integer> selectedQuantities = getSelectedFixedEquipementQuantites(selectionControls);
         int selectedCount = selectedQuantities.size();
         int totalUnits = selectedQuantities.values().stream().mapToInt(Integer::intValue).sum();
         summaryLabel.setText(
@@ -856,10 +1402,1001 @@ public class BackofficeSallesController {
         );
     }
 
+    private void applyFixedEquipementSelection(
+        Map<Integer, Integer> suggestedQuantities,
+        Label summaryLabel,
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls,
+        Consumer<Map<Integer, Integer>> onSelectionChanged
+    ) {
+        clearFixedEquipmentSelection(summaryLabel, selectionControls);
+        if (suggestedQuantities == null || suggestedQuantities.isEmpty()) {
+            notifyEquipmentSelectionChanged(selectionControls, onSelectionChanged);
+            return;
+        }
+
+        for (Map.Entry<Integer, Integer> entry : suggestedQuantities.entrySet()) {
+            FixedEquipmentSelectionControls controls = selectionControls.get(entry.getKey());
+            if (controls == null || !controls.selectable()) {
+                continue;
+            }
+
+            controls.checkBox().setSelected(true);
+            if (controls.quantitySpinner().getValueFactory() instanceof SpinnerValueFactory.IntegerSpinnerValueFactory valueFactory) {
+                valueFactory.setMax(Math.max(valueFactory.getMax(), Math.max(1, entry.getValue())));
+            }
+            controls.quantitySpinner().getValueFactory().setValue(Math.max(1, entry.getValue()));
+            updateFixedEquipmentSelectionState(controls);
+        }
+
+        updateDialogFixedEquipmentSummary(summaryLabel, selectionControls);
+        notifyEquipmentSelectionChanged(selectionControls, onSelectionChanged);
+    }
+
+    private void notifyEquipmentSelectionChanged(
+        Map<Integer, FixedEquipmentSelectionControls> selectionControls,
+        Consumer<Map<Integer, Integer>> onSelectionChanged
+    ) {
+        if (onSelectionChanged != null) {
+            onSelectionChanged.accept(getSelectedFixedEquipementQuantites(selectionControls));
+        }
+    }
+
     private void updateFixedEquipmentSummary(Integer salleId) {
         if (manageFixedEquipementsButton != null) {
             manageFixedEquipementsButton.setDisable(salleId == null || salleId <= 0);
         }
+    }
+
+    private VBox labelledField(String labelText, Node field) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("backoffice-form-label");
+
+        VBox wrapper = new VBox(6.0, label, field);
+        wrapper.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(wrapper, Priority.ALWAYS);
+        return wrapper;
+    }
+
+    private String defaultAiBrief() {
+        String type = trimToNull(typeComboBox == null ? null : typeComboBox.getValue());
+        String disposition = trimToNull(dispositionComboBox == null ? null : dispositionComboBox.getValue());
+        int capacity = resolveCurrentCapacityDraft();
+
+        StringBuilder builder = new StringBuilder("Je veux une salle");
+        if (type != null) {
+            builder.append(" de type ").append(type);
+        }
+        builder.append(" pour ").append(capacity).append(" places");
+        if (disposition != null) {
+            builder.append(" avec une disposition ").append(disposition);
+        }
+        builder.append(".");
+        return builder.toString();
+    }
+
+    private int resolveCurrentCapacityDraft() {
+        return resolveCapacityDraft(capaciteSpinner);
+    }
+
+    private void openAiRoomDesignDialog() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Conception AI de salle");
+        dialog.setHeaderText(null);
+        dialog.setResizable(true);
+
+        ButtonType previewButtonType = new ButtonType("Apercu 3D", ButtonBar.ButtonData.LEFT);
+        ButtonType createButtonType = new ButtonType("Creer la salle", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().setAll(ButtonType.CANCEL, previewButtonType, createButtonType);
+        applyCurrentTheme(dialog.getDialogPane());
+        dialog.getDialogPane().getStyleClass().add("backoffice-room-equipment-dialog");
+
+        TextArea briefArea = new TextArea(defaultAiBrief());
+        briefArea.setPromptText("Ex: Je veux une salle de conference pour 30 personnes, en U, avec projecteur et acces handicape.");
+        briefArea.setWrapText(true);
+        briefArea.setPrefRowCount(5);
+        briefArea.getStyleClass().add("backoffice-form-textarea");
+
+        Button generateProposalButton = new Button("Construction intelligente \u2728");
+        generateProposalButton.setMaxWidth(Region.USE_PREF_SIZE);
+        generateProposalButton.getStyleClass().addAll("backoffice-room-preview-button", "ai-dialog-generate-button");
+        generateProposalButton.setContentDisplay(ContentDisplay.LEFT);
+        generateProposalButton.setGraphicTextGap(8.0);
+        ProgressIndicator generateButtonLoadingIndicator = new ProgressIndicator();
+        generateButtonLoadingIndicator.setPrefSize(16.0, 16.0);
+        generateButtonLoadingIndicator.setMaxSize(16.0, 16.0);
+        generateButtonLoadingIndicator.getStyleClass().add("ai-dialog-button-spinner");
+        Button variantButton = new Button("Nouvelle variante");
+        variantButton.setMaxWidth(Region.USE_PREF_SIZE);
+        variantButton.getStyleClass().addAll("backoffice-secondary-button", "ai-dialog-variant-button");
+        Button cancelGenerationButton = new Button("Annuler");
+        cancelGenerationButton.setMaxWidth(Region.USE_PREF_SIZE);
+        cancelGenerationButton.getStyleClass().addAll("backoffice-secondary-button", "ai-dialog-cancel-generation-button");
+
+        Label dialogFeedbackLabel = new Label();
+        dialogFeedbackLabel.setWrapText(true);
+        dialogFeedbackLabel.setManaged(false);
+        dialogFeedbackLabel.setVisible(false);
+        dialogFeedbackLabel.getStyleClass().add("backoffice-feedback");
+
+        ProgressIndicator generationIndicator = new ProgressIndicator();
+        generationIndicator.setPrefSize(28.0, 28.0);
+        generationIndicator.getStyleClass().add("ai-dialog-progress");
+
+        Label generationStatusTitle = new Label("Construction intelligente en cours...");
+        generationStatusTitle.getStyleClass().add("ai-dialog-status-title");
+        Label generationStatusCopy = new Label("Analyse du prompt, preparation des champs et suggestion des equipements...");
+        generationStatusCopy.setWrapText(true);
+        generationStatusCopy.getStyleClass().add("ai-dialog-status-copy");
+
+        VBox generationStatusTexts = new VBox(2.0, generationStatusTitle, generationStatusCopy);
+        HBox generationStatusBanner = new HBox(12.0, generationIndicator, generationStatusTexts);
+        generationStatusBanner.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        generationStatusBanner.setManaged(false);
+        generationStatusBanner.setVisible(false);
+        generationStatusBanner.getStyleClass().add("ai-dialog-status-banner");
+
+        SalleFormControls dialogControls = createAiDialogFormControls();
+        initializeAiDialogFormControls(dialogControls);
+        AiDesignDialogState dialogState = new AiDesignDialogState();
+        Map<Integer, FixedEquipmentSelectionControls> aiEquipmentSelectionControls = new LinkedHashMap<>();
+
+        Label dialogTitle = new Label("Concevoir une salle avec assistance intelligente");
+        dialogTitle.getStyleClass().addAll("backoffice-room-equipment-dialog-title", "ai-dialog-hero-title");
+
+        Label dialogSubtitle = buildDialogIntro(
+            "Racontez l'espace voulu, laissez l'intelligence proposer une base, puis ajustez-la avant l'aperçu 3D."
+        );
+        dialogSubtitle.getStyleClass().add("ai-dialog-hero-copy");
+
+        VBox heroBlock = new VBox(8.0, dialogTitle, dialogSubtitle);
+        heroBlock.getStyleClass().add("ai-dialog-hero");
+
+        Label formSectionTitle = new Label("Ajustez les champs avant creation");
+        formSectionTitle.getStyleClass().addAll("backoffice-section-title", "ai-dialog-section-title");
+
+        Label equipmentSummaryChip = new Label("Aucun fixe");
+        equipmentSummaryChip.getStyleClass().setAll("workspace-chip", "workspace-chip-muted");
+        Label equipmentRecapLabel = buildDialogIntro("Materiel fixe retenu: aucun.");
+
+        Consumer<Map<Integer, Integer>> equipmentSelectionHandler = selectedQuantities ->
+            handleAiDialogEquipmentSelectionChanged(dialogControls, dialogState, equipmentRecapLabel, selectedQuantities);
+
+        VBox equipmentChoicesContainer = new VBox(8.0);
+        equipmentChoicesContainer.setFillWidth(true);
+        renderFixedEquipmentChoices(
+            equipmentChoicesContainer,
+            equipmentSummaryChip,
+            0,
+            aiEquipmentSelectionControls,
+            equipmentSelectionHandler
+        );
+        handleAiDialogEquipmentSelectionChanged(
+            dialogControls,
+            dialogState,
+            equipmentRecapLabel,
+            getSelectedFixedEquipementQuantites(aiEquipmentSelectionControls)
+        );
+
+        attachAiDialogReactiveBehaviors(dialogControls, dialogState);
+
+        VBox formContent = new VBox(
+            16.0,
+            heroBlock,
+            buildAiDialogPromptSection(
+                briefArea,
+                generateProposalButton,
+                variantButton,
+                cancelGenerationButton,
+                generationStatusBanner,
+                dialogFeedbackLabel
+            ),
+            formSectionTitle,
+            buildAiDialogFormContent(dialogControls),
+            buildAiDialogEquipmentSection(equipmentSummaryChip, equipmentRecapLabel, equipmentChoicesContainer)
+        );
+        formContent.setFillWidth(true);
+        formContent.getStyleClass().add("backoffice-room-equipment-dialog-content");
+
+        ScrollPane scrollPane = new ScrollPane(formContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setPrefViewportHeight(640.0);
+        scrollPane.getStyleClass().addAll("reservation-choice-scroll", "backoffice-room-equipment-dialog-scroll");
+
+        dialog.getDialogPane().setContent(scrollPane);
+        dialog.getDialogPane().setPrefWidth(780.0);
+        dialog.getDialogPane().setPrefHeight(Region.USE_COMPUTED_SIZE);
+        dialog.getDialogPane().setMinHeight(Region.USE_PREF_SIZE);
+
+        Button previewButton = (Button) dialog.getDialogPane().lookupButton(previewButtonType);
+        if (previewButton != null) {
+            previewButton.getStyleClass().addAll("backoffice-room-preview-button");
+        }
+
+        Button createButton = (Button) dialog.getDialogPane().lookupButton(createButtonType);
+        if (createButton != null) {
+            createButton.getStyleClass().addAll("backoffice-primary-button", "backoffice-dialog-save-button");
+        }
+
+        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.getStyleClass().addAll("backoffice-secondary-button", "backoffice-dialog-cancel-button");
+            cancelButton.setCancelButton(true);
+        }
+
+        updateAiDialogActionState(
+            briefArea,
+            dialogState,
+            generateProposalButton,
+            generateButtonLoadingIndicator,
+            variantButton,
+            cancelGenerationButton,
+            previewButton,
+            createButton,
+            generationStatusBanner
+        );
+        briefArea.textProperty().addListener((obs, oldValue, newValue) ->
+            updateAiDialogActionState(
+                briefArea,
+                dialogState,
+                generateProposalButton,
+                generateButtonLoadingIndicator,
+                variantButton,
+                cancelGenerationButton,
+                previewButton,
+                createButton,
+                generationStatusBanner
+            )
+        );
+
+        generateProposalButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            startAiDialogGeneration(
+                briefArea,
+                dialogControls,
+                dialogState,
+                aiEquipmentSelectionControls,
+                equipmentSummaryChip,
+                equipmentRecapLabel,
+                dialogFeedbackLabel,
+                generateProposalButton,
+                generateButtonLoadingIndicator,
+                variantButton,
+                cancelGenerationButton,
+                previewButton,
+                createButton,
+                generationStatusBanner
+            );
+        });
+
+        variantButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            startAiDialogGeneration(
+                briefArea,
+                dialogControls,
+                dialogState,
+                aiEquipmentSelectionControls,
+                equipmentSummaryChip,
+                equipmentRecapLabel,
+                dialogFeedbackLabel,
+                generateProposalButton,
+                generateButtonLoadingIndicator,
+                variantButton,
+                cancelGenerationButton,
+                previewButton,
+                createButton,
+                generationStatusBanner
+            );
+        });
+
+        cancelGenerationButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            event.consume();
+            Task<AiRoomDesignProposal> generationTask = dialogState.generationTask();
+            if (generationTask != null) {
+                generationTask.cancel(true);
+            }
+        });
+
+        if (previewButton != null) {
+            previewButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                event.consume();
+                hideDialogFeedback(dialogFeedbackLabel);
+
+                try {
+                    Salle draftSalle = buildSalleFromControls(dialogControls, 0, null);
+                    showAiDialogPreview(draftSalle, dialogState.proposal(), dialogState.selectedFixedEquipmentSummary());
+                    showDialogFeedback(dialogFeedbackLabel, "L'apercu 3D de la proposition a ete ouvert.", true);
+                } catch (IllegalArgumentException | IllegalStateException exception) {
+                    showDialogFeedback(dialogFeedbackLabel, "Apercu 3D impossible : " + resolveMessage(exception), false);
+                }
+            });
+        }
+
+        if (createButton != null) {
+            createButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                hideDialogFeedback(dialogFeedbackLabel);
+
+                try {
+                    Salle salle = buildSalleFromControls(dialogControls, 0, null);
+                    salleService.add(salle);
+                    String aiEquipmentMessage = applyAiFixedEquipementsIfNeeded(
+                        salle.getIdSalle(),
+                        getSelectedFixedEquipementQuantites(aiEquipmentSelectionControls)
+                    );
+
+                    if (!loadSalles()) {
+                        showFeedback("La salle a ete creee, mais la liste n'a pas pu etre rechargee automatiquement.", true);
+                    } else {
+                        selectSalleById(salle.getIdSalle());
+                        showFeedback(
+                            aiEquipmentMessage == null
+                                ? "La salle creee depuis la proposition intelligente a ete enregistree avec succes."
+                                : "La salle creee depuis la proposition intelligente a ete enregistree avec succes. " + aiEquipmentMessage,
+                            true
+                        );
+                    }
+                } catch (IllegalArgumentException | SQLException | IllegalStateException exception) {
+                    event.consume();
+                    showDialogFeedback(dialogFeedbackLabel, "Creation impossible : " + resolveMessage(exception), false);
+                }
+            });
+        }
+
+        dialog.setOnCloseRequest(event -> {
+            Task<AiRoomDesignProposal> generationTask = dialogState.generationTask();
+            if (generationTask != null) {
+                generationTask.cancel(true);
+            }
+        });
+
+        dialog.showAndWait();
+    }
+
+    private VBox buildAiDialogPromptSection(
+        TextArea briefArea,
+        Button generateProposalButton,
+        Button variantButton,
+        Button cancelGenerationButton,
+        HBox generationStatusBanner,
+        Label dialogFeedbackLabel
+    ) {
+        Label promptTitle = new Label("Prompt de conception");
+        promptTitle.getStyleClass().addAll("backoffice-section-title", "ai-dialog-section-title");
+
+        Label promptHint = buildDialogIntro(
+            "Decrivez simplement l'ambiance, le type de salle, la capacite ou les contraintes importantes."
+        );
+        promptHint.getStyleClass().add("ai-dialog-prompt-copy");
+
+        FlowPane suggestionFlow = buildAiPromptSuggestionFlow(briefArea);
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+
+        HBox actionsRow = new HBox(
+            10.0,
+            actionSpacer,
+            cancelGenerationButton,
+            variantButton,
+            generateProposalButton
+        );
+        actionsRow.setFillHeight(true);
+        actionsRow.getStyleClass().add("ai-dialog-prompt-actions");
+
+        VBox promptSection = new VBox(
+            10.0,
+            promptTitle,
+            promptHint,
+            suggestionFlow,
+            briefArea,
+            actionsRow,
+            generationStatusBanner,
+            dialogFeedbackLabel
+        );
+        promptSection.getStyleClass().add("ai-dialog-prompt-card");
+        return promptSection;
+    }
+
+    private FlowPane buildAiPromptSuggestionFlow(TextArea briefArea) {
+        FlowPane suggestionFlow = new FlowPane();
+        suggestionFlow.setHgap(8.0);
+        suggestionFlow.setVgap(8.0);
+        suggestionFlow.getStyleClass().add("ai-dialog-suggestions");
+
+        for (PromptSuggestion suggestion : AI_PROMPT_SUGGESTIONS) {
+            Button suggestionButton = new Button(suggestion.label());
+            suggestionButton.getStyleClass().addAll("backoffice-secondary-button", "ai-dialog-suggestion-button");
+            suggestionButton.setOnAction(event -> {
+                briefArea.setText(suggestion.prompt());
+                briefArea.requestFocus();
+                briefArea.positionCaret(briefArea.getText().length());
+            });
+            suggestionFlow.getChildren().add(suggestionButton);
+        }
+
+        return suggestionFlow;
+    }
+
+    private VBox buildAiDialogEquipmentSection(
+        Label equipmentSummaryChip,
+        Label equipmentRecapLabel,
+        VBox equipmentChoicesContainer
+    ) {
+        Label equipmentTitle = new Label("Equipements fixes a valider");
+        equipmentTitle.getStyleClass().addAll("backoffice-section-title", "ai-dialog-section-title");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox header = new HBox(10.0, equipmentTitle, spacer, equipmentSummaryChip);
+        header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label helperCopy = buildDialogIntro(
+            "Les suggestions peuvent etre corrigees avant la creation. Seuls les equipements retenus seront appliques a la salle."
+        );
+
+        ScrollPane equipmentScroll = new ScrollPane(equipmentChoicesContainer);
+        equipmentScroll.setFitToWidth(true);
+        equipmentScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        equipmentScroll.setPrefViewportHeight(240.0);
+        equipmentScroll.setPrefHeight(252.0);
+        equipmentScroll.setMaxHeight(252.0);
+        equipmentScroll.getStyleClass().addAll("reservation-choice-scroll", "backoffice-room-equipment-dialog-scroll");
+
+        VBox equipmentSection = new VBox(10.0, header, helperCopy, equipmentRecapLabel, equipmentScroll);
+        equipmentSection.getStyleClass().add("ai-dialog-form-section");
+        return equipmentSection;
+    }
+
+    private VBox buildAiDialogFormContent(SalleFormControls controls) {
+        VBox content = new VBox(
+            12.0,
+            buildDialogFormRow(
+                labelledField("Nom de la salle *", controls.nomField()),
+                labelledField("Capacite *", controls.capaciteSpinner())
+            ),
+            buildDialogFormRow(
+                labelledField("Localisation *", controls.localisationField()),
+                labelledField("Batiment *", controls.batimentComboBox())
+            ),
+            buildDialogFormRow(
+                labelledField("Type de salle *", controls.typeComboBox()),
+                labelledField("Etat *", controls.etatComboBox())
+            ),
+            buildDialogFormRow(
+                labelledField("Etage", controls.etageComboBox()),
+                labelledField("Disposition", controls.dispositionComboBox())
+            ),
+            labelledField("Statut detaille", controls.statutDetailleField()),
+            labelledField("Description", controls.descriptionArea())
+        );
+        content.getChildren().add(4, buildDialogField("Accessibilite", controls.accesHandicapeCheckBox()));
+        content.getStyleClass().add("ai-dialog-form-section");
+        return content;
+    }
+
+    private void startAiDialogGeneration(
+        TextArea briefArea,
+        SalleFormControls dialogControls,
+        AiDesignDialogState dialogState,
+        Map<Integer, FixedEquipmentSelectionControls> aiEquipmentSelectionControls,
+        Label equipmentSummaryChip,
+        Label equipmentRecapLabel,
+        Label dialogFeedbackLabel,
+        Button generateProposalButton,
+        ProgressIndicator generateButtonLoadingIndicator,
+        Button variantButton,
+        Button cancelGenerationButton,
+        Button previewButton,
+        Button createButton,
+        HBox generationStatusBanner
+    ) {
+        hideDialogFeedback(dialogFeedbackLabel);
+
+        final AiRoomDesignRequest request;
+        try {
+            request = buildAiDesignRequest(briefArea, dialogControls, dialogState.nextVariantIndex());
+        } catch (IllegalArgumentException exception) {
+            showDialogFeedback(dialogFeedbackLabel, "Conception impossible : " + resolveMessage(exception), false);
+            return;
+        }
+
+        Task<AiRoomDesignProposal> generationTask = new Task<>() {
+            @Override
+            protected AiRoomDesignProposal call() {
+                return aiRoomDesignService.generateDesign(request, List.copyOf(equipementCatalog));
+            }
+        };
+
+        dialogState.setGenerationTask(generationTask);
+        updateAiDialogActionState(
+            briefArea,
+            dialogState,
+            generateProposalButton,
+            generateButtonLoadingIndicator,
+            variantButton,
+            cancelGenerationButton,
+            previewButton,
+            createButton,
+            generationStatusBanner
+        );
+        showDialogFeedback(dialogFeedbackLabel, "Generation en cours. Le formulaire sera mis a jour automatiquement des que la proposition est prete.", true);
+
+        generationTask.setOnSucceeded(event -> {
+            if (dialogState.generationTask() != generationTask) {
+                return;
+            }
+
+            AiRoomDesignProposal proposal = generationTask.getValue();
+            dialogState.setProposal(proposal);
+            dialogState.setNextVariantIndex(proposal.variantIndex() + 1);
+
+            dialogState.setDescriptionSyncMuted(true);
+            applySalleDraftToControls(proposal.salle(), dialogControls);
+            applyFixedEquipementSelection(
+                proposal.suggestedFixedEquipements(),
+                equipmentSummaryChip,
+                aiEquipmentSelectionControls,
+                selectedQuantities -> handleAiDialogEquipmentSelectionChanged(dialogControls, dialogState, equipmentRecapLabel, selectedQuantities)
+            );
+            dialogState.setDescriptionSyncMuted(false);
+            dialogState.setAutoDescriptionEnabled(true);
+            dialogState.setLastAutoDescription(trimToNull(dialogControls.descriptionArea().getText()));
+            handleAiDialogEquipmentSelectionChanged(
+                dialogControls,
+                dialogState,
+                equipmentRecapLabel,
+                getSelectedFixedEquipementQuantites(aiEquipmentSelectionControls)
+            );
+
+            dialogState.setGenerationTask(null);
+            updateAiDialogActionState(
+                briefArea,
+                dialogState,
+                generateProposalButton,
+                generateButtonLoadingIndicator,
+                variantButton,
+                cancelGenerationButton,
+                previewButton,
+                createButton,
+                generationStatusBanner
+            );
+            showDialogFeedback(
+                dialogFeedbackLabel,
+                "Proposition generee avec succes.",
+                true
+            );
+        });
+
+        generationTask.setOnFailed(event -> {
+            if (dialogState.generationTask() != generationTask) {
+                return;
+            }
+
+            dialogState.setGenerationTask(null);
+            updateAiDialogActionState(
+                briefArea,
+                dialogState,
+                generateProposalButton,
+                generateButtonLoadingIndicator,
+                variantButton,
+                cancelGenerationButton,
+                previewButton,
+                createButton,
+                generationStatusBanner
+            );
+
+            Throwable exception = generationTask.getException();
+            String message = resolveThrowableMessage(exception);
+            showDialogFeedback(dialogFeedbackLabel, "Conception impossible : " + message, false);
+        });
+
+        generationTask.setOnCancelled(event -> {
+            if (dialogState.generationTask() != generationTask) {
+                return;
+            }
+
+            dialogState.setGenerationTask(null);
+            updateAiDialogActionState(
+                briefArea,
+                dialogState,
+                generateProposalButton,
+                generateButtonLoadingIndicator,
+                variantButton,
+                cancelGenerationButton,
+                previewButton,
+                createButton,
+                generationStatusBanner
+            );
+            showDialogFeedback(dialogFeedbackLabel, "Generation annulee. Vous pouvez reprendre ou essayer une nouvelle variante.", false);
+        });
+
+        Thread generationThread = new Thread(generationTask, "fahamni-ai-room-generation");
+        generationThread.setDaemon(true);
+        generationThread.start();
+    }
+
+    private void updateAiDialogActionState(
+        TextArea briefArea,
+        AiDesignDialogState dialogState,
+        Button generateProposalButton,
+        ProgressIndicator generateButtonLoadingIndicator,
+        Button variantButton,
+        Button cancelGenerationButton,
+        Button previewButton,
+        Button createButton,
+        HBox generationStatusBanner
+    ) {
+        boolean hasPrompt = trimToNull(briefArea.getText()) != null;
+        boolean isGenerating = dialogState.isGenerating();
+        boolean hasProposal = dialogState.proposal() != null;
+
+        generateProposalButton.setDisable(!hasPrompt || isGenerating);
+        generateProposalButton.setText(isGenerating ? "Chargement..." : "Construction intelligente \u2728");
+        generateProposalButton.setGraphic(isGenerating ? generateButtonLoadingIndicator : null);
+        variantButton.setDisable(!hasPrompt || isGenerating || !hasProposal);
+        cancelGenerationButton.setDisable(!isGenerating);
+        cancelGenerationButton.setManaged(isGenerating);
+        cancelGenerationButton.setVisible(isGenerating);
+        generationStatusBanner.setManaged(isGenerating);
+        generationStatusBanner.setVisible(isGenerating);
+
+        if (previewButton != null) {
+            previewButton.setDisable(isGenerating || !hasProposal);
+        }
+        if (createButton != null) {
+            createButton.setDisable(isGenerating || !hasProposal);
+            createButton.setDefaultButton(hasProposal && !isGenerating);
+        }
+
+        generateProposalButton.setDefaultButton(!hasProposal && hasPrompt && !isGenerating);
+    }
+
+    private void attachAiDialogReactiveBehaviors(SalleFormControls controls, AiDesignDialogState dialogState) {
+        controls.typeComboBox().valueProperty().addListener((obs, oldValue, newValue) ->
+            synchronizeAiDialogDescriptionIfNeeded(controls, dialogState, false)
+        );
+        controls.dispositionComboBox().valueProperty().addListener((obs, oldValue, newValue) ->
+            synchronizeAiDialogDescriptionIfNeeded(controls, dialogState, false)
+        );
+        controls.capaciteSpinner().valueProperty().addListener((obs, oldValue, newValue) ->
+            synchronizeAiDialogDescriptionIfNeeded(controls, dialogState, false)
+        );
+        controls.capaciteSpinner().getEditor().textProperty().addListener((obs, oldValue, newValue) ->
+            synchronizeAiDialogDescriptionIfNeeded(controls, dialogState, false)
+        );
+        controls.accesHandicapeCheckBox().selectedProperty().addListener((obs, oldValue, newValue) ->
+            synchronizeAiDialogDescriptionIfNeeded(controls, dialogState, false)
+        );
+        controls.descriptionArea().textProperty().addListener((obs, oldValue, newValue) -> {
+            if (dialogState.descriptionSyncMuted()) {
+                return;
+            }
+
+            String normalizedNewValue = trimToNull(newValue);
+            String normalizedAutoValue = trimToNull(dialogState.lastAutoDescription());
+            dialogState.setAutoDescriptionEnabled(
+                normalizedNewValue == null || Objects.equals(normalizedNewValue, normalizedAutoValue)
+            );
+        });
+    }
+
+    private void handleAiDialogEquipmentSelectionChanged(
+        SalleFormControls controls,
+        AiDesignDialogState dialogState,
+        Label equipmentRecapLabel,
+        Map<Integer, Integer> selectedQuantities
+    ) {
+        Map<Integer, Integer> safeSelection = selectedQuantities == null ? Map.of() : Map.copyOf(new LinkedHashMap<>(selectedQuantities));
+        dialogState.setSelectedFixedEquipements(safeSelection);
+        String equipmentSummary = buildSelectedFixedEquipmentSummary(safeSelection);
+        dialogState.setSelectedFixedEquipmentSummary(equipmentSummary);
+        equipmentRecapLabel.setText("Materiel fixe retenu: " + equipmentSummary + ".");
+        synchronizeAiDialogDescriptionIfNeeded(controls, dialogState, false);
+    }
+
+    private void synchronizeAiDialogDescriptionIfNeeded(
+        SalleFormControls controls,
+        AiDesignDialogState dialogState,
+        boolean force
+    ) {
+        if (dialogState.descriptionSyncMuted() || (!force && !dialogState.autoDescriptionEnabled())) {
+            return;
+        }
+
+        String description = AiRoomDesignService.buildCompactDescription(
+            controls.typeComboBox().getValue(),
+            controls.dispositionComboBox().getValue(),
+            resolveCapacityDraft(controls.capaciteSpinner()),
+            controls.accesHandicapeCheckBox().isSelected(),
+            dialogState.selectedFixedEquipmentSummary()
+        );
+
+        dialogState.setDescriptionSyncMuted(true);
+        controls.descriptionArea().setText(description);
+        dialogState.setDescriptionSyncMuted(false);
+        dialogState.setLastAutoDescription(description);
+        dialogState.setAutoDescriptionEnabled(true);
+    }
+
+    private String buildSelectedFixedEquipmentSummary(Map<Integer, Integer> selectedQuantities) {
+        if (selectedQuantities == null || selectedQuantities.isEmpty()) {
+            return "aucun";
+        }
+
+        List<String> parts = new java.util.ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : selectedQuantities.entrySet()) {
+            Equipement equipement = findEquipementById(entry.getKey());
+            if (equipement != null) {
+                parts.add(formatOptionalText(equipement.getNom()) + " x" + Math.max(1, entry.getValue()));
+            }
+        }
+
+        return parts.isEmpty() ? "aucun" : String.join(", ", parts);
+    }
+
+    private Equipement findEquipementById(int equipementId) {
+        for (Equipement equipement : equipementCatalog) {
+            if (equipement != null && equipement.getIdEquipement() == equipementId) {
+                return equipement;
+            }
+        }
+        return null;
+    }
+
+    private HBox buildDialogFormRow(VBox leftField, VBox rightField) {
+        leftField.setMaxWidth(Double.MAX_VALUE);
+        rightField.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(leftField, Priority.ALWAYS);
+        HBox.setHgrow(rightField, Priority.ALWAYS);
+
+        HBox row = new HBox(12.0, leftField, rightField);
+        row.setFillHeight(true);
+        return row;
+    }
+
+    private VBox buildDialogField(String labelText, Node field) {
+        return labelledField(labelText, field);
+    }
+
+    private SalleFormControls createAiDialogFormControls() {
+        TextField dialogNomField = new TextField();
+        dialogNomField.setPromptText("Ex: Salle Atlas");
+        dialogNomField.getStyleClass().add("backoffice-form-input");
+
+        Spinner<Integer> dialogCapaciteSpinner = new Spinner<>();
+        dialogCapaciteSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 5000, resolveCurrentCapacityDraft()));
+        dialogCapaciteSpinner.setEditable(true);
+        dialogCapaciteSpinner.getStyleClass().add("backoffice-form-spinner");
+
+        TextField dialogLocalisationField = new TextField();
+        dialogLocalisationField.setPromptText("Ex: Bloc B - Aile Est");
+        dialogLocalisationField.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogBatimentComboBox = new ComboBox<>();
+        dialogBatimentComboBox.getItems().setAll(salleService.getAvailableBatiments());
+        dialogBatimentComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogTypeComboBox = new ComboBox<>();
+        dialogTypeComboBox.getItems().setAll(salleService.getAvailableTypes());
+        dialogTypeComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogEtatComboBox = new ComboBox<>();
+        dialogEtatComboBox.getItems().setAll(salleService.getAvailableEtats());
+        dialogEtatComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<Integer> dialogEtageComboBox = new ComboBox<>();
+        dialogEtageComboBox.getItems().setAll(0, 1, 2, 3, 4);
+        dialogEtageComboBox.getStyleClass().add("backoffice-form-input");
+
+        ComboBox<String> dialogDispositionComboBox = new ComboBox<>();
+        dialogDispositionComboBox.getStyleClass().add("backoffice-form-input");
+
+        CheckBox dialogAccesCheckBox = new CheckBox("Acces handicape");
+        dialogAccesCheckBox.getStyleClass().add("backoffice-check");
+
+        TextField dialogStatutDetailleField = new TextField();
+        dialogStatutDetailleField.setPromptText("Ex: Projecteur en revision ou salle reservee");
+        dialogStatutDetailleField.getStyleClass().add("backoffice-form-input");
+
+        TextArea dialogDescriptionArea = new TextArea();
+        dialogDescriptionArea.setPromptText("Ex: Salle de conference lumineuse pour 30 places.");
+        dialogDescriptionArea.setPrefRowCount(3);
+        dialogDescriptionArea.setWrapText(true);
+        dialogDescriptionArea.getStyleClass().add("backoffice-form-textarea");
+
+        dialogTypeComboBox.valueProperty().addListener((obs, oldValue, newValue) ->
+            refreshDispositionOptions(dialogDispositionComboBox, newValue, dialogDispositionComboBox.getValue())
+        );
+
+        return new SalleFormControls(
+            dialogNomField,
+            dialogCapaciteSpinner,
+            dialogLocalisationField,
+            dialogBatimentComboBox,
+            dialogTypeComboBox,
+            dialogEtatComboBox,
+            dialogEtageComboBox,
+            dialogDispositionComboBox,
+            dialogAccesCheckBox,
+            dialogStatutDetailleField,
+            dialogDescriptionArea
+        );
+    }
+
+    private void initializeAiDialogFormControls(SalleFormControls controls) {
+        controls.nomField().setText(defaultString(trimToNull(nomField.getText())));
+        controls.capaciteSpinner().getValueFactory().setValue(resolveCurrentCapacityDraft());
+        controls.localisationField().setText(defaultString(trimToNull(localisationField.getText())));
+        controls.batimentComboBox().setValue(resolveAllowedValue(controls.batimentComboBox(), batimentComboBox.getValue()));
+
+        String preferredType = hasMeaningfulMainFormDraft()
+            ? resolveAllowedValue(controls.typeComboBox(), typeComboBox.getValue())
+            : null;
+        controls.typeComboBox().setValue(preferredType);
+
+        String preferredEtat = resolveAllowedValue(controls.etatComboBox(), etatComboBox.getValue());
+        if (preferredEtat == null && !controls.etatComboBox().getItems().isEmpty()) {
+            preferredEtat = controls.etatComboBox().getItems().get(0);
+        }
+        controls.etatComboBox().setValue(preferredEtat);
+        controls.etageComboBox().setValue(resolveAllowedValue(controls.etageComboBox(), etageComboBox.getValue()));
+        refreshDispositionOptions(
+            controls.dispositionComboBox(),
+            preferredType,
+            hasMeaningfulMainFormDraft() ? dispositionComboBox.getValue() : null
+        );
+        controls.accesHandicapeCheckBox().setSelected(accesHandicapeCheckBox.isSelected());
+        controls.statutDetailleField().setText(defaultString(trimToNull(statutDetailleField.getText())));
+        controls.descriptionArea().setText(defaultString(trimToNull(descriptionArea.getText())));
+    }
+
+    private AiRoomDesignRequest buildAiDesignRequest(TextArea briefArea, SalleFormControls controls, int variantIndex) {
+        String preferredType = resolveAiRequestTypePreference(controls);
+        String preferredDisposition = resolveAiRequestDispositionPreference(controls, preferredType);
+        return new AiRoomDesignRequest(
+            requireText(briefArea.getText(), "Le prompt AI est obligatoire."),
+            trimToNull(controls.nomField().getText()),
+            controls.batimentComboBox().getValue(),
+            controls.etageComboBox().getValue(),
+            trimToNull(controls.localisationField().getText()),
+            resolveCapacityDraft(controls.capaciteSpinner()),
+            preferredType,
+            preferredDisposition,
+            controls.accesHandicapeCheckBox().isSelected(),
+            null,
+            variantIndex
+        );
+    }
+
+    private boolean hasMeaningfulMainFormDraft() {
+        Salle selectedSalle = sallesTable == null ? null : sallesTable.getSelectionModel().getSelectedItem();
+        if (selectedSalle != null) {
+            return true;
+        }
+
+        String defaultType = typeComboBox == null || typeComboBox.getItems().isEmpty() ? null : typeComboBox.getItems().get(0);
+        String suggestedDisposition = salleService.getSuggestedDispositionForType(typeComboBox == null ? null : typeComboBox.getValue());
+        return trimToNull(nomField == null ? null : nomField.getText()) != null
+            || trimToNull(localisationField == null ? null : localisationField.getText()) != null
+            || (batimentComboBox != null && batimentComboBox.getValue() != null)
+            || (etageComboBox != null && etageComboBox.getValue() != null)
+            || !Objects.equals(normalizeComparableText(typeComboBox == null ? null : typeComboBox.getValue()), normalizeComparableText(defaultType))
+            || !Objects.equals(normalizeComparableText(dispositionComboBox == null ? null : dispositionComboBox.getValue()), normalizeComparableText(suggestedDisposition))
+            || (accesHandicapeCheckBox != null && accesHandicapeCheckBox.isSelected())
+            || trimToNull(descriptionArea == null ? null : descriptionArea.getText()) != null
+            || trimToNull(statutDetailleField == null ? null : statutDetailleField.getText()) != null;
+    }
+
+    private String resolveAiRequestTypePreference(SalleFormControls controls) {
+        String preferredType = controls.typeComboBox().getValue();
+        if (trimToNull(preferredType) == null) {
+            return null;
+        }
+
+        String defaultType = controls.typeComboBox().getItems().isEmpty() ? null : controls.typeComboBox().getItems().get(0);
+        if (!hasMeaningfulAiDialogDraft(controls)
+            && Objects.equals(normalizeComparableText(preferredType), normalizeComparableText(defaultType))) {
+            return null;
+        }
+        return preferredType;
+    }
+
+    private String resolveAiRequestDispositionPreference(SalleFormControls controls, String preferredType) {
+        String preferredDisposition = controls.dispositionComboBox().getValue();
+        if (trimToNull(preferredDisposition) == null || trimToNull(preferredType) == null) {
+            return null;
+        }
+
+        String suggestedDisposition = salleService.getSuggestedDispositionForType(preferredType);
+        if (!hasMeaningfulAiDialogDraft(controls)
+            && Objects.equals(normalizeComparableText(preferredDisposition), normalizeComparableText(suggestedDisposition))) {
+            return null;
+        }
+        return preferredDisposition;
+    }
+
+    private boolean hasMeaningfulAiDialogDraft(SalleFormControls controls) {
+        if (controls == null) {
+            return false;
+        }
+
+        String defaultType = controls.typeComboBox().getItems().isEmpty() ? null : controls.typeComboBox().getItems().get(0);
+        String suggestedDisposition = salleService.getSuggestedDispositionForType(controls.typeComboBox().getValue());
+        return trimToNull(controls.nomField().getText()) != null
+            || trimToNull(controls.localisationField().getText()) != null
+            || controls.batimentComboBox().getValue() != null
+            || controls.etageComboBox().getValue() != null
+            || !Objects.equals(normalizeComparableText(controls.typeComboBox().getValue()), normalizeComparableText(defaultType))
+            || !Objects.equals(normalizeComparableText(controls.dispositionComboBox().getValue()), normalizeComparableText(suggestedDisposition))
+            || controls.accesHandicapeCheckBox().isSelected()
+            || trimToNull(controls.descriptionArea().getText()) != null
+            || trimToNull(controls.statutDetailleField().getText()) != null;
+    }
+
+    private int resolveCapacityDraft(Spinner<Integer> spinner) {
+        try {
+            return parsePositiveInteger(spinner.getEditor().getText(), "Capacite invalide");
+        } catch (IllegalArgumentException exception) {
+            Integer fallbackValue = spinner.getValue();
+            return fallbackValue == null || fallbackValue <= 0 ? 24 : fallbackValue;
+        }
+    }
+
+    private void showAiDialogPreview(Salle salle, AiRoomDesignProposal proposal, String fixedEquipmentSummary) {
+        Room3DPreviewData previewData = room3DPreviewService.buildPreview(
+            salle,
+            true,
+            tn.esprit.fahamni.room3d.Room3DViewMode.DESIGN_REVIEW
+        );
+        if (proposal != null) {
+            previewData = previewData.withAnnotations(
+                "Proposition 3D non enregistree | " + salle.getNom(),
+                null,
+                null
+            );
+        }
+        Room3DViewerLauncher.showPreview(previewData);
+    }
+
+    private String buildAiDialogPreviewSummary(Salle salle, AiRoomDesignProposal proposal, String fixedEquipmentSummary) {
+        String disposition = trimToNull(salle == null ? null : salle.getTypeDisposition());
+        return "Proposition non enregistree | Source: " + proposal.sourceLabelOrDefault() + "."
+            + "\nDisposition: " + (disposition == null ? "non renseignee" : disposition)
+            + " | Capacite: " + (salle == null ? 0 : salle.getCapacite()) + " places"
+            + " | Accessibilite: " + (salle != null && salle.isAccesHandicape() ? "oui" : "non")
+            + "\nMateriel fixe retenu: " + firstNonBlank(fixedEquipmentSummary, proposal.fixedEquipmentSummaryOrDefault(), "aucun");
+    }
+
+    private String buildAiDialogPreviewLegend(AiRoomDesignProposal proposal, String fixedEquipmentSummary) {
+        return proposal.adminSummaryOrDefault()
+            + "\nMateriel fixe valide: " + firstNonBlank(fixedEquipmentSummary, proposal.fixedEquipmentSummaryOrDefault(), "aucun")
+            + "\nAucune sauvegarde automatique tant que vous n'avez pas confirme la creation.";
+    }
+
+    private String applyAiFixedEquipementsIfNeeded(int salleId, Map<Integer, Integer> selectedEquipements) {
+        if (selectedEquipements == null || selectedEquipements.isEmpty() || salleId <= 0) {
+            return null;
+        }
+
+        try {
+            salleEquipementService.replaceEquipementsForSalle(salleId, selectedEquipements);
+            return "Le materiel fixe valide dans la proposition a aussi ete applique. Vous pourrez le modifier ensuite.";
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            return "La salle est enregistree, mais le materiel fixe valide n'a pas pu etre applique : " + resolveMessage(exception);
+        }
+    }
+
+    private void showDialogFeedback(Label feedbackLabel, String message, boolean success) {
+        feedbackLabel.setText(message);
+        feedbackLabel.getStyleClass().setAll("backoffice-feedback", success ? "success" : "error");
+        feedbackLabel.setManaged(true);
+        feedbackLabel.setVisible(true);
+    }
+
+    private void hideDialogFeedback(Label feedbackLabel) {
+        feedbackLabel.setText("");
+        feedbackLabel.getStyleClass().setAll("backoffice-feedback");
+        feedbackLabel.setManaged(false);
+        feedbackLabel.setVisible(false);
     }
 
     private Label buildDialogIntro(String text) {
@@ -997,6 +2534,30 @@ public class BackofficeSallesController {
                 setGraphic(null);
             }
         };
+    }
+
+    private String resolveThrowableMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "Une erreur technique est survenue.";
+        }
+        if (throwable instanceof Exception exception) {
+            return resolveMessage(exception);
+        }
+        String message = throwable.getMessage();
+        return message == null || message.isBlank() ? "Une erreur technique est survenue." : message;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 
     private void refreshTablePage() {
@@ -1141,7 +2702,118 @@ public class BackofficeSallesController {
         feedbackLabel.setVisible(false);
     }
 
-    private record FixedEquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card,
-                                                  boolean selectable) {
+    private record SalleFormControls(
+        TextField nomField,
+        Spinner<Integer> capaciteSpinner,
+        TextField localisationField,
+        ComboBox<String> batimentComboBox,
+        ComboBox<String> typeComboBox,
+        ComboBox<String> etatComboBox,
+        ComboBox<Integer> etageComboBox,
+        ComboBox<String> dispositionComboBox,
+        CheckBox accesHandicapeCheckBox,
+        TextField statutDetailleField,
+        TextArea descriptionArea
+    ) {
+    }
+
+    private static final class AiDesignDialogState {
+        private AiRoomDesignProposal proposal;
+        private int nextVariantIndex = 1;
+        private Task<AiRoomDesignProposal> generationTask;
+        private boolean autoDescriptionEnabled;
+        private boolean descriptionSyncMuted;
+        private String lastAutoDescription;
+        private Map<Integer, Integer> selectedFixedEquipements = Map.of();
+        private String selectedFixedEquipmentSummary = "aucun";
+
+        public AiRoomDesignProposal proposal() {
+            return proposal;
+        }
+
+        public void setProposal(AiRoomDesignProposal proposal) {
+            this.proposal = proposal;
+        }
+
+        public int nextVariantIndex() {
+            return nextVariantIndex;
+        }
+
+        public void setNextVariantIndex(int nextVariantIndex) {
+            this.nextVariantIndex = Math.max(1, nextVariantIndex);
+        }
+
+        public Task<AiRoomDesignProposal> generationTask() {
+            return generationTask;
+        }
+
+        public void setGenerationTask(Task<AiRoomDesignProposal> generationTask) {
+            this.generationTask = generationTask;
+        }
+
+        public boolean isGenerating() {
+            return generationTask != null && !generationTask.isDone();
+        }
+
+        public boolean autoDescriptionEnabled() {
+            return autoDescriptionEnabled;
+        }
+
+        public void setAutoDescriptionEnabled(boolean autoDescriptionEnabled) {
+            this.autoDescriptionEnabled = autoDescriptionEnabled;
+        }
+
+        public boolean descriptionSyncMuted() {
+            return descriptionSyncMuted;
+        }
+
+        public void setDescriptionSyncMuted(boolean descriptionSyncMuted) {
+            this.descriptionSyncMuted = descriptionSyncMuted;
+        }
+
+        public String lastAutoDescription() {
+            return lastAutoDescription;
+        }
+
+        public void setLastAutoDescription(String lastAutoDescription) {
+            this.lastAutoDescription = lastAutoDescription;
+        }
+
+        public Map<Integer, Integer> selectedFixedEquipements() {
+            return selectedFixedEquipements;
+        }
+
+        public void setSelectedFixedEquipements(Map<Integer, Integer> selectedFixedEquipements) {
+            this.selectedFixedEquipements = selectedFixedEquipements == null
+                ? Map.of()
+                : Map.copyOf(new LinkedHashMap<>(selectedFixedEquipements));
+        }
+
+        public String selectedFixedEquipmentSummary() {
+            return selectedFixedEquipmentSummary;
+        }
+
+        public void setSelectedFixedEquipmentSummary(String selectedFixedEquipmentSummary) {
+            this.selectedFixedEquipmentSummary = selectedFixedEquipmentSummary == null || selectedFixedEquipmentSummary.isBlank()
+                ? "aucun"
+                : selectedFixedEquipmentSummary.trim();
+        }
+    }
+
+    private record LocationLookupOutcome(
+        List<GoogleMapsLocationService.LocationSuggestion> suggestions,
+        GoogleMapsLocationService.ResolvedLocation resolvedLocation
+    ) {
+    }
+
+    private record PromptSuggestion(String label, String prompt) {
+    }
+
+    private record FixedEquipmentSelectionControls(
+        CheckBox checkBox,
+        Spinner<Integer> quantitySpinner,
+        VBox card,
+        boolean selectable
+    ) {
     }
 }

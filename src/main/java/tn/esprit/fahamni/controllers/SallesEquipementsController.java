@@ -1,15 +1,20 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.geometry.Bounds;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.FlowPane;
@@ -22,11 +27,15 @@ import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Place;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.SalleEquipement;
+import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DViewMode;
+import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminPlaceService;
 import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
+import tn.esprit.fahamni.utils.PaginationSupport;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -34,6 +43,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 public class SallesEquipementsController {
 
@@ -43,9 +53,16 @@ public class SallesEquipementsController {
     private static final String STATUS_PENDING = "attente";
     private static final int CATALOG_COLUMNS = 3;
     private static final double CATALOG_CARD_GAP = 14.0;
+    private static final int MIN_CATALOG_PAGE_SIZE = 6;
 
     @FXML
     private TextField roomSearchField;
+
+    @FXML
+    private ScrollPane catalogScrollPane;
+
+    @FXML
+    private TabPane catalogTabPane;
 
     @FXML
     private ComboBox<String> roomTypeFilterComboBox;
@@ -63,6 +80,27 @@ public class SallesEquipementsController {
     private GridPane roomCardsContainer;
 
     @FXML
+    private Label roomPaginationSummaryLabel;
+
+    @FXML
+    private Button roomPreviousPageButton;
+
+    @FXML
+    private HBox roomPageButtonsContainer;
+
+    @FXML
+    private Button roomNextPageButton;
+
+    @FXML
+    private ComboBox<Integer> roomPageSizeComboBox;
+
+    @FXML
+    private HBox roomPaginationBar;
+
+    @FXML
+    private VBox roomTabContent;
+
+    @FXML
     private TextField equipmentSearchField;
 
     @FXML
@@ -76,6 +114,27 @@ public class SallesEquipementsController {
 
     @FXML
     private GridPane equipmentCardsContainer;
+
+    @FXML
+    private Label equipmentPaginationSummaryLabel;
+
+    @FXML
+    private Button equipmentPreviousPageButton;
+
+    @FXML
+    private HBox equipmentPageButtonsContainer;
+
+    @FXML
+    private Button equipmentNextPageButton;
+
+    @FXML
+    private ComboBox<Integer> equipmentPageSizeComboBox;
+
+    @FXML
+    private HBox equipmentPaginationBar;
+
+    @FXML
+    private VBox equipmentTabContent;
 
     @FXML
     private Label totalRoomsStatLabel;
@@ -108,6 +167,24 @@ public class SallesEquipementsController {
     private Label detailDescriptionLabel;
 
     @FXML
+    private VBox room3DSpotlightContainer;
+
+    @FXML
+    private Label room3DModeLabel;
+
+    @FXML
+    private Label room3DHeadlineLabel;
+
+    @FXML
+    private Label room3DCopyLabel;
+
+    @FXML
+    private FlowPane room3DHighlightsContainer;
+
+    @FXML
+    private Button room3DPreviewButton;
+
+    @FXML
     private Label detailFixedEquipmentSummaryLabel;
 
     @FXML
@@ -132,19 +209,26 @@ public class SallesEquipementsController {
     private final AdminEquipementService equipementService = new AdminEquipementService();
     private final AdminPlaceService placeService = new AdminPlaceService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
     private final ObservableList<Salle> salles = FXCollections.observableArrayList();
     private final ObservableList<Equipement> equipements = FXCollections.observableArrayList();
     private final ObservableList<Place> places = FXCollections.observableArrayList();
     private final FilteredList<Salle> filteredSalles = new FilteredList<>(salles, salle -> true);
     private final FilteredList<Equipement> filteredEquipements = new FilteredList<>(equipements, equipement -> true);
     private final Map<Integer, List<SalleEquipement>> fixedEquipementsBySalleId = new LinkedHashMap<>();
+    private int roomCurrentPageIndex;
+    private int equipmentCurrentPageIndex;
+    private int roomRowsPerPage = MIN_CATALOG_PAGE_SIZE;
+    private int equipmentRowsPerPage = MIN_CATALOG_PAGE_SIZE;
     private Object selectedElement;
     private Node selectedCard;
 
     @FXML
     private void initialize() {
         configureResponsiveCatalogLayout();
+        configurePagination();
         configureFilters();
+        configureCatalogTabPane();
         hideFeedback();
         resetDetailPanel();
         loadCatalog(false);
@@ -154,6 +238,60 @@ public class SallesEquipementsController {
     private void handleRefresh() {
         hideFeedback();
         loadCatalog(true);
+    }
+
+    @FXML
+    private void handlePreviewSelectedRoom3D() {
+        hideFeedback();
+
+        if (!(selectedElement instanceof Salle salle)) {
+            showFeedback("Selectionnez une salle pour ouvrir son studio 3D.", false);
+            return;
+        }
+
+        openRoom3DPreview(salle, true);
+    }
+
+    @FXML
+    private void handlePreviousRoomPage() {
+        if (roomCurrentPageIndex <= 0) {
+            return;
+        }
+
+        roomCurrentPageIndex--;
+        renderRoomCards();
+    }
+
+    @FXML
+    private void handleNextRoomPage() {
+        int totalPages = PaginationSupport.slice(roomCurrentPageIndex + 1, filteredSalles.size(), roomRowsPerPage).totalPages();
+        if (roomCurrentPageIndex >= totalPages - 1) {
+            return;
+        }
+
+        roomCurrentPageIndex++;
+        renderRoomCards();
+    }
+
+    @FXML
+    private void handlePreviousEquipmentPage() {
+        if (equipmentCurrentPageIndex <= 0) {
+            return;
+        }
+
+        equipmentCurrentPageIndex--;
+        renderEquipmentCards();
+    }
+
+    @FXML
+    private void handleNextEquipmentPage() {
+        int totalPages = PaginationSupport.slice(equipmentCurrentPageIndex + 1, filteredEquipements.size(), equipmentRowsPerPage).totalPages();
+        if (equipmentCurrentPageIndex >= totalPages - 1) {
+            return;
+        }
+
+        equipmentCurrentPageIndex++;
+        renderEquipmentCards();
     }
 
     @FXML
@@ -203,6 +341,57 @@ public class SallesEquipementsController {
     private void configureResponsiveCatalogLayout() {
         configureCatalogGrid(roomCardsContainer);
         configureCatalogGrid(equipmentCardsContainer);
+    }
+
+    private void configurePagination() {
+        configurePageSizeCombo(roomPageSizeComboBox, roomRowsPerPage, newValue -> {
+            if (newValue == roomRowsPerPage) {
+                return;
+            }
+            roomRowsPerPage = newValue;
+            roomCurrentPageIndex = 0;
+            renderRoomCards();
+            ensureNodeVisible(roomPaginationBar);
+        });
+
+        configurePageSizeCombo(equipmentPageSizeComboBox, equipmentRowsPerPage, newValue -> {
+            if (newValue == equipmentRowsPerPage) {
+                return;
+            }
+            equipmentRowsPerPage = newValue;
+            equipmentCurrentPageIndex = 0;
+            renderEquipmentCards();
+            ensureNodeVisible(equipmentPaginationBar);
+        });
+    }
+
+    private void configureCatalogTabPane() {
+        if (catalogTabPane == null) {
+            return;
+        }
+
+        catalogTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> refreshCatalogTabPaneHeight());
+        catalogTabPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                refreshCatalogTabPaneHeight();
+            }
+        });
+    }
+
+    private void configurePageSizeCombo(ComboBox<Integer> comboBox, int initialValue, IntConsumer onChange) {
+        if (comboBox == null) {
+            return;
+        }
+
+        comboBox.getItems().setAll(MIN_CATALOG_PAGE_SIZE, 9, 12, 15);
+        comboBox.setValue(initialValue);
+        comboBox.valueProperty().addListener((obs, oldValue, newValue) -> {
+            if (newValue == null || newValue < MIN_CATALOG_PAGE_SIZE) {
+                comboBox.setValue(Math.max(initialValue, MIN_CATALOG_PAGE_SIZE));
+                return;
+            }
+            onChange.accept(newValue);
+        });
     }
 
     private void configureCatalogGrid(GridPane grid) {
@@ -257,6 +446,7 @@ public class SallesEquipementsController {
                 && (!requireAccessibility || salle.isAccesHandicape())
         );
 
+        roomCurrentPageIndex = 0;
         renderRoomCards();
         updateRoomCount();
     }
@@ -272,6 +462,7 @@ public class SallesEquipementsController {
                 && matchesFilter(equipement.getEtat(), selectedStatus, FILTER_ALL_STATUSES)
         );
 
+        equipmentCurrentPageIndex = 0;
         renderEquipmentCards();
         updateEquipmentCount();
     }
@@ -279,29 +470,81 @@ public class SallesEquipementsController {
     private void renderRoomCards() {
         roomCardsContainer.getChildren().clear();
 
-        if (filteredSalles.isEmpty()) {
+        int filteredSize = filteredSalles.size();
+        PaginationSupport.PageSlice pageSlice = PaginationSupport.slice(roomCurrentPageIndex + 1, filteredSize, roomRowsPerPage);
+        roomCurrentPageIndex = Math.max(0, pageSlice.currentPage() - 1);
+
+        if (pageSlice.isEmpty()) {
             addEmptyCatalogState(roomCardsContainer, "Aucune salle ne correspond aux filtres.");
+            refreshCatalogPagination(
+                roomPaginationSummaryLabel,
+                roomPreviousPageButton,
+                roomNextPageButton,
+                roomPageButtonsContainer,
+                pageSlice,
+                "salle",
+                "salles",
+                this::showRoomPage
+            );
             return;
         }
 
         int index = 0;
-        for (Salle salle : filteredSalles) {
+        for (Salle salle : filteredSalles.subList(pageSlice.fromIndex(), pageSlice.toIndex())) {
             addCatalogCard(roomCardsContainer, createRoomCard(salle), index++);
         }
+
+        refreshCatalogPagination(
+            roomPaginationSummaryLabel,
+            roomPreviousPageButton,
+            roomNextPageButton,
+            roomPageButtonsContainer,
+            pageSlice,
+            "salle",
+            "salles",
+            this::showRoomPage
+        );
+        refreshCatalogTabPaneHeight();
     }
 
     private void renderEquipmentCards() {
         equipmentCardsContainer.getChildren().clear();
 
-        if (filteredEquipements.isEmpty()) {
+        int filteredSize = filteredEquipements.size();
+        PaginationSupport.PageSlice pageSlice = PaginationSupport.slice(equipmentCurrentPageIndex + 1, filteredSize, equipmentRowsPerPage);
+        equipmentCurrentPageIndex = Math.max(0, pageSlice.currentPage() - 1);
+
+        if (pageSlice.isEmpty()) {
             addEmptyCatalogState(equipmentCardsContainer, "Aucun equipement ne correspond aux filtres.");
+            refreshCatalogPagination(
+                equipmentPaginationSummaryLabel,
+                equipmentPreviousPageButton,
+                equipmentNextPageButton,
+                equipmentPageButtonsContainer,
+                pageSlice,
+                "equipement",
+                "equipements",
+                this::showEquipmentPage
+            );
             return;
         }
 
         int index = 0;
-        for (Equipement equipement : filteredEquipements) {
+        for (Equipement equipement : filteredEquipements.subList(pageSlice.fromIndex(), pageSlice.toIndex())) {
             addCatalogCard(equipmentCardsContainer, createEquipmentCard(equipement), index++);
         }
+
+        refreshCatalogPagination(
+            equipmentPaginationSummaryLabel,
+            equipmentPreviousPageButton,
+            equipmentNextPageButton,
+            equipmentPageButtonsContainer,
+            pageSlice,
+            "equipement",
+            "equipements",
+            this::showEquipmentPage
+        );
+        refreshCatalogTabPaneHeight();
     }
 
     private Node createRoomCard(Salle salle) {
@@ -332,6 +575,15 @@ public class SallesEquipementsController {
             event.consume();
         });
 
+        Button preview3DButton = createSecondaryButton("Vue 3D");
+        preview3DButton.getStyleClass().add("infrastructure-room-3d-action");
+        preview3DButton.setDisable(salle.getCapacite() <= 0);
+        preview3DButton.setOnAction(event -> {
+            selectRoom(salle, card, false);
+            openRoom3DPreview(salle, false);
+            event.consume();
+        });
+
         Button chooseButton = createPrimaryButton("Choisir");
         chooseButton.setDisable(!isUsable(salle.getEtat()));
         chooseButton.setOnAction(event -> {
@@ -339,8 +591,9 @@ public class SallesEquipementsController {
             event.consume();
         });
 
-        HBox actions = createActions(detailsButton, chooseButton);
+        HBox actions = createRoomActions(detailsButton, preview3DButton, chooseButton);
         card.getChildren().addAll(header, metaLine, descriptionSpace, details, actions);
+        syncCardSelection(card, salle);
         return card;
     }
 
@@ -378,6 +631,7 @@ public class SallesEquipementsController {
 
         HBox actions = createActions(detailsButton, chooseButton);
         card.getChildren().addAll(header, metaLine, descriptionSpace, details, actions);
+        syncCardSelection(card, equipement);
         return card;
     }
 
@@ -461,6 +715,16 @@ public class SallesEquipementsController {
         return actions;
     }
 
+    private HBox createRoomActions(Button detailsButton, Button preview3DButton, Button chooseButton) {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        HBox actions = new HBox(8, detailsButton, preview3DButton, spacer, chooseButton);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        actions.getStyleClass().add("infrastructure-actions");
+        return actions;
+    }
+
     private Button createPrimaryButton(String text) {
         Button button = new Button(text);
         button.getStyleClass().add("backoffice-primary-button");
@@ -510,6 +774,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText(formatDescription(salle.getDescription()));
         detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+        updateRoom3DSpotlight(salle, availability);
         updateFixedEquipmentDetails(salle.getIdSalle());
 
         detailFactsContainer.getChildren().setAll(
@@ -544,6 +809,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText(formatDescription(equipement.getDescription()));
         detailUseButton.setDisable(!usable);
         detailHintLabel.setText(buildChoiceNote(equipement.getEtat(), "ce materiel"));
+        hideRoom3DSpotlight();
         resetFixedEquipmentDetails();
 
         detailFactsContainer.getChildren().setAll(
@@ -573,6 +839,34 @@ public class SallesEquipementsController {
         Label valueNode = new Label(value);
         valueNode.setWrapText(true);
         valueNode.getStyleClass().add("infrastructure-detail-fact-value");
+
+        card.getChildren().addAll(labelNode, valueNode);
+        return card;
+    }
+
+    private void syncCardSelection(Node card, Object element) {
+        if (selectedElement != element) {
+            return;
+        }
+
+        selectedCard = card;
+        if (!card.getStyleClass().contains("selected")) {
+            card.getStyleClass().add("selected");
+        }
+    }
+
+    private Node createRoom3DHighlight(String label, String value) {
+        VBox card = new VBox(4);
+        card.setPrefWidth(88);
+        card.setMinWidth(88);
+        card.getStyleClass().add("infrastructure-room-3d-metric");
+
+        Label labelNode = new Label(label);
+        labelNode.getStyleClass().add("infrastructure-room-3d-metric-label");
+
+        Label valueNode = new Label(value);
+        valueNode.setWrapText(true);
+        valueNode.getStyleClass().add("infrastructure-room-3d-metric-value");
 
         card.getChildren().addAll(labelNode, valueNode);
         return card;
@@ -608,6 +902,66 @@ public class SallesEquipementsController {
         sessionPreviewContainer.setManaged(true);
         sessionPreviewContainer.setVisible(true);
         detailHintLabel.setText(buildChoiceNote(salle.getEtat(), "cette salle"));
+    }
+
+    private void updateRoom3DSpotlight(Salle salle, RoomAvailability availability) {
+        if (room3DSpotlightContainer == null) {
+            return;
+        }
+
+        int configuredSeats = resolveConfiguredSeatCount(salle);
+        boolean usesConfiguredPlan = configuredSeats > 0;
+        String roomName = formatOptionalText(salle.getNom());
+        String disposition = formatOptionalText(salle.getTypeDisposition());
+
+        room3DModeLabel.setText(usesConfiguredPlan ? "Plan reel" : "Generation auto");
+        room3DHeadlineLabel.setText("Entrez dans " + roomName + " avant de la reserver.");
+        room3DCopyLabel.setText(
+            usesConfiguredPlan
+                ? "La scene 3D reprend les places deja configurees pour cette salle et respecte sa disposition."
+                : "Aucun plan detaille n'est disponible : la scene 3D est composee automatiquement a partir de la capacite et de la disposition."
+        );
+        room3DHighlightsContainer.getChildren().setAll(
+            createRoom3DHighlight("Source", usesConfiguredPlan ? configuredSeats + " places reelles" : "Capacite " + salle.getCapacite()),
+            createRoom3DHighlight("Disponibles", availability.availablePlaces() + " / " + availability.totalPlaces()),
+            createRoom3DHighlight("Disposition", disposition),
+            createRoom3DHighlight("Acces", salle.isAccesHandicape() ? "PMR" : "Standard")
+        );
+        room3DPreviewButton.setDisable(salle.getCapacite() <= 0);
+        room3DSpotlightContainer.setManaged(true);
+        room3DSpotlightContainer.setVisible(true);
+    }
+
+    private void hideRoom3DSpotlight() {
+        if (room3DSpotlightContainer == null) {
+            return;
+        }
+
+        room3DModeLabel.setText("Modele genere");
+        room3DHeadlineLabel.setText("Explorez la salle en immersion.");
+        room3DCopyLabel.setText("Le moteur 3D reprend la disposition et la capacite de la salle selectionnee.");
+        room3DHighlightsContainer.getChildren().clear();
+        room3DPreviewButton.setDisable(true);
+        room3DSpotlightContainer.setManaged(false);
+        room3DSpotlightContainer.setVisible(false);
+    }
+
+    private void openRoom3DPreview(Salle salle, boolean showSuccessFeedback) {
+        hideFeedback();
+
+        if (salle == null) {
+            showFeedback("Selectionnez une salle pour ouvrir son studio 3D.", false);
+            return;
+        }
+
+        try {
+            Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(salle, false, Room3DViewMode.PREVIEW));
+            if (showSuccessFeedback) {
+                showFeedback("Le studio 3D de \"" + formatOptionalText(salle.getNom()) + "\" est ouvert.", true);
+            }
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            showFeedback("Ouverture 3D impossible : " + resolveMessage(exception), false);
+        }
     }
 
     private void useRoomForSession(Salle salle) {
@@ -692,6 +1046,7 @@ public class SallesEquipementsController {
         detailDescriptionLabel.setText("Aucun element selectionne.");
         detailUseButton.setDisable(true);
         detailHintLabel.setText("Choisissez une salle ou un materiel pour preparer l'integration future.");
+        hideRoom3DSpotlight();
         resetFixedEquipmentDetails();
         hideSessionPreview();
     }
@@ -780,6 +1135,16 @@ public class SallesEquipementsController {
             .orElse("aucun");
     }
 
+    private int resolveConfiguredSeatCount(Salle salle) {
+        if (salle == null || salle.getIdSalle() <= 0) {
+            return 0;
+        }
+
+        return (int) places.stream()
+            .filter(place -> place.getIdSalle() == salle.getIdSalle())
+            .count();
+    }
+
     private boolean matchesRoomSearch(Salle salle, String normalizedSearch) {
         if (normalizedSearch.isBlank()) {
             return true;
@@ -818,6 +1183,122 @@ public class SallesEquipementsController {
     private void updateEquipmentCount() {
         int count = filteredEquipements.size();
         equipmentCountLabel.setText(count == 1 ? "1 equipement visible" : count + " equipements visibles");
+    }
+
+    private void showRoomPage(int pageIndex) {
+        roomCurrentPageIndex = Math.max(0, pageIndex - 1);
+        renderRoomCards();
+    }
+
+    private void showEquipmentPage(int pageIndex) {
+        equipmentCurrentPageIndex = Math.max(0, pageIndex - 1);
+        renderEquipmentCards();
+    }
+
+    private void refreshCatalogPagination(
+        Label summaryLabel,
+        Button previousButton,
+        Button nextButton,
+        HBox pageButtonsContainer,
+        PaginationSupport.PageSlice pageSlice,
+        String singularLabel,
+        String pluralLabel,
+        IntConsumer pageChangeHandler
+    ) {
+        if (summaryLabel == null || previousButton == null || nextButton == null || pageButtonsContainer == null) {
+            return;
+        }
+
+        summaryLabel.setText(buildPaginationSummary(pageSlice, singularLabel, pluralLabel));
+        previousButton.setDisable(pageSlice.isEmpty() || pageSlice.currentPage() <= 1);
+        nextButton.setDisable(pageSlice.isEmpty() || pageSlice.currentPage() >= pageSlice.totalPages());
+        PaginationSupport.populatePageButtons(
+            pageButtonsContainer,
+            pageSlice.currentPage(),
+            pageSlice.totalPages(),
+            pageChangeHandler
+        );
+    }
+
+    private String buildPaginationSummary(PaginationSupport.PageSlice pageSlice, String singularLabel, String pluralLabel) {
+        String singularSuffix = "salle".equals(singularLabel) ? "affichee" : "affiche";
+        String pluralSuffix = "salles".equals(pluralLabel) ? "affichees" : "affiches";
+        return PaginationSupport.buildRangeSummary(pageSlice, singularLabel, pluralLabel, singularSuffix, pluralSuffix);
+    }
+
+    private void refreshCatalogTabPaneHeight() {
+        if (catalogTabPane == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            VBox activeContent = resolveActiveCatalogContent();
+            if (activeContent == null) {
+                return;
+            }
+
+            activeContent.applyCss();
+            activeContent.requestLayout();
+            catalogTabPane.applyCss();
+            catalogTabPane.setMinHeight(Region.USE_COMPUTED_SIZE);
+            catalogTabPane.setPrefHeight(Region.USE_COMPUTED_SIZE);
+            catalogTabPane.requestLayout();
+
+            Parent parent = catalogTabPane.getParent();
+            while (parent != null) {
+                parent.requestLayout();
+                parent = parent.getParent();
+            }
+        });
+    }
+
+    private VBox resolveActiveCatalogContent() {
+        if (catalogTabPane == null) {
+            return null;
+        }
+
+        int selectedIndex = catalogTabPane.getSelectionModel().getSelectedIndex();
+        return selectedIndex == 1 ? equipmentTabContent : roomTabContent;
+    }
+
+    private void ensureNodeVisible(Node target) {
+        if (catalogScrollPane == null || target == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            Node content = catalogScrollPane.getContent();
+            if (content == null || target.getScene() == null || content.getScene() == null) {
+                return;
+            }
+
+            content.applyCss();
+            if (content instanceof Parent parent) {
+                parent.layout();
+            }
+
+            Bounds viewportBounds = catalogScrollPane.getViewportBounds();
+            Bounds contentBounds = content.getLayoutBounds();
+            Bounds targetBounds = content.sceneToLocal(target.localToScene(target.getBoundsInLocal()));
+
+            double viewportHeight = viewportBounds.getHeight();
+            double scrollableHeight = Math.max(0, contentBounds.getHeight() - viewportHeight);
+            if (scrollableHeight <= 0) {
+                catalogScrollPane.setVvalue(0);
+                return;
+            }
+
+            double currentPixelOffset = catalogScrollPane.getVvalue() * scrollableHeight;
+            double desiredPixelOffset = currentPixelOffset;
+
+            if (targetBounds.getMinY() < currentPixelOffset) {
+                desiredPixelOffset = Math.max(0, targetBounds.getMinY() - 16);
+            } else if (targetBounds.getMaxY() > currentPixelOffset + viewportHeight) {
+                desiredPixelOffset = Math.min(scrollableHeight, targetBounds.getMaxY() - viewportHeight + 16);
+            }
+
+            catalogScrollPane.setVvalue(desiredPixelOffset / scrollableHeight);
+        });
     }
 
     private void updateStats() {

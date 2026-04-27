@@ -1,9 +1,19 @@
 package tn.esprit.fahamni.controllers;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
 import tn.esprit.fahamni.Models.Equipement;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.SalleEquipement;
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.room3d.Room3DPreviewData;
+import tn.esprit.fahamni.room3d.Room3DPreviewService;
+import tn.esprit.fahamni.room3d.Room3DViewMode;
+import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
+import tn.esprit.fahamni.room3d.RoomSeatVisualState;
 import tn.esprit.fahamni.services.AdminEquipementService;
 import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.MatchingService;
@@ -19,6 +29,7 @@ import tn.esprit.fahamni.services.MockTutorDirectoryService;
 import tn.esprit.fahamni.services.ReservationService;
 import tn.esprit.fahamni.services.ReservationService.ReservationStats;
 import tn.esprit.fahamni.services.ReservationService.SessionEvaluationItem;
+import tn.esprit.fahamni.services.ReservationService.SeatSelectionOption;
 import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
 import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SalleEquipementService;
@@ -28,14 +39,16 @@ import tn.esprit.fahamni.services.TutorRecommendationService.RecommendationObjec
 import tn.esprit.fahamni.services.TutorRecommendationService;
 import tn.esprit.fahamni.services.TutorRecommendationService.RecommendedSession;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.PaginationSupport;
+import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
-import javafx.application.Platform;
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.Button;
@@ -55,6 +68,7 @@ import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.geometry.Insets;
@@ -76,7 +90,9 @@ import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import javafx.stage.Screen;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.awt.Desktop;
 import java.net.URI;
@@ -98,6 +114,7 @@ import java.util.stream.IntStream;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
 import javafx.scene.input.MouseEvent;
+import javafx.util.Duration;
 
 public class ReservationController {
 
@@ -122,6 +139,9 @@ public class ReservationController {
     private static final double MATCHING_SWIPE_SUPER_THRESHOLD = 120.0;
     private static final double MATCHING_SWIPE_ROTATION_FACTOR = 0.055;
     private static final DateTimeFormatter DATE_PICKER_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final String SEAT_SELECTION_DIALOG_FXML = SceneManager.frontofficeView("SeatSelectionDialogView.fxml");
+    private static final int ROOM3D_SELECTION_REFRESH_MILLIS = 220;
+    private static final int ROOM3D_SELECTION_RESUME_DELAY_MILLIS = 180;
     private static final List<String> HOUR_OPTIONS = IntStream.range(0, 24)
         .mapToObj(value -> String.format("%02d", value))
         .toList();
@@ -137,9 +157,11 @@ public class ReservationController {
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final TutorRecommendationService tutorRecommendationService = new TutorRecommendationService();
     private final MatchingService matchingService = new MatchingService();
+    private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
+    private final Map<Integer, Integer> roomSeatCountsBySalleId = new LinkedHashMap<>();
     private final Map<Integer, EquipmentSelectionControls> equipmentSelectionControls = new LinkedHashMap<>();
     private final Map<Integer, RoomSelectionControls> roomSelectionControls = new LinkedHashMap<>();
     private final Map<Integer, String> roomScheduleConflicts = new LinkedHashMap<>();
@@ -147,6 +169,7 @@ public class ReservationController {
     private Integer editingSessionId;
     private int currentSessionPage = 1;
     private PendingMatchingPlan pendingMatchingPlan;
+    private Timeline activeRoom3DSelectionMonitor;
 
     @FXML
     private Label publishedSessionsCountLabel;
@@ -228,6 +251,9 @@ public class ReservationController {
 
     @FXML
     private Label sessionRoomPreviewSubtitleLabel;
+
+    @FXML
+    private Button sessionRoomPreview3DButton;
 
     @FXML
     private Label sessionRoomPreviewDescriptionLabel;
@@ -413,6 +439,20 @@ public class ReservationController {
     }
 
     @FXML
+    private void handlePreviewSelectedRoom3D() {
+        hideFeedback();
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (selectedSalle == null) {
+            showFeedback("Choisissez une salle avant d'ouvrir l'apercu 3D.", false);
+            return;
+        }
+
+        Room3DViewerLauncher.showPreview(room3DPreviewService.buildPreview(selectedSalle, false, Room3DViewMode.PREVIEW));
+        showFeedback("L'apercu 3D de la salle a ete ouvert dans une fenetre dediee.", true);
+    }
+
+    @FXML
     private void handleClearSessionForm() {
         pendingMatchingPlan = null;
         clearSessionForm();
@@ -560,12 +600,14 @@ public class ReservationController {
                     .toList()
             );
             roomFixedEquipementsBySalleId.clear();
+            roomSeatCountsBySalleId.clear();
 
             refreshRoomChoicesForSchedule();
         } catch (SQLException | IllegalStateException exception) {
             availableSalles.clear();
             availableEquipements.clear();
             roomFixedEquipementsBySalleId.clear();
+            roomSeatCountsBySalleId.clear();
             selectedSalleId = null;
             roomSelectionControls.clear();
             roomScheduleConflicts.clear();
@@ -1248,6 +1290,9 @@ public class ReservationController {
                 + " places | "
                 + formatOptionalText(selectedSalle.getLocalisation())
         );
+        if (sessionRoomPreview3DButton != null) {
+            sessionRoomPreview3DButton.setDisable(false);
+        }
         sessionRoomPreviewDescriptionLabel.setText(formatDescription(selectedSalle.getDescription()));
 
         sessionRoomFactsContainer.getChildren().setAll(
@@ -1265,6 +1310,9 @@ public class ReservationController {
         sessionRoomPreviewTitleLabel.setText("Salle indisponible sur ce creneau");
         sessionRoomPreviewSubtitleLabel.setText(reason == null ? "Choisissez une autre salle ou modifiez le creneau." : reason);
         sessionRoomPreviewDescriptionLabel.setText("Choisissez une autre salle ou changez la date, l'heure ou la duree.");
+        if (sessionRoomPreview3DButton != null) {
+            sessionRoomPreview3DButton.setDisable(true);
+        }
         sessionRoomFactsContainer.getChildren().clear();
         resetRoomFixedEquipmentPreview();
     }
@@ -1275,6 +1323,9 @@ public class ReservationController {
         sessionRoomPreviewTitleLabel.setText("Choisissez une salle");
         sessionRoomPreviewSubtitleLabel.setText("La salle choisie apparaitra ici avec ses details principaux.");
         sessionRoomPreviewDescriptionLabel.setText("Aucune salle selectionnee.");
+        if (sessionRoomPreview3DButton != null) {
+            sessionRoomPreview3DButton.setDisable(true);
+        }
         sessionRoomFactsContainer.getChildren().clear();
         resetRoomFixedEquipmentPreview();
     }
@@ -1580,6 +1631,7 @@ public class ReservationController {
     }
 
     private void loadSessionDashboard() {
+        roomSeatCountsBySalleId.clear();
         List<Seance> allSessions = filterVisibleSessions(seanceService.getAll());
         long publishedCount = allSessions.stream().filter(seance -> seance.getStatus() == 1).count();
         long draftCount = allSessions.stream().filter(seance -> seance.getStatus() == 0).count();
@@ -1618,17 +1670,14 @@ public class ReservationController {
 
         int totalItems = filteredSessions.size();
         int pageSize = getSelectedSessionPageSize();
-        int totalPages = calculateTotalPages(totalItems, pageSize);
-        currentSessionPage = clamp(currentSessionPage, 1, totalPages);
+        PaginationSupport.PageSlice pageSlice = PaginationSupport.slice(currentSessionPage, totalItems, pageSize);
+        currentSessionPage = pageSlice.currentPage();
 
-        int fromIndex = (currentSessionPage - 1) * pageSize;
-        int toIndex = Math.min(fromIndex + pageSize, totalItems);
-
-        filteredSessions.subList(fromIndex, toIndex).stream()
+        filteredSessions.subList(pageSlice.fromIndex(), pageSlice.toIndex()).stream()
             .map(this::buildRecentSessionCard)
             .forEach(recentSessionsContainer.getChildren()::add);
 
-        updateSessionPagination(totalItems, fromIndex + 1, toIndex, totalPages);
+        updateSessionPagination(pageSlice);
     }
 
     private VBox buildRecentSessionCard(Seance seance) {
@@ -1652,7 +1701,7 @@ public class ReservationController {
             "Tuteur: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())
                 + " | " + formatDateTime(seance.getStartAt())
                 + " | " + seance.getDurationMin() + " min"
-                + " | " + seance.getMaxParticipants() + " places"
+                + " | " + formatDisplayedPlaceCount(seance)
                 + " | " + formatSessionPrice(seance.getPrice())
                 + " | " + buildInfrastructureSummary(seance)
                 + " | " + formatReservationCount(reservationStats.total())
@@ -4355,7 +4404,8 @@ public class ReservationController {
     }
 
     private Button buildReserveButton(Seance seance, ReservationStats reservationStats) {
-        Button reserveButton = new Button(seance.getPrice() > 0.0 ? "Reserver & payer" : "Reserver");
+        String reserveLabel = seance.getPrice() > 0.0 ? "Reserver & payer" : "Reserver";
+        Button reserveButton = new Button(reserveLabel);
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
         if (!canReserveAsParticipant(seance)) {
@@ -4383,13 +4433,57 @@ public class ReservationController {
             return reserveButton;
         }
 
+        if (seance != null && seance.isPresentiel()) {
+            reserveButton.setText(reserveLabel + " (2D/3D)");
+            reserveButton.setTooltip(new Tooltip(
+                "Cette seance presentielle vous laisse choisir votre place via le plan 2D ou la vue 3D."
+            ));
+        }
+
         reserveButton.setOnAction(event -> reserveSession(seance));
         return reserveButton;
     }
 
     private void reserveSession(Seance seance) {
+        hideReservationActionFeedback();
+
+        if (seance == null) {
+            showReservationActionFeedback("Selectionnez une seance valide.", false);
+            return;
+        }
+
+        if (!seance.isPresentiel()) {
+            submitReservation(seance, null);
+            return;
+        }
+
+        List<SeatSelectionOption> seatOptions = resolveSeatSelectionOptions(seance);
+        if (seatOptions == null) {
+            return;
+        }
+
+        Optional<SeatSelectionMode> seatSelectionMode = showSeatSelectionModeDialog();
+        if (seatSelectionMode.isEmpty()) {
+            return;
+        }
+
+        if (seatSelectionMode.get() == SeatSelectionMode.THREE_D) {
+            launchSeatSelection3DFlow(seance, seatOptions);
+            return;
+        }
+
+        Optional<Integer> selectedPlace = showSeatSelection2DDialog(seance, seatOptions);
+        if (selectedPlace.isEmpty()) {
+            return;
+        }
+
+        submitReservation(seance, selectedPlace.get());
+    }
+
+    private void submitReservation(Seance seance, Integer selectedPlaceId) {
         int participantId = getCurrentReservationParticipantId();
-        ReservationService.ReservationCreationResult result = reservationService.reserveSeanceDetailed(seance, participantId);
+        ReservationService.ReservationCreationResult result =
+            reservationService.reserveSeanceDetailed(seance, participantId, selectedPlaceId);
         boolean success = result.success();
         String message = result.message();
 
@@ -4415,6 +4509,490 @@ public class ReservationController {
         loadSessionDashboard();
         showAvailableSessionsSection();
         showReservationActionFeedback(message, success);
+    }
+
+    private List<SeatSelectionOption> resolveSeatSelectionOptions(Seance seance) {
+        List<SeatSelectionOption> seatOptions;
+        try {
+            seatOptions = reservationService.getSeatSelectionOptions(seance);
+        } catch (RuntimeException exception) {
+            showReservationActionFeedback(resolveMessage(exception), false);
+            return null;
+        }
+
+        if (seatOptions.isEmpty()) {
+            showReservationActionFeedback(
+                "Aucune place n'est configuree pour la salle de cette seance. Contactez l'administration.",
+                false
+            );
+            return null;
+        }
+
+        long selectableSeats = seatOptions.stream().filter(SeatSelectionOption::selectable).count();
+        if (selectableSeats <= 0) {
+            showReservationActionFeedback(
+                "Toutes les places de cette seance sont deja occupees ou indisponibles.",
+                false
+            );
+            return null;
+        }
+
+        return seatOptions;
+    }
+
+    private Optional<Integer> showSeatSelection2DDialog(Seance seance, List<SeatSelectionOption> seatOptions) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(SEAT_SELECTION_DIALOG_FXML));
+            Node content = loader.load();
+            SeatSelectionDialogController controller = loader.getController();
+
+            Dialog<Integer> seatDialog = new Dialog<>();
+            DialogPane dialogPane = seatDialog.getDialogPane();
+            ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType confirmButtonType = new ButtonType("Confirmer la place", ButtonBar.ButtonData.OK_DONE);
+
+            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+            double dialogWidth = Math.min(980.0, Math.max(640.0, screenBounds.getWidth() - 56.0));
+            double dialogHeight = Math.min(820.0, Math.max(560.0, screenBounds.getHeight() - 72.0));
+
+            seatDialog.setTitle("Réserver");
+            seatDialog.setResizable(true);
+            seatDialog.setTitle("Choix de place");
+            dialogPane.getButtonTypes().setAll(cancelButton, confirmButtonType);
+            dialogPane.setContent(content);
+            dialogPane.setPrefWidth(dialogWidth);
+            dialogPane.setMinWidth(Math.min(740.0, dialogWidth));
+            dialogPane.setMaxWidth(dialogWidth);
+            dialogPane.setPrefHeight(dialogHeight);
+            dialogPane.setMinHeight(Math.min(620.0, dialogHeight));
+            dialogPane.setMaxHeight(dialogHeight);
+            applyCurrentTheme(dialogPane);
+            dialogPane.getStyleClass().add("seat-selection-dialog");
+
+            Button confirmButton = (Button) dialogPane.lookupButton(confirmButtonType);
+            if (confirmButton != null) {
+                confirmButton.getStyleClass().add("backoffice-primary-button");
+            }
+            Button cancelDialogButton = (Button) dialogPane.lookupButton(cancelButton);
+            if (cancelDialogButton != null) {
+                cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
+            }
+            controller.configure(seance, seatOptions, confirmButton, resolveSalleDisposition(seance.getSalleId()));
+
+            seatDialog.setResultConverter(buttonType ->
+                buttonType == confirmButtonType ? controller.getSelectedPlaceId() : null
+            );
+
+            return seatDialog.showAndWait();
+        } catch (IOException exception) {
+            showReservationActionFeedback(
+                "Chargement de l'interface de plan de salle impossible: " + resolveMessage(exception),
+                false
+            );
+            return Optional.empty();
+        }
+    }
+
+    private Optional<SeatSelectionMode> showSeatSelectionModeDialog() {
+        Dialog<SeatSelectionMode> modeDialog = new Dialog<>();
+        DialogPane dialogPane = modeDialog.getDialogPane();
+        ButtonType twoDButton = new ButtonType("Plan 2D", ButtonBar.ButtonData.LEFT);
+        ButtonType threeDButton = new ButtonType("Vue 3D", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        modeDialog.setTitle("Mode de reservation");
+        dialogPane.getButtonTypes().setAll(twoDButton, threeDButton, cancelButton);
+        dialogPane.getStyleClass().add("seat-selection-dialog");
+
+        VBox content = new VBox(14.0);
+        content.getStyleClass().add("reservation-dialog-shell");
+
+        HBox hero = new HBox(14.0);
+        hero.getStyleClass().add("reservation-dialog-hero");
+
+        VBox heroCopy = new VBox(4.0);
+        heroCopy.setMinWidth(0);
+        HBox.setHgrow(heroCopy, Priority.ALWAYS);
+
+        Label eyebrow = new Label("CHOIX DE VUE");
+        eyebrow.getStyleClass().add("reservation-dialog-kicker");
+
+        Label title = new Label("Choisissez votre mode de selection de place");
+        title.getStyleClass().add("reservation-dialog-title");
+        title.setWrapText(true);
+
+        Label copy = new Label(
+            "Plan 2D pour aller vite, ou vue 3D pour explorer la salle avant de choisir votre place."
+        );
+        copy.setWrapText(true);
+        copy.getStyleClass().add("reservation-dialog-copy");
+
+        heroCopy.getChildren().addAll(eyebrow, title, copy);
+
+        Label heroChip = new Label("Reservation presentielle");
+        configureReservationDialogInlineChip(heroChip);
+
+        hero.getChildren().addAll(heroCopy, heroChip);
+
+        HBox optionRow = new HBox(12.0);
+        VBox twoDCard = buildReservationDialogOptionCard(
+            "PLAN 2D",
+            "Rapide et immediat",
+            "Affiche directement le plan de salle pour choisir une place libre en un seul geste.",
+            "Rapide"
+        );
+        VBox threeDCard = buildReservationDialogOptionCard(
+            "VUE 3D",
+            "Exploration immersive",
+            "Ouvre la salle en 3D avec la meme disponibilite que le plan 2D pour choisir plus visuellement.",
+            "Immersif"
+        );
+        HBox.setHgrow(twoDCard, Priority.ALWAYS);
+        HBox.setHgrow(threeDCard, Priority.ALWAYS);
+        optionRow.getChildren().addAll(twoDCard, threeDCard);
+
+        VBox noteCard = new VBox(6.0);
+        noteCard.getStyleClass().addAll("reservation-dialog-card", "reservation-dialog-note-card");
+
+        Label detailTitle = new Label("Meme logique de reservation");
+        detailTitle.getStyleClass().add("reservation-dialog-card-title");
+
+        Label detail = new Label(
+            "Quel que soit votre choix, la reservation finale utilise exactement les memes places disponibles et le meme controle de coherence."
+        );
+        detail.setWrapText(true);
+        detail.getStyleClass().add("reservation-dialog-card-copy");
+
+        noteCard.getChildren().addAll(detailTitle, detail);
+
+        content.getChildren().addAll(hero, optionRow, noteCard);
+        dialogPane.setContent(content);
+        dialogPane.setPrefWidth(640.0);
+        applyCurrentTheme(dialogPane);
+
+        Button twoDDialogButton = (Button) dialogPane.lookupButton(twoDButton);
+        if (twoDDialogButton != null) {
+            twoDDialogButton.getStyleClass().addAll(
+                "action-button",
+                "secondary",
+                "reservation-dialog-2d-button"
+            );
+        }
+        Button threeDDialogButton = (Button) dialogPane.lookupButton(threeDButton);
+        if (threeDDialogButton != null) {
+            threeDDialogButton.getStyleClass().addAll(
+                "action-button",
+                "secondary",
+                "infrastructure-room-3d-action",
+                "reservation-dialog-3d-button"
+            );
+        }
+        Button cancelDialogButton = (Button) dialogPane.lookupButton(cancelButton);
+        if (cancelDialogButton != null) {
+            cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
+        }
+
+        modeDialog.setResultConverter(buttonType -> {
+            if (buttonType == threeDButton) {
+                return SeatSelectionMode.THREE_D;
+            }
+            if (buttonType == twoDButton) {
+                return SeatSelectionMode.TWO_D;
+            }
+            return null;
+        });
+
+        return modeDialog.showAndWait();
+    }
+
+    private void launchSeatSelection3DFlow(Seance seance, List<SeatSelectionOption> seatOptions) {
+        Salle salle = resolveSalleById(seance == null ? null : seance.getSalleId());
+        if (salle == null) {
+            showReservationActionFeedback("Impossible de charger la salle liee a cette seance pour la selection 3D.", false);
+            return;
+        }
+
+        Room3DPreviewData previewData = buildSeatSelection3DPreview(salle, seatOptions);
+        stopActiveRoom3DSelectionMonitor();
+        Room3DViewerLauncher.clearSelectedSeatSnapshot();
+        Room3DViewerLauncher.showPreview(previewData);
+        showReservationActionFeedback(
+            "La vue 3D est ouverte. Choisissez une place dans la salle pour poursuivre la reservation.",
+            true
+        );
+        startRoom3DSelectionMonitor(seance);
+    }
+
+    private void startRoom3DSelectionMonitor(Seance seance) {
+        stopActiveRoom3DSelectionMonitor();
+
+        Timeline selectionMonitor = new Timeline(new KeyFrame(Duration.millis(ROOM3D_SELECTION_REFRESH_MILLIS), event -> {
+            Integer selectedSeatId = Room3DViewerLauncher.getActiveSelectedSeatId();
+            String selectedSeat = Room3DViewerLauncher.getActiveSelectedSeatLabel();
+
+            if (!Room3DViewerLauncher.isActiveSelectionMode()) {
+                stopActiveRoom3DSelectionMonitor();
+                if (selectedSeatId != null) {
+                    scheduleSeatSelection3DConfirmationDialog(seance, selectedSeatId, selectedSeat);
+                } else {
+                    Room3DViewerLauncher.clearSelectedSeatSnapshot();
+                }
+                return;
+            }
+
+            if (selectedSeatId == null) {
+                return;
+            }
+
+            stopActiveRoom3DSelectionMonitor();
+            scheduleSeatSelection3DConfirmationDialog(seance, selectedSeatId, selectedSeat);
+        }));
+        selectionMonitor.setCycleCount(Timeline.INDEFINITE);
+        selectionMonitor.play();
+        activeRoom3DSelectionMonitor = selectionMonitor;
+    }
+
+    private void scheduleSeatSelection3DConfirmationDialog(Seance seance, Integer selectedSeatId, String selectedSeat) {
+        if (selectedSeatId == null) {
+            return;
+        }
+
+        Platform.runLater(() -> showSeatSelection3DConfirmationDialog(seance, selectedSeatId, selectedSeat));
+    }
+
+    private void stopActiveRoom3DSelectionMonitor() {
+        if (activeRoom3DSelectionMonitor == null) {
+            return;
+        }
+        activeRoom3DSelectionMonitor.stop();
+        activeRoom3DSelectionMonitor = null;
+    }
+
+    private void showSeatSelection3DConfirmationDialog(Seance seance, Integer selectedSeatId, String selectedSeat) {
+        Dialog<ButtonType> selectionDialog = new Dialog<>();
+        DialogPane dialogPane = selectionDialog.getDialogPane();
+        ButtonType changeButton = new ButtonType("Changer la place", ButtonBar.ButtonData.LEFT);
+        ButtonType cancelButton = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType confirmButtonType = new ButtonType("Confirmer la place 3D", ButtonBar.ButtonData.OK_DONE);
+
+        selectionDialog.setTitle("Confirmer la place en 3D");
+        dialogPane.getButtonTypes().setAll(changeButton, cancelButton, confirmButtonType);
+        dialogPane.getStyleClass().add("seat-selection-dialog");
+
+        VBox content = new VBox(14.0);
+        content.getStyleClass().add("reservation-dialog-shell");
+
+        HBox hero = new HBox(14.0);
+        hero.getStyleClass().add("reservation-dialog-hero");
+
+        VBox heroCopy = new VBox(4.0);
+        heroCopy.setMinWidth(0);
+        HBox.setHgrow(heroCopy, Priority.ALWAYS);
+
+        Label eyebrow = new Label("SELECTION 3D");
+        eyebrow.getStyleClass().add("reservation-dialog-kicker");
+
+        Label title = new Label("Place choisie dans la vue 3D");
+        title.getStyleClass().add("reservation-dialog-title");
+        title.setWrapText(true);
+
+        Label intro = new Label(
+            "La confirmation s'affiche maintenant apres votre choix pour garder une navigation 3D plus fluide."
+        );
+        intro.setWrapText(true);
+        intro.getStyleClass().add("reservation-dialog-copy");
+
+        heroCopy.getChildren().addAll(eyebrow, title, intro);
+
+        Label heroChip = new Label("Choix immersif");
+        configureReservationDialogInlineChip(heroChip);
+
+        hero.getChildren().addAll(heroCopy, heroChip);
+
+        VBox statusCard = new VBox(8.0);
+        statusCard.getStyleClass().addAll("reservation-dialog-card", "reservation-dialog-card-highlight");
+
+        Label statusTitle = new Label("Etat de la vue 3D");
+        statusTitle.getStyleClass().add("reservation-dialog-card-title");
+
+        Label statusLabel = new Label();
+        statusLabel.setWrapText(true);
+        updateThreeDSelectionStatus(statusLabel, Room3DViewerLauncher.isActiveSelectionMode(), true);
+
+        statusCard.getChildren().addAll(statusTitle, statusLabel);
+
+        VBox selectedSeatCard = new VBox(8.0);
+        selectedSeatCard.getStyleClass().add("reservation-dialog-card");
+
+        Label selectedSeatTitle = new Label("Place retenue");
+        selectedSeatTitle.getStyleClass().add("reservation-dialog-card-title");
+
+        Label selectedSeatLabel = new Label();
+        selectedSeatLabel.setWrapText(true);
+        updateThreeDSelectedSeatLabel(selectedSeatLabel, selectedSeat);
+
+        selectedSeatCard.getChildren().addAll(selectedSeatTitle, selectedSeatLabel);
+
+        VBox helpCard = new VBox(8.0);
+        helpCard.getStyleClass().addAll("reservation-dialog-card", "reservation-dialog-note-card");
+
+        Label helpTitle = new Label("Comment confirmer");
+        helpTitle.getStyleClass().add("reservation-dialog-card-title");
+
+        Label helpLabel = new Label(
+            "Confirmez pour reserver cette place, ou choisissez 'Changer la place' pour revenir dans la salle 3D et en selectionner une autre."
+        );
+        helpLabel.setWrapText(true);
+        helpLabel.getStyleClass().add("reservation-dialog-card-copy");
+
+        helpCard.getChildren().addAll(helpTitle, helpLabel);
+
+        content.getChildren().addAll(hero, statusCard, selectedSeatCard, helpCard);
+        dialogPane.setContent(content);
+        dialogPane.setPrefWidth(620.0);
+        applyCurrentTheme(dialogPane);
+
+        Button changeDialogButton = (Button) dialogPane.lookupButton(changeButton);
+        if (changeDialogButton != null) {
+            changeDialogButton.getStyleClass().addAll(
+                "action-button",
+                "secondary",
+                "reservation-dialog-2d-button"
+            );
+        }
+        Button confirmButton = (Button) dialogPane.lookupButton(confirmButtonType);
+        if (confirmButton != null) {
+            confirmButton.getStyleClass().add("backoffice-primary-button");
+        }
+        Button cancelDialogButton = (Button) dialogPane.lookupButton(cancelButton);
+        if (cancelDialogButton != null) {
+            cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
+        }
+
+        Optional<ButtonType> choice = selectionDialog.showAndWait();
+        if (choice.isPresent() && choice.get() == confirmButtonType) {
+            Room3DViewerLauncher.closeActiveViewer();
+            Room3DViewerLauncher.clearSelectedSeatSnapshot();
+            submitReservation(seance, selectedSeatId);
+            return;
+        }
+
+        if (choice.isPresent() && choice.get() == changeButton) {
+            Room3DViewerLauncher.clearActiveSeatSelection();
+            if (Room3DViewerLauncher.isActiveSelectionMode()) {
+                showReservationActionFeedback(
+                    "Choisissez une autre place dans la vue 3D. La confirmation reviendra apres votre nouveau choix.",
+                    true
+                );
+                PauseTransition resumeSelectionMonitor = new PauseTransition(
+                    Duration.millis(ROOM3D_SELECTION_RESUME_DELAY_MILLIS)
+                );
+                resumeSelectionMonitor.setOnFinished(event -> {
+                    if (Room3DViewerLauncher.isActiveSelectionMode()) {
+                        startRoom3DSelectionMonitor(seance);
+                    }
+                });
+                resumeSelectionMonitor.play();
+            } else {
+                List<SeatSelectionOption> refreshedSeatOptions = resolveSeatSelectionOptions(seance);
+                if (refreshedSeatOptions != null) {
+                    launchSeatSelection3DFlow(seance, refreshedSeatOptions);
+                }
+            }
+            return;
+        }
+
+        Room3DViewerLauncher.closeActiveViewer();
+        Room3DViewerLauncher.clearSelectedSeatSnapshot();
+    }
+
+    private VBox buildReservationDialogOptionCard(String kickerText, String titleText, String copyText, String chipText) {
+        VBox card = new VBox(10.0);
+        card.getStyleClass().addAll("reservation-dialog-card", "reservation-dialog-option-card");
+
+        Label kicker = new Label(kickerText);
+        kicker.getStyleClass().add("reservation-dialog-kicker");
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("reservation-dialog-card-title");
+        title.setWrapText(true);
+
+        Label copy = new Label(copyText);
+        copy.getStyleClass().add("reservation-dialog-card-copy");
+        copy.setWrapText(true);
+
+        Label chip = new Label(chipText);
+        configureReservationDialogInlineChip(chip);
+        chip.getStyleClass().add("workspace-chip-muted");
+
+        card.getChildren().addAll(kicker, title, copy, chip);
+        return card;
+    }
+
+    private void configureReservationDialogInlineChip(Label chip) {
+        if (chip == null) {
+            return;
+        }
+
+        chip.getStyleClass().addAll("workspace-chip", "reservation-dialog-inline-chip");
+        chip.setMinWidth(Region.USE_PREF_SIZE);
+        chip.setMaxWidth(Region.USE_PREF_SIZE);
+        chip.setWrapText(false);
+        chip.setTextOverrun(OverrunStyle.CLIP);
+    }
+
+    private void updateThreeDSelectionStatus(Label statusLabel, boolean selectionViewerActive, boolean hasSelection) {
+        if (statusLabel == null) {
+            return;
+        }
+
+        statusLabel.getStyleClass().setAll("reservation-dialog-status-badge");
+        if (selectionViewerActive && hasSelection) {
+            statusLabel.setText("Fenetre 3D active. Votre choix est memorise, vous pouvez confirmer ici.");
+            statusLabel.getStyleClass().add("reservation-dialog-status-ready");
+        } else if (selectionViewerActive) {
+            statusLabel.setText("Fenetre 3D active. Vous pouvez encore revenir dans la salle pour changer votre place.");
+            statusLabel.getStyleClass().add("reservation-dialog-status-live");
+        } else if (hasSelection) {
+            statusLabel.setText("Fenetre 3D fermee. Votre derniere selection est conservee, vous pouvez confirmer.");
+            statusLabel.getStyleClass().add("reservation-dialog-status-ready");
+        } else {
+            statusLabel.setText("La fenetre 3D a ete fermee. Vous pouvez annuler puis relancer la selection si besoin.");
+            statusLabel.getStyleClass().add("reservation-dialog-status-offline");
+        }
+    }
+
+    private void updateThreeDSelectedSeatLabel(Label selectedSeatLabel, String selectedSeat) {
+        if (selectedSeatLabel == null) {
+            return;
+        }
+
+        boolean hasSelection = selectedSeat != null && !selectedSeat.isBlank();
+        selectedSeatLabel.getStyleClass().setAll("reservation-dialog-selection-value");
+        if (hasSelection) {
+            selectedSeatLabel.setText("Selection 3D active: " + selectedSeat);
+            selectedSeatLabel.getStyleClass().add("reservation-dialog-selection-value-active");
+        } else {
+            selectedSeatLabel.setText("Aucune place selectionnee dans la vue 3D.");
+            selectedSeatLabel.getStyleClass().add("reservation-dialog-selection-value-muted");
+        }
+    }
+
+    private Room3DPreviewData buildSeatSelection3DPreview(Salle salle, List<SeatSelectionOption> seatOptions) {
+        List<Room3DPreviewData.SeatPreview> seats = seatOptions.stream()
+            .map(option -> new Room3DPreviewData.SeatPreview(
+                option.placeId(),
+                option.place() == null ? Math.max(1, option.placeId()) : option.place().getNumero(),
+                option.row(),
+                option.column(),
+                option.reserved()
+                    ? RoomSeatVisualState.RESERVED
+                    : RoomSeatVisualState.fromPlaceStatus(option.place() == null ? null : option.place().getEtat()),
+                option.selectable()
+            ))
+            .toList();
+
+        return room3DPreviewService.buildPreviewFromSeats(salle, Room3DViewMode.SELECTION, seats);
     }
 
     private void loadStudentReservations() {
@@ -4464,6 +5042,7 @@ public class ReservationController {
                 + " | " + reservation.durationMin() + " min"
                 + " | " + reservation.maxParticipants() + " places"
                 + " | " + formatSessionPrice(reservation.sessionPriceTnd() == null ? 0.0 : reservation.sessionPriceTnd())
+                + buildPlaceSegment(reservation.placeLabel())
         );
         sessionLabel.setWrapText(true);
         sessionLabel.getStyleClass().add("reservation-section-copy");
@@ -5223,6 +5802,8 @@ public class ReservationController {
                 + " | " + request.durationMin() + " min"
                 + " | " + request.acceptedReservations() + "/" + request.maxParticipants() + " acceptee(s)"
                 + " | " + formatAvailableSeats(request.availableAcceptedSeats())
+                + buildPlaceSegment(request.placeLabel())
+                + " | ID reservation #" + request.id()
         );
         sessionLabel.setWrapText(true);
         sessionLabel.getStyleClass().add("reservation-section-copy");
@@ -5329,6 +5910,7 @@ public class ReservationController {
         List<SessionEvaluationItem> sessionEvaluations = canManageCurrentSession
             ? reservationService.getSessionEvaluations(seance.getId())
             : List.of();
+        int configuredSeatCount = resolveDisplayedPlaceCountValue(seance);
         LocalDateTime endAt = seance.getStartAt() != null
             ? seance.getStartAt().plusMinutes(seance.getDurationMin())
             : null;
@@ -5369,13 +5951,28 @@ public class ReservationController {
             buildDetailMetric("Fin", formatDateTimeOrPlaceholder(endAt), "Fin calculee"),
             buildDetailMetric("Duree", seance.getDurationMin() + " min", "Temps de seance")
         );
+        if (seance.isPresentiel()) {
+            metrics.getChildren().add(
+                buildDetailMetric("Places salle", String.valueOf(configuredSeatCount), "Configurees")
+            );
+        }
         if (canManageCurrentSession) {
             metrics.getChildren().addAll(
-                buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"),
+                buildDetailMetric(
+                    seance.isPresentiel() ? "Capacite seance" : "Places",
+                    availableSeats + " / " + seance.getMaxParticipants(),
+                    seance.isPresentiel() ? "Disponibles a la reservation" : "Disponibles"
+                ),
                 buildDetailMetric("Reservations", String.valueOf(reservationTotal), "Total lie a la seance")
             );
         } else {
-            metrics.getChildren().add(buildDetailMetric("Places", availableSeats + " / " + seance.getMaxParticipants(), "Disponibles"));
+            metrics.getChildren().add(
+                buildDetailMetric(
+                    seance.isPresentiel() ? "Capacite seance" : "Places",
+                    availableSeats + " / " + seance.getMaxParticipants(),
+                    seance.isPresentiel() ? "Disponibles a la reservation" : "Disponibles"
+                )
+            );
         }
         metrics.getChildren().addAll(
             buildDetailMetric("Tuteur", tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()), "Intervenant"),
@@ -5701,50 +6298,24 @@ public class ReservationController {
         return selectedValue != null && selectedValue > 0 ? selectedValue : DEFAULT_SESSION_PAGE_SIZE;
     }
 
-    private int calculateTotalPages(int totalItems, int pageSize) {
-        if (totalItems <= 0) {
-            return 1;
-        }
-        return (int) Math.ceil((double) totalItems / pageSize);
-    }
-
-    private int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(value, max));
-    }
-
-    private void updateSessionPagination(int totalItems, int fromItem, int toItem, int totalPages) {
+    private void updateSessionPagination(PaginationSupport.PageSlice pageSlice) {
         sessionPaginationBar.setManaged(true);
         sessionPaginationBar.setVisible(true);
-        sessionPaginationSummaryLabel.setText(fromItem + "-" + toItem + " sur " + totalItems + " seances affichees");
-        sessionPreviousPageButton.setDisable(currentSessionPage <= 1);
-        sessionNextPageButton.setDisable(currentSessionPage >= totalPages);
+        sessionPaginationSummaryLabel.setText(
+            PaginationSupport.buildRangeSummary(pageSlice, "seance", "seances", "affichee", "affichees")
+        );
+        sessionPreviousPageButton.setDisable(pageSlice.currentPage() <= 1);
+        sessionNextPageButton.setDisable(pageSlice.currentPage() >= pageSlice.totalPages());
 
-        sessionPageButtonsContainer.getChildren().clear();
-        for (int page : buildVisiblePageNumbers(totalPages)) {
-            Button pageButton = new Button(String.valueOf(page));
-            pageButton.getStyleClass().add("backoffice-page-button");
-            if (page == currentSessionPage) {
-                pageButton.getStyleClass().add("active-page");
-            } else {
-                pageButton.setOnAction(event -> {
-                    currentSessionPage = page;
-                    applySessionFilters();
-                });
+        PaginationSupport.populatePageButtons(
+            sessionPageButtonsContainer,
+            pageSlice.currentPage(),
+            pageSlice.totalPages(),
+            page -> {
+                currentSessionPage = page;
+                applySessionFilters();
             }
-            sessionPageButtonsContainer.getChildren().add(pageButton);
-        }
-    }
-
-    private List<Integer> buildVisiblePageNumbers(int totalPages) {
-        int firstPage = Math.max(1, currentSessionPage - 2);
-        int lastPage = Math.min(totalPages, firstPage + 4);
-        firstPage = Math.max(1, lastPage - 4);
-
-        java.util.ArrayList<Integer> pages = new java.util.ArrayList<>();
-        for (int page = firstPage; page <= lastPage; page++) {
-            pages.add(page);
-        }
-        return pages;
+        );
     }
 
     private void hideSessionPagination() {
@@ -5957,6 +6528,13 @@ public class ReservationController {
 
     private String formatPriceTnd(double priceTnd) {
         return String.format(Locale.ROOT, "%.3f", Math.max(0.0, priceTnd));
+    }
+
+    private String buildPlaceSegment(String placeLabel) {
+        if (placeLabel == null || placeLabel.isBlank()) {
+            return "";
+        }
+        return " | Place: " + placeLabel;
     }
 
     private double calculateOccupancyRate(int reservationCount, int capacity) {
@@ -6553,21 +7131,67 @@ public class ReservationController {
             return "Non requis";
         }
 
-        return availableSalles.stream()
+        Salle salle = resolveSalleById(salleId);
+        if (salle != null && salle.getNom() != null && !salle.getNom().isBlank()) {
+            return salle.getNom();
+        }
+        return "Salle #" + salleId;
+    }
+
+    private String resolveSalleDisposition(Integer salleId) {
+        Salle salle = resolveSalleById(salleId);
+        if (salle == null || salle.getTypeDisposition() == null || salle.getTypeDisposition().isBlank()) {
+            return null;
+        }
+        return salle.getTypeDisposition();
+    }
+
+    private Salle resolveSalleById(Integer salleId) {
+        if (salleId == null || salleId <= 0) {
+            return null;
+        }
+
+        Salle cachedSalle = availableSalles.stream()
             .filter(salle -> salle.getIdSalle() == salleId)
-            .map(Salle::getNom)
             .findFirst()
-            .orElseGet(() -> {
-                try {
-                    Salle salle = salleService.recupererParId(salleId);
-                    if (salle != null && salle.getNom() != null && !salle.getNom().isBlank()) {
-                        return salle.getNom();
-                    }
-                } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
-                    return "Salle #" + salleId;
-                }
-                return "Salle #" + salleId;
-            });
+            .orElse(null);
+        if (cachedSalle != null) {
+            return cachedSalle;
+        }
+
+        try {
+            return salleService.recupererParId(salleId);
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            return null;
+        }
+    }
+
+    private int resolveDisplayedPlaceCountValue(Seance seance) {
+        if (seance == null) {
+            return 0;
+        }
+        if (!seance.isPresentiel()) {
+            return seance.getMaxParticipants();
+        }
+        Integer salleId = seance.getSalleId();
+        if (salleId == null || salleId <= 0) {
+            return 0;
+        }
+        if (roomSeatCountsBySalleId.containsKey(salleId)) {
+            return roomSeatCountsBySalleId.get(salleId);
+        }
+
+        try {
+            int configuredSeatCount = reservationService.countConfiguredSeatsBySalle(salleId);
+            roomSeatCountsBySalleId.put(salleId, configuredSeatCount);
+            return configuredSeatCount;
+        } catch (RuntimeException exception) {
+            return seance.getMaxParticipants();
+        }
+    }
+
+    private String formatDisplayedPlaceCount(Seance seance) {
+        return resolveDisplayedPlaceCountValue(seance) + " places";
     }
 
     private String resolveEquipementNames(Map<Integer, Integer> equipementQuantites) {
@@ -6870,7 +7494,16 @@ public class ReservationController {
         if (dialogPane == null || recentSessionsContainer == null || recentSessionsContainer.getScene() == null) {
             return;
         }
-        dialogPane.getStylesheets().setAll(recentSessionsContainer.getScene().getStylesheets());
+        java.util.LinkedHashSet<String> stylesheets = new java.util.LinkedHashSet<>();
+        stylesheets.addAll(recentSessionsContainer.getScene().getStylesheets());
+
+        javafx.scene.Parent current = recentSessionsContainer;
+        while (current != null) {
+            stylesheets.addAll(current.getStylesheets());
+            current = current.getParent();
+        }
+
+        dialogPane.getStylesheets().setAll(stylesheets);
     }
 
     private void appendDialogStylesheet(DialogPane dialogPane, String stylesheetPath) {
@@ -6913,6 +7546,11 @@ public class ReservationController {
     }
 
     private record EquipmentSelectionControls(CheckBox checkBox, Spinner<Integer> quantitySpinner, VBox card, boolean selectable) {
+    }
+
+    private enum SeatSelectionMode {
+        TWO_D,
+        THREE_D
     }
 
     private record RoomSelectionControls(VBox card, Label statusChip) {
