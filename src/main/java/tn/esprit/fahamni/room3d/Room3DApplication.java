@@ -1010,7 +1010,7 @@ public class Room3DApplication extends SimpleApplication {
         }
         sceneRoot.attachChild(presentationScreen);
 
-        if (isConferenceUShapeLayout()) {
+        if (isUShapeLayout()) {
             attachConferenceUTable(metrics);
         } else if (conferenceAuditoriumLayout != null) {
             Node lectern = createConferenceLecternNode();
@@ -1091,7 +1091,9 @@ public class Room3DApplication extends SimpleApplication {
             new Vector3f(0f, tableHeight + 0.04f, 0f)
         ));
         sceneRoot.attachChild(backWing);
-        attachConferenceUMicrophones(metrics, uShapeLayout);
+        if (shouldAttachUShapeMicrophones()) {
+            attachConferenceUMicrophones(metrics, uShapeLayout);
+        }
     }
 
     private void attachReunionMicrophones(LayoutMetrics metrics, ReunionTableLayout reunionTableLayout) {
@@ -1132,7 +1134,7 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private Vector3f resolveSeatPosition(Room3DPreviewData.SeatPreview seat, LayoutMetrics metrics, String disposition) {
-        if (isConferenceUShapeLayout()) {
+        if (isUShapeLayout()) {
             return resolveConferenceUSeatPosition(seat, metrics);
         }
         if (isTieredAuditoriumLayout()) {
@@ -1142,11 +1144,38 @@ public class Room3DApplication extends SimpleApplication {
             return resolveReunionSeatPosition(seat, metrics);
         }
 
-        float x = ((seat.column() - metrics.minColumn()) * metrics.seatSpacingX()) - (metrics.layoutWidth() / 2f);
+        float x = ((resolveSeatVisualColumn(seat, disposition) - metrics.minColumn()) * metrics.seatSpacingX())
+            - (metrics.layoutWidth() / 2f);
         float z = metrics.frontSeatZ()
             - resolveStandardDeskRowBackwardOffset(disposition)
             - ((seat.row() - metrics.minRow()) * metrics.seatSpacingZ());
         return new Vector3f(x, 0f, z);
+    }
+
+    private int resolveSeatVisualColumn(Room3DPreviewData.SeatPreview seat, String disposition) {
+        if (seat == null || !shouldUseSeatSelectionAisle(disposition)) {
+            return seat == null ? 1 : seat.column();
+        }
+
+        int logicalColumnSpan = Math.max(1, previewData.columnSpan());
+        int leftGroupColumns = (int) Math.ceil(logicalColumnSpan / 2.0);
+        return seat.column() > leftGroupColumns ? seat.column() + 1 : seat.column();
+    }
+
+    private boolean shouldUseSeatSelectionAisle(String disposition) {
+        if (previewData == null || !previewData.supportsSeatSelection() || previewData.columnSpan() <= 3) {
+            return false;
+        }
+
+        return switch (disposition) {
+            case "informatique", "atelier", "classe", "cours" -> true;
+            default -> false;
+        };
+    }
+
+    private int resolveEffectiveColumnSpan(String disposition) {
+        int logicalColumnSpan = Math.max(1, previewData.columnSpan());
+        return shouldUseSeatSelectionAisle(disposition) ? logicalColumnSpan + 1 : logicalColumnSpan;
     }
 
     private float resolveStandardDeskRowBackwardOffset(String disposition) {
@@ -1492,11 +1521,15 @@ public class Room3DApplication extends SimpleApplication {
             return false;
         }
 
-        return !isConferenceUShapeLayout();
+        return !isUShapeLayout();
     }
 
-    private boolean isConferenceUShapeLayout() {
-        return "u".equals(normalize(previewData.disposition()))
+    private boolean isUShapeLayout() {
+        return "u".equals(normalize(previewData.disposition()));
+    }
+
+    private boolean shouldAttachUShapeMicrophones() {
+        return isUShapeLayout()
             && "conference".equals(normalize(previewData.roomType()));
     }
 
@@ -2614,7 +2647,7 @@ public class Room3DApplication extends SimpleApplication {
 
         int minRow = previewData.minRow();
         int minColumn = previewData.minColumn();
-        float layoutWidth = Math.max(2.6f, Math.max(0, previewData.columnSpan() - 1) * seatSpacingX);
+        float layoutWidth = Math.max(2.6f, Math.max(0, resolveEffectiveColumnSpan(disposition) - 1) * seatSpacingX);
         float layoutDepth = Math.max(2.6f, Math.max(0, previewData.rowSpan() - 1) * seatSpacingZ);
         float roomWidth = layoutWidth + (amphitheatreLayout ? 6.4f : 5.2f);
         float roomDepth = layoutDepth + (amphitheatreLayout ? 8.4f : 6.6f);
