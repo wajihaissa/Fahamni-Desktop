@@ -28,6 +28,7 @@ import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.PaginationSupport;
 import tn.esprit.fahamni.utils.SceneManager;
+import tn.esprit.fahamni.utils.SeatSelectionLayoutResolver;
 import tn.esprit.fahamni.utils.UserSession;
 import javafx.fxml.FXML;
 import javafx.geometry.Rectangle2D;
@@ -2233,20 +2234,40 @@ public class ReservationController {
     }
 
     private Room3DPreviewData buildSeatSelection3DPreview(Salle salle, List<SeatSelectionOption> seatOptions) {
+        SeatSelectionLayoutResolver.LayoutProjection layoutProjection = SeatSelectionLayoutResolver.resolve(
+            salle == null ? null : salle.getTypeDisposition(),
+            seatOptions.stream()
+                .map(option -> new SeatSelectionLayoutResolver.SeatLayoutInput(
+                    option.placeId(),
+                    option.row(),
+                    option.column()
+                ))
+                .toList()
+        );
         List<Room3DPreviewData.SeatPreview> seats = seatOptions.stream()
-            .map(option -> new Room3DPreviewData.SeatPreview(
-                option.placeId(),
-                option.place() == null ? Math.max(1, option.placeId()) : option.place().getNumero(),
-                option.row(),
-                option.column(),
-                option.reserved()
-                    ? RoomSeatVisualState.RESERVED
-                    : RoomSeatVisualState.fromPlaceStatus(option.place() == null ? null : option.place().getEtat()),
-                option.selectable()
-            ))
+            .map(option -> {
+                SeatSelectionLayoutResolver.SeatVisualPlacement placement = layoutProjection.placementFor(option.placeId());
+                int displayRow = placement == null ? option.row() : placement.displayRow();
+                int displayColumn = placement == null ? option.column() : placement.logicalColumn();
+                return new Room3DPreviewData.SeatPreview(
+                    option.placeId(),
+                    option.place() == null ? Math.max(1, option.placeId()) : option.place().getNumero(),
+                    displayRow,
+                    displayColumn,
+                    option.reserved()
+                        ? RoomSeatVisualState.RESERVED
+                        : RoomSeatVisualState.fromPlaceStatus(option.place() == null ? null : option.place().getEtat()),
+                    option.selectable()
+                );
+            })
             .toList();
 
-        return room3DPreviewService.buildPreviewFromSeats(salle, Room3DViewMode.SELECTION, seats);
+        return room3DPreviewService.buildPreviewFromSeats(
+            salle,
+            Room3DViewMode.SELECTION,
+            layoutProjection.renderDisposition(),
+            seats
+        );
     }
 
     private void loadStudentReservations() {

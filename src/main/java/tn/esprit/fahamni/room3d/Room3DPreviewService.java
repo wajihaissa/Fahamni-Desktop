@@ -36,13 +36,22 @@ public class Room3DPreviewService {
         Room3DViewMode viewMode,
         List<Room3DPreviewData.SeatPreview> seats
     ) {
+        return buildPreviewFromSeats(salle, viewMode, null, seats);
+    }
+
+    public Room3DPreviewData buildPreviewFromSeats(
+        Salle salle,
+        Room3DViewMode viewMode,
+        String dispositionOverride,
+        List<Room3DPreviewData.SeatPreview> seats
+    ) {
         validateSalle(salle);
 
         List<Room3DPreviewData.SeatPreview> effectiveSeats = seats == null || seats.isEmpty()
             ? generateVirtualSeats(salle)
             : List.copyOf(seats);
 
-        return createPreviewData(salle, viewMode, effectiveSeats);
+        return createPreviewData(salle, viewMode, dispositionOverride, effectiveSeats);
     }
 
     private Room3DPreviewData createPreviewData(
@@ -50,18 +59,34 @@ public class Room3DPreviewService {
         Room3DViewMode viewMode,
         List<Room3DPreviewData.SeatPreview> seats
     ) {
+        return createPreviewData(salle, viewMode, null, seats);
+    }
+
+    private Room3DPreviewData createPreviewData(
+        Salle salle,
+        Room3DViewMode viewMode,
+        String dispositionOverride,
+        List<Room3DPreviewData.SeatPreview> seats
+    ) {
         return new Room3DPreviewData(
             salle.getNom(),
             salle.getBatiment(),
             salle.getLocalisation(),
             salle.getTypeSalle(),
-            salle.getTypeDisposition(),
+            resolveDisposition(dispositionOverride, salle.getTypeDisposition()),
             salle.getEtat(),
             salle.getCapacite(),
             salle.isAccesHandicape(),
             viewMode,
             seats
         );
+    }
+
+    private String resolveDisposition(String dispositionOverride, String fallbackDisposition) {
+        if (dispositionOverride == null || dispositionOverride.isBlank()) {
+            return fallbackDisposition;
+        }
+        return dispositionOverride.trim();
     }
 
     private List<Room3DPreviewData.SeatPreview> loadPersistedSeats(Salle salle) {
