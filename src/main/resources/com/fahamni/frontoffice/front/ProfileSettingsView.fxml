@@ -187,6 +187,18 @@
                         </VBox>
 
                         <VBox spacing="6.0">
+                            <Label text="Voice Pass" styleClass="form-label"/>
+                            <Label fx:id="voiceEnrollmentStatusLabel" text="Statut : Non enrole" styleClass="profile-inline-note"/>
+                            <Label fx:id="voiceEnrolledAtLabel" text="Enregistre le : Jamais" styleClass="profile-inline-note"/>
+                            <HBox spacing="12.0">
+                                <Button onAction="#handleEnrollVoicePass" styleClass="profile-accent-button" text="Enregistrer ma voix"/>
+                                <Button onAction="#handleRemoveVoicePass" styleClass="profile-danger-inline-button" text="Supprimer Voice Pass"/>
+                            </HBox>
+                            <Label text="Enregistre une phrase courte, puis repete-la a la connexion. Utilisez un endroit calme pour une verification plus fiable."
+                                   styleClass="profile-inline-note" wrapText="true"/>
+                        </VBox>
+
+                        <VBox spacing="6.0">
                             <Label text="Authenticator 2FA (TOTP)" styleClass="form-label"/>
                             <Label fx:id="twoFactorStatusLabel" text="Statut : Desactive" styleClass="profile-inline-note"/>
                             <Label fx:id="twoFactorConfirmedAtLabel" text="Confirme le : Jamais" styleClass="profile-inline-note"/>

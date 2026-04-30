@@ -29,8 +29,10 @@ import tn.esprit.fahamni.services.AuthService;
 import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.PasswordResetService;
 import tn.esprit.fahamni.services.TwoFactorAuthService;
+import tn.esprit.fahamni.services.VoiceAuthService;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
+import tn.esprit.fahamni.utils.VoiceCaptureDialog;
 import tn.esprit.fahamni.utils.WebcamCaptureDialog;
 
 import java.net.URL;
@@ -41,6 +43,7 @@ public class LoginController {
     private final AuthService authService = new AuthService();
     private final PasswordResetService passwordResetService = new PasswordResetService();
     private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
+    private final VoiceAuthService voiceAuthService = new VoiceAuthService();
     private final TwoFactorAuthService twoFactorAuthService = new TwoFactorAuthService();
 
     @FXML
@@ -188,6 +191,42 @@ public class LoginController {
         }
 
         FaceRecognitionService.FaceLoginResult result = faceRecognitionService.authenticateWithFace(email, captureResult.imageBytes());
+        if (!result.success() || result.user() == null) {
+            showMessage(loginMessageLabel, result.message(), false);
+            return;
+        }
+
+        User authenticatedUser = result.user();
+        String jwtToken = authService.issueJwt(authenticatedUser);
+        if (jwtToken == null || !authService.isJwtValidForUser(jwtToken, authenticatedUser)) {
+            showMessage(loginMessageLabel, "Erreur lors de la creation du token de session.", false);
+            return;
+        }
+
+        completeLoginWithPossibleTwoFactor(authenticatedUser, jwtToken);
+    }
+
+    @FXML
+    private void handleVoiceLogin() {
+        hideMessage(loginMessageLabel);
+
+        String email = emailField.getText().trim();
+        if (email.isEmpty()) {
+            showMessage(loginMessageLabel, "Saisissez d'abord votre email pour verifier Voice Pass.", false);
+            return;
+        }
+
+        VoiceCaptureDialog.CaptureResult captureResult = VoiceCaptureDialog.capture(
+            loginRoot != null && loginRoot.getScene() != null ? loginRoot.getScene().getWindow() : null,
+            "Connexion Voice Pass",
+            "Repetez la phrase vocale que vous avez enregistree dans votre profil."
+        );
+        if (!captureResult.hasAudio()) {
+            showMessage(loginMessageLabel, captureResult.message() != null ? captureResult.message() : "Capture annulee.", false);
+            return;
+        }
+
+        VoiceAuthService.VoiceLoginResult result = voiceAuthService.authenticateWithVoice(email, captureResult.audioBytes());
         if (!result.success() || result.user() == null) {
             showMessage(loginMessageLabel, result.message(), false);
             return;

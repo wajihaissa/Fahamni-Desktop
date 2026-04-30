@@ -202,7 +202,7 @@ public class FaceRecognitionService {
         }
 
         String normalizedIdentity = UserInputValidator.normalizeEmail(identity);
-        if (normalizedIdentity.isBlank()) {
+        if (normalizedIdentity == null || normalizedIdentity.isBlank()) {
             return new FaceLoginResult(false, null, "Veuillez saisir votre email avant la verification Face ID.");
         }
 
