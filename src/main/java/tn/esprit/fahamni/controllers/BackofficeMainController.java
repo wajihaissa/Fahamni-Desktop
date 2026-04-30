@@ -142,7 +142,7 @@ public class BackofficeMainController {
         loadView(
             "BackofficeMatiereView.fxml",
             "Gestion des matieres",
-            "Organisez les matieres, chapitres et ressources pedagogiques."
+            "Administrez les matieres, chapitres et ressources des cours."
         );
         setActiveButton(matiereButton);
     }

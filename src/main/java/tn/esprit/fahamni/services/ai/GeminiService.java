@@ -1,15 +1,14 @@
 package tn.esprit.fahamni.services.ai;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -21,9 +20,15 @@ import org.json.JSONObject;
 public class GeminiService {
 
     private static final String API_KEY_ENV = "GEMINI_API_KEY";
-    private static final String MODEL = "gemini-2.5-flash";
-    private static final String API_BASE =
-        "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=";
+    private static final String MODEL_ENV = "GEMINI_MODEL";
+    private static final String DEFAULT_MODEL = "gemini-1.5-flash";
+    private static final String[] FALLBACK_MODELS = {
+        "gemini-1.0-pro",
+        "gemini-1.5-pro",
+        "gemini-pro"
+    };
+    private static final String API_BASE_TEMPLATE =
+        "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=";
 
     public String askGemini(String prompt) throws Exception {
         return askGeminiInternal(prompt);
@@ -39,17 +44,48 @@ public class GeminiService {
     }
 
     private String askGeminiInternal(String prompt) throws Exception {
+        System.out.println("[GeminiService] Request started - prompt length: " + prompt.length());
+        
         String apiKey = resolveApiKey();
-        URL url = new URL(API_BASE + apiKey);
+        System.out.println("[GeminiService] API Key resolved");
+        
+        String model = resolveModel();
+        System.out.println("[GeminiService] Model resolved: " + model);
+        
+        // Try primary model first, then fallback models
+        String response = tryCallModel(prompt, apiKey, model);
+        if (response != null) {
+            return response;
+        }
+        
+        // If primary model fails, try fallback models
+        System.out.println("[GeminiService] Primary model unavailable, trying fallback models...");
+        for (String fallbackModel : FALLBACK_MODELS) {
+            System.out.println("[GeminiService] Trying fallback model: " + fallbackModel);
+            response = tryCallModel(prompt, apiKey, fallbackModel);
+            if (response != null) {
+                return response;
+            }
+        }
+        
+        throw new RuntimeException("All Gemini models are currently unavailable. Please try again later.");
+    }
+
+    private String tryCallModel(String prompt, String apiKey, String model) throws Exception {
+        String apiBase = API_BASE_TEMPLATE.formatted(model);
+        System.out.println("[GeminiService] API Base URL constructed");
+        
+        URL url = new URL(apiBase + apiKey);
         HttpURLConnection connection = null;
 
         try {
+            System.out.println("[GeminiService] Opening connection...");
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setDoOutput(true);
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(30000);
+            connection.setConnectTimeout(20000);  // 20 seconds
+            connection.setReadTimeout(45000);     // 45 seconds
 
             JSONObject payload = new JSONObject()
                 .put("contents", new JSONArray()
@@ -58,20 +94,35 @@ public class GeminiService {
                             .put(new JSONObject().put("text", prompt)))));
 
             byte[] jsonBytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+            System.out.println("[GeminiService] Writing request body - size: " + jsonBytes.length);
             try (OutputStream os = connection.getOutputStream()) {
                 os.write(jsonBytes);
+                os.flush();
             }
 
+            System.out.println("[GeminiService] Waiting for response...");
             int statusCode = connection.getResponseCode();
+            System.out.println("[GeminiService] API Response Status: " + statusCode);
+            
             InputStream stream = statusCode >= 200 && statusCode < 300
                 ? connection.getInputStream()
                 : connection.getErrorStream();
 
+            System.out.println("[GeminiService] Reading response stream...");
             String responseBody = readStream(stream);
+            System.out.println("[GeminiService] Response length: " + responseBody.length());
+            
+            if (statusCode == 503) {
+                System.out.println("[GeminiService] Model " + model + " is temporarily unavailable (503)");
+                return null;  // Try next fallback model
+            }
+            
             if (statusCode < 200 || statusCode >= 300) {
+                System.err.println("[GeminiService] Error response: " + responseBody);
                 throw new RuntimeException("Gemini request failed (" + statusCode + "): " + responseBody);
             }
 
+            System.out.println("[GeminiService] Parsing JSON response...");
             JSONObject responseJson = new JSONObject(responseBody);
             JSONArray candidates = responseJson.optJSONArray("candidates");
             if (candidates == null || candidates.isEmpty()) {
@@ -135,15 +186,41 @@ public class GeminiService {
         );
     }
 
+    private String resolveModel() {
+        // 1) Environment variable
+        String model = System.getenv(MODEL_ENV);
+        if (model != null && !model.isBlank()) {
+            return model.trim();
+        }
+
+        // 2) JVM argument: -Dgemini.model=...
+        model = System.getProperty("gemini.model");
+        if (model != null && !model.isBlank()) {
+            return model.trim();
+        }
+
+        // 3) .env file
+        model = readValueFromDotEnv(MODEL_ENV);
+        if (model != null && !model.isBlank()) {
+            return model.trim();
+        }
+
+        return DEFAULT_MODEL;
+    }
+
     private String readKeyFromDotEnv() {
+        return readValueFromDotEnv(API_KEY_ENV);
+    }
+
+    private String readValueFromDotEnv(String key) {
         try {
             for (Path envPath : candidateDotEnvPaths()) {
                 if (!Files.exists(envPath)) {
                     continue;
                 }
-                String key = readKeyFromEnvFile(envPath);
-                if (key != null && !key.isBlank()) {
-                    return key;
+                String value = readValueFromEnvFile(envPath, key);
+                if (value != null && !value.isBlank()) {
+                    return value;
                 }
             }
             return null;
@@ -154,13 +231,17 @@ public class GeminiService {
 
     private List<Path> candidateDotEnvPaths() {
         Set<Path> candidates = new LinkedHashSet<>();
-        addDotEnvCandidates(candidates, Path.of(System.getProperty("user.dir")));
-
+        
+        // Limit search depth to avoid hanging on deep directory traversals
+        Path start = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        addDotEnvCandidates(candidates, start, 0, 3);  // Limit to 3 levels up
+        
         try {
             URL codeSource = GeminiService.class.getProtectionDomain().getCodeSource().getLocation();
             if (codeSource != null) {
                 Path location = Path.of(codeSource.toURI()).toAbsolutePath().normalize();
-                addDotEnvCandidates(candidates, Files.isDirectory(location) ? location : location.getParent());
+                Path base = Files.isDirectory(location) ? location : location.getParent();
+                addDotEnvCandidates(candidates, base, 0, 2);  // Limit to 2 levels up
             }
         } catch (Exception ignored) {
             // Ignore and keep the other candidate locations.
@@ -169,18 +250,22 @@ public class GeminiService {
         return new ArrayList<>(candidates);
     }
 
-    private void addDotEnvCandidates(Set<Path> candidates, Path start) {
-        if (start == null) {
+    private void addDotEnvCandidates(Set<Path> candidates, Path start, int depth, int maxDepth) {
+        if (start == null || depth > maxDepth) {
             return;
         }
-        Path current = start.toAbsolutePath().normalize();
-        while (current != null) {
-            candidates.add(current.resolve(".env"));
-            current = current.getParent();
+        candidates.add(start.resolve(".env"));
+        Path parent = start.getParent();
+        if (parent != null && !parent.equals(start)) {  // Stop at root
+            addDotEnvCandidates(candidates, parent, depth + 1, maxDepth);
         }
     }
 
     private String readKeyFromEnvFile(Path envPath) throws Exception {
+        return readValueFromEnvFile(envPath, API_KEY_ENV);
+    }
+
+    private String readValueFromEnvFile(Path envPath, String targetKey) throws Exception {
         List<String> lines = Files.readAllLines(envPath, StandardCharsets.UTF_8);
         for (String rawLine : lines) {
             if (rawLine == null) {
@@ -190,8 +275,8 @@ public class GeminiService {
             if (line.isEmpty() || line.startsWith("#")) {
                 continue;
             }
-            if (line.startsWith(API_KEY_ENV + "=")) {
-                String value = line.substring((API_KEY_ENV + "=").length()).trim();
+            if (line.startsWith(targetKey + "=")) {
+                String value = line.substring((targetKey + "=").length()).trim();
                 if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
                     value = value.substring(1, value.length() - 1);
                 }

@@ -20,6 +20,27 @@ public class ResourceService implements IServices<Resource> {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
+    @Override
+    public void add(Resource entity) throws SQLException {
+        ajouter(entity);
+    }
+
+    @Override
+    public List<Resource> getAll() throws SQLException {
+        return afficherList();
+    }
+
+    @Override
+    public void update(Resource entity) throws SQLException {
+        modifier(entity);
+    }
+
+    @Override
+    public void delete(Resource entity) throws SQLException {
+        if (entity != null) {
+            supprimer(entity.getId());
+        }
+    }
     public void ajouter(Resource resource) {
         String req = "INSERT INTO resource (titre, type, filepath, link, section_id) VALUES (?, ?, ?, ?, ?)";
 

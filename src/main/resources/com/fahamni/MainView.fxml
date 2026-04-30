@@ -8,16 +8,22 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:id="rootPane" prefHeight="800.0" prefWidth="1200.0" styleClass="main-root front-navbar-shell-root"
+<BorderPane fx:id="rootPane" prefHeight="860.0" prefWidth="1440.0"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="tn.esprit.fahamni.controllers.MainController">
-    <top>
-        <VBox spacing="10.0" styleClass="front-navbar-shell" BorderPane.alignment="CENTER">
+    <styleClass>
+        <String fx:value="main-root"/>
+        <String fx:value="front-navbar-shell-root"/>
+    </styleClass>
+
+    <center>
+        <VBox spacing="14.0" styleClass="front-navbar-shell" BorderPane.alignment="CENTER">
             <padding>
-                <Insets top="12" right="20" bottom="0" left="20"/>
+                <Insets top="18" right="16" bottom="18" left="16"/>
             </padding>
 
             <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="front-navbar-topbar">
@@ -27,30 +33,29 @@
 
                 <VBox spacing="4.0" styleClass="front-navbar-brand">
                     <Label text="FAHAMNI" styleClass="front-navbar-brand-title"/>
-                    <Label text="Apprendre avec clarte, progresser avec confiance." styleClass="front-navbar-brand-slogan" wrapText="true"/>
+                    <Label text="Apprendre avec clarte, progresser avec confiance." wrapText="true"
+                           styleClass="front-navbar-brand-slogan"/>
                     <Label fx:id="pageTitle" managed="false" text="Accueil" visible="false"/>
                 </VBox>
 
                 <Region HBox.hgrow="ALWAYS"/>
 
-                <HBox spacing="10.0" alignment="CENTER_RIGHT" styleClass="front-navbar-actions">
-                    <HBox spacing="10.0" alignment="CENTER" styleClass="front-navbar-utility-inline">
-                        <AnchorPane styleClass="front-alert-button-wrap">
-                            <children>
-                                <Button fx:id="alertButton" text="&#128276;" styleClass="front-navbar-icon-button" onAction="#toggleAlertsPopup"
-                                        AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
-                                <Label fx:id="alertNotifBadge" text=""
-                                       managed="false" visible="false"
-                                       AnchorPane.rightAnchor="-7.0" AnchorPane.topAnchor="-7.0">
-                                    <styleClass>
-                                        <String fx:value="front-badge"/>
-                                        <String fx:value="front-alert-badge"/>
-                                    </styleClass>
-                                </Label>
-                            </children>
-                        </AnchorPane>
+                <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="front-navbar-actions">
+                    <HBox alignment="CENTER" spacing="10.0" styleClass="front-navbar-utility-inline">
+                        <StackPane styleClass="front-alert-button-wrap">
+                            <Button fx:id="alertButton" onAction="#toggleAlertsPopup" styleClass="front-navbar-icon-button" text="&#128276;"/>
+                            <Label fx:id="alertNotifBadge" text=""
+                                   StackPane.alignment="TOP_RIGHT"
+                                   managed="false" visible="false">
+                                <styleClass>
+                                    <String fx:value="front-badge"/>
+                                    <String fx:value="front-alert-badge"/>
+                                </styleClass>
+                                <StackPane.margin><Insets top="-7" right="-7"/></StackPane.margin>
+                            </Label>
+                        </StackPane>
 
-                        <Button fx:id="accountButton" text="Compte" styleClass="front-navbar-ghost-button" onAction="#toggleAccountMenu"/>
+                        <Button fx:id="accountButton" text="Compte" onAction="#toggleAccountMenu" styleClass="front-navbar-ghost-button"/>
                     </HBox>
 
                     <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="front-navbar-profile">
@@ -63,42 +68,33 @@
                 </HBox>
             </HBox>
 
-            <AnchorPane styleClass="front-navbar-links-row">
+            <StackPane styleClass="front-navbar-links-row">
                 <padding>
                     <Insets top="0" right="18" bottom="0" left="18"/>
                 </padding>
 
+                <HBox alignment="CENTER" spacing="18.0" styleClass="front-navbar-links-center" StackPane.alignment="CENTER">
+                    <Button fx:id="dashboardButton" text="Accueil" onAction="#showDashboard" styleClass="front-navbar-link"/>
+                    <Button fx:id="reservationsButton" text="Trouver un tuteur" onAction="#showReservations" styleClass="front-navbar-link"/>
+                    <Button fx:id="seancesButton" text="Calendrier" onAction="#showSeances" styleClass="front-navbar-link"/>
+                    <Button fx:id="sallesEquipementsButton" text="Salles &amp; Materiel" onAction="#showSallesEquipements" styleClass="front-navbar-link"/>
+                    <Button fx:id="plannerButton" text="Planner" onAction="#showPlanner" styleClass="front-navbar-link"/>
+                    <Button fx:id="coursButton" text="Cours" onAction="#showCours" styleClass="front-navbar-link"/>
+                    <Button fx:id="callLabButton" text="Call Lab" onAction="#showCallLab" styleClass="front-navbar-link"/>
+                    <Button fx:id="quizButton" text="Quiz" onAction="#showQuiz" styleClass="front-navbar-link"/>
+                    <Button fx:id="blogButton" text="Blog" onAction="#showBlog" styleClass="front-navbar-link"/>
+                </HBox>
+
+                <Button text="Logout" onAction="#handleLogout" styleClass="front-navbar-logout" StackPane.alignment="CENTER_RIGHT"/>
+            </StackPane>
+
+            <AnchorPane VBox.vgrow="ALWAYS">
+                <styleClass>
+                    <String fx:value="content-pane"/>
+                    <String fx:value="front-content-surface"/>
+                </styleClass>
                 <children>
-                    <HBox alignment="CENTER" spacing="12.0" styleClass="front-navbar-links-center"
-                          AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                        <Button fx:id="dashboardButton" text="Accueil" styleClass="front-navbar-link" onAction="#showDashboard"/>
-                        <Button fx:id="reservationsButton" text="Trouver un tuteur" styleClass="front-navbar-link" onAction="#showReservations"/>
-                        <Button fx:id="seancesButton" text="Calendrier" styleClass="front-navbar-link" onAction="#showSeances"/>
-                        <Button fx:id="sallesEquipementsButton" text="Salles &amp; Materiel" styleClass="front-navbar-link" onAction="#showSallesEquipements"/>
-                        <Button fx:id="plannerButton" text="Planner" styleClass="front-navbar-link" onAction="#showPlanner"/>
-                        <Button fx:id="coursButton" text="Cours" styleClass="front-navbar-link" onAction="#showCours"/>
-                        <Button fx:id="callLabButton" text="Call Lab" styleClass="front-navbar-link" onAction="#showCallLab"/>
-                        <Button fx:id="messengerButton" text="Messagerie" styleClass="front-navbar-link" onAction="#showMessenger"/>
-                        <Button fx:id="quizButton" text="Quiz" styleClass="front-navbar-link" onAction="#showQuiz"/>
-                        <Button fx:id="blogButton" text="Blog" styleClass="front-navbar-link" onAction="#showBlog"/>
-                    </HBox>
-
-                    <Button text="Logout" styleClass="front-navbar-logout" onAction="#handleLogout"
-                            AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0"/>
-                </children>
-            </AnchorPane>
-        </VBox>
-    </top>
-
-    <center>
-        <VBox spacing="16.0" styleClass="front-workspace-shell" BorderPane.alignment="CENTER">
-            <padding>
-                <Insets top="8" right="20" bottom="20" left="20"/>
-            </padding>
-
-            <AnchorPane styleClass="front-content-surface" VBox.vgrow="ALWAYS">
-                <children>
-                    <AnchorPane fx:id="contentPane" styleClass="content-pane"
+                    <AnchorPane fx:id="contentPane"
                                 AnchorPane.bottomAnchor="0.0"
                                 AnchorPane.leftAnchor="0.0"
                                 AnchorPane.rightAnchor="0.0"

@@ -20,6 +20,27 @@ public class FlashcardAttemptService implements IServices<FlashcardAttempt> {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
+    @Override
+    public void add(FlashcardAttempt entity) throws SQLException {
+        ajouter(entity);
+    }
+
+    @Override
+    public List<FlashcardAttempt> getAll() throws SQLException {
+        return afficherList();
+    }
+
+    @Override
+    public void update(FlashcardAttempt entity) throws SQLException {
+        modifier(entity);
+    }
+
+    @Override
+    public void delete(FlashcardAttempt entity) throws SQLException {
+        if (entity != null) {
+            supprimer(entity.getId());
+        }
+    }
     public void ajouter(FlashcardAttempt attempt) {
         String req = "INSERT INTO flashcard_attempt (question, user_answer, ai_feedback, is_correct, matiere_id, section_id, expected_answer) VALUES (?, ?, ?, ?, ?, ?, ?)";
 

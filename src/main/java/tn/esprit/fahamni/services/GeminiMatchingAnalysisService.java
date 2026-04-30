@@ -26,6 +26,9 @@ public class GeminiMatchingAnalysisService {
     private static final String DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(25);
+    private static final int MAX_REQUEST_ATTEMPTS = 3;
+    private static final long BASE_RETRY_DELAY_MS = 1200L;
+    private static final long MAX_RETRY_DELAY_MS = 4500L;
     private static final Pattern FIELD_PATTERN_TEMPLATE = Pattern.compile("\"%s\"\\s*:");
 
     public boolean isConfigured() {
@@ -45,74 +48,54 @@ public class GeminiMatchingAnalysisService {
         String endpoint = GEMINI_API_URL_TEMPLATE.formatted(model);
         String payload = buildPayload(context);
 
-        try {
-            HttpResponse<String> response = sendRequest(endpoint, apiKey, payload);
+        for (int attemptNumber = 1; attemptNumber <= MAX_REQUEST_ATTEMPTS; attemptNumber++) {
+            try {
+                HttpResponse<String> response = sendRequest(endpoint, apiKey, payload);
 
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                    return parseSuccessfulResponse(response.body());
+                }
+
                 String errorDetail = extractApiErrorMessage(response.body());
+                boolean shouldRetry = isRetryableStatus(response.statusCode()) && attemptNumber < MAX_REQUEST_ATTEMPTS;
                 System.out.println("Gemini matching analysis unavailable: HTTP "
                     + response.statusCode()
-                    + (errorDetail == null ? "" : " - " + errorDetail));
+                    + (errorDetail == null ? "" : " - " + errorDetail)
+                    + (shouldRetry ? " (retry scheduled)" : ""));
+
+                if (shouldRetry) {
+                    waitBeforeRetry(response, attemptNumber);
+                    continue;
+                }
+
                 return MatchingAiAttempt.failure(resolveHttpFailureMessage(response.statusCode(), errorDetail));
-            }
-
-            String outputJson = extractOutputJson(response.body());
-            if (outputJson == null) {
-                System.out.println("Gemini matching analysis unavailable: response parsing failed.");
-                return MatchingAiAttempt.failure("La reponse Gemini n'a pas pu etre interpretee.");
-            }
-
-            String summary = extractStringField(outputJson, "summary");
-            String level = extractStringField(outputJson, "level");
-            List<String> keywords = extractStringArrayField(outputJson, "keywords");
-            if (summary == null || level == null || keywords.isEmpty()) {
-                System.out.println("Gemini matching analysis unavailable: structured payload incomplete.");
-                return MatchingAiAttempt.failure("La reponse Gemini est incomplete pour cette analyse.");
-            }
-
-            return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Gemini"));
-        } catch (InterruptedException e) {
-            if (e instanceof InterruptedException) {
+            } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
-            }
-            logTransportFailure("Gemini matching analysis interrupted", e);
-            return MatchingAiAttempt.failure("La connexion a Gemini a ete interrompue. Reessayez.");
-        } catch (IOException e) {
-            logTransportFailure("Gemini matching analysis unavailable", e);
-            try {
-                HttpResponse<String> retriedResponse = sendRequest(endpoint, apiKey, payload);
-                if (retriedResponse.statusCode() < 200 || retriedResponse.statusCode() >= 300) {
-                    String errorDetail = extractApiErrorMessage(retriedResponse.body());
-                    System.out.println("Gemini matching analysis unavailable after retry: HTTP "
-                        + retriedResponse.statusCode()
-                        + (errorDetail == null ? "" : " - " + errorDetail));
-                    return MatchingAiAttempt.failure(resolveHttpFailureMessage(retriedResponse.statusCode(), errorDetail));
-                }
-
-                String retriedOutputJson = extractOutputJson(retriedResponse.body());
-                if (retriedOutputJson == null) {
-                    System.out.println("Gemini matching analysis unavailable after retry: response parsing failed.");
-                    return MatchingAiAttempt.failure("La reponse Gemini n'a pas pu etre interpretee.");
-                }
-
-                String summary = extractStringField(retriedOutputJson, "summary");
-                String level = extractStringField(retriedOutputJson, "level");
-                List<String> keywords = extractStringArrayField(retriedOutputJson, "keywords");
-                if (summary == null || level == null || keywords.isEmpty()) {
-                    System.out.println("Gemini matching analysis unavailable after retry: structured payload incomplete.");
-                    return MatchingAiAttempt.failure("La reponse Gemini est incomplete pour cette analyse.");
-                }
-
-                return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Gemini"));
-            } catch (InterruptedException retryInterruptedException) {
-                Thread.currentThread().interrupt();
-                logTransportFailure("Gemini matching analysis interrupted after retry", retryInterruptedException);
+                logTransportFailure("Gemini matching analysis interrupted", exception);
                 return MatchingAiAttempt.failure("La connexion a Gemini a ete interrompue. Reessayez.");
-            } catch (IOException retryException) {
-                logTransportFailure("Gemini matching analysis unavailable after retry", retryException);
-                return MatchingAiAttempt.failure(resolveTransportFailureMessage(retryException));
+            } catch (IOException exception) {
+                boolean shouldRetry = attemptNumber < MAX_REQUEST_ATTEMPTS;
+                logTransportFailure(
+                    shouldRetry
+                        ? "Gemini matching analysis unavailable, retry scheduled"
+                        : "Gemini matching analysis unavailable",
+                    exception
+                );
+                if (!shouldRetry) {
+                    return MatchingAiAttempt.failure(resolveTransportFailureMessage(exception));
+                }
+
+                try {
+                    waitBeforeRetry(null, attemptNumber);
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                    logTransportFailure("Gemini matching analysis interrupted", interruptedException);
+                    return MatchingAiAttempt.failure("La connexion a Gemini a ete interrompue. Reessayez.");
+                }
             }
         }
+
+        return MatchingAiAttempt.failure("Le service Gemini est temporairement indisponible.");
     }
 
     private HttpResponse<String> sendRequest(String endpoint, String apiKey, String payload)
@@ -135,6 +118,24 @@ public class GeminiMatchingAnalysisService {
         return HttpClient.newBuilder()
             .connectTimeout(CONNECT_TIMEOUT)
             .build();
+    }
+
+    private MatchingAiAttempt parseSuccessfulResponse(String responseBody) {
+        String outputJson = extractOutputJson(responseBody);
+        if (outputJson == null) {
+            System.out.println("Gemini matching analysis unavailable: response parsing failed.");
+            return MatchingAiAttempt.failure("La reponse Gemini n'a pas pu etre interpretee.");
+        }
+
+        String summary = extractStringField(outputJson, "summary");
+        String level = extractStringField(outputJson, "level");
+        List<String> keywords = extractStringArrayField(outputJson, "keywords");
+        if (summary == null || level == null || keywords.isEmpty()) {
+            System.out.println("Gemini matching analysis unavailable: structured payload incomplete.");
+            return MatchingAiAttempt.failure("La reponse Gemini est incomplete pour cette analyse.");
+        }
+
+        return MatchingAiAttempt.success(new MatchingAiAnalysis(summary, level, keywords, "Gemini"));
     }
 
     private String resolveModel() {
@@ -427,11 +428,60 @@ public class GeminiMatchingAnalysisService {
                 ? "La requete Gemini est invalide: " + errorDetail
                 : "La requete Gemini est invalide.";
             case 401, 403 -> "L'appel Gemini a ete refuse. Verifiez GEMINI_API_KEY.";
-            case 429 -> "La limite Gemini est atteinte temporairement. Veuillez reessayer dans un instant.";
+            case 429 -> "Gemini est temporairement surcharge. Veuillez reessayer dans un instant.";
+            case 500, 502, 503, 504 -> "Gemini est temporairement indisponible ou en forte demande. Veuillez reessayer dans un instant.";
             default -> errorDetail != null
                 ? "Gemini a retourne une erreur HTTP " + statusCode + ": " + errorDetail
                 : "Gemini a retourne une erreur HTTP " + statusCode + ".";
         };
+    }
+
+    private boolean isRetryableStatus(int statusCode) {
+        return statusCode == 429
+            || statusCode == 500
+            || statusCode == 502
+            || statusCode == 503
+            || statusCode == 504;
+    }
+
+    private void waitBeforeRetry(HttpResponse<String> response, int attemptNumber) throws InterruptedException {
+        long delayMillis = resolveRetryDelayMillis(response, attemptNumber);
+        if (delayMillis > 0L) {
+            Thread.sleep(delayMillis);
+        }
+    }
+
+    private long resolveRetryDelayMillis(HttpResponse<String> response, int attemptNumber) {
+        Long retryAfterMillis = extractRetryAfterMillis(response);
+        if (retryAfterMillis != null && retryAfterMillis > 0L) {
+            return Math.min(retryAfterMillis, MAX_RETRY_DELAY_MS);
+        }
+
+        long computedDelay = BASE_RETRY_DELAY_MS * (1L << Math.max(0, attemptNumber - 1));
+        return Math.min(computedDelay, MAX_RETRY_DELAY_MS);
+    }
+
+    private Long extractRetryAfterMillis(HttpResponse<String> response) {
+        if (response == null) {
+            return null;
+        }
+
+        List<String> values = response.headers().allValues("Retry-After");
+        if (values.isEmpty()) {
+            return null;
+        }
+
+        String rawValue = values.get(0);
+        if (rawValue == null || rawValue.isBlank()) {
+            return null;
+        }
+
+        try {
+            long seconds = Long.parseLong(rawValue.trim());
+            return seconds <= 0L ? null : seconds * 1000L;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private String resolveTransportFailureMessage(IOException exception) {

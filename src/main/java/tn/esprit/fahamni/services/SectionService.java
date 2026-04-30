@@ -20,6 +20,27 @@ public class SectionService implements IServices<Section> {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
+    @Override
+    public void add(Section entity) throws SQLException {
+        ajouter(entity);
+    }
+
+    @Override
+    public List<Section> getAll() throws SQLException {
+        return afficherList();
+    }
+
+    @Override
+    public void update(Section entity) throws SQLException {
+        modifier(entity);
+    }
+
+    @Override
+    public void delete(Section entity) throws SQLException {
+        if (entity != null) {
+            supprimer(entity.getId());
+        }
+    }
     public void ajouter(Section section) {
         String req = "INSERT INTO section (titre, chapter_id) VALUES (?, ?)";
 

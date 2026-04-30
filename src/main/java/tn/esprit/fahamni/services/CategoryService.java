@@ -22,6 +22,27 @@ public class CategoryService implements IServices<Category> {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
+    @Override
+    public void add(Category entity) throws SQLException {
+        ajouter(entity);
+    }
+
+    @Override
+    public List<Category> getAll() throws SQLException {
+        return afficherList();
+    }
+
+    @Override
+    public void update(Category entity) throws SQLException {
+        modifier(entity);
+    }
+
+    @Override
+    public void delete(Category entity) throws SQLException {
+        if (entity != null) {
+            supprimer(entity.getId());
+        }
+    }
     public void ajouter(Category category) {
         String req = "INSERT INTO category (name, slug) VALUES (?, ?)";
 

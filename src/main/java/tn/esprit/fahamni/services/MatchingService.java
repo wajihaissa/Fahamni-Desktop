@@ -16,10 +16,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class MatchingService {
 
@@ -788,9 +790,11 @@ public class MatchingService {
             )
         );
         if (!attempt.success() || attempt.analysis() == null) {
-            return AnalysisResolution.failure(
-                safeText(attempt.errorMessage(), "Le service Gemini est temporairement indisponible.")
+            System.out.println(
+                "Matching AI fallback engaged: "
+                    + safeText(attempt.errorMessage(), "Le service Gemini est temporairement indisponible.")
             );
+            return AnalysisResolution.success(buildFallbackNeedProfile(draft));
         }
 
         GeminiMatchingAnalysisService.MatchingAiAnalysis analysis = attempt.analysis();
@@ -801,6 +805,144 @@ public class MatchingService {
             safeText(normalizeOptionalText(analysis.source()), "Gemini")
         );
         return AnalysisResolution.success(needProfile);
+    }
+
+    private MatchingNeedProfile buildFallbackNeedProfile(MatchingDraft draft) {
+        String subject = safeText(normalizeSubject(draft == null ? null : draft.subject()), "Matiere non precise");
+        String objective = safeText(normalizeOptionalText(draft == null ? null : draft.objectiveText()), "besoin non precise");
+        String mode = normalizeMode(draft == null ? null : draft.mode());
+        String visibility = normalizeVisibility(draft == null ? null : draft.visibilityScope());
+        String level = inferFallbackLevel(objective);
+        List<String> keywords = buildFallbackKeywords(subject, objective, mode, visibility);
+        String summary = buildFallbackSummary(subject, objective, level, mode, visibility);
+        return new MatchingNeedProfile(summary, level, keywords, "Matching local");
+    }
+
+    private String buildFallbackSummary(String subject,
+                                        String objective,
+                                        String level,
+                                        String mode,
+                                        String visibility) {
+        String compactObjective = objective.length() > 140
+            ? objective.substring(0, 137).trim() + "..."
+            : objective;
+        StringBuilder summary = new StringBuilder("Besoin en ")
+            .append(subject)
+            .append(" : ")
+            .append(compactObjective);
+        if (!compactObjective.endsWith(".") && !compactObjective.endsWith("!") && !compactObjective.endsWith("?")) {
+            summary.append(".");
+        }
+        if (!"Niveau non precise".equalsIgnoreCase(level)) {
+            summary.append(" Niveau cible ").append(level.toLowerCase(Locale.ROOT)).append(".");
+        }
+        summary.append(" Format ").append(mapFallbackModeLabel(mode)).append(", visibilite ")
+            .append(VISIBILITY_PRIVATE.equalsIgnoreCase(visibility) ? "individuelle" : "publique")
+            .append(".");
+        return summary.toString();
+    }
+
+    private String inferFallbackLevel(String objective) {
+        String normalizedObjective = objective == null ? "" : objective.toLowerCase(Locale.ROOT);
+        if (containsAny(normalizedObjective, "debut", "base", "initiation", "commencer", "introduction", "notion")) {
+            return "Debutant";
+        }
+        if (containsAny(normalizedObjective, "avance", "expert", "approfond", "perfection", "concours", "complexe")) {
+            return "Avance";
+        }
+        if (containsAny(normalizedObjective, "intermedia", "revision", "pratique", "exercice", "application")) {
+            return "Intermediaire";
+        }
+        return "Niveau non precise";
+    }
+
+    private List<String> buildFallbackKeywords(String subject,
+                                               String objective,
+                                               String mode,
+                                               String visibility) {
+        LinkedHashSet<String> keywords = new LinkedHashSet<>();
+        addFallbackKeywordTokens(keywords, subject, 2);
+        addFallbackKeywordTokens(keywords, objective, 5);
+
+        if (VISIBILITY_PRIVATE.equalsIgnoreCase(visibility)) {
+            keywords.add("individuel");
+        } else {
+            keywords.add("publique");
+        }
+
+        if (Seance.MODE_ONSITE.equalsIgnoreCase(mode)) {
+            keywords.add("presentiel");
+        } else {
+            keywords.add("en ligne");
+        }
+
+        List<String> normalizedKeywords = new ArrayList<>();
+        for (String keyword : keywords) {
+            String normalizedKeyword = normalizeOptionalText(keyword);
+            if (normalizedKeyword != null && !normalizedKeywords.contains(normalizedKeyword)) {
+                normalizedKeywords.add(normalizedKeyword);
+            }
+            if (normalizedKeywords.size() == 5) {
+                break;
+            }
+        }
+
+        while (normalizedKeywords.size() < 3) {
+            String fallbackKeyword = switch (normalizedKeywords.size()) {
+                case 0 -> "accompagnement";
+                case 1 -> "revision";
+                default -> "objectif";
+            };
+            if (!normalizedKeywords.contains(fallbackKeyword)) {
+                normalizedKeywords.add(fallbackKeyword);
+            }
+        }
+
+        return normalizedKeywords;
+    }
+
+    private void addFallbackKeywordTokens(Set<String> target, String text, int maxTokens) {
+        if (target == null || text == null || text.isBlank() || maxTokens <= 0) {
+            return;
+        }
+
+        Set<String> stopWords = Set.of(
+            "avec", "besoin", "dans", "pour", "plus", "moins", "tres", "etre", "avoir", "faire",
+            "seance", "cours", "matiere", "aider", "aide", "souhaite", "souhaiter", "demande",
+            "objectif", "niveau", "format", "ligne", "public", "publique", "individuelle",
+            "individuel", "cette", "celui", "celle", "comme", "chez", "tout", "tous", "votre",
+            "notre", "leurs", "mais", "donc", "puis", "sans", "sous", "pendant",
+            "avant", "apres", "entre", "deja", "encore", "alors", "ainsi", "tuteur", "etudiant"
+        );
+
+        int added = 0;
+        String[] rawTokens = text.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{Nd}]+", " ").split("\\s+");
+        for (String rawToken : rawTokens) {
+            if (rawToken == null || rawToken.isBlank() || rawToken.length() < 4 || stopWords.contains(rawToken)) {
+                continue;
+            }
+            target.add(rawToken);
+            added++;
+            if (added >= maxTokens) {
+                return;
+            }
+        }
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        if (text == null || text.isBlank() || keywords == null) {
+            return false;
+        }
+        for (String keyword : keywords) {
+            if (keyword != null && !keyword.isBlank() && text.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String mapFallbackModeLabel(String mode) {
+        return Seance.MODE_ONSITE.equalsIgnoreCase(mode) ? "presentiel" : "en ligne";
     }
 
     private List<String> normalizeExternalAiKeywords(List<String> rawKeywords) {

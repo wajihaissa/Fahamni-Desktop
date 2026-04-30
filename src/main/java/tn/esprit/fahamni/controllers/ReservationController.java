@@ -3796,15 +3796,15 @@ public class ReservationController {
 
     private String resolveMatchingConfidenceLabel(double score) {
         if (score >= 85.0) {
-            return "Confiance Gemini tres forte";
+            return "Confiance matching tres forte";
         }
         if (score >= 72.0) {
-            return "Confiance Gemini forte";
+            return "Confiance matching forte";
         }
         if (score >= 58.0) {
-            return "Confiance Gemini solide";
+            return "Confiance matching solide";
         }
-        return "Confiance Gemini moderee";
+        return "Confiance matching moderee";
     }
 
     private String buildStudentMatchingAiExplanation(StudentMatchCard card, MatchingNeedProfile needProfile) {
@@ -3834,7 +3834,11 @@ public class ReservationController {
     }
 
     private String buildStudentMatchingRequestSummary(MatchingNeedProfile needProfile, int candidateCount) {
-        StringBuilder summary = new StringBuilder("Analyse Gemini personnalisee finalisee.");
+        StringBuilder summary = new StringBuilder(
+            isGeminiMatchingProfile(needProfile)
+                ? "Analyse Gemini personnalisee finalisee."
+                : "Analyse de matching finalisee avec le moteur local de secours."
+        );
         String needContext = buildStudentNeedContextLabel(needProfile);
         if (needContext != null) {
             summary.append(" La recherche a ete orientee vers ").append(needContext).append(".");
@@ -3845,6 +3849,13 @@ public class ReservationController {
             summary.append(" Aucun profil compatible n'a pu etre retenu pour le moment.");
         }
         return summary.toString();
+    }
+
+    private boolean isGeminiMatchingProfile(MatchingNeedProfile needProfile) {
+        if (needProfile == null || needProfile.source() == null) {
+            return false;
+        }
+        return needProfile.source().toLowerCase(Locale.ROOT).contains("gemini");
     }
 
     private String buildStudentNeedContextLabel(MatchingNeedProfile needProfile) {

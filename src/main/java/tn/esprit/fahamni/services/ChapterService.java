@@ -20,6 +20,27 @@ public class ChapterService implements IServices<Chapter> {
         this.cnx = MyDataBase.getInstance().getCnx();
     }
 
+    @Override
+    public void add(Chapter entity) throws SQLException {
+        ajouter(entity);
+    }
+
+    @Override
+    public List<Chapter> getAll() throws SQLException {
+        return afficherList();
+    }
+
+    @Override
+    public void update(Chapter entity) throws SQLException {
+        modifier(entity);
+    }
+
+    @Override
+    public void delete(Chapter entity) throws SQLException {
+        if (entity != null) {
+            supprimer(entity.getId());
+        }
+    }
     public void ajouter(Chapter chapter) {
         String req = "INSERT INTO chapter (titre, matiere_id) VALUES (?, ?)";
 
