@@ -639,6 +639,9 @@
             -fx-border-radius: 12px;
             -fx-cursor: hand;
             -fx-padding: 10px 16px;
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+            -fx-background-insets: 0;
         }
 
         .profile-inline-button, .profile-soft-button {
@@ -658,8 +661,19 @@
             -fx-font-weight: bold;
             -fx-cursor: hand;
             -fx-background-radius: 12px;
+            -fx-border-radius: 12px;
             -fx-padding: 11px 18px;
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+            -fx-background-insets: 0;
             -fx-effect: dropshadow(gaussian, rgba(58, 57, 160, 0.20), 14, 0.18, 0, 4);
+        }
+
+        .profile-inline-button:focused, .profile-soft-button:focused, .profile-outline-danger-button:focused,
+        .profile-danger-inline-button:focused, .profile-accent-button:focused {
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+            -fx-background-insets: 0;
         }
 
         .profile-accent-button:hover {
@@ -2704,6 +2718,9 @@
             -fx-text-fill: white;
             -fx-background-radius: 14px;
             -fx-border-radius: 14px;
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+            -fx-background-insets: 0;
             -fx-effect: dropshadow(gaussian, rgba(39, 73, 128, 0.20), 12, 0.18, 0, 4);
         }
 
@@ -2730,6 +2747,9 @@
             -fx-text-fill: #223754;
             -fx-background-radius: 14px;
             -fx-border-radius: 14px;
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+            -fx-background-insets: 0;
         }
 
         .main-root .action-button.secondary:hover, .main-root .review-button:hover, .main-root .like-button:hover,
@@ -2767,6 +2787,9 @@
             -fx-text-fill: #b55243;
             -fx-background-radius: 14px;
             -fx-border-radius: 14px;
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+            -fx-background-insets: 0;
         }
 
         .main-root .action-button.danger:hover, .main-root .backoffice-danger-button:hover,
