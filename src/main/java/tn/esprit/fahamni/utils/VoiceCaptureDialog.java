@@ -16,6 +16,7 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 import java.io.ByteArrayOutputStream;
+import java.net.URL;
 import java.util.Optional;
 
 public final class VoiceCaptureDialog {
@@ -43,22 +44,30 @@ public final class VoiceCaptureDialog {
         dialog.setHeaderText("Enregistrement vocal");
 
         DialogPane dialogPane = dialog.getDialogPane();
+        styleDialog(dialogPane);
         ButtonType cancelButtonType = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
         ButtonType useButtonType = new ButtonType("Utiliser cet enregistrement", ButtonBar.ButtonData.OK_DONE);
         dialogPane.getButtonTypes().setAll(cancelButtonType, useButtonType);
 
         Label instructionLabel = new Label(instruction);
+        instructionLabel.getStyleClass().add("voice-dialog-copy");
         instructionLabel.setWrapText(true);
 
         Label statusLabel = new Label("Pret. Cliquez sur enregistrer puis parlez clairement pendant 4 secondes.");
+        statusLabel.getStyleClass().add("voice-dialog-status");
         statusLabel.setWrapText(true);
 
         Button recordButton = new Button("Enregistrer ma voix");
+        recordButton.getStyleClass().add("voice-dialog-record-button");
         VBox content = new VBox(12.0, instructionLabel, statusLabel, recordButton);
+        content.getStyleClass().add("voice-dialog-content");
         dialogPane.setContent(content);
 
         final byte[][] capturedAudio = new byte[1][];
         Button useButton = (Button) dialogPane.lookupButton(useButtonType);
+        useButton.getStyleClass().add("voice-dialog-confirm-button");
+        Button cancelButton = (Button) dialogPane.lookupButton(cancelButtonType);
+        cancelButton.getStyleClass().add("voice-dialog-cancel-button");
         useButton.setDisable(true);
 
         recordButton.setOnAction(event -> {
@@ -152,6 +161,21 @@ public final class VoiceCaptureDialog {
         }
 
         return out.toByteArray();
+    }
+
+    private static void styleDialog(DialogPane dialogPane) {
+        if (dialogPane == null) {
+            return;
+        }
+
+        dialogPane.getStyleClass().add("voice-dialog-pane");
+        URL stylesheet = VoiceCaptureDialog.class.getResource("/com/fahamni/styles/frontoffice-theme.css");
+        if (stylesheet != null) {
+            String stylesheetUri = stylesheet.toExternalForm();
+            if (!dialogPane.getStylesheets().contains(stylesheetUri)) {
+                dialogPane.getStylesheets().add(stylesheetUri);
+            }
+        }
     }
 
     public record CaptureResult(byte[] audioBytes, boolean hasAudio, String message) {
