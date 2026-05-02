@@ -11,14 +11,17 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Locale;
 
 public class VoiceAuthService {
 
-    private static final int FRAME_COUNT = 24;
-    private static final double MIN_RMS = 0.012;
-    private static final double MATCH_THRESHOLD = 0.84;
+    private static final int SAMPLE_RATE = 16_000;
+    private static final int FRAME_COUNT = 20;
+    private static final int BAND_COUNT = 6;
+    private static final int FEATURES_PER_FRAME = 2 + BAND_COUNT;
+    private static final int EXPECTED_FEATURE_COUNT = FRAME_COUNT * FEATURES_PER_FRAME + 4;
+    private static final double MIN_RMS = 0.014;
+    private static final double MATCH_THRESHOLD = 0.90;
 
     public record VoiceStatus(
         boolean enabled,
@@ -159,7 +162,7 @@ public class VoiceAuthService {
                     }
 
                     double[] storedFeatures = parse(resultSet.getString("voice_print"));
-                    if (storedFeatures.length == 0) {
+                    if (storedFeatures.length != EXPECTED_FEATURE_COUNT) {
                         return new VoiceLoginResult(false, null, "Voice Pass doit etre reconfigure sur ce compte.");
                     }
 
@@ -255,24 +258,64 @@ public class VoiceAuthService {
             return new VoicePrint(false, new double[0]);
         }
 
-        double[] features = new double[FRAME_COUNT + 4];
+        double[] features = new double[EXPECTED_FEATURE_COUNT];
         int frameSize = Math.max(1, sampleCount / FRAME_COUNT);
         for (int frame = 0; frame < FRAME_COUNT; frame++) {
             int start = frame * frameSize;
             int end = frame == FRAME_COUNT - 1 ? sampleCount : Math.min(sampleCount, start + frameSize);
-            double frameEnergy = 0.0;
-            for (int i = start; i < end; i++) {
-                frameEnergy += Math.abs(samples[i]);
-            }
-            features[frame] = frameEnergy / Math.max(1, end - start);
+            fillFrameFeatures(samples, start, end, features, frame * FEATURES_PER_FRAME);
         }
 
-        features[FRAME_COUNT] = rms;
-        features[FRAME_COUNT + 1] = zeroCrossings / (double) sampleCount;
-        features[FRAME_COUNT + 2] = peak;
-        features[FRAME_COUNT + 3] = averageSlope(samples);
-        normalize(features);
+        int globalOffset = FRAME_COUNT * FEATURES_PER_FRAME;
+        features[globalOffset] = rms;
+        features[globalOffset + 1] = zeroCrossings / (double) sampleCount;
+        features[globalOffset + 2] = peak;
+        features[globalOffset + 3] = averageSlope(samples);
         return new VoicePrint(true, features);
+    }
+
+    private void fillFrameFeatures(double[] samples, int start, int end, double[] features, int offset) {
+        int length = Math.max(1, end - start);
+        double energy = 0.0;
+        int zeroCrossings = 0;
+
+        for (int i = start; i < end; i++) {
+            energy += Math.abs(samples[i]);
+            if (i > start && Math.signum(samples[i - 1]) != Math.signum(samples[i])) {
+                zeroCrossings++;
+            }
+        }
+
+        features[offset] = energy / length;
+        features[offset + 1] = zeroCrossings / (double) length;
+
+        double[] bandEnergies = new double[BAND_COUNT];
+        int[] frequencies = {250, 500, 900, 1400, 2200, 3400};
+        double totalBandEnergy = 0.000001;
+        for (int band = 0; band < BAND_COUNT; band++) {
+            bandEnergies[band] = goertzelPower(samples, start, end, frequencies[band]);
+            totalBandEnergy += bandEnergies[band];
+        }
+
+        for (int band = 0; band < BAND_COUNT; band++) {
+            features[offset + 2 + band] = bandEnergies[band] / totalBandEnergy;
+        }
+    }
+
+    private double goertzelPower(double[] samples, int start, int end, int targetFrequency) {
+        int length = Math.max(1, end - start);
+        double normalizedFrequency = targetFrequency / (double) SAMPLE_RATE;
+        double coefficient = 2.0 * Math.cos(2.0 * Math.PI * normalizedFrequency);
+        double previous = 0.0;
+        double previous2 = 0.0;
+
+        for (int i = start; i < end; i++) {
+            double current = samples[i] + coefficient * previous - previous2;
+            previous2 = previous;
+            previous = current;
+        }
+
+        return previous2 * previous2 + previous * previous - coefficient * previous * previous2;
     }
 
     private double averageSlope(double[] samples) {
@@ -286,41 +329,35 @@ public class VoiceAuthService {
         return total / (samples.length - 1);
     }
 
-    private void normalize(double[] features) {
-        double mean = Arrays.stream(features).average().orElse(0.0);
-        double variance = 0.0;
-        for (double feature : features) {
-            variance += Math.pow(feature - mean, 2);
-        }
-        double std = Math.sqrt(variance / Math.max(1, features.length));
-        if (std < 0.000001) {
-            return;
-        }
-        for (int i = 0; i < features.length; i++) {
-            features[i] = (features[i] - mean) / std;
-        }
-    }
-
     private double similarity(double[] first, double[] second) {
-        int length = Math.min(first.length, second.length);
-        if (length == 0) {
+        if (first.length != EXPECTED_FEATURE_COUNT || second.length != EXPECTED_FEATURE_COUNT) {
             return 0.0;
         }
 
-        double dot = 0.0;
-        double firstMagnitude = 0.0;
-        double secondMagnitude = 0.0;
-        double absoluteDistance = 0.0;
-        for (int i = 0; i < length; i++) {
-            dot += first[i] * second[i];
-            firstMagnitude += first[i] * first[i];
-            secondMagnitude += second[i] * second[i];
-            absoluteDistance += Math.abs(first[i] - second[i]);
+        double frameDistance = 0.0;
+        for (int frame = 0; frame < FRAME_COUNT; frame++) {
+            int offset = frame * FEATURES_PER_FRAME;
+            double energyDistance = Math.abs(first[offset] - second[offset]) / 0.20;
+            double zcrDistance = Math.abs(first[offset + 1] - second[offset + 1]) / 0.28;
+            double bandDistance = 0.0;
+
+            for (int band = 0; band < BAND_COUNT; band++) {
+                bandDistance += Math.abs(first[offset + 2 + band] - second[offset + 2 + band]);
+            }
+
+            frameDistance += Math.min(1.0, energyDistance * 0.25 + zcrDistance * 0.20 + bandDistance * 0.55);
         }
 
-        double cosine = dot / (Math.sqrt(firstMagnitude) * Math.sqrt(secondMagnitude));
-        double distancePenalty = Math.min(1.0, absoluteDistance / (length * 2.4));
-        return Math.max(0.0, Math.min(1.0, (cosine + 1.0) / 2.0 - distancePenalty * 0.22));
+        double averageFrameDistance = frameDistance / FRAME_COUNT;
+        int globalOffset = FRAME_COUNT * FEATURES_PER_FRAME;
+        double globalDistance =
+            Math.abs(first[globalOffset] - second[globalOffset]) / 0.20 * 0.35
+                + Math.abs(first[globalOffset + 1] - second[globalOffset + 1]) / 0.28 * 0.25
+                + Math.abs(first[globalOffset + 2] - second[globalOffset + 2]) / 0.30 * 0.20
+                + Math.abs(first[globalOffset + 3] - second[globalOffset + 3]) / 0.10 * 0.20;
+
+        double combinedDistance = averageFrameDistance * 0.76 + Math.min(1.0, globalDistance) * 0.24;
+        return Math.max(0.0, Math.min(1.0, 1.0 - combinedDistance));
     }
 
     private String serialize(double[] features) {
