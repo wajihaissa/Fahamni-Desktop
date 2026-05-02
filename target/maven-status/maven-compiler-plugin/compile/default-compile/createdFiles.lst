@@ -165,6 +165,7 @@ tn\esprit\fahamni\Models\AdminDashboardSummary.class
 tn\esprit\fahamni\services\ActivityLogService.class
 tn\esprit\fahamni\Models\Article.class
 tn\esprit\fahamni\utils\JwtService$JwtClaims.class
+tn\esprit\fahamni\services\VoiceAuthService$VoiceSegment.class
 tn\esprit\fahamni\controllers\LoginController$ResetPasswordPayload.class
 tn\esprit\fahamni\controllers\BackofficeArticlesController.class
 tn\esprit\fahamni\Models\MaintenanceSalle.class

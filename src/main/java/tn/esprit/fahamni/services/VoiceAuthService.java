@@ -21,7 +21,7 @@ public class VoiceAuthService {
     private static final int FEATURES_PER_FRAME = 2 + BAND_COUNT;
     private static final int EXPECTED_FEATURE_COUNT = FRAME_COUNT * FEATURES_PER_FRAME + 4;
     private static final double MIN_RMS = 0.014;
-    private static final double MATCH_THRESHOLD = 0.90;
+    private static final double MATCH_THRESHOLD = 0.61;
 
     public record VoiceStatus(
         boolean enabled,
@@ -167,8 +167,13 @@ public class VoiceAuthService {
                     }
 
                     double score = similarity(storedFeatures, candidatePrint.features());
+                    System.out.println(String.format(Locale.US, "VoiceAuthService: score %.2f for %s", score, normalizedIdentity));
                     if (score < MATCH_THRESHOLD) {
-                        return new VoiceLoginResult(false, null, "La voix ne correspond pas assez au Voice Pass enregistre.");
+                        return new VoiceLoginResult(false, null, String.format(
+                            Locale.US,
+                            "La voix ne correspond pas assez au Voice Pass enregistre (score %.2f).",
+                            score
+                        ));
                     }
 
                     User user = new User(
@@ -258,20 +263,68 @@ public class VoiceAuthService {
             return new VoicePrint(false, new double[0]);
         }
 
+        VoiceSegment segment = findVoiceSegment(samples, rms);
+        if (!segment.valid()) {
+            return new VoicePrint(false, new double[0]);
+        }
+
         double[] features = new double[EXPECTED_FEATURE_COUNT];
-        int frameSize = Math.max(1, sampleCount / FRAME_COUNT);
+        int spokenSampleCount = Math.max(1, segment.endExclusive() - segment.startInclusive());
+        int frameSize = Math.max(1, spokenSampleCount / FRAME_COUNT);
         for (int frame = 0; frame < FRAME_COUNT; frame++) {
-            int start = frame * frameSize;
-            int end = frame == FRAME_COUNT - 1 ? sampleCount : Math.min(sampleCount, start + frameSize);
+            int start = segment.startInclusive() + frame * frameSize;
+            int end = frame == FRAME_COUNT - 1
+                ? segment.endExclusive()
+                : Math.min(segment.endExclusive(), start + frameSize);
             fillFrameFeatures(samples, start, end, features, frame * FEATURES_PER_FRAME);
         }
 
         int globalOffset = FRAME_COUNT * FEATURES_PER_FRAME;
-        features[globalOffset] = rms;
+        features[globalOffset] = segment.rms();
         features[globalOffset + 1] = zeroCrossings / (double) sampleCount;
         features[globalOffset + 2] = peak;
-        features[globalOffset + 3] = averageSlope(samples);
+        features[globalOffset + 3] = spokenSampleCount / (double) SAMPLE_RATE;
         return new VoicePrint(true, features);
+    }
+
+    private VoiceSegment findVoiceSegment(double[] samples, double globalRms) {
+        int windowSize = 640;
+        double threshold = Math.max(0.018, globalRms * 0.72);
+        int first = -1;
+        int last = -1;
+
+        for (int start = 0; start < samples.length; start += windowSize) {
+            int end = Math.min(samples.length, start + windowSize);
+            double energy = 0.0;
+            for (int i = start; i < end; i++) {
+                energy += samples[i] * samples[i];
+            }
+            double windowRms = Math.sqrt(energy / Math.max(1, end - start));
+            if (windowRms >= threshold) {
+                if (first < 0) {
+                    first = start;
+                }
+                last = end;
+            }
+        }
+
+        if (first < 0 || last <= first) {
+            return new VoiceSegment(false, 0, 0, 0.0);
+        }
+
+        int padding = SAMPLE_RATE / 10;
+        int start = Math.max(0, first - padding);
+        int end = Math.min(samples.length, last + padding);
+        if (end - start < SAMPLE_RATE / 2) {
+            return new VoiceSegment(false, start, end, 0.0);
+        }
+
+        double squareSum = 0.0;
+        for (int i = start; i < end; i++) {
+            squareSum += samples[i] * samples[i];
+        }
+        double rms = Math.sqrt(squareSum / Math.max(1, end - start));
+        return new VoiceSegment(true, start, end, rms);
     }
 
     private void fillFrameFeatures(double[] samples, int start, int end, double[] features, int offset) {
@@ -334,21 +387,7 @@ public class VoiceAuthService {
             return 0.0;
         }
 
-        double frameDistance = 0.0;
-        for (int frame = 0; frame < FRAME_COUNT; frame++) {
-            int offset = frame * FEATURES_PER_FRAME;
-            double energyDistance = Math.abs(first[offset] - second[offset]) / 0.20;
-            double zcrDistance = Math.abs(first[offset + 1] - second[offset + 1]) / 0.28;
-            double bandDistance = 0.0;
-
-            for (int band = 0; band < BAND_COUNT; band++) {
-                bandDistance += Math.abs(first[offset + 2 + band] - second[offset + 2 + band]);
-            }
-
-            frameDistance += Math.min(1.0, energyDistance * 0.25 + zcrDistance * 0.20 + bandDistance * 0.55);
-        }
-
-        double averageFrameDistance = frameDistance / FRAME_COUNT;
+        double averageFrameDistance = alignedFrameDistance(first, second);
         int globalOffset = FRAME_COUNT * FEATURES_PER_FRAME;
         double globalDistance =
             Math.abs(first[globalOffset] - second[globalOffset]) / 0.20 * 0.35
@@ -358,6 +397,51 @@ public class VoiceAuthService {
 
         double combinedDistance = averageFrameDistance * 0.76 + Math.min(1.0, globalDistance) * 0.24;
         return Math.max(0.0, Math.min(1.0, 1.0 - combinedDistance));
+    }
+
+    private double alignedFrameDistance(double[] first, double[] second) {
+        double[][] cost = new double[FRAME_COUNT][FRAME_COUNT];
+        for (int i = 0; i < FRAME_COUNT; i++) {
+            for (int j = 0; j < FRAME_COUNT; j++) {
+                int timingGap = Math.abs(i - j);
+                double timingPenalty = timingGap <= 3 ? timingGap * 0.015 : 0.16 + timingGap * 0.025;
+                cost[i][j] = frameDistance(first, i, second, j) + timingPenalty;
+            }
+        }
+
+        double[][] dp = new double[FRAME_COUNT][FRAME_COUNT];
+        dp[0][0] = cost[0][0];
+        for (int i = 1; i < FRAME_COUNT; i++) {
+            dp[i][0] = cost[i][0] + dp[i - 1][0];
+        }
+        for (int j = 1; j < FRAME_COUNT; j++) {
+            dp[0][j] = cost[0][j] + dp[0][j - 1];
+        }
+
+        for (int i = 1; i < FRAME_COUNT; i++) {
+            for (int j = 1; j < FRAME_COUNT; j++) {
+                dp[i][j] = cost[i][j] + Math.min(
+                    Math.min(dp[i - 1][j], dp[i][j - 1]),
+                    dp[i - 1][j - 1]
+                );
+            }
+        }
+
+        return Math.min(1.0, dp[FRAME_COUNT - 1][FRAME_COUNT - 1] / (FRAME_COUNT * 1.38));
+    }
+
+    private double frameDistance(double[] first, int firstFrame, double[] second, int secondFrame) {
+        int firstOffset = firstFrame * FEATURES_PER_FRAME;
+        int secondOffset = secondFrame * FEATURES_PER_FRAME;
+        double energyDistance = Math.abs(first[firstOffset] - second[secondOffset]) / 0.22;
+        double zcrDistance = Math.abs(first[firstOffset + 1] - second[secondOffset + 1]) / 0.30;
+        double bandDistance = 0.0;
+
+        for (int band = 0; band < BAND_COUNT; band++) {
+            bandDistance += Math.abs(first[firstOffset + 2 + band] - second[secondOffset + 2 + band]);
+        }
+
+        return Math.min(1.0, energyDistance * 0.16 + zcrDistance * 0.14 + bandDistance * 0.70);
     }
 
     private String serialize(double[] features) {
@@ -410,5 +494,8 @@ public class VoiceAuthService {
     }
 
     private record VoicePrint(boolean valid, double[] features) {
+    }
+
+    private record VoiceSegment(boolean valid, int startInclusive, int endExclusive, double rms) {
     }
 }

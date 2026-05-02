@@ -56,7 +56,7 @@ public class SeanceService implements IServices<Seance> {
             return subjects;
         }
 
-        String sql = "SELECT DISTINCT matiere FROM seance ORDER BY matiere";
+        String sql = "SELECT DISTINCT matiere FROM `seance` ORDER BY matiere";
         try (PreparedStatement pst = cnx.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
             while (rs.next()) {
@@ -129,17 +129,16 @@ public class SeanceService implements IServices<Seance> {
             return seances;
         }
 
-        String sql = """
-            SELECT id, matiere, start_at, duration_min, max_participants, status,
-                   description, created_at, updated_at, tuteur_id,
-            """
-            + (supportsSeanceModeColumn() ? "mode_seance" : "'" + Seance.MODE_ONLINE + "' AS mode_seance")
-            + ", "
-            + (supportsSeanceSalleColumn() ? "salle_id" : "NULL AS salle_id")
-            + """
-            FROM seance
-            ORDER BY id DESC
-            """;
+        String modeExpression = supportsSeanceModeColumn()
+            ? "`mode_seance` AS mode_seance"
+            : "'" + Seance.MODE_ONLINE + "' AS mode_seance";
+        String salleExpression = supportsSeanceSalleColumn()
+            ? "`salle_id` AS salle_id"
+            : "NULL AS salle_id";
+        String sql = "SELECT `id`, `matiere`, `start_at`, `duration_min`, `max_participants`, `status`, "
+            + "`description`, `created_at`, `updated_at`, `tuteur_id`, "
+            + modeExpression + ", " + salleExpression
+            + " FROM `seance` ORDER BY `id` DESC";
 
         try (PreparedStatement pst = cnx.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {

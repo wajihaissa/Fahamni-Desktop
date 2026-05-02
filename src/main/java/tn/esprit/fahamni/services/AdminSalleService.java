@@ -32,7 +32,7 @@ public class AdminSalleService implements IServices<Salle> {
         """;
     private static final String SELECT_ACTIVE_SEANCE_BY_SALLE_SQL = """
         SELECT id, matiere, start_at
-        FROM seance
+        FROM `seance`
         WHERE salle_id = ?
           AND start_at IS NOT NULL
           AND DATE_ADD(start_at, INTERVAL duration_min MINUTE) > NOW()
