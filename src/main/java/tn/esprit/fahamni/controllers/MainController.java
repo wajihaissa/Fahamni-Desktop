@@ -5,6 +5,7 @@ import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import tn.esprit.fahamni.services.NotificationService;
 import tn.esprit.fahamni.services.SessionCreationContext;
 import tn.esprit.fahamni.test.Main;
@@ -23,6 +24,7 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
@@ -46,6 +48,9 @@ import java.util.List;
 import javafx.util.Duration;
 import tn.esprit.fahamni.Models.Notification;
 import tn.esprit.fahamni.services.UserAccountService;
+import tn.esprit.fahamni.services.voice.LocalSpeechToTextService;
+import tn.esprit.fahamni.services.voice.VoiceAssistantIntent;
+import tn.esprit.fahamni.services.voice.VoiceAssistantInterpreter;
 
 public class MainController {
 
@@ -56,6 +61,8 @@ public class MainController {
 
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
+    private final VoiceAssistantInterpreter voiceAssistantInterpreter = new VoiceAssistantInterpreter();
+    private final LocalSpeechToTextService localSpeechToTextService = new LocalSpeechToTextService();
 
     @FXML private BorderPane rootPane;
     @FXML private AnchorPane contentPane;
@@ -77,9 +84,15 @@ public class MainController {
     @FXML private Label profileAvatarLabel;
     @FXML private Label profileNameLabel;
     @FXML private Label profileRoleLabel;
+    @FXML private VBox voiceAssistantPanel;
+    @FXML private Button voiceAssistantBubbleButton;
+    @FXML private Label voiceAssistantStatusLabel;
+    @FXML private Label voiceAssistantReplyLabel;
+    @FXML private TextField voiceAssistantCommandField;
 
     private ContextMenu accountMenu;
     private Popup alertsPopup;
+    private boolean voiceAssistantWaitingForCommand;
     private static final DateTimeFormatter NOTIF_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @FXML
@@ -377,6 +390,58 @@ public class MainController {
         }
     }
 
+    @FXML
+    private void toggleVoiceAssistant() {
+        boolean show = voiceAssistantPanel != null && !voiceAssistantPanel.isVisible();
+        setVoiceAssistantVisible(show);
+        if (show && voiceAssistantCommandField != null) {
+            Platform.runLater(() -> voiceAssistantCommandField.requestFocus());
+        }
+    }
+
+    @FXML
+    private void handleVoiceAssistantTextCommand() {
+        if (voiceAssistantCommandField == null) {
+            return;
+        }
+        String command = voiceAssistantCommandField.getText();
+        voiceAssistantCommandField.clear();
+        processVoiceAssistantTranscript(command);
+    }
+
+    @FXML
+    private void handleVoiceAssistantListen() {
+        setVoiceAssistantVisible(true);
+        setVoiceAssistantStatus("Listening");
+        setVoiceAssistantReply("Listening for 4 seconds...");
+
+        Task<LocalSpeechToTextService.SpeechResult> listenTask = new Task<>() {
+            @Override
+            protected LocalSpeechToTextService.SpeechResult call() {
+                return localSpeechToTextService.listenOnce(java.time.Duration.ofSeconds(4));
+            }
+        };
+        listenTask.setOnSucceeded(event -> {
+            LocalSpeechToTextService.SpeechResult result = listenTask.getValue();
+            if (!result.success()) {
+                setVoiceAssistantStatus("Setup needed");
+                setVoiceAssistantReply(result.message() + " You can still type a command here.");
+                return;
+            }
+            setVoiceAssistantStatus("Heard");
+            setVoiceAssistantReply(result.message());
+            processVoiceAssistantTranscript(result.transcript());
+        });
+        listenTask.setOnFailed(event -> {
+            setVoiceAssistantStatus("Error");
+            setVoiceAssistantReply("Offline listening failed. You can still type a command here.");
+        });
+
+        Thread thread = new Thread(listenTask, "fahamni-voice-assistant-listener");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
     private void loadView(String fxmlFile, String title) {
         hideAccountMenuInstant();
         try {
@@ -391,6 +456,10 @@ public class MainController {
     }
 
     private void loadProfileSettingsView(String title, boolean settingsMode) {
+        loadProfileSettingsView(title, settingsMode, null);
+    }
+
+    private void loadProfileSettingsView(String title, boolean settingsMode, java.util.function.Consumer<ProfileSettingsController> afterLoad) {
         try {
             FXMLLoader loader = new FXMLLoader(Main.class.getResource(SceneManager.frontofficeView("ProfileSettingsView.fxml")));
             Node view = loader.load();
@@ -399,6 +468,9 @@ public class MainController {
             controller.setOnProfileUpdated(updatedUser -> refreshCurrentUserSummary());
             controller.setOnAccountDeleted(this::handleLogout);
             displayView(view, title);
+            if (afterLoad != null) {
+                Platform.runLater(() -> afterLoad.accept(controller));
+            }
         } catch (IOException e) {
             e.printStackTrace();
             Label placeholder = new Label("Impossible de charger le panneau de compte.");
@@ -440,6 +512,78 @@ public class MainController {
             case ABOUT -> showAbout();
             case PROFILE -> showProfile();
             case SETTINGS -> showSettings();
+        }
+    }
+
+    private void processVoiceAssistantTranscript(String transcript) {
+        setVoiceAssistantVisible(true);
+        VoiceAssistantInterpreter.Interpretation interpretation =
+            voiceAssistantInterpreter.interpret(transcript, voiceAssistantWaitingForCommand);
+        setVoiceAssistantReply(interpretation.reply());
+
+        if (interpretation.intent() == VoiceAssistantIntent.WAKE) {
+            voiceAssistantWaitingForCommand = true;
+            setVoiceAssistantStatus("Listening");
+            return;
+        }
+
+        if (interpretation.intent() == VoiceAssistantIntent.UNKNOWN) {
+            setVoiceAssistantStatus("Try again");
+            return;
+        }
+
+        voiceAssistantWaitingForCommand = false;
+        setVoiceAssistantStatus("Command");
+        executeVoiceAssistantIntent(interpretation.intent());
+    }
+
+    private void executeVoiceAssistantIntent(VoiceAssistantIntent intent) {
+        switch (intent) {
+            case HELP -> setVoiceAssistantReply("Try: open profile, open security, save my voice, open planner, open quiz, open blog, open calendar, open messages, find tutor, or logout.");
+            case CANCEL -> setVoiceAssistantVisible(false);
+            case GO_BACK, OPEN_DASHBOARD -> showDashboard();
+            case OPEN_PROFILE -> showProfile();
+            case OPEN_SETTINGS -> showSettings();
+            case OPEN_SECURITY -> loadProfileSettingsView("Parametres de securite", true, ProfileSettingsController::showSecurityFromAssistant);
+            case OPEN_RESERVATIONS -> showReservations();
+            case OPEN_CALENDAR -> showSeances();
+            case OPEN_PLANNER -> showPlanner();
+            case OPEN_MESSENGER -> showMessenger();
+            case OPEN_QUIZ -> showQuiz();
+            case OPEN_BLOG -> showBlog();
+            case OPEN_ABOUT -> showAbout();
+            case START_VOICE_LOGIN -> setVoiceAssistantReply("Voice login is available on the login screen. Log out, enter your email, then use Voice Pass.");
+            case ENROLL_VOICE_PASS -> loadProfileSettingsView("Parametres de securite", true, ProfileSettingsController::startVoicePassEnrollmentFromAssistant);
+            case REMOVE_VOICE_PASS -> loadProfileSettingsView("Parametres de securite", true, ProfileSettingsController::showSecurityFromAssistant);
+            case LOGOUT -> handleLogout();
+            case WAKE, UNKNOWN -> {
+            }
+        }
+    }
+
+    private void setVoiceAssistantVisible(boolean visible) {
+        if (voiceAssistantPanel != null) {
+            voiceAssistantPanel.setVisible(visible);
+            voiceAssistantPanel.setManaged(visible);
+        }
+        if (voiceAssistantBubbleButton != null) {
+            voiceAssistantBubbleButton.setVisible(!visible);
+            voiceAssistantBubbleButton.setManaged(!visible);
+        }
+        if (!visible) {
+            voiceAssistantWaitingForCommand = false;
+        }
+    }
+
+    private void setVoiceAssistantStatus(String status) {
+        if (voiceAssistantStatusLabel != null) {
+            voiceAssistantStatusLabel.setText(status);
+        }
+    }
+
+    private void setVoiceAssistantReply(String reply) {
+        if (voiceAssistantReplyLabel != null) {
+            voiceAssistantReplyLabel.setText(reply);
         }
     }
 

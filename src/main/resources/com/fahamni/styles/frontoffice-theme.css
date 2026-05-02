@@ -4722,3 +4722,118 @@
             -fx-text-fill: #06121d;
             -fx-border-color: #08111b;
         }
+
+        .voice-assistant-bubble {
+            -fx-min-width: 62px;
+            -fx-min-height: 62px;
+            -fx-background-radius: 31px;
+            -fx-border-radius: 31px;
+            -fx-background-color: linear-gradient(to bottom right, #4fd8ff 0%, #7d6cdf 100%);
+            -fx-border-color: rgba(255, 255, 255, 0.48);
+            -fx-border-width: 1px;
+            -fx-text-fill: white;
+            -fx-font-size: 13px;
+            -fx-font-weight: bold;
+            -fx-cursor: hand;
+            -fx-effect: dropshadow(gaussian, rgba(11, 22, 38, 0.34), 22, 0.18, 0, 8);
+        }
+
+        .voice-assistant-bubble:focused,
+        .voice-assistant-primary-button:focused,
+        .voice-assistant-secondary-button:focused,
+        .voice-assistant-input:focused {
+            -fx-focus-color: transparent;
+            -fx-faint-focus-color: transparent;
+        }
+
+        .voice-assistant-panel {
+            -fx-padding: 16px;
+            -fx-background-radius: 18px;
+            -fx-border-radius: 18px;
+            -fx-background-color: rgba(10, 18, 29, 0.96);
+            -fx-border-color: rgba(96, 224, 255, 0.18);
+            -fx-border-width: 1px;
+            -fx-effect: dropshadow(gaussian, rgba(3, 8, 15, 0.44), 34, 0.20, 0, 12);
+        }
+
+        .voice-assistant-title {
+            -fx-text-fill: #f4f9ff;
+            -fx-font-size: 14px;
+            -fx-font-weight: bold;
+        }
+
+        .voice-assistant-status {
+            -fx-padding: 3px 8px;
+            -fx-background-color: rgba(79, 216, 255, 0.14);
+            -fx-background-radius: 999px;
+            -fx-text-fill: #bfefff;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+        }
+
+        .voice-assistant-reply {
+            -fx-text-fill: #c7d7e7;
+            -fx-font-size: 12px;
+            -fx-line-spacing: 3px;
+        }
+
+        .voice-assistant-input {
+            -fx-min-height: 38px;
+            -fx-background-radius: 10px;
+            -fx-border-radius: 10px;
+            -fx-background-color: rgba(255, 255, 255, 0.08);
+            -fx-border-color: rgba(255, 255, 255, 0.10);
+            -fx-border-width: 1px;
+            -fx-text-fill: #f4f9ff;
+            -fx-prompt-text-fill: #859bb3;
+            -fx-padding: 8px 10px;
+        }
+
+        .voice-assistant-primary-button,
+        .voice-assistant-secondary-button {
+            -fx-background-radius: 10px;
+            -fx-border-radius: 10px;
+            -fx-font-size: 12px;
+            -fx-font-weight: bold;
+            -fx-padding: 8px 12px;
+            -fx-cursor: hand;
+        }
+
+        .voice-assistant-primary-button {
+            -fx-background-color: linear-gradient(to right, #4fd8ff 0%, #7d6cdf 100%);
+            -fx-text-fill: #06121d;
+        }
+
+        .voice-assistant-secondary-button {
+            -fx-background-color: rgba(255, 255, 255, 0.07);
+            -fx-border-color: rgba(255, 255, 255, 0.10);
+            -fx-border-width: 1px;
+            -fx-text-fill: #e8f5ff;
+        }
+
+        .front-navbar-shell-root.theme-light .voice-assistant-panel {
+            -fx-background-color: rgba(255, 255, 255, 0.98);
+            -fx-border-color: rgba(95, 73, 191, 0.16);
+            -fx-effect: dropshadow(gaussian, rgba(31, 34, 43, 0.16), 28, 0.18, 0, 10);
+        }
+
+        .front-navbar-shell-root.theme-light .voice-assistant-title {
+            -fx-text-fill: #17314a;
+        }
+
+        .front-navbar-shell-root.theme-light .voice-assistant-reply {
+            -fx-text-fill: #536b84;
+        }
+
+        .front-navbar-shell-root.theme-light .voice-assistant-input {
+            -fx-background-color: #f5f7fb;
+            -fx-border-color: #dde4ef;
+            -fx-text-fill: #17314a;
+            -fx-prompt-text-fill: #7f90a5;
+        }
+
+        .front-navbar-shell-root.theme-light .voice-assistant-secondary-button {
+            -fx-background-color: #f4f6fb;
+            -fx-border-color: #dde4ef;
+            -fx-text-fill: #263d55;
+        }

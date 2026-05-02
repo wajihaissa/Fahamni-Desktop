@@ -4,6 +4,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.FlowPane?>
@@ -22,7 +23,8 @@
     </styleClass>
 
     <center>
-        <VBox spacing="14.0" styleClass="front-navbar-shell" BorderPane.alignment="CENTER">
+        <StackPane BorderPane.alignment="CENTER">
+        <VBox spacing="14.0" styleClass="front-navbar-shell">
             <padding>
                 <Insets top="18" right="16" bottom="18" left="16"/>
             </padding>
@@ -126,5 +128,35 @@
                 </styleClass>
             </AnchorPane>
         </VBox>
+
+        <VBox fx:id="voiceAssistantPanel" managed="false" visible="false" spacing="12.0"
+              maxWidth="370.0" prefWidth="370.0" styleClass="voice-assistant-panel"
+              StackPane.alignment="BOTTOM_RIGHT">
+            <StackPane.margin>
+                <Insets right="28" bottom="28"/>
+            </StackPane.margin>
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <Label text="AI Voice Assistant" styleClass="voice-assistant-title"/>
+                <Label fx:id="voiceAssistantStatusLabel" text="Say: hey fahamni" styleClass="voice-assistant-status"/>
+            </HBox>
+            <Label fx:id="voiceAssistantReplyLabel"
+                   text="I can open profile, security, planner, quiz, blog, reservations, calendar, messages, or logout."
+                   wrapText="true" styleClass="voice-assistant-reply"/>
+            <TextField fx:id="voiceAssistantCommandField" promptText="Test command: open security"
+                       onAction="#handleVoiceAssistantTextCommand" styleClass="voice-assistant-input"/>
+            <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                <Button text="Listen" onAction="#handleVoiceAssistantListen" styleClass="voice-assistant-secondary-button"/>
+                <Button text="Run" onAction="#handleVoiceAssistantTextCommand" styleClass="voice-assistant-primary-button"/>
+                <Button text="Close" onAction="#toggleVoiceAssistant" styleClass="voice-assistant-secondary-button"/>
+            </HBox>
+        </VBox>
+
+        <Button fx:id="voiceAssistantBubbleButton" text="Hey" onAction="#toggleVoiceAssistant"
+                styleClass="voice-assistant-bubble" StackPane.alignment="BOTTOM_RIGHT">
+            <StackPane.margin>
+                <Insets right="28" bottom="28"/>
+            </StackPane.margin>
+        </Button>
+        </StackPane>
     </center>
 </BorderPane>

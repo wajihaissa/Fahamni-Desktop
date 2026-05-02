@@ -12,6 +12,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class VoiceAuthService {
 
@@ -22,6 +24,8 @@ public class VoiceAuthService {
     private static final int EXPECTED_FEATURE_COUNT = FRAME_COUNT * FEATURES_PER_FRAME + 4;
     private static final double MIN_RMS = 0.014;
     private static final double MATCH_THRESHOLD = 0.61;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final Map<String, Integer> FAILED_ATTEMPTS = new ConcurrentHashMap<>();
 
     public record VoiceStatus(
         boolean enabled,
@@ -124,9 +128,13 @@ public class VoiceAuthService {
         if (normalizedIdentity == null || normalizedIdentity.isBlank()) {
             return new VoiceLoginResult(false, null, "Saisissez votre email avant la verification vocale.");
         }
+        if (FAILED_ATTEMPTS.getOrDefault(normalizedIdentity, 0) >= MAX_FAILED_ATTEMPTS) {
+            return new VoiceLoginResult(false, null, "Voice Pass bloque temporairement apres trop de tentatives. Connectez-vous avec votre mot de passe.");
+        }
 
         VoicePrint candidatePrint = buildVoicePrint(audioBytes);
         if (!candidatePrint.valid()) {
+            registerFailedAttempt(normalizedIdentity);
             return new VoiceLoginResult(false, null, "Voix trop faible ou capture invalide. Reessayez dans un endroit calme.");
         }
 
@@ -169,6 +177,7 @@ public class VoiceAuthService {
                     double score = similarity(storedFeatures, candidatePrint.features());
                     System.out.println(String.format(Locale.US, "VoiceAuthService: score %.2f for %s", score, normalizedIdentity));
                     if (score < MATCH_THRESHOLD) {
+                        registerFailedAttempt(normalizedIdentity);
                         return new VoiceLoginResult(false, null, String.format(
                             Locale.US,
                             "La voix ne correspond pas assez au Voice Pass enregistre (score %.2f).",
@@ -183,6 +192,7 @@ public class VoiceAuthService {
                         resultSet.getString("password"),
                         mapRole(resultSet.getString("roles"))
                     );
+                    FAILED_ATTEMPTS.remove(normalizedIdentity);
                     return new VoiceLoginResult(true, user, String.format(Locale.US, "Voice Pass valide (score %.2f).", score));
                 }
             }
@@ -190,6 +200,13 @@ public class VoiceAuthService {
             System.out.println("VoiceAuthService login SQL error: " + exception.getMessage());
             return new VoiceLoginResult(false, null, "Erreur SQL lors de la verification vocale.");
         }
+    }
+
+    private void registerFailedAttempt(String normalizedIdentity) {
+        if (normalizedIdentity == null || normalizedIdentity.isBlank()) {
+            return;
+        }
+        FAILED_ATTEMPTS.merge(normalizedIdentity, 1, Integer::sum);
     }
 
     public VoiceStatus getCurrentVoiceStatus() {

@@ -180,6 +180,15 @@ public class ProfileSettingsController {
         showSection(settingsMode ? Section.ACCOUNT_SETTINGS : Section.PERSONAL_INFO);
     }
 
+    public void showSecurityFromAssistant() {
+        showSection(Section.SECURITY);
+    }
+
+    public void startVoicePassEnrollmentFromAssistant() {
+        showSection(Section.SECURITY);
+        handleEnrollVoicePass();
+    }
+
     public void setOnProfileUpdated(Consumer<User> onProfileUpdated) {
         this.onProfileUpdated = onProfileUpdated;
     }
