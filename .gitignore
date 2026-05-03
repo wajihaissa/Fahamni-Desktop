@@ -20,6 +20,9 @@ build/
 /nbbuild/
 /nbproject/private/
 /.nb-gradle/
+/exports/
+exports/
+
 # OS files
 *.log
 *.tmp
@@ -27,6 +30,8 @@ build/
 .env
 .env.*
 .DS_Store
+.env.local
+fahamni.local.properties
 
 # Java compiled files
 *.class

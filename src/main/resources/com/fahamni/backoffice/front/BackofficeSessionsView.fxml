@@ -28,7 +28,7 @@
         <VBox spacing="10.0">
             <Label text="Recherche et filtres" styleClass="backoffice-section-title"/>
             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                <TextField fx:id="sessionSearchField" promptText="Rechercher par matiere, tuteur, statut ou ID" prefWidth="360.0" styleClass="backoffice-form-input"/>
+                <TextField fx:id="sessionSearchField" promptText="Rechercher par matiere, tuteur ou statut" prefWidth="360.0" styleClass="backoffice-form-input"/>
                 <ComboBox fx:id="sessionStatusFilterComboBox" prefWidth="170.0" styleClass="backoffice-form-input"/>
                 <DatePicker fx:id="sessionDatePicker" promptText="Date de seance" prefWidth="170.0" styleClass="backoffice-form-input"/>
                 <Button onAction="#handleResetSessionFilters" text="Reinitialiser" styleClass="backoffice-secondary-button"/>
@@ -46,7 +46,6 @@
 
         <TableView fx:id="sessionsTable" VBox.vgrow="ALWAYS" styleClass="backoffice-table">
             <columns>
-                <TableColumn fx:id="sessionIdColumn" prefWidth="60.0" text="ID"/>
                 <TableColumn fx:id="subjectColumn" prefWidth="220.0" text="Matiere"/>
                 <TableColumn fx:id="tutorColumn" prefWidth="190.0" text="Tuteur"/>
                 <TableColumn fx:id="scheduleColumn" prefWidth="180.0" text="Date"/>

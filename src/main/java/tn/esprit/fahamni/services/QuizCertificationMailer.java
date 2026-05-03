@@ -18,7 +18,6 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.quiz.Quiz;
 import tn.esprit.fahamni.Models.quiz.QuizResult;
@@ -199,9 +198,9 @@ public class QuizCertificationMailer {
 
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            org.apache.pdfbox.pdmodel.font.PDFont helvetica = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-            org.apache.pdfbox.pdmodel.font.PDFont helveticaBold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-            org.apache.pdfbox.pdmodel.font.PDFont helveticaOblique = new PDType1Font(Standard14Fonts.FontName.HELVETICA_OBLIQUE);
+            org.apache.pdfbox.pdmodel.font.PDFont helvetica = PDType1Font.HELVETICA;
+            org.apache.pdfbox.pdmodel.font.PDFont helveticaBold = PDType1Font.HELVETICA_BOLD;
+            org.apache.pdfbox.pdmodel.font.PDFont helveticaOblique = PDType1Font.HELVETICA_OBLIQUE;
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
 

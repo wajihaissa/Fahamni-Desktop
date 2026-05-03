@@ -36,7 +36,7 @@ public final class FrontOfficeThemePreference {
     }
 
     public static void setCurrentMode(ThemeMode mode) {
-        currentMode = mode == null ? ThemeMode.DARK : mode;
+        currentMode = mode == null ? ThemeMode.LIGHT : mode;
         PREFS.put(PREF_KEY, currentMode.name());
     }
 
@@ -53,9 +53,9 @@ public final class FrontOfficeThemePreference {
 
     private static ThemeMode loadThemeMode() {
         try {
-            return ThemeMode.valueOf(PREFS.get(PREF_KEY, ThemeMode.DARK.name()));
+            return ThemeMode.valueOf(PREFS.get(PREF_KEY, ThemeMode.LIGHT.name()));
         } catch (IllegalArgumentException ignored) {
-            return ThemeMode.DARK;
+            return ThemeMode.LIGHT;
         }
     }
 }

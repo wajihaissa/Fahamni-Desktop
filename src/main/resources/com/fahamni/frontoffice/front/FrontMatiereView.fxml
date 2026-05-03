@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.FrontMatiereController"
+            style="-fx-background-color: linear-gradient(to bottom, #f8fafc, #eef2ff);">
+
+    <top>
+        <VBox spacing="6.0" style="-fx-padding: 24 24 16 24;">
+            <Label text="Explorer nos Formations"
+                   style="-fx-font-size: 30px; -fx-font-weight: bold; -fx-text-fill: #0f172a;"/>
+            <Label text="Decouvrez les matieres disponibles et lancez votre apprentissage."
+                   style="-fx-font-size: 14px; -fx-text-fill: #475569;"/>
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fitToWidth="true"
+                    hbarPolicy="NEVER"
+                    style="-fx-background-color: transparent; -fx-control-inner-background: transparent;">
+            <content>
+                <FlowPane fx:id="coursesContainer"
+                          hgap="20.0"
+                          vgap="20.0"
+                          style="-fx-padding: 20;"/>
+            </content>
+        </ScrollPane>
+    </center>
+
+</BorderPane>

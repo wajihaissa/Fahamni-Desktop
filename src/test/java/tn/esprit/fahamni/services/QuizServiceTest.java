@@ -173,6 +173,13 @@ class QuizServiceTest {
         assertNull(result);
     }
 
+    @Test
+    void submitQuizReturnsNullWhenUserIsMissing() {
+        QuizResult result = service.submitQuiz(-999_999L, Map.of(), null);
+
+        assertNull(result);
+    }
+
     private Quiz buildQuiz(String title, String keyword) {
         Quiz quiz = new Quiz();
         quiz.setTitre(title);

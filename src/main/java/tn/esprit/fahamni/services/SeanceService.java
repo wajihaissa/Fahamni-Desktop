@@ -2,9 +2,12 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Seance;
 import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -29,6 +32,8 @@ public class SeanceService implements IServices<Seance> {
     public static final int MIN_CAPACITY = 1;
     public static final int MAX_CAPACITY = 50;
     public static final int MIN_DESCRIPTION_LENGTH = 15;
+    public static final double MIN_PRICE_TND = 0.0;
+    public static final double MAX_PRICE_TND = 5000.0;
 
     private static final DateTimeFormatter SEARCH_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final List<String> FALLBACK_SUBJECTS = List.of(
@@ -42,6 +47,11 @@ public class SeanceService implements IServices<Seance> {
 
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
+    private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+
+    public SeanceService() {
+        ensurePriceColumn();
+    }
 
     public boolean hasDatabaseConnection() {
         return cnx != null;
@@ -136,6 +146,8 @@ public class SeanceService implements IServices<Seance> {
             + (supportsSeanceModeColumn() ? "mode_seance" : "'" + Seance.MODE_ONLINE + "' AS mode_seance")
             + ", "
             + (supportsSeanceSalleColumn() ? "salle_id" : "NULL AS salle_id")
+            + ", "
+            + (supportsSeancePriceColumn() ? "price_tnd" : "NULL AS price_tnd")
             + """
             FROM seance
             ORDER BY id DESC
@@ -188,7 +200,8 @@ public class SeanceService implements IServices<Seance> {
 
         boolean hasModeColumn = supportsSeanceModeColumn();
         boolean hasSalleColumn = supportsSeanceSalleColumn();
-        String sql = hasModeColumn || hasSalleColumn
+        boolean hasPriceColumn = supportsSeancePriceColumn();
+        String sql = hasModeColumn || hasSalleColumn || hasPriceColumn
             ? """
                 INSERT INTO seance (
                     matiere, start_at, duration_min, max_participants, status, description,
@@ -196,12 +209,14 @@ public class SeanceService implements IServices<Seance> {
                 """
                 + (hasModeColumn ? ", mode_seance" : "")
                 + (hasSalleColumn ? ", salle_id" : "")
+                + (hasPriceColumn ? ", price_tnd" : "")
                 + """
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?
                 """
                 + (hasModeColumn ? ", ?" : "")
                 + (hasSalleColumn ? ", ?" : "")
+                + (hasPriceColumn ? ", ?" : "")
                 + ")"
             : """
                 INSERT INTO seance (
@@ -230,7 +245,10 @@ public class SeanceService implements IServices<Seance> {
                 pst.setString(nextIndex++, seance.getMode());
             }
             if (hasSalleColumn) {
-                setNullableInteger(pst, nextIndex, seance.getSalleId());
+                setNullableInteger(pst, nextIndex++, seance.getSalleId());
+            }
+            if (hasPriceColumn) {
+                pst.setBigDecimal(nextIndex, normalizePriceTnd(seance.getPrice()));
             }
             pst.executeUpdate();
 
@@ -275,6 +293,7 @@ public class SeanceService implements IServices<Seance> {
 
         boolean hasModeColumn = supportsSeanceModeColumn();
         boolean hasSalleColumn = supportsSeanceSalleColumn();
+        boolean hasPriceColumn = supportsSeancePriceColumn();
         String sql = """
             UPDATE seance
             SET matiere = ?, start_at = ?, duration_min = ?, max_participants = ?,
@@ -282,6 +301,7 @@ public class SeanceService implements IServices<Seance> {
             """
             + (hasModeColumn ? ", mode_seance = ?" : "")
             + (hasSalleColumn ? ", salle_id = ?" : "")
+            + (hasPriceColumn ? ", price_tnd = ?" : "")
             + " WHERE id = ?";
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
@@ -302,6 +322,9 @@ public class SeanceService implements IServices<Seance> {
             }
             if (hasSalleColumn) {
                 setNullableInteger(pst, nextIndex++, seance.getSalleId());
+            }
+            if (hasPriceColumn) {
+                pst.setBigDecimal(nextIndex++, normalizePriceTnd(seance.getPrice()));
             }
             pst.setInt(nextIndex, seance.getId());
 
@@ -407,6 +430,10 @@ public class SeanceService implements IServices<Seance> {
         );
         seance.setMode(normalizeMode(rs.getString("mode_seance")));
         seance.setSalleId(getNullableInteger(rs, "salle_id"));
+        BigDecimal price = rs.getBigDecimal("price_tnd");
+        if (price != null) {
+            seance.setPrice(price.setScale(3, RoundingMode.HALF_UP).doubleValue());
+        }
         return seance;
     }
 
@@ -444,6 +471,10 @@ public class SeanceService implements IServices<Seance> {
         }
         if (normalizedDescription == null || normalizedDescription.length() < MIN_DESCRIPTION_LENGTH) {
             return "Ajoutez une description d'au moins " + MIN_DESCRIPTION_LENGTH + " caracteres.";
+        }
+        if (seance.getPrice() < MIN_PRICE_TND || seance.getPrice() > MAX_PRICE_TND) {
+            return "Le prix doit etre compris entre " + formatPrice(MIN_PRICE_TND)
+                + " TND et " + formatPrice(MAX_PRICE_TND) + " TND.";
         }
         if (seance.getTuteurId() <= 0) {
             return "Le tuteur doit avoir un identifiant valide.";
@@ -525,6 +556,11 @@ public class SeanceService implements IServices<Seance> {
             return "Connexion a la base indisponible pour verifier le materiel.";
         }
 
+        Map<Integer, Integer> reservedQuantities = getReservedComplementaryQuantites(
+            seance.getStartAt(),
+            seance.getDurationMin(),
+            seance.getId() > 0 ? seance.getId() : null
+        );
         String sql = "SELECT nom, quantiteDisponible, etat FROM equipement WHERE idEquipement = ?";
         for (Map.Entry<Integer, Integer> entry : equipementQuantites.entrySet()) {
             Integer equipementId = entry.getKey();
@@ -543,21 +579,63 @@ public class SeanceService implements IServices<Seance> {
                         return "Le materiel #" + equipementId + " est introuvable.";
                     }
                     String equipmentName = rs.getString("nom");
-                    int quantity = rs.getInt("quantiteDisponible");
                     String status = rs.getString("etat");
+                    int quantiteRestante = Math.max(
+                        0,
+                        salleEquipementService.getRemainingQuantiteForEquipement(equipementId)
+                            - reservedQuantities.getOrDefault(equipementId, 0)
+                    );
 
-                    if (!isAvailable(status) || quantity <= 0) {
+                    if (!isAvailable(status) || quantiteRestante <= 0) {
                         return "Le materiel \"" + equipmentName + "\" n'est pas disponible.";
                     }
-                    if (quantiteDemandee > quantity) {
-                        return "Le materiel \"" + equipmentName + "\" est disponible a hauteur de " + quantity + " unite(s).";
+                    if (quantiteDemandee > quantiteRestante) {
+                        return "Le materiel \"" + equipmentName + "\" est disponible a hauteur de " + quantiteRestante
+                            + " unite(s) libre(s) sur ce creneau apres affectation fixe aux salles et reservations existantes.";
                     }
                 }
-            } catch (SQLException e) {
+            } catch (SQLException | IllegalArgumentException | IllegalStateException e) {
                 return "Verification du materiel impossible: " + e.getMessage();
             }
         }
         return null;
+    }
+
+    public Map<Integer, Integer> getReservedComplementaryQuantites(LocalDateTime candidateStartAt,
+                                                                   int candidateDuration,
+                                                                   Integer excludedSeanceId) {
+        LinkedHashMap<Integer, Integer> reservedQuantities = new LinkedHashMap<>();
+        LocalDateTime candidateEndAt = calculateEndAt(candidateStartAt, candidateDuration);
+        if (candidateStartAt == null || candidateEndAt == null) {
+            return reservedQuantities;
+        }
+
+        int currentEditingId = excludedSeanceId == null ? 0 : excludedSeanceId;
+        for (Seance existing : getAll()) {
+            if (existing.getId() == currentEditingId
+                || !existing.isPresentiel()
+                || existing.getStatus() == 2
+                || existing.getStartAt() == null
+                || existing.getDurationMin() <= 0) {
+                continue;
+            }
+
+            LocalDateTime existingEndAt = calculateEndAt(existing.getStartAt(), existing.getDurationMin());
+            if (!hasOverlap(candidateStartAt, candidateEndAt, existing.getStartAt(), existingEndAt)) {
+                continue;
+            }
+
+            for (Map.Entry<Integer, Integer> entry : existing.getEquipementQuantites().entrySet()) {
+                Integer equipementId = entry.getKey();
+                if (equipementId == null || equipementId <= 0) {
+                    continue;
+                }
+
+                int quantiteReservee = Math.max(1, entry.getValue() == null ? 1 : entry.getValue());
+                reservedQuantities.merge(equipementId, quantiteReservee, Integer::sum);
+            }
+        }
+        return reservedQuantities;
     }
 
     private String validateScheduleConflict(Seance candidate) {
@@ -641,9 +719,10 @@ public class SeanceService implements IServices<Seance> {
     private String buildConflictMessage(Seance conflictingSeance) {
         String subject = normalizeText(conflictingSeance.getMatiere());
         String safeSubject = subject != null ? subject : "sans titre";
-        return "Conflit d'horaire: ce tuteur a deja une seance \"" + safeSubject
+        LocalDateTime endAt = calculateEndAt(conflictingSeance.getStartAt(), conflictingSeance.getDurationMin());
+        return "Conflit d'horaire: vous avez deja une seance \"" + safeSubject
             + "\" prevue le " + formatDateTime(conflictingSeance.getStartAt())
-            + " pour " + conflictingSeance.getDurationMin() + " min.";
+            + " et se termine le " + formatDateTime(endAt) + ".";
     }
 
     private void normalizeInfrastructureFields(Seance seance) {
@@ -802,6 +881,10 @@ public class SeanceService implements IServices<Seance> {
         return columnExists("seance", "salle_id");
     }
 
+    private boolean supportsSeancePriceColumn() {
+        return columnExists("seance", "price_tnd");
+    }
+
     private boolean tableExists(String tableName) {
         if (cnx == null || tableName == null || tableName.isBlank()) {
             return false;
@@ -854,6 +937,31 @@ public class SeanceService implements IServices<Seance> {
         }
         String normalizedValue = value.trim().replaceAll("\\s+", " ");
         return normalizedValue.isEmpty() ? null : normalizedValue;
+    }
+
+    private void ensurePriceColumn() {
+        if (cnx == null) {
+            return;
+        }
+        try {
+            if (!DatabaseSchemaUtils.columnExists(cnx, "seance", "price_tnd")) {
+                DatabaseSchemaUtils.executeDdl(
+                    cnx,
+                    "ALTER TABLE seance ADD COLUMN price_tnd DECIMAL(10,3) NULL DEFAULT NULL"
+                );
+            }
+        } catch (SQLException exception) {
+            System.out.println("Ajout colonne price_tnd impossible: " + exception.getMessage());
+        }
+    }
+
+    private BigDecimal normalizePriceTnd(double price) {
+        double bounded = Math.max(MIN_PRICE_TND, Math.min(MAX_PRICE_TND, price));
+        return BigDecimal.valueOf(bounded).setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private String formatPrice(double price) {
+        return BigDecimal.valueOf(price).setScale(3, RoundingMode.HALF_UP).toPlainString();
     }
 
     private Connection requireConnection() {

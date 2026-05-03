@@ -17,37 +17,37 @@
 
         <HBox spacing="15.0" alignment="TOP_LEFT">
             <VBox spacing="15.0" styleClass="quiz-header">
-                <Label text="Available Quizzes" styleClass="section-title"/>
-                <Label text="Test your knowledge with our comprehensive quiz collection." styleClass="section-subtitle"/>
+                <Label text="Quiz disponibles" styleClass="section-title"/>
+                <Label text="Teste tes connaissances avec notre collection de quiz." styleClass="section-subtitle"/>
             </VBox>
             <Pane HBox.hgrow="ALWAYS"/>
             <VBox spacing="8.0" alignment="TOP_RIGHT">
                 <HBox spacing="12.0" alignment="CENTER_RIGHT">
-                    <TextField fx:id="quizSearchField" promptText="Search quizzes by title or topic" styleClass="search-field" prefWidth="250.0"/>
+                    <TextField fx:id="quizSearchField" promptText="Rechercher un quiz par titre ou sujet" styleClass="search-field" prefWidth="250.0"/>
                     <ComboBox fx:id="quizSortCombo" prefWidth="150.0" styleClass="filter-combo"/>
-                    <CheckBox fx:id="attemptedOnlyCheckBox" text="Attempted only" styleClass="form-label"/>
-                    <Button text="Refresh" onAction="#handleRefreshQuizzes">
+                    <CheckBox fx:id="attemptedOnlyCheckBox" text="Seulement tentes" styleClass="form-label"/>
+                    <Button text="Actualiser" onAction="#handleRefreshQuizzes">
                         <styleClass>
                             <String fx:value="action-button"/>
                             <String fx:value="secondary"/>
                             <String fx:value="quiz-toolbar-button"/>
                         </styleClass>
                     </Button>
-                    <Button text="Adaptive Quiz" onAction="#handleGenerateAdaptiveQuiz">
+                    <Button text="Quiz adaptatif" onAction="#handleGenerateAdaptiveQuiz">
                         <styleClass>
                             <String fx:value="action-button"/>
                             <String fx:value="secondary"/>
                             <String fx:value="quiz-toolbar-button"/>
                         </styleClass>
                     </Button>
-                    <Button text="Retake Mistakes" onAction="#handleGenerateMistakeRecoveryQuiz">
+                    <Button text="Reviser mes erreurs" onAction="#handleGenerateMistakeRecoveryQuiz">
                         <styleClass>
                             <String fx:value="action-button"/>
                             <String fx:value="secondary"/>
                             <String fx:value="quiz-toolbar-button"/>
                         </styleClass>
                     </Button>
-                    <Button text="Leaderboard" onAction="#handleShowLeaderboard">
+                    <Button text="Classement" onAction="#handleShowLeaderboard">
                         <styleClass>
                             <String fx:value="action-button"/>
                             <String fx:value="secondary"/>
@@ -62,26 +62,26 @@
         <HBox spacing="20.0" styleClass="quiz-stats">
             <VBox styleClass="stat-card">
                 <Label fx:id="quizzesTakenValue" text="0" styleClass="stat-value"/>
-                <Label text="Quizzes Taken" styleClass="stat-label"/>
+                <Label text="Quiz tentes" styleClass="stat-label"/>
             </VBox>
             <VBox styleClass="stat-card">
                 <Label fx:id="averageScoreValue" text="0%" styleClass="stat-value"/>
-                <Label text="Average Score" styleClass="stat-label"/>
+                <Label text="Score moyen" styleClass="stat-label"/>
             </VBox>
             <VBox styleClass="stat-card">
                 <Label fx:id="subjectsMasteredValue" text="0" styleClass="stat-value"/>
-                <Label text="Subjects Mastered" styleClass="stat-label"/>
+                <Label text="Sujets maitrises" styleClass="stat-label"/>
             </VBox>
         </HBox>
 
         <VBox spacing="15.0" styleClass="available-quizzes">
-            <Label text="Available Quizzes" styleClass="section-title"/>
-            <Label fx:id="quizResultsSummaryLabel" text="0 quiz available" styleClass="section-subtitle"/>
+            <Label text="Quiz disponibles" styleClass="section-title"/>
+            <Label fx:id="quizResultsSummaryLabel" text="0 quiz disponible" styleClass="section-subtitle"/>
             <FlowPane fx:id="availableQuizzesBox" hgap="20.0" vgap="20.0" prefWrapLength="940.0"/>
         </VBox>
 
         <VBox spacing="15.0" styleClass="recent-results">
-            <Label text="Recent Results" styleClass="section-title"/>
+            <Label text="Resultats recents" styleClass="section-title"/>
             <VBox fx:id="recentResultsBox" spacing="10.0"/>
         </VBox>
     </VBox>

@@ -40,9 +40,6 @@ public class BackofficeSessionsController {
     private TableView<AdminSession> sessionsTable;
 
     @FXML
-    private TableColumn<AdminSession, Integer> sessionIdColumn;
-
-    @FXML
     private TableColumn<AdminSession, String> subjectColumn;
 
     @FXML
@@ -89,7 +86,6 @@ public class BackofficeSessionsController {
 
     @FXML
     private void initialize() {
-        sessionIdColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         subjectColumn.setCellValueFactory(new PropertyValueFactory<>("subject"));
         tutorColumn.setCellValueFactory(new PropertyValueFactory<>("tutor"));
         scheduleColumn.setCellValueFactory(new PropertyValueFactory<>("schedule"));
@@ -287,7 +283,7 @@ public class BackofficeSessionsController {
         VBox titleBlock = new VBox(6.0);
         Label titleLabel = new Label(safeText(session.getSubject()));
         titleLabel.setStyle("-fx-font-size: 23px; -fx-font-weight: bold; -fx-text-fill: #17356d;");
-        Label subtitleLabel = new Label("Seance #" + session.getId() + "  |  Tuteur: " + safeText(session.getTutor()));
+        Label subtitleLabel = new Label("Tuteur: " + safeText(session.getTutor()));
         subtitleLabel.setStyle("-fx-text-fill: #5d7196; -fx-font-size: 13px;");
         titleBlock.getChildren().addAll(titleLabel, subtitleLabel);
 
@@ -305,7 +301,7 @@ public class BackofficeSessionsController {
             buildDetailMetric("Capacite", session.getCapacity() + " places", "Capacite max"),
             buildDetailMetric("Reservations", formatReservationCount(session.getReservationCount()), "Demandes liees"),
             buildDetailMetric("Suppression", session.getReservationCount() > 0 ? "Bloquee" : "Disponible", "Etat de suppression"),
-            buildDetailMetric("Tuteur", safeText(session.getTutor()), "ID " + session.getTutorId())
+            buildDetailMetric("Tuteur", safeText(session.getTutor()), "Intervenant")
         );
 
         VBox descriptionCard = new VBox(8.0);

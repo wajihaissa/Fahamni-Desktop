@@ -40,7 +40,7 @@ public class QuizService {
         String questionQuery = buildQuestionInsertQuery();
         String choiceQuery = "INSERT INTO choice (choice, is_correct, question_id) VALUES (?, ?, ?)";
 
-        if (!isQuizStructureValid(quiz)) {
+        if (cnx == null || !isQuizStructureValid(quiz)) {
             return null;
         }
 
@@ -76,6 +76,10 @@ public class QuizService {
         List<Quiz> quizzes = new ArrayList<>();
         String query = "SELECT * FROM quiz";
 
+        if (cnx == null) {
+            return quizzes;
+        }
+
         try (Statement stmt = cnx.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             while (rs.next()) {
@@ -90,6 +94,10 @@ public class QuizService {
 
     public Quiz getQuizById(Long id) {
         String query = "SELECT * FROM quiz WHERE id = ?";
+
+        if (cnx == null || id == null) {
+            return null;
+        }
 
         try (PreparedStatement stmt = cnx.prepareStatement(query)) {
             stmt.setLong(1, id);
@@ -108,7 +116,7 @@ public class QuizService {
     public Quiz updateQuiz(Long id, Quiz updatedQuiz) {
         String query = "UPDATE quiz SET titre = ?, keyword = ? WHERE id = ?";
 
-        if (!isQuizStructureValid(updatedQuiz)) {
+        if (cnx == null || id == null || !isQuizStructureValid(updatedQuiz)) {
             return null;
         }
 
@@ -144,21 +152,28 @@ public class QuizService {
         String deleteResultsQuery = "DELETE FROM quiz_result WHERE quiz_id = ?";
         String deleteQuizQuery = "DELETE FROM quiz WHERE id = ?";
 
+        if (cnx == null || id == null) {
+            return false;
+        }
+
         try {
             cnx.setAutoCommit(false);
 
-            if (tableExists("quiz_answer_attempt")) {
+            if (tableExists("quiz_answer_attempt") && tableExists("quiz_result")) {
                 try (PreparedStatement deleteAttemptsStmt = cnx.prepareStatement(deleteAttemptsQuery)) {
                     deleteAttemptsStmt.setLong(1, id);
                     deleteAttemptsStmt.executeUpdate();
                 }
             }
 
-            try (PreparedStatement deleteResultsStmt = cnx.prepareStatement(deleteResultsQuery);
-                 PreparedStatement deleteQuizStmt = cnx.prepareStatement(deleteQuizQuery)) {
-                deleteResultsStmt.setLong(1, id);
-                deleteResultsStmt.executeUpdate();
+            if (tableExists("quiz_result")) {
+                try (PreparedStatement deleteResultsStmt = cnx.prepareStatement(deleteResultsQuery)) {
+                    deleteResultsStmt.setLong(1, id);
+                    deleteResultsStmt.executeUpdate();
+                }
+            }
 
+            try (PreparedStatement deleteQuizStmt = cnx.prepareStatement(deleteQuizQuery)) {
                 deleteQuizQuestions(id);
 
                 deleteQuizStmt.setLong(1, id);
@@ -178,6 +193,10 @@ public class QuizService {
 
     public List<Quiz> getRecentResults() {
         List<Quiz> quizzes = new ArrayList<>();
+        if (!tableExists("quiz_result")) {
+            return quizzes;
+        }
+
         String query = "SELECT DISTINCT q.* FROM quiz q INNER JOIN quiz_result qr ON q.id = qr.quiz_id";
 
         try (Statement stmt = cnx.createStatement();
@@ -258,7 +277,7 @@ public class QuizService {
 
     public QuizResult submitQuiz(Long quizId, Map<Long, Long> selectedChoiceIdsByQuestionId, User user) {
         Quiz quiz = getQuizById(quizId);
-        if (quiz == null || !isQuizStructureValid(quiz)) {
+        if (quiz == null || !isQuizStructureValid(quiz) || !hasPersistableUser(user)) {
             return null;
         }
 
@@ -377,6 +396,10 @@ public class QuizService {
     }
 
     private void loadQuizResults(Quiz quiz) {
+        if (!tableExists("quiz_result")) {
+            return;
+        }
+
         String query = "SELECT * FROM quiz_result WHERE quiz_id = ? ORDER BY completed_at DESC, id DESC";
 
         try (PreparedStatement stmt = cnx.prepareStatement(query)) {
@@ -576,6 +599,11 @@ public class QuizService {
     }
 
     private QuizResult saveQuizResult(Quiz quiz, QuizResult result) {
+        if (!tableExists("quiz_result")) {
+            System.err.println("Error saving quiz result: quiz_result table is missing");
+            return null;
+        }
+
         String query = buildQuizResultInsertQuery();
 
         try (PreparedStatement stmt = cnx.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -964,6 +992,12 @@ public class QuizService {
         return tableHasColumn("question", columnName);
     }
 
+    private boolean hasPersistableUser(User user) {
+        return user != null
+                && user.getId() != null
+                && userExists(user.getId());
+    }
+
     private boolean userExists(Integer userId) {
         if (userId == null || !tableExists("user")) {
             return false;
@@ -981,6 +1015,9 @@ public class QuizService {
     }
 
     private boolean tableHasColumn(String tableName, String columnName) {
+        if (cnx == null) {
+            return false;
+        }
         try {
             try (ResultSet columns = getDatabaseMetaData().getColumns(cnx.getCatalog(), null, tableName, columnName)) {
                 return columns.next();
@@ -991,6 +1028,9 @@ public class QuizService {
     }
 
     private boolean tableExists(String tableName) {
+        if (cnx == null) {
+            return false;
+        }
         try {
             try (ResultSet tables = getDatabaseMetaData().getTables(cnx.getCatalog(), null, tableName, new String[]{"TABLE"})) {
                 return tables.next();

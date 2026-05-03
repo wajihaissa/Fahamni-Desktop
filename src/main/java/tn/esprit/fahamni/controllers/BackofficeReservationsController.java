@@ -25,9 +25,6 @@ public class BackofficeReservationsController {
     private TableView<AdminReservation> reservationsTable;
 
     @FXML
-    private TableColumn<AdminReservation, Integer> reservationIdColumn;
-
-    @FXML
     private TableColumn<AdminReservation, String> studentColumn;
 
     @FXML
@@ -56,7 +53,6 @@ public class BackofficeReservationsController {
 
     @FXML
     private void initialize() {
-        reservationIdColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
         studentColumn.setCellValueFactory(new PropertyValueFactory<>("studentName"));
         sessionColumn.setCellValueFactory(new PropertyValueFactory<>("sessionTitle"));
         requestDateColumn.setCellValueFactory(new PropertyValueFactory<>("requestDate"));

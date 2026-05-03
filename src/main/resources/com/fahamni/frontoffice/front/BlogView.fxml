@@ -100,6 +100,14 @@
                     <String fx:value="neutral"/>
                 </styleClass>
             </Button>
+            <Button fx:id="btnFavoris" text="&#11088; Favoris"
+                    focusTraversable="false"
+                    onAction="#filterFavoris">
+                <styleClass>
+                    <String fx:value="blog-filter-chip"/>
+                    <String fx:value="neutral"/>
+                </styleClass>
+            </Button>
             <Region HBox.hgrow="ALWAYS"/>
             <Button fx:id="createArticleBtn" text="+ Creer un article"
                     focusTraversable="false"

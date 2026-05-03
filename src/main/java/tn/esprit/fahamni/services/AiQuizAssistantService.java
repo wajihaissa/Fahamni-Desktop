@@ -44,7 +44,13 @@ public class AiQuizAssistantService {
         String normalizedDifficulty = safeText(difficulty, "Medium");
 
         if (!isOpenAiReady()) {
-            return new GeneratedQuizDraft(null, "Unavailable", false, buildAiUnavailableMessage());
+            Quiz fallbackQuiz = buildFallbackQuizDraft(normalizedTopic, normalizedTitle, normalizedCount, normalizedDifficulty);
+            return new GeneratedQuizDraft(
+                    fallbackQuiz,
+                    "Local fallback",
+                    true,
+                    buildAiUnavailableMessage() + " A local quiz draft was generated instead."
+            );
         }
 
         Optional<Quiz> remoteDraft = tryGenerateQuizDraftWithOpenAi(
@@ -58,7 +64,13 @@ public class AiQuizAssistantService {
             return new GeneratedQuizDraft(remoteDraft.get(), resolveAiProviderLabel(), true, "Quiz generated with " + resolveAiProviderLabel() + ".");
         }
 
-        return new GeneratedQuizDraft(null, "Unavailable", false, resolveAiProviderLabel() + " quiz generation did not return a usable draft. Please try again.");
+        Quiz fallbackQuiz = buildFallbackQuizDraft(normalizedTopic, normalizedTitle, normalizedCount, normalizedDifficulty);
+        return new GeneratedQuizDraft(
+                fallbackQuiz,
+                "Local fallback",
+                true,
+                resolveAiProviderLabel() + " quiz generation did not return a usable draft. A local quiz draft was generated instead."
+        );
     }
 
     public QuestionMetadata inferQuestionMetadata(String quizKeyword, String quizTitle, String questionText, List<String> choices) {
@@ -87,8 +99,15 @@ public class AiQuizAssistantService {
             return new GeneratedHint(null, "Unavailable", false, "No question is available for hint generation.");
         }
 
+        String fallbackHint = buildFallbackHint(quiz, question, selectedChoiceId);
+
         if (!isOpenAiReady()) {
-            return new GeneratedHint(null, "Unavailable", false, buildAiUnavailableMessage());
+            return new GeneratedHint(
+                    fallbackHint,
+                    "Local fallback",
+                    true,
+                    buildAiUnavailableMessage() + " A local hint was generated instead."
+            );
         }
 
         Optional<String> remoteHint = tryGenerateHintWithOpenAi(quiz, question, selectedChoiceId);
@@ -96,7 +115,12 @@ public class AiQuizAssistantService {
             return new GeneratedHint(remoteHint.get(), resolveAiProviderLabel(), true, "Hint generated with " + resolveAiProviderLabel() + ".");
         }
 
-        return new GeneratedHint(null, "Unavailable", false, resolveAiProviderLabel() + " hint generation is unavailable right now. Please try again.");
+        return new GeneratedHint(
+                fallbackHint,
+                "Local fallback",
+                true,
+                resolveAiProviderLabel() + " hint generation is unavailable right now. A local hint was generated instead."
+        );
     }
 
     protected Optional<String> tryGenerateHintWithOpenAi(Quiz quiz, Question question, Long selectedChoiceId) {
@@ -221,6 +245,62 @@ public class AiQuizAssistantService {
         }
 
         return normalized.replaceAll("\\s+", " ");
+    }
+
+    private String buildFallbackHint(Quiz quiz, Question question, Long selectedChoiceId) {
+        if (question == null || isBlank(question.getQuestion())) {
+            return "Re-read the question carefully and focus on the core concept it is testing.";
+        }
+
+        String topic = resolveHintTopic(quiz, question);
+        String lowerQuestion = question.getQuestion().trim().toLowerCase(Locale.ROOT);
+        boolean hasSelection = findChoiceById(question, selectedChoiceId) != null;
+
+        if (containsAny(lowerQuestion, " not ", " except ", "least", "false")) {
+            return hasSelection
+                    ? "Focus on the detail that breaks the usual pattern in " + topic + " and pay close attention to the qualifier in the question."
+                    : "Look for the detail that breaks the usual pattern in " + topic + " and pay close attention to the qualifier in the question.";
+        }
+
+        if (containsAny(lowerQuestion, "why", "reason", "cause")) {
+            return hasSelection
+                    ? "Think about the underlying cause or principle in " + topic + " rather than the wording that feels most familiar."
+                    : "Think about the underlying cause or principle in " + topic + " rather than surface wording.";
+        }
+
+        if (containsAny(lowerQuestion, "first", "initial", "before", "begin")) {
+            return hasSelection
+                    ? "Think about what must logically happen first in " + topic + " before later steps can make sense."
+                    : "Focus on the earliest prerequisite in " + topic + " before any later step can happen.";
+        }
+
+        if (containsAny(lowerQuestion, "best", "most", "main", "primarily")) {
+            return hasSelection
+                    ? "Compare the main purpose behind the concept in " + topic + " and favor the idea that matches the goal most directly."
+                    : "Compare the main purpose behind the concept in " + topic + " and focus on the idea that matches the goal most directly.";
+        }
+
+        if (containsAny(lowerQuestion, "how", "process", "works", "function")) {
+            return hasSelection
+                    ? "Picture how the concept in " + topic + " actually works step by step, not just what it is called."
+                    : "Picture how the concept in " + topic + " actually works step by step, not just what it is called.";
+        }
+
+        return hasSelection
+                ? "Re-read the question and focus on the core role or definition involved in " + topic + ", not just the most familiar wording."
+                : "Focus on the core role or definition involved in " + topic + " and match it to what the question is really asking.";
+    }
+
+    private String resolveHintTopic(Quiz quiz, Question question) {
+        String topic = question != null && !isBlank(question.getTopic())
+                ? question.getTopic()
+                : quiz != null ? quiz.getKeyword() : null;
+        String normalizedTopic = safeText(topic, "this topic")
+                .replace('_', ' ')
+                .replace('-', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+        return normalizedTopic.isBlank() ? "this topic" : normalizedTopic;
     }
 
     private String buildQuestionMetadataPrompt(String quizKeyword, String quizTitle, String questionText, List<String> choices) {
@@ -532,11 +612,12 @@ public class AiQuizAssistantService {
             return null;
         }
 
+        String normalizedContent = normalizeQuizDraftContent(content);
         Quiz quiz = new Quiz();
-        quiz.setTitre(extractPrefixedValue(content, "TITLE", fallbackTitle));
-        quiz.setKeyword(extractPrefixedValue(content, "KEYWORD", fallbackTopic));
+        quiz.setTitre(extractPrefixedValue(normalizedContent, "TITLE", fallbackTitle));
+        quiz.setKeyword(extractPrefixedValue(normalizedContent, "KEYWORD", fallbackTopic));
 
-        Matcher matcher = QUESTION_BLOCK_PATTERN.matcher(content);
+        Matcher matcher = QUESTION_BLOCK_PATTERN.matcher(normalizedContent);
         while (matcher.find()) {
             String block = matcher.group(2);
             Question question = parseQuestionBlock(block);
@@ -549,20 +630,20 @@ public class AiQuizAssistantService {
     }
 
     private Question parseQuestionBlock(String block) {
-        String questionText = extractPrefixedValue(block, "TEXT", null);
+        String questionText = extractQuestionText(block);
         if (isBlank(questionText)) {
             return null;
         }
 
         String hint = extractPrefixedValue(block, "HINT", "");
         String explanation = extractPrefixedValue(block, "EXPLANATION", "");
-        String answerLabel = extractPrefixedValue(block, "ANSWER", "A").trim().toUpperCase(Locale.ROOT);
+        String answerLabel = extractAnswerLabel(block);
 
         List<String> choices = List.of(
-                extractPrefixedValue(block, "A", ""),
-                extractPrefixedValue(block, "B", ""),
-                extractPrefixedValue(block, "C", ""),
-                extractPrefixedValue(block, "D", "")
+                extractChoiceValue(block, "A"),
+                extractChoiceValue(block, "B"),
+                extractChoiceValue(block, "C"),
+                extractChoiceValue(block, "D")
         );
 
         if (choices.stream().anyMatch(this::isBlank)) {
@@ -582,6 +663,66 @@ public class AiQuizAssistantService {
         }
 
         return exactlyOneCorrect(question) ? question : null;
+    }
+
+    private String normalizeQuizDraftContent(String content) {
+        String normalized = content == null ? "" : content
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .trim();
+
+        normalized = normalized.replaceAll("(?s)```(?:[a-zA-Z0-9_-]+)?\\s*", "");
+        normalized = normalized.replace("```", "");
+        normalized = normalized.replaceAll("(?m)^\\s*#+\\s*", "");
+        normalized = normalized.replaceAll("(?im)^\\s*\\*\\*(QUESTION\\s+\\d+)\\*\\*\\s*:?\\s*$", "$1:");
+        normalized = normalized.replaceAll("(?im)^\\s*(QUESTION\\s+\\d+)\\s*$", "$1:");
+        normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?(TITLE|KEYWORD|TEXT|HINT|EXPLANATION)\\s*[:\\-]?\\s*", "$1: ");
+        normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?(?:CORRECT\\s+ANSWER|RIGHT\\s+ANSWER)\\s*[:\\-]?\\s*", "ANSWER: ");
+        normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?ANSWER\\s*[:\\-]?\\s*", "ANSWER: ");
+        normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?([ABCD])\\s*[\\)\\.:\\-]\\s*", "$1: ");
+        return normalized;
+    }
+
+    private String extractQuestionText(String block) {
+        String questionText = extractPrefixedValue(block, "TEXT", null);
+        if (!isBlank(questionText)) {
+            return questionText;
+        }
+
+        for (String rawLine : block.split("\\R")) {
+            String line = rawLine == null ? "" : rawLine.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            if (looksLikeChoiceLine(line)
+                    || line.matches("(?i)^(ANSWER|HINT|EXPLANATION)\\s*:.*$")) {
+                break;
+            }
+            return line;
+        }
+
+        return null;
+    }
+
+    private String extractChoiceValue(String block, String label) {
+        return extractPrefixedValue(block, label, "");
+    }
+
+    private String extractAnswerLabel(String block) {
+        String rawAnswer = extractPrefixedValue(block, "ANSWER", "A");
+        if (isBlank(rawAnswer)) {
+            return "A";
+        }
+
+        Matcher matcher = Pattern.compile("\\b([ABCD])\\b", Pattern.CASE_INSENSITIVE).matcher(rawAnswer);
+        if (matcher.find()) {
+            return matcher.group(1).toUpperCase(Locale.ROOT);
+        }
+        return "A";
+    }
+
+    private boolean looksLikeChoiceLine(String line) {
+        return line != null && line.matches("(?i)^[ABCD]\\s*:.*$");
     }
 
     private Quiz buildFallbackQuizDraft(String topic, String title, int questionCount, String difficulty) {

@@ -72,7 +72,7 @@ public class AdminPlaceService implements IServices<Place> {
             statement.setInt(6, place.getIdPlace());
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune place trouvee avec l'id " + place.getIdPlace() + ".");
+                throw new SQLException("La place selectionnee est introuvable.");
             }
         }
     }
@@ -87,21 +87,21 @@ public class AdminPlaceService implements IServices<Place> {
 
     private void deleteById(int idPlace) throws SQLException {
         if (idPlace <= 0) {
-            throw new IllegalArgumentException("L'id de la place doit etre positif.");
+            throw new IllegalArgumentException("La place selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(DELETE_SQL)) {
             statement.setInt(1, idPlace);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune place trouvee avec l'id " + idPlace + ".");
+                throw new SQLException("La place selectionnee est introuvable.");
             }
         }
     }
 
     public Place recupererParId(int idPlace) throws SQLException {
         if (idPlace <= 0) {
-            throw new IllegalArgumentException("L'id de la place doit etre positif.");
+            throw new IllegalArgumentException("La place selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_BY_ID_SQL)) {
@@ -119,7 +119,7 @@ public class AdminPlaceService implements IServices<Place> {
 
     public List<Place> getBySalle(int idSalle) throws SQLException {
         if (idSalle <= 0) {
-            throw new IllegalArgumentException("L'id de la salle doit etre positif.");
+            throw new IllegalArgumentException("La salle selectionnee est invalide.");
         }
 
         List<Place> places = new ArrayList<>();
@@ -143,7 +143,7 @@ public class AdminPlaceService implements IServices<Place> {
 
     public void updateEtat(int idPlace, String nouvelEtat) throws SQLException {
         if (idPlace <= 0) {
-            throw new IllegalArgumentException("L'id de la place doit etre positif.");
+            throw new IllegalArgumentException("La place selectionnee est invalide.");
         }
 
         String etatNormalise = normalizeEtat(nouvelEtat);
@@ -156,7 +156,7 @@ public class AdminPlaceService implements IServices<Place> {
             statement.setInt(2, idPlace);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune place trouvee avec l'id " + idPlace + ".");
+                throw new SQLException("La place selectionnee est introuvable.");
             }
         }
     }
@@ -185,7 +185,7 @@ public class AdminPlaceService implements IServices<Place> {
             throw new IllegalArgumentException("La place est obligatoire.");
         }
         if (requireId && place.getIdPlace() <= 0) {
-            throw new IllegalArgumentException("L'id de la place est obligatoire pour la modification.");
+            throw new IllegalArgumentException("Une place existante est requise pour la modification.");
         }
         if (place.getNumero() <= 0) {
             throw new IllegalArgumentException("Le numero de la place doit etre superieur a zero.");
@@ -200,7 +200,7 @@ public class AdminPlaceService implements IServices<Place> {
             throw new IllegalArgumentException("L'etat de la place est obligatoire.");
         }
         if (place.getIdSalle() <= 0) {
-            throw new IllegalArgumentException("L'id de la salle est obligatoire.");
+            throw new IllegalArgumentException("La salle associee est obligatoire.");
         }
     }
 
