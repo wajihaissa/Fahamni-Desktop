@@ -217,6 +217,20 @@
                                                             </children>
                                                         </VBox>
 
+                                                        <VBox spacing="8.0" styleClass="login-recaptcha-box">
+                                                            <children>
+                                                                <Label text="Verification anti-robot" styleClass="login-input-label"/>
+                                                                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                                                    <children>
+                                                                        <Button fx:id="recaptchaButton" onAction="#handleVerifyRecaptcha"
+                                                                                text="VALIDER RECAPTCHA" styleClass="login-secondary-button"/>
+                                                                        <Label fx:id="recaptchaStatusLabel" managed="false" visible="false"
+                                                                               wrapText="true" styleClass="login-recaptcha-status"/>
+                                                                    </children>
+                                                                </HBox>
+                                                            </children>
+                                                        </VBox>
+
                                                     </children>
                                                 </VBox>
 

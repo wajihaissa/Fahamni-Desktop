@@ -4,6 +4,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
 import javafx.animation.TranslateTransition;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -28,8 +29,10 @@ import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.services.AuthService;
 import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.PasswordResetService;
+import tn.esprit.fahamni.services.ReCaptchaService;
 import tn.esprit.fahamni.services.TwoFactorAuthService;
 import tn.esprit.fahamni.utils.OperationResult;
+import tn.esprit.fahamni.utils.ReCaptchaDialog;
 import tn.esprit.fahamni.utils.UserSession;
 import tn.esprit.fahamni.utils.WebcamCaptureDialog;
 
@@ -42,6 +45,8 @@ public class LoginController {
     private final PasswordResetService passwordResetService = new PasswordResetService();
     private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
     private final TwoFactorAuthService twoFactorAuthService = new TwoFactorAuthService();
+    private final ReCaptchaService reCaptchaService = new ReCaptchaService();
+    private boolean registrationCaptchaVerified;
 
     @FXML
     private TextField emailField;
@@ -77,6 +82,12 @@ public class LoginController {
     private Button createAccountButton;
 
     @FXML
+    private Button recaptchaButton;
+
+    @FXML
+    private Label recaptchaStatusLabel;
+
+    @FXML
     private Label loginMessageLabel;
 
     @FXML
@@ -102,6 +113,7 @@ public class LoginController {
         }
         hideMessage(loginMessageLabel);
         hideMessage(registerMessageLabel);
+        resetRecaptcha();
         switchMode(true);
         playIntroAnimation();
     }
@@ -138,6 +150,11 @@ public class LoginController {
     private void handleCreateAccount() {
         hideMessage(registerMessageLabel);
 
+        if (!registrationCaptchaVerified) {
+            showMessage(registerMessageLabel, "Veuillez valider le reCAPTCHA avant de creer le compte.", false);
+            return;
+        }
+
         String fullName = fullNameField.getText().trim();
         String email = registerEmailField.getText().trim();
         String password = registerPasswordField.getText();
@@ -158,12 +175,67 @@ public class LoginController {
     }
 
     @FXML
+    private void handleVerifyRecaptcha() {
+        hideMessage(registerMessageLabel);
+        registrationCaptchaVerified = false;
+        setRecaptchaStatus("Verification en attente.", false);
+
+        if (!reCaptchaService.isConfigured()) {
+            setRecaptchaStatus("reCAPTCHA non configure.", false);
+            showMessage(registerMessageLabel, "Ajoutez RECAPTCHA_SITE_KEY et RECAPTCHA_SECRET_KEY dans .env.local.", false);
+            return;
+        }
+
+        Window owner = loginRoot != null && loginRoot.getScene() != null ? loginRoot.getScene().getWindow() : null;
+        Optional<String> tokenResult = ReCaptchaDialog.requestToken(owner, reCaptchaService.getSiteKey());
+        if (tokenResult.isEmpty()) {
+            setRecaptchaStatus("Validation annulee.", false);
+            return;
+        }
+
+        if (recaptchaButton != null) {
+            recaptchaButton.setDisable(true);
+        }
+        setRecaptchaStatus("Verification reCAPTCHA...", true);
+
+        Task<OperationResult> verifyTask = new Task<>() {
+            @Override
+            protected OperationResult call() {
+                return reCaptchaService.verifyToken(tokenResult.get());
+            }
+        };
+        verifyTask.setOnSucceeded(event -> {
+            OperationResult result = verifyTask.getValue();
+            registrationCaptchaVerified = result.isSuccess();
+            setRecaptchaStatus(result.getMessage(), result.isSuccess());
+            if (!result.isSuccess()) {
+                showMessage(registerMessageLabel, result.getMessage(), false);
+            }
+            if (recaptchaButton != null) {
+                recaptchaButton.setDisable(false);
+            }
+        });
+        verifyTask.setOnFailed(event -> {
+            registrationCaptchaVerified = false;
+            setRecaptchaStatus("Verification reCAPTCHA impossible.", false);
+            if (recaptchaButton != null) {
+                recaptchaButton.setDisable(false);
+            }
+        });
+
+        Thread thread = new Thread(verifyTask, "fahamni-recaptcha-verification");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
     private void showSignInMode() {
         switchMode(true);
     }
 
     @FXML
     private void showSignUpMode() {
+        resetRecaptcha();
         switchMode(false);
     }
 
@@ -264,6 +336,7 @@ public class LoginController {
         if (roleComboBox != null) {
             roleComboBox.setValue("Etudiant");
         }
+        resetRecaptcha();
     }
 
     private void showMessage(Label label, String message, boolean success) {
@@ -278,6 +351,22 @@ public class LoginController {
         label.getStyleClass().setAll("login-message-label");
         label.setManaged(false);
         label.setVisible(false);
+    }
+
+    private void resetRecaptcha() {
+        registrationCaptchaVerified = false;
+        setRecaptchaStatus("reCAPTCHA requis pour creer un compte.", false);
+    }
+
+    private void setRecaptchaStatus(String message, boolean success) {
+        if (recaptchaStatusLabel == null) {
+            return;
+        }
+
+        recaptchaStatusLabel.setText(message);
+        recaptchaStatusLabel.getStyleClass().setAll("login-recaptcha-status", success ? "success" : "pending");
+        recaptchaStatusLabel.setManaged(true);
+        recaptchaStatusLabel.setVisible(true);
     }
 
     private void playIntroAnimation() {

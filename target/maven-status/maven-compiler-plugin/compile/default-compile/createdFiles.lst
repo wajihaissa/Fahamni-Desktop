@@ -203,7 +203,6 @@ tn\esprit\fahamni\services\ChapterService.class
 tn\esprit\fahamni\utils\SeatSelectionLayoutResolver$SeatColumnLayout.class
 tn\esprit\fahamni\services\PasswordResetService$UserResetTarget.class
 tn\esprit\fahamni\controllers\ReservationController$TutorMatchingDialogState.class
-tn\esprit\fahamni\interfaces\IService.class
 tn\esprit\fahamni\controllers\BackofficeEquipementsController.class
 tn\esprit\fahamni\utils\SceneManager.class
 tn\esprit\fahamni\controllers\SeanceController.class

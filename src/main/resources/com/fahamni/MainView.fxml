@@ -4,6 +4,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
@@ -21,6 +22,7 @@
     </styleClass>
 
     <center>
+        <StackPane>
         <VBox spacing="14.0" styleClass="front-navbar-shell" BorderPane.alignment="CENTER">
             <padding>
                 <Insets top="18" right="16" bottom="18" left="16"/>
@@ -131,5 +133,37 @@
                 </children>
             </AnchorPane>
         </VBox>
+
+        <VBox fx:id="voiceAssistantPanel" managed="false" visible="false" spacing="12.0"
+              maxWidth="330.0" prefWidth="330.0" styleClass="voice-assistant-panel"
+              StackPane.alignment="BOTTOM_RIGHT">
+            <StackPane.margin>
+                <Insets right="28" bottom="28"/>
+            </StackPane.margin>
+            <StackPane styleClass="voice-assistant-orb-wrap">
+                <Label text="" styleClass="voice-assistant-orb-ring"/>
+                <Label text="" styleClass="voice-assistant-orb-core"/>
+            </StackPane>
+            <Label text="Fahamni" styleClass="voice-assistant-title"/>
+            <Label fx:id="voiceAssistantStatusLabel" text="Waiting for hey fahamni" styleClass="voice-assistant-status"/>
+            <Label fx:id="voiceAssistantReplyLabel"
+                   text="Speak naturally. I can open your pages, start Voice Pass setup, or log you out."
+                   wrapText="true" styleClass="voice-assistant-reply"/>
+            <TextField fx:id="voiceAssistantCommandField" promptText="Test command: open security"
+                       onAction="#handleVoiceAssistantTextCommand" styleClass="voice-assistant-input"
+                       managed="false" visible="false"/>
+            <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                <Button text="Listen" onAction="#handleVoiceAssistantListen" styleClass="voice-assistant-secondary-button"/>
+                <Button text="Close" onAction="#toggleVoiceAssistant" styleClass="voice-assistant-secondary-button"/>
+            </HBox>
+        </VBox>
+
+        <Button fx:id="voiceAssistantBubbleButton" text="" onAction="#toggleVoiceAssistant"
+                styleClass="voice-assistant-bubble" StackPane.alignment="BOTTOM_RIGHT">
+            <StackPane.margin>
+                <Insets right="28" bottom="28"/>
+            </StackPane.margin>
+        </Button>
+        </StackPane>
     </center>
 </BorderPane>

@@ -400,6 +400,34 @@
     -fx-text-fill: white;
 }
 
+.login-recaptcha-box {
+    -fx-padding: 10px 12px;
+    -fx-background-color: rgba(255, 255, 255, 0.045);
+    -fx-border-color: rgba(141, 196, 255, 0.16);
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+}
+
+.login-recaptcha-box .login-secondary-button {
+    -fx-padding: 10px 12px;
+    -fx-font-size: 11px;
+}
+
+.login-recaptcha-status {
+    -fx-text-fill: rgba(214, 227, 255, 0.74);
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.login-recaptcha-status.success {
+    -fx-text-fill: #8ce7b8;
+}
+
+.login-recaptcha-status.pending {
+    -fx-text-fill: #b7cdf4;
+}
+
 .login-message-label {
     -fx-background-color: rgba(255, 255, 255, 0.06);
     -fx-border-color: rgba(175, 209, 251, 0.10);

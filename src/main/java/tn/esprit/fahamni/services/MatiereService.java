@@ -12,10 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tn.esprit.fahamni.entities.Matiere;
-import tn.esprit.fahamni.interfaces.IService;
+import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 
-public class MatiereService implements IService<Matiere> {
+public class MatiereService implements IServices<Matiere> {
 
     private final Connection cnx;
 
@@ -98,7 +98,7 @@ public class MatiereService implements IService<Matiere> {
     }
 
     @Override
-    public List<Matiere> findAll() {
+    public List<Matiere> getAll() {
         List<Matiere> matieres = new ArrayList<>();
         
         if (cnx == null) {
@@ -132,7 +132,10 @@ public class MatiereService implements IService<Matiere> {
         return matieres;
     }
 
-    @Override
+    public List<Matiere> findAll() {
+        return getAll();
+    }
+
     public Matiere findById(int id) {
         if (cnx == null) {
             System.err.println("Database connection is null - cannot fetch matiere by id");

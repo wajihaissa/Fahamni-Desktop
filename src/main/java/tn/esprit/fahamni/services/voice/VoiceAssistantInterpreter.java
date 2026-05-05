@@ -22,9 +22,21 @@ public class VoiceAssistantInterpreter {
 
     private static final List<String> WAKE_PHRASES = List.of(
         "hey fahamni",
+        "her fahamni",
         "hi fahamni",
         "hello fahamni",
         "fahamni",
+        "faham me",
+        "hey faham me",
+        "hey funny",
+        "hi funny",
+        "hello funny",
+        "hey family",
+        "hi family",
+        "hello family",
+        "hey for me",
+        "hi for me",
+        "hello for me",
         "fahamni listen",
         "fahamni help me",
         "assistant"
