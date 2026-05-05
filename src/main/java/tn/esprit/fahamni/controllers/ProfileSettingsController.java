@@ -21,11 +21,9 @@ import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.services.FaceRecognitionService;
 import tn.esprit.fahamni.services.TwoFactorAuthService;
 import tn.esprit.fahamni.services.UserAccountService;
-import tn.esprit.fahamni.services.VoiceAuthService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
-import tn.esprit.fahamni.utils.VoiceCaptureDialog;
 import tn.esprit.fahamni.utils.WebcamCaptureDialog;
 
 import java.io.File;
@@ -130,12 +128,6 @@ public class ProfileSettingsController {
     private Label faceEnrolledAtLabel;
 
     @FXML
-    private Label voiceEnrollmentStatusLabel;
-
-    @FXML
-    private Label voiceEnrolledAtLabel;
-
-    @FXML
     private Label twoFactorStatusLabel;
 
     @FXML
@@ -164,7 +156,6 @@ public class ProfileSettingsController {
 
     private final UserAccountService accountService = new UserAccountService();
     private final FaceRecognitionService faceRecognitionService = new FaceRecognitionService();
-    private final VoiceAuthService voiceAuthService = new VoiceAuthService();
     private final TwoFactorAuthService twoFactorAuthService = new TwoFactorAuthService();
     private Consumer<User> onProfileUpdated;
     private Runnable onAccountDeleted;
@@ -178,15 +169,6 @@ public class ProfileSettingsController {
 
     public void configure(boolean settingsMode) {
         showSection(settingsMode ? Section.ACCOUNT_SETTINGS : Section.PERSONAL_INFO);
-    }
-
-    public void showSecurityFromAssistant() {
-        showSection(Section.SECURITY);
-    }
-
-    public void startVoicePassEnrollmentFromAssistant() {
-        showSection(Section.SECURITY);
-        handleEnrollVoicePass();
     }
 
     public void setOnProfileUpdated(Consumer<User> onProfileUpdated) {
@@ -315,35 +297,6 @@ public class ProfileSettingsController {
     }
 
     @FXML
-    private void handleEnrollVoicePass() {
-        hideFeedback();
-
-        VoiceCaptureDialog.CaptureResult captureResult = VoiceCaptureDialog.capture(
-            profileAvatarLabel.getScene().getWindow(),
-            "Activer Voice Pass",
-            "Dites une phrase courte que vous pourrez repeter a la connexion, par exemple: Fahamni ouvre mon espace."
-        );
-        if (!captureResult.hasAudio()) {
-            if (captureResult.message() != null) {
-                showFeedback(captureResult.message(), false);
-            }
-            return;
-        }
-
-        OperationResult result = voiceAuthService.enrollCurrentUserVoice(captureResult.audioBytes());
-        refreshVoiceStatus();
-        showFeedback(result.getMessage(), result.isSuccess());
-    }
-
-    @FXML
-    private void handleRemoveVoicePass() {
-        hideFeedback();
-        OperationResult result = voiceAuthService.removeCurrentUserVoice();
-        refreshVoiceStatus();
-        showFeedback(result.getMessage(), result.isSuccess());
-    }
-
-    @FXML
     private void handleChangePassword() {
         hideFeedback();
 
@@ -451,7 +404,6 @@ public class ProfileSettingsController {
             roleField.clear();
             applyAccountOverview(new UserAccountService.AccountOverview("Inconnu", "Aucun role", "Non disponible", "Non disponible"));
             refreshFaceStatus();
-            refreshVoiceStatus();
             refreshTwoFactorStatus();
             return;
         }
@@ -474,7 +426,6 @@ public class ProfileSettingsController {
 
         applyAccountOverview(accountService.getCurrentAccountOverview());
         refreshFaceStatus();
-        refreshVoiceStatus();
         refreshTwoFactorStatus();
     }
 
@@ -511,7 +462,7 @@ public class ProfileSettingsController {
             }
             case SECURITY -> {
                 contentTitleLabel.setText("Parametres de securite");
-                contentSubtitleLabel.setText("Gere Face ID, Voice Pass, la 2FA et le mot de passe depuis un seul espace.");
+                contentSubtitleLabel.setText("Gere Face ID, la 2FA et le mot de passe depuis un seul espace.");
             }
         }
     }
@@ -633,16 +584,6 @@ public class ProfileSettingsController {
         }
         if (faceEnrolledAtLabel != null) {
             faceEnrolledAtLabel.setText("Enregistre le : " + faceStatus.enrolledAt());
-        }
-    }
-
-    private void refreshVoiceStatus() {
-        VoiceAuthService.VoiceStatus voiceStatus = voiceAuthService.getCurrentVoiceStatus();
-        if (voiceEnrollmentStatusLabel != null) {
-            voiceEnrollmentStatusLabel.setText(voiceStatus.status());
-        }
-        if (voiceEnrolledAtLabel != null) {
-            voiceEnrolledAtLabel.setText("Enregistre le : " + voiceStatus.enrolledAt());
         }
     }
 

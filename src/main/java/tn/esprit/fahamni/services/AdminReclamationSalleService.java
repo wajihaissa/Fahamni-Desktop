@@ -104,7 +104,7 @@ public class AdminReclamationSalleService implements IServices<ReclamationSalle>
             statement.setInt(11, reclamation.getIdReclamation());
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune reclamation trouvee avec l'id " + reclamation.getIdReclamation() + ".");
+                throw new SQLException("La reclamation selectionnee est introuvable.");
             }
         }
     }
@@ -119,7 +119,7 @@ public class AdminReclamationSalleService implements IServices<ReclamationSalle>
 
     public ReclamationSalle recupererParId(int idReclamation) throws SQLException {
         if (idReclamation <= 0) {
-            throw new IllegalArgumentException("L'id de la reclamation doit etre positif.");
+            throw new IllegalArgumentException("La reclamation selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_BY_ID_SQL)) {
@@ -169,7 +169,7 @@ public class AdminReclamationSalleService implements IServices<ReclamationSalle>
     public void convertirEnMaintenance(int idReclamation, String commentaireAdmin) throws SQLException {
         ReclamationSalle reclamation = recupererParId(idReclamation);
         if (reclamation == null) {
-            throw new SQLException("Aucune reclamation trouvee avec l'id " + idReclamation + ".");
+            throw new SQLException("La reclamation selectionnee est introuvable.");
         }
 
         String commentaire = normalizeText(commentaireAdmin);
@@ -196,21 +196,21 @@ public class AdminReclamationSalleService implements IServices<ReclamationSalle>
 
     private void deleteById(int idReclamation) throws SQLException {
         if (idReclamation <= 0) {
-            throw new IllegalArgumentException("L'id de la reclamation doit etre positif.");
+            throw new IllegalArgumentException("La reclamation selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(DELETE_SQL)) {
             statement.setInt(1, idReclamation);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune reclamation trouvee avec l'id " + idReclamation + ".");
+                throw new SQLException("La reclamation selectionnee est introuvable.");
             }
         }
     }
 
     private void updateStatut(int idReclamation, String statut, String commentaireAdmin, boolean stampProcessingDate) throws SQLException {
         if (idReclamation <= 0) {
-            throw new IllegalArgumentException("L'id de la reclamation doit etre positif.");
+            throw new IllegalArgumentException("La reclamation selectionnee est invalide.");
         }
 
         String statutNormalise = normalizeStatut(statut);
@@ -223,7 +223,7 @@ public class AdminReclamationSalleService implements IServices<ReclamationSalle>
             statement.setInt(4, idReclamation);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune reclamation trouvee avec l'id " + idReclamation + ".");
+                throw new SQLException("La reclamation selectionnee est introuvable.");
             }
         }
     }
@@ -263,7 +263,7 @@ public class AdminReclamationSalleService implements IServices<ReclamationSalle>
             throw new IllegalArgumentException("La reclamation est obligatoire.");
         }
         if (requireId && reclamation.getIdReclamation() <= 0) {
-            throw new IllegalArgumentException("L'id de la reclamation est obligatoire pour la modification.");
+            throw new IllegalArgumentException("Une reclamation existante est requise pour la modification.");
         }
         if (reclamation.getIdSalle() <= 0) {
             throw new IllegalArgumentException("La salle concernee est obligatoire.");

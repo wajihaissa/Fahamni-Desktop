@@ -469,7 +469,7 @@ public class BackofficeMaintenanceController {
 
     private void updateSelectionBadge(MaintenanceSalle maintenance) {
         if (maintenance != null) {
-            selectionBadgeLabel.setText("Maintenance #" + maintenance.getIdMaintenance() + " | " + formatLabel(maintenance.getStatut()));
+            selectionBadgeLabel.setText(formatOptionalText(maintenance.getNomSalle()) + " | " + formatLabel(maintenance.getStatut()));
             return;
         }
 
@@ -663,7 +663,7 @@ public class BackofficeMaintenanceController {
     private String buildOriginLabel(MaintenanceSalle maintenance) {
         return maintenance.getIdReclamation() == null
             ? "Dossier autonome"
-            : "Reclamation #" + maintenance.getIdReclamation();
+            : "Signalement associe";
     }
 
     private LocalDate resolveKeyDate(MaintenanceSalle maintenance) {

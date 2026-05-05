@@ -153,7 +153,10 @@ public class BackofficeArticlesController {
     }
 
     private void updateNotifBanner() {
-        List<Notification> notifs = notifService.getUnreadForAdmin();
+        // Exclure les notifications de commentaires bloqués (elles appartiennent à la page Commentaires)
+        List<Notification> notifs = notifService.getUnreadForAdmin().stream()
+            .filter(n -> n.getMessage() == null || !n.getMessage().contains("Commentaire bloqué"))
+            .collect(java.util.stream.Collectors.toList());
         int pending = service.countByStatus("pending");
 
         if (!notifs.isEmpty()) {
@@ -164,7 +167,6 @@ public class BackofficeArticlesController {
             notifLabel.setText(builder.toString().trim());
             notifBanner.setVisible(true);
             notifBanner.setManaged(true);
-            notifService.markAllReadForAdmin();
             return;
         }
 

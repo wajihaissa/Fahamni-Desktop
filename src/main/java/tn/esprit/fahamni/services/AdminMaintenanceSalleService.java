@@ -154,7 +154,7 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
             statement.setInt(10, maintenance.getIdMaintenance());
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune maintenance trouvee avec l'id " + maintenance.getIdMaintenance() + ".");
+                throw new SQLException("La maintenance selectionnee est introuvable.");
             }
         }
 
@@ -171,7 +171,7 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
 
     public MaintenanceSalle recupererParId(int idMaintenance) throws SQLException {
         if (idMaintenance <= 0) {
-            throw new IllegalArgumentException("L'id de la maintenance doit etre positif.");
+            throw new IllegalArgumentException("La maintenance selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_BY_ID_SQL)) {
@@ -189,7 +189,7 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
 
     public MaintenanceSalle recupererParReclamationId(int idReclamation) throws SQLException {
         if (idReclamation <= 0) {
-            throw new IllegalArgumentException("L'id de la reclamation doit etre positif.");
+            throw new IllegalArgumentException("La reclamation selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_BY_RECLAMATION_SQL)) {
@@ -207,7 +207,7 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
 
     public List<MaintenanceSalle> getBySalle(int idSalle) throws SQLException {
         if (idSalle <= 0) {
-            throw new IllegalArgumentException("L'id de la salle doit etre positif.");
+            throw new IllegalArgumentException("La salle selectionnee est invalide.");
         }
 
         List<MaintenanceSalle> maintenances = new ArrayList<>();
@@ -270,14 +270,14 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
 
     private void deleteById(int idMaintenance, int idSalle) throws SQLException {
         if (idMaintenance <= 0) {
-            throw new IllegalArgumentException("L'id de la maintenance doit etre positif.");
+            throw new IllegalArgumentException("La maintenance selectionnee est invalide.");
         }
 
         try (PreparedStatement statement = requireConnection().prepareStatement(DELETE_SQL)) {
             statement.setInt(1, idMaintenance);
 
             if (statement.executeUpdate() == 0) {
-                throw new SQLException("Aucune maintenance trouvee avec l'id " + idMaintenance + ".");
+                throw new SQLException("La maintenance selectionnee est introuvable.");
             }
         }
 
@@ -326,7 +326,7 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
             throw new IllegalArgumentException("La maintenance est obligatoire.");
         }
         if (requireId && maintenance.getIdMaintenance() <= 0) {
-            throw new IllegalArgumentException("L'id de la maintenance est obligatoire pour la modification.");
+            throw new IllegalArgumentException("Une maintenance existante est requise pour la modification.");
         }
         if (maintenance.getIdSalle() <= 0) {
             throw new IllegalArgumentException("La salle concernee est obligatoire.");
@@ -468,9 +468,7 @@ public class AdminMaintenanceSalleService implements IServices<MaintenanceSalle>
     }
 
     private String buildDetailsDepuisReclamation(ReclamationSalle reclamation, String commentaireAdmin) {
-        StringBuilder builder = new StringBuilder("Issue de la reclamation #")
-            .append(reclamation.getIdReclamation())
-            .append(" | ")
+        StringBuilder builder = new StringBuilder("Issue d'un signalement | ")
             .append(reclamation.getDescription());
 
         if (!isBlank(commentaireAdmin)) {

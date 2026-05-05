@@ -2,13 +2,25 @@ package tn.esprit.fahamni.Models;
 
 public class User {
 
-    private final int id;
+    private final Integer id;
     private final String fullName;
     private final String email;
     private final String password;
     private final UserRole role;
 
+    public User(String fullName, String email, String password, UserRole role) {
+        this((Integer) null, fullName, email, password, role);
+    }
+
     public User(int id, String fullName, String email, String password, UserRole role) {
+        this(Integer.valueOf(id), fullName, email, password, role);
+    }
+
+    public User(Long id, String fullName, String email, String password, UserRole role) {
+        this(id == null ? null : id.intValue(), fullName, email, password, role);
+    }
+
+    public User(Integer id, String fullName, String email, String password, UserRole role) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
@@ -16,12 +28,9 @@ public class User {
         this.role = role;
     }
 
-    /** Constructeur sans id (compatibilité) */
-    public User(String fullName, String email, String password, UserRole role) {
-        this(0, fullName, email, password, role);
+    public Integer getId() {
+        return id;
     }
-
-    public int getId() { return id; }
 
     public String getFullName() {
         return fullName;
@@ -39,4 +48,3 @@ public class User {
         return role;
     }
 }
-

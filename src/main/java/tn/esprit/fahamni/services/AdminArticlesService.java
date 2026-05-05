@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Blog;
+import tn.esprit.fahamni.utils.BlogSchemaSupport;
 import tn.esprit.fahamni.utils.MyDataBase;
 
 import java.sql.Connection;
@@ -11,6 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AdminArticlesService {
+
+    public AdminArticlesService() {
+        BlogSchemaSupport.ensureSchema();
+    }
 
     private Connection cnx() {
         return MyDataBase.getInstance().getCnx();

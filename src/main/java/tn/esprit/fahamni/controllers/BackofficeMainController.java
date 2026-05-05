@@ -13,10 +13,13 @@ import tn.esprit.fahamni.services.AdminArticlesService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.UserSession;
+import tn.esprit.fahamni.utils.ViewNavigator;
 
 public class BackofficeMainController {
 
     private final AdminArticlesService articlesService = new AdminArticlesService();
+    private final tn.esprit.fahamni.services.NotificationService notifService =
+        new tn.esprit.fahamni.services.NotificationService();
 
     @FXML private AnchorPane contentPane;
     @FXML private Label pageTitle;
@@ -25,7 +28,11 @@ public class BackofficeMainController {
     @FXML private Button usersButton;
     @FXML private Button sessionsButton;
     @FXML private Button reservationsButton;
+    @FXML private Button quizButton;
     @FXML private Button contentButton;
+    @FXML private Button matiereButton;
+    @FXML private Button commentsButton;
+    @FXML private Label commentsBadge;
     @FXML private Button articlesButton;
     @FXML private Label articlesBadge;
     @FXML private Button infrastructureToggleButton;
@@ -47,10 +54,12 @@ public class BackofficeMainController {
             return;
         }
 
+        ViewNavigator.getInstance().initialize(contentPane, pageTitle);
         configureFrontDeskAccess();
         setInfrastructureExpanded(false);
         showDashboard();
         refreshArticlesBadge();
+        refreshCommentsBadge();
     }
 
     public void refreshArticlesBadge() {
@@ -109,6 +118,16 @@ public class BackofficeMainController {
     }
 
     @FXML
+    private void showQuiz() {
+        loadView(
+            "BackofficeQuizView.fxml",
+            "Gestion des quiz",
+            "Creez, modifiez et suivez les quiz proposes dans la plateforme."
+        );
+        setActiveButton(quizButton);
+    }
+
+    @FXML
     private void showContent() {
         loadView(
             "BackofficeContentView.fxml",
@@ -116,6 +135,45 @@ public class BackofficeMainController {
             "Pilotez les articles, ressources et publications mises en avant."
         );
         setActiveButton(contentButton);
+    }
+
+    @FXML
+    private void showMatiere() {
+        loadView(
+            "BackofficeMatiereView.fxml",
+            "Gestion des matieres",
+            "Administrez les matieres, chapitres et ressources des cours."
+        );
+        setActiveButton(matiereButton);
+    }
+
+    public void refreshCommentsBadge() {
+        if (commentsBadge == null) {
+            return;
+        }
+        long count = notifService.getUnreadForAdmin().stream()
+            .filter(notification -> notification.getMessage() != null
+                && notification.getMessage().contains("Commentaire bloqu\u00e9"))
+            .count();
+        if (count > 0) {
+            commentsBadge.setText(String.valueOf(count));
+            commentsBadge.setVisible(true);
+            commentsBadge.setManaged(true);
+        } else {
+            commentsBadge.setVisible(false);
+            commentsBadge.setManaged(false);
+        }
+    }
+
+    @FXML
+    private void showComments() {
+        loadView(
+            "BackofficeCommentsView.fxml",
+            "Gestion des commentaires",
+            "Moderez les commentaires postes par les utilisateurs sur les articles."
+        );
+        setActiveButton(commentsButton);
+        refreshCommentsBadge();
     }
 
     @FXML
@@ -195,8 +253,8 @@ public class BackofficeMainController {
         UserSession.clear();
         try {
             Main.showLogin();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
     }
 
@@ -208,8 +266,8 @@ public class BackofficeMainController {
 
         try {
             Main.showMain();
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
     }
 
@@ -218,8 +276,8 @@ public class BackofficeMainController {
             Node view = SceneManager.loadView(Main.class, SceneManager.backofficeView(fxmlFile));
             displayContent(view);
             updateHeader(title, subtitle);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
             Label placeholder = new Label("Vue indisponible : " + fxmlFile);
             placeholder.getStyleClass().add("backoffice-empty-state");
             displayContent(placeholder);
@@ -269,7 +327,10 @@ public class BackofficeMainController {
         removeActiveClass(usersButton);
         removeActiveClass(sessionsButton);
         removeActiveClass(reservationsButton);
+        removeActiveClass(quizButton);
         removeActiveClass(contentButton);
+        removeActiveClass(matiereButton);
+        removeActiveClass(commentsButton);
         removeActiveClass(articlesButton);
         removeActiveClass(infrastructureToggleButton);
         removeActiveClass(sallesButton);
@@ -283,11 +344,12 @@ public class BackofficeMainController {
         }
 
         if (activeButton == sallesButton
-            || activeButton == reclamationsButton
-            || activeButton == maintenanceButton
-            || activeButton == equipementsButton
-            || activeButton == infrastructureStatsButton) {
-            if (infrastructureToggleButton != null && !infrastructureToggleButton.getStyleClass().contains("active")) {
+                || activeButton == reclamationsButton
+                || activeButton == maintenanceButton
+                || activeButton == equipementsButton
+                || activeButton == infrastructureStatsButton) {
+            if (infrastructureToggleButton != null
+                    && !infrastructureToggleButton.getStyleClass().contains("active")) {
                 infrastructureToggleButton.getStyleClass().add("active");
             }
         }
@@ -315,7 +377,8 @@ public class BackofficeMainController {
             return;
         }
 
-        boolean adminLoggedIn = UserSession.hasCurrentUser() && UserSession.getCurrentUser().getRole() == UserRole.ADMIN;
+        boolean adminLoggedIn =
+            UserSession.hasCurrentUser() && UserSession.getCurrentUser().getRole() == UserRole.ADMIN;
         frontDeskButton.setManaged(adminLoggedIn);
         frontDeskButton.setVisible(adminLoggedIn);
     }

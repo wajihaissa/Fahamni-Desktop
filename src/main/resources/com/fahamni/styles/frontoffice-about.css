@@ -179,7 +179,7 @@
 #aboutRoot .about-card-title,
 #aboutRoot .about-summary-title {
     -fx-font-size: 19px;
-    -fx-font-weight: 760;
+    -fx-font-weight: 700;
 }
 
 #aboutRoot .about-stat-value {

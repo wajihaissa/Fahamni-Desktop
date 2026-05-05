@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import java.lang.String?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
@@ -14,94 +15,74 @@
             <Insets top="20" right="20" bottom="20" left="20"/>
         </padding>
 
-        <VBox spacing="15.0" styleClass="quiz-header">
-            <Label text="Centre de quiz" styleClass="section-title"/>
-            <Label text="Teste tes connaissances et suis ta progression" styleClass="section-subtitle"/>
-        </VBox>
+        <HBox spacing="15.0" alignment="TOP_LEFT">
+            <VBox spacing="15.0" styleClass="quiz-header">
+                <Label text="Quiz disponibles" styleClass="section-title"/>
+                <Label text="Teste tes connaissances avec notre collection de quiz." styleClass="section-subtitle"/>
+            </VBox>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <VBox spacing="8.0" alignment="TOP_RIGHT">
+                <HBox spacing="12.0" alignment="CENTER_RIGHT">
+                    <TextField fx:id="quizSearchField" promptText="Rechercher un quiz par titre ou sujet" styleClass="search-field" prefWidth="250.0"/>
+                    <ComboBox fx:id="quizSortCombo" prefWidth="150.0" styleClass="filter-combo"/>
+                    <CheckBox fx:id="attemptedOnlyCheckBox" text="Seulement tentes" styleClass="form-label"/>
+                    <Button text="Actualiser" onAction="#handleRefreshQuizzes">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                    <Button text="Quiz adaptatif" onAction="#handleGenerateAdaptiveQuiz">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                    <Button text="Reviser mes erreurs" onAction="#handleGenerateMistakeRecoveryQuiz">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                    <Button text="Classement" onAction="#handleShowLeaderboard">
+                        <styleClass>
+                            <String fx:value="action-button"/>
+                            <String fx:value="secondary"/>
+                            <String fx:value="quiz-toolbar-button"/>
+                        </styleClass>
+                    </Button>
+                </HBox>
+                <Label fx:id="quizPageStatusLabel" managed="false" visible="false" text="" styleClass="quiz-page-status quiz-page-status-success"/>
+            </VBox>
+        </HBox>
 
         <HBox spacing="20.0" styleClass="quiz-stats">
             <VBox styleClass="stat-card">
-                <Label text="12" styleClass="stat-value"/>
-                <Label text="Quiz passes" styleClass="stat-label"/>
+                <Label fx:id="quizzesTakenValue" text="0" styleClass="stat-value"/>
+                <Label text="Quiz tentes" styleClass="stat-label"/>
             </VBox>
             <VBox styleClass="stat-card">
-                <Label text="85%" styleClass="stat-value"/>
+                <Label fx:id="averageScoreValue" text="0%" styleClass="stat-value"/>
                 <Label text="Score moyen" styleClass="stat-label"/>
             </VBox>
             <VBox styleClass="stat-card">
-                <Label text="8" styleClass="stat-value"/>
-                <Label text="Matieres maitrisees" styleClass="stat-label"/>
+                <Label fx:id="subjectsMasteredValue" text="0" styleClass="stat-value"/>
+                <Label text="Sujets maitrises" styleClass="stat-label"/>
             </VBox>
         </HBox>
 
         <VBox spacing="15.0" styleClass="available-quizzes">
             <Label text="Quiz disponibles" styleClass="section-title"/>
-            <VBox spacing="10.0">
-                <HBox styleClass="quiz-card" spacing="15.0">
-                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                        <Label text="Mathematiques - Bases de l'algebre" styleClass="quiz-title"/>
-                        <Label text="15 questions • 20 minutes • Moyen" styleClass="quiz-info"/>
-                        <Label text="Teste ta comprehension des concepts fondamentaux de l'algebre" styleClass="quiz-description"/>
-                    </VBox>
-                    <VBox spacing="10.0" alignment="CENTER">
-                        <Label text="★ 4.5" styleClass="quiz-rating"/>
-                        <Button text="Commencer" styleClass="start-quiz-button"/>
-                    </VBox>
-                </HBox>
-
-                <HBox styleClass="quiz-card" spacing="15.0">
-                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                        <Label text="Physique - Mecanique" styleClass="quiz-title"/>
-                        <Label text="20 questions • 25 minutes • Difficile" styleClass="quiz-info"/>
-                        <Label text="Mets-toi au defi avec des exercices avances de mecanique" styleClass="quiz-description"/>
-                    </VBox>
-                    <VBox spacing="10.0" alignment="CENTER">
-                        <Label text="★ 4.7" styleClass="quiz-rating"/>
-                        <Button text="Commencer" styleClass="start-quiz-button"/>
-                    </VBox>
-                </HBox>
-
-                <HBox styleClass="quiz-card" spacing="15.0">
-                    <VBox spacing="5.0" HBox.hgrow="ALWAYS">
-                        <Label text="Chimie - Composes organiques" styleClass="quiz-title"/>
-                        <Label text="18 questions • 22 minutes • Moyen" styleClass="quiz-info"/>
-                        <Label text="Explore l'univers de la chimie organique" styleClass="quiz-description"/>
-                    </VBox>
-                    <VBox spacing="10.0" alignment="CENTER">
-                        <Label text="★ 4.3" styleClass="quiz-rating"/>
-                        <Button text="Commencer" styleClass="start-quiz-button"/>
-                    </VBox>
-                </HBox>
-            </VBox>
+            <Label fx:id="quizResultsSummaryLabel" text="0 quiz disponible" styleClass="section-subtitle"/>
+            <FlowPane fx:id="availableQuizzesBox" hgap="20.0" vgap="20.0" prefWrapLength="940.0"/>
         </VBox>
 
         <VBox spacing="15.0" styleClass="recent-results">
             <Label text="Resultats recents" styleClass="section-title"/>
-            <VBox spacing="10.0">
-                <HBox styleClass="result-card" spacing="15.0">
-                    <VBox HBox.hgrow="ALWAYS">
-                        <Label text="Mathematiques - Bases de l'algebre" styleClass="result-title"/>
-                        <Label text="Termine : 10 dec. 2024" styleClass="result-date"/>
-                    </VBox>
-                    <VBox alignment="CENTER">
-                        <Label text="13/15 (87%)" styleClass="result-score"/>
-                        <Label text="Excellent" styleClass="result-grade excellent"/>
-                    </VBox>
-                    <Button text="Revoir" styleClass="review-button"/>
-                </HBox>
-
-                <HBox styleClass="result-card" spacing="15.0">
-                    <VBox HBox.hgrow="ALWAYS">
-                        <Label text="Physique - Forces" styleClass="result-title"/>
-                        <Label text="Termine : 8 dec. 2024" styleClass="result-date"/>
-                    </VBox>
-                    <VBox alignment="CENTER">
-                        <Label text="16/20 (80%)" styleClass="result-score"/>
-                        <Label text="Bien" styleClass="result-grade good"/>
-                    </VBox>
-                    <Button text="Revoir" styleClass="review-button"/>
-                </HBox>
-            </VBox>
+            <VBox fx:id="recentResultsBox" spacing="10.0"/>
         </VBox>
     </VBox>
 </ScrollPane>

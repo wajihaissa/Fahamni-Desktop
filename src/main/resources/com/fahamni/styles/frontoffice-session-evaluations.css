@@ -1,0 +1,66 @@
+.session-detail-evaluations-card {
+    -fx-background-color: rgba(255, 255, 255, 0.9);
+    -fx-border-color: #dce7f8;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 14px;
+    -fx-effect: dropshadow(gaussian, rgba(46, 78, 134, 0.08), 14, 0.14, 0, 4);
+}
+
+.session-detail-evaluations-header,
+.session-detail-evaluation-header {
+    -fx-alignment: center-left;
+}
+
+.session-detail-evaluation-subtitle,
+.session-detail-evaluation-date,
+.session-detail-evaluation-empty {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6d82a0;
+}
+
+.session-detail-evaluation-summary {
+    -fx-background-color: linear-gradient(to right, #fff5da 0%, #ffe6b2 100%);
+    -fx-border-color: #f0d38a;
+    -fx-border-width: 1px;
+    -fx-border-radius: 999px;
+    -fx-background-radius: 999px;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8c5a08;
+}
+
+.session-detail-evaluation-card {
+    -fx-background-color: linear-gradient(to bottom, #fbfdff 0%, #f3f8ff 100%);
+    -fx-border-color: #dce7f8;
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 12px;
+}
+
+.session-detail-evaluation-author {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #173b74;
+}
+
+.session-detail-evaluation-stars {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #d6a43f;
+}
+
+.session-detail-evaluation-score {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #315ba8;
+}
+
+.session-detail-evaluation-review {
+    -fx-font-size: 12px;
+    -fx-text-fill: #47627f;
+    -fx-line-spacing: 1px;
+}

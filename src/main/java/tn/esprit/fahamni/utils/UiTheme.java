@@ -4,6 +4,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 
 import java.net.URL;
+import java.util.List;
 
 public final class UiTheme {
 
@@ -26,7 +27,7 @@ public final class UiTheme {
         applyStylesheetContainer(parent.getStylesheets(), stylesheetPaths);
     }
 
-    private static void applyStylesheetContainer(java.util.List<String> stylesheets, String... stylesheetPaths) {
+    private static void applyStylesheetContainer(List<String> stylesheets, String... stylesheetPaths) {
         stylesheets.removeIf(existing -> existing.contains("/com/fahamni/styles/"));
 
         if (stylesheetPaths == null) {

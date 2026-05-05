@@ -17,7 +17,7 @@ public final class FrontOfficeThemePreference {
     private static final String PREF_KEY = "frontoffice.theme.mode";
     private static final Preferences PREFS = Preferences.userNodeForPackage(FrontOfficeThemePreference.class);
 
-    private static ThemeMode currentMode = loadThemeMode();
+    private static ThemeMode currentMode = ThemeMode.LIGHT;
 
     private FrontOfficeThemePreference() {
     }
@@ -31,13 +31,12 @@ public final class FrontOfficeThemePreference {
     }
 
     public static ThemeMode toggle() {
-        setCurrentMode(isLightMode() ? ThemeMode.DARK : ThemeMode.LIGHT);
-        return currentMode;
+        return currentMode; // fixe — pas de toggle
     }
 
     public static void setCurrentMode(ThemeMode mode) {
-        currentMode = mode == null ? ThemeMode.DARK : mode;
-        PREFS.put(PREF_KEY, currentMode.name());
+        currentMode = ThemeMode.DARK; // navbar toujours dark
+        PREFS.put(PREF_KEY, ThemeMode.DARK.name());
     }
 
     public static void apply(Node node) {
@@ -53,9 +52,9 @@ public final class FrontOfficeThemePreference {
 
     private static ThemeMode loadThemeMode() {
         try {
-            return ThemeMode.valueOf(PREFS.get(PREF_KEY, ThemeMode.DARK.name()));
+            return ThemeMode.valueOf(PREFS.get(PREF_KEY, ThemeMode.LIGHT.name()));
         } catch (IllegalArgumentException ignored) {
-            return ThemeMode.DARK;
+            return ThemeMode.LIGHT;
         }
     }
 }

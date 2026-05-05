@@ -367,9 +367,6 @@
     -fx-font-weight: bold;
     -fx-padding: 15px 18px;
     -fx-cursor: hand;
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
-    -fx-background-insets: 0;
     -fx-effect: dropshadow(gaussian, rgba(91, 124, 255, 0.34), 18, 0.22, 0, 8);
 }
 
@@ -395,17 +392,6 @@
     -fx-font-weight: bold;
     -fx-padding: 13px 18px;
     -fx-cursor: hand;
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
-    -fx-background-insets: 0;
-}
-
-.login-primary-button:focused,
-.login-secondary-button:focused,
-.login-dialog-pane .button-bar .button:focused {
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
-    -fx-background-insets: 0;
 }
 
 .login-secondary-button:hover {
@@ -486,9 +472,6 @@
     -fx-font-weight: bold;
     -fx-padding: 12px 16px;
     -fx-cursor: hand;
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
-    -fx-background-insets: 0;
 }
 
 .login-dialog-pane .button-bar .button:hover {

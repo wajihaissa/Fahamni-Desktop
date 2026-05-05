@@ -1,0 +1,197 @@
+package tn.esprit.fahamni.controllers;
+
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import tn.esprit.fahamni.entities.Matiere;
+import tn.esprit.fahamni.services.ai.CourseContextBuilder;
+import tn.esprit.fahamni.services.ai.GeminiService;
+
+import java.net.URL;
+import java.util.ResourceBundle;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class ChatbotController implements Initializable {
+
+    private final GeminiService geminiService = new GeminiService();
+    private final CourseContextBuilder courseContextBuilder = new CourseContextBuilder();
+    private final AtomicReference<String> courseContext = new AtomicReference<>("");
+    private final AtomicBoolean isContextLoaded = new AtomicBoolean(false);
+    private final AtomicReference<Integer> loadedMatiereId = new AtomicReference<>(null);
+    private final ExecutorService chatExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "ChatbotWorker");
+        t.setDaemon(true);
+        return t;
+    });
+
+    @FXML
+    private VBox chatBox;
+
+    @FXML
+    private TextField messageInput;
+
+    @FXML
+    private Button sendButton;
+
+    @FXML
+    private ScrollPane chatScrollPane;
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        addMessageToUI("Bonjour, je suis Fahamni AI. Comment puis-je vous aider aujourd'hui ?", false);
+
+        chatBox.heightProperty().addListener((obs, oldVal, newVal) -> {
+            if (chatScrollPane != null) {
+                chatScrollPane.setVvalue(1.0);
+            }
+        });
+    }
+
+    @FXML
+    private void handleSendAction() {
+        String text = messageInput.getText();
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+
+        String cleanedText = text.trim();
+        addMessageToUI(cleanedText, true);
+        messageInput.clear();
+
+        HBox typingRow = addMessageRow("Typing...", false);
+
+        // Submit chat request to thread pool
+        chatExecutor.submit(() -> {
+            try {
+                String response;
+                String context = courseContext.get();
+                if (context != null && !context.isBlank()) {
+                    response = geminiService.askGeminiWithContext(cleanedText, context);
+                } else {
+                    response = geminiService.askGemini(cleanedText);
+                }
+                Platform.runLater(() -> {
+                    chatBox.getChildren().remove(typingRow);
+                    addMessageToUI(response, false);
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    chatBox.getChildren().remove(typingRow);
+                    addMessageToUI("Erreur lors de l'appel Gemini: " + e.getMessage(), false);
+                });
+            }
+        });
+    }
+
+    public void setMatiere(Matiere matiere) {
+        if (matiere == null) {
+            return;
+        }
+
+        Integer nextMatiereId = matiere.getId() > 0 ? matiere.getId() : null;
+        if (nextMatiereId != null && nextMatiereId.equals(loadedMatiereId.get()) && isContextLoaded.get()) {
+            return;
+        }
+
+        loadedMatiereId.set(nextMatiereId);
+        addMessageToUI(
+            "Fahamni AI is reading the course materials (PDFs, Links, Videos). This might take a moment...",
+            false
+        );
+
+        isContextLoaded.set(false);
+        courseContextBuilder.buildCourseContext(matiere)
+            .thenAccept(result -> {
+                Platform.runLater(() -> {
+                    if (result == null || result.isBlank()) {
+                        // Ingestion resulted in empty context
+                        isContextLoaded.set(false);
+                        courseContext.set("");
+                        addMessageToUI(
+                            "Warning: Could not extract text from materials. I will answer based on general knowledge.",
+                            false
+                        );
+                    } else {
+                        // Successfully extracted context
+                        courseContext.set(result);
+                        isContextLoaded.set(true);
+                        addMessageToUI(
+                            "Materials loaded! You can now ask specific questions about this course.",
+                            false
+                        );
+                    }
+                });
+            })
+            .exceptionally(ex -> {
+                System.err.println("Course context ingestion failed: " + ex.getMessage());
+                ex.printStackTrace();
+                isContextLoaded.set(false);
+                courseContext.set("");
+                Platform.runLater(() ->
+                    addMessageToUI(
+                        "Failed to load course materials. I can still answer general questions.",
+                        false
+                    )
+                );
+                return null;
+            });
+    }
+
+    public void addMessageToUI(String text, boolean isUser) {
+        runOnFxThread(() -> addMessageRow(text, isUser));
+    }
+
+    private HBox addMessageRow(String text, boolean isUser) {
+        HBox row = new HBox();
+        row.setFillHeight(true);
+        row.setMaxWidth(Double.MAX_VALUE);
+        row.setAlignment(isUser ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
+        Label bubble = new Label(text);
+        bubble.setWrapText(true);
+        bubble.setMaxWidth(520);
+        bubble.getStyleClass().add(isUser ? "message-bubble-user" : "message-bubble-ai");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        if (isUser) {
+            row.getChildren().addAll(spacer, bubble);
+        } else {
+            row.getChildren().addAll(bubble, spacer);
+        }
+
+        chatBox.getChildren().add(row);
+        return row;
+    }
+
+    /**
+     * Shutdown the chat executor service gracefully.
+     * Should be called when the controller is destroyed or the window closes.
+     */
+    public void shutdown() {
+        if (chatExecutor != null && !chatExecutor.isShutdown()) {
+            chatExecutor.shutdown();
+        }
+    }
+
+    private void runOnFxThread(Runnable action) {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            Platform.runLater(action);
+        }
+    }
+}

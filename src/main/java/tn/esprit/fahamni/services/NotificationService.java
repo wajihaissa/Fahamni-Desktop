@@ -1,6 +1,7 @@
 package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Notification;
+import tn.esprit.fahamni.interfaces.IServices;
 import tn.esprit.fahamni.utils.MyDataBase;
 
 import java.sql.*;
@@ -13,7 +14,7 @@ import java.util.List;
  *  - recipient_id = 0  → notification pour l'administrateur
  *  - recipient_id > 0  → notification pour un tuteur (son user_id)
  */
-public class NotificationService {
+public class NotificationService implements IServices<Notification> {
 
     public NotificationService() {
         ensureTable();
@@ -181,5 +182,41 @@ public class NotificationService {
         n.setCreatedAt(rs.getTimestamp("created_at") != null
                 ? rs.getTimestamp("created_at").toLocalDateTime() : LocalDateTime.now());
         return n;
+    }
+
+    // ─── IServices<Notification> ─────────────────────────────────────────────
+
+    @Override
+    public void add(Notification n) throws SQLException {
+        insert(n.getRecipientId(), n.getBlogId(), n.getMessage());
+    }
+
+    @Override
+    public List<Notification> getAll() throws SQLException {
+        return getAll(0, Integer.MAX_VALUE);
+    }
+
+    @Override
+    public void update(Notification n) throws SQLException {
+        Connection c = cnx();
+        if (c == null) return;
+        try (PreparedStatement ps = c.prepareStatement(
+                "UPDATE notification SET message = ?, is_read = ? WHERE id = ?")) {
+            ps.setString(1, n.getMessage());
+            ps.setInt(2, n.isRead() ? 1 : 0);
+            ps.setInt(3, n.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    @Override
+    public void delete(Notification n) throws SQLException {
+        Connection c = cnx();
+        if (c == null) return;
+        try (PreparedStatement ps = c.prepareStatement(
+                "DELETE FROM notification WHERE id = ?")) {
+            ps.setInt(1, n.getId());
+            ps.executeUpdate();
+        }
     }
 }
