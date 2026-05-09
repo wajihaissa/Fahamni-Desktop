@@ -1,7 +1,14 @@
 ALTER TABLE question
     ADD COLUMN IF NOT EXISTS topic VARCHAR(190) NULL AFTER question,
     ADD COLUMN IF NOT EXISTS difficulty VARCHAR(40) NOT NULL DEFAULT 'Medium' AFTER topic,
-    ADD COLUMN IF NOT EXISTS source_question_id BIGINT NULL AFTER difficulty;
+    ADD COLUMN IF NOT EXISTS source_question_id BIGINT NULL AFTER difficulty,
+    ADD COLUMN IF NOT EXISTS hint TEXT NULL AFTER source_question_id,
+    ADD COLUMN IF NOT EXISTS explanation TEXT NULL AFTER hint,
+    ADD COLUMN IF NOT EXISTS question_type VARCHAR(40) NOT NULL DEFAULT 'multiple_choice' AFTER explanation,
+    ADD COLUMN IF NOT EXISTS code_language VARCHAR(80) NULL AFTER question_type,
+    ADD COLUMN IF NOT EXISTS starter_code TEXT NULL AFTER code_language,
+    ADD COLUMN IF NOT EXISTS expected_answer TEXT NULL AFTER starter_code,
+    ADD COLUMN IF NOT EXISTS code_evaluation_mode VARCHAR(20) NOT NULL DEFAULT 'strict' AFTER expected_answer;
 
 ALTER TABLE quiz_result
     ADD COLUMN IF NOT EXISTS total_questions INT NULL AFTER score,
@@ -16,6 +23,7 @@ CREATE TABLE IF NOT EXISTS quiz_answer_attempt (
     quiz_result_id INT NOT NULL,
     question_id INT NOT NULL,
     selected_choice_id INT NULL,
+    submitted_answer TEXT NULL,
     is_correct BOOLEAN NOT NULL DEFAULT FALSE,
     answered_at DATETIME NOT NULL,
     CONSTRAINT fk_quiz_answer_attempt_result

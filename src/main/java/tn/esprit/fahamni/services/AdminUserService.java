@@ -4,6 +4,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import tn.esprit.fahamni.Models.AdminUser;
 import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.PasswordSecurity;
@@ -798,10 +799,10 @@ public class AdminUserService implements IServices<AdminUser> {
     }
 
     private void ensureAdminUserSchema() throws SQLException {
-        executeSchemaStatement("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `registration_status` VARCHAR(32) NULL");
-        executeSchemaStatement("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `review_note` TEXT NULL");
-        executeSchemaStatement("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `reviewed_at` DATETIME NULL");
-        executeSchemaStatement("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `profile_active` TINYINT(1) NULL");
+        ensureUserColumn("registration_status", "VARCHAR(32) NULL");
+        ensureUserColumn("review_note", "TEXT NULL");
+        ensureUserColumn("reviewed_at", "DATETIME NULL");
+        ensureUserColumn("profile_active", "TINYINT(1) NULL");
         executeSchemaStatement("UPDATE `user` SET `registration_status` = 'APPROVED' WHERE `registration_status` IS NULL OR TRIM(`registration_status`) = ''");
         executeSchemaStatement("UPDATE `user` SET `profile_active` = 1 WHERE `profile_active` IS NULL");
         executeSchemaStatement("""
@@ -817,6 +818,15 @@ public class AdminUserService implements IServices<AdminUser> {
                 UNIQUE KEY `uk_student_profile_user` (`user_id`)
             )
             """);
+    }
+
+    private void ensureUserColumn(String columnName, String definition) throws SQLException {
+        if (connection == null
+            || !DatabaseSchemaUtils.tableExists(connection, "user")
+            || DatabaseSchemaUtils.columnExists(connection, "user", columnName)) {
+            return;
+        }
+        DatabaseSchemaUtils.executeDdl(connection, "ALTER TABLE `user` ADD COLUMN `" + columnName + "` " + definition);
     }
 
     private void syncLinkedStudentProfiles() throws SQLException {

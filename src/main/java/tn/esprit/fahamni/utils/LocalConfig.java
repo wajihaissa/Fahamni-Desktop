@@ -33,6 +33,7 @@ public final class LocalConfig {
     private static Map<String, String> loadLocalValues() {
         Map<String, String> values = new LinkedHashMap<>();
         loadDotEnvFile(Path.of(".env.local"), values);
+        loadDotEnvFile(Path.of(".env"), values);
         loadPropertiesFile(Path.of("fahamni.local.properties"), values);
         return values;
     }

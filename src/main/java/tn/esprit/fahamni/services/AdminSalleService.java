@@ -2,6 +2,7 @@ package tn.esprit.fahamni.services;
 
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.interfaces.IServices;
+import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 
 import java.sql.Connection;
@@ -70,21 +71,13 @@ public class AdminSalleService implements IServices<Salle> {
           AND LOWER(TRIM(localisation)) = ?
           AND LOWER(TRIM(COALESCE(batiment, ''))) = ?
         """;
-    private static final String SELECT_ACTIVE_SEANCE_BY_SALLE_SQL = """
-        SELECT id, matiere, start_at
-        FROM seance
-        WHERE salle_id = ?
-          AND start_at IS NOT NULL
-          AND DATE_ADD(start_at, INTERVAL duration_min MINUTE) > NOW()
-        ORDER BY start_at ASC
-        LIMIT 1
-        """;
     private static final String SELECT_ALL_SQL =
         "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance FROM salle ORDER BY idSalle DESC";
     private static final String SELECT_BY_ID_SQL =
         "SELECT idSalle, nom, capacite, localisation, typeSalle, etat, description, batiment, etage, typeDisposition, accesHandicape, statutDetaille, dateDerniereMaintenance FROM salle WHERE idSalle = ?";
 
     private final Connection cnx;
+    private String cachedSeanceIdColumn;
 
     public AdminSalleService() {
         this.cnx = MyDataBase.getInstance().getCnx();
@@ -189,7 +182,7 @@ public class AdminSalleService implements IServices<Salle> {
             return;
         }
 
-        try (PreparedStatement statement = requireConnection().prepareStatement(SELECT_ACTIVE_SEANCE_BY_SALLE_SQL)) {
+        try (PreparedStatement statement = requireConnection().prepareStatement(buildSelectActiveSeanceBySalleSql())) {
             statement.setInt(1, idSalle);
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) {
@@ -203,6 +196,32 @@ public class AdminSalleService implements IServices<Salle> {
                 );
             }
         }
+    }
+
+    private String buildSelectActiveSeanceBySalleSql() throws SQLException {
+        return """
+            SELECT %s AS id, matiere, start_at
+            FROM seance
+            WHERE salle_id = ?
+              AND start_at IS NOT NULL
+              AND DATE_ADD(start_at, INTERVAL duration_min MINUTE) > NOW()
+            ORDER BY start_at ASC
+            LIMIT 1
+            """.formatted(getSeanceIdColumn());
+    }
+
+    private String getSeanceIdColumn() throws SQLException {
+        if (cachedSeanceIdColumn != null && !cachedSeanceIdColumn.isBlank()) {
+            return cachedSeanceIdColumn;
+        }
+        if (DatabaseSchemaUtils.columnExists(cnx, "seance", "id")) {
+            cachedSeanceIdColumn = "id";
+        } else if (DatabaseSchemaUtils.columnExists(cnx, "seance", "idSeance")) {
+            cachedSeanceIdColumn = "idSeance";
+        } else {
+            cachedSeanceIdColumn = "id";
+        }
+        return cachedSeanceIdColumn;
     }
 
     public Salle recupererParId(int idSalle) throws SQLException {
