@@ -1347,3 +1347,305 @@
     -fx-text-fill: #5f6ca2;
     -fx-font-size: 11px;
 }
+
+/* Recommendation briefing dialog */
+
+.recommendation-briefing-root {
+    -fx-background-color: transparent;
+    -fx-spacing: 18px;
+}
+
+.recommendation-hero-card {
+    -fx-background-color:
+        radial-gradient(center 12% 0%, radius 52%, rgba(105, 138, 255, 0.18) 0%, rgba(105, 138, 255, 0.00) 74%),
+        linear-gradient(to bottom right, #ffffff 0%, #f6f9ff 52%, #eef4ff 100%);
+    -fx-border-color: rgba(106, 139, 255, 0.18);
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
+    -fx-padding: 22px;
+    -fx-effect: dropshadow(gaussian, rgba(32, 72, 150, 0.10), 24, 0.16, 0, 10);
+}
+
+.recommendation-hero-card .workspace-eyebrow,
+.recommendation-hero-card .workspace-subtitle {
+    -fx-text-fill: #6476a8;
+}
+
+.recommendation-hero-card .workspace-title {
+    -fx-text-fill: #12203f;
+}
+
+.recommendation-hero-metrics,
+.recommendation-objective-bar,
+.recommendation-summary-facts,
+.recommendation-fact-grid,
+.recommendation-chip-row,
+.recommendation-action-row {
+    -fx-hgap: 10px;
+    -fx-vgap: 10px;
+}
+
+.recommendation-overview-metric {
+    -fx-background-color: rgba(255, 255, 255, 0.78);
+    -fx-border-color: rgba(114, 138, 218, 0.14);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 14px 16px;
+}
+
+.recommendation-overview-value {
+    -fx-text-fill: #102040;
+    -fx-font-size: 19px;
+    -fx-font-weight: 900;
+}
+
+.recommendation-overview-label {
+    -fx-text-fill: #6a78a0;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.recommendation-toolbar-card,
+.recommendation-summary-card,
+.recommendation-empty-card {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 255, 0.98) 100%);
+    -fx-border-color: rgba(112, 136, 212, 0.14);
+    -fx-border-width: 1px;
+    -fx-background-radius: 24px;
+    -fx-border-radius: 24px;
+    -fx-padding: 18px 20px;
+    -fx-effect: dropshadow(gaussian, rgba(36, 63, 117, 0.08), 20, 0.16, 0, 8);
+}
+
+.recommendation-primary-card {
+    -fx-background-color:
+        radial-gradient(center 10% 0%, radius 46%, rgba(105, 138, 255, 0.15) 0%, rgba(105, 138, 255, 0.00) 72%),
+        linear-gradient(to bottom right, #ffffff 0%, #f8fbff 60%, #eef3ff 100%);
+    -fx-border-color: rgba(104, 131, 213, 0.18);
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
+    -fx-padding: 20px;
+    -fx-spacing: 16px;
+}
+
+.recommendation-toolbar-card {
+    -fx-spacing: 10px;
+}
+
+.recommendation-summary-card {
+    -fx-spacing: 14px;
+}
+
+.recommendation-section-kicker,
+.recommendation-briefing-root .reservation-infrastructure-kicker {
+    -fx-text-fill: #5a74d6;
+    -fx-font-size: 10px;
+    -fx-font-weight: 900;
+    -fx-letter-spacing: 1px;
+}
+
+.recommendation-spotlight-title {
+    -fx-text-fill: #132242;
+    -fx-font-size: 24px;
+    -fx-font-weight: 900;
+}
+
+.recommendation-lead-score-host {
+    -fx-min-width: 156px;
+    -fx-pref-width: 156px;
+    -fx-alignment: top-right;
+}
+
+.recommendation-summary-badge-row {
+    -fx-hgap: 8px;
+    -fx-vgap: 8px;
+}
+
+.recommendation-summary-reason-box {
+    -fx-background-color: linear-gradient(to bottom, rgba(244, 248, 255, 0.98) 0%, rgba(239, 245, 255, 0.98) 100%);
+    -fx-border-color: rgba(114, 138, 218, 0.12);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 14px;
+}
+
+.recommendation-alternatives-section {
+    -fx-spacing: 12px;
+}
+
+.recommendation-alternatives-title {
+    -fx-text-fill: #16254a;
+    -fx-font-size: 15px;
+    -fx-font-weight: 900;
+}
+
+.recommendation-card-list {
+    -fx-spacing: 14px;
+}
+
+.recommendation-session-card {
+    -fx-background-color: rgba(255, 255, 255, 0.96);
+    -fx-border-color: rgba(112, 136, 212, 0.14);
+    -fx-border-width: 1px;
+    -fx-background-radius: 22px;
+    -fx-border-radius: 22px;
+    -fx-padding: 18px;
+}
+
+.recommendation-session-title {
+    -fx-text-fill: #12203f;
+    -fx-font-size: 18px;
+    -fx-font-weight: 900;
+}
+
+.recommendation-session-tutor {
+    -fx-text-fill: #68779f;
+    -fx-font-size: 12px;
+}
+
+.recommendation-fact-card {
+    -fx-background-color: linear-gradient(to bottom, rgba(248, 251, 255, 0.98) 0%, rgba(240, 245, 255, 0.98) 100%);
+    -fx-border-color: rgba(114, 138, 218, 0.12);
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 11px 12px;
+}
+
+.recommendation-fact-label {
+    -fx-text-fill: #7283ae;
+    -fx-font-size: 10px;
+    -fx-font-weight: 800;
+}
+
+.recommendation-fact-value {
+    -fx-text-fill: #132242;
+    -fx-font-size: 12px;
+    -fx-font-weight: 800;
+}
+
+.recommendation-secondary-card {
+    -fx-alignment: center-left;
+    -fx-spacing: 16px;
+    -fx-padding: 15px 16px;
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 255, 0.98) 100%);
+    -fx-border-color: rgba(112, 136, 212, 0.14);
+    -fx-border-width: 1px;
+    -fx-background-radius: 22px;
+    -fx-border-radius: 22px;
+    -fx-effect: dropshadow(gaussian, rgba(36, 63, 117, 0.06), 18, 0.16, 0, 7);
+}
+
+.recommendation-secondary-copy {
+    -fx-spacing: 7px;
+}
+
+.recommendation-secondary-title {
+    -fx-text-fill: #132242;
+    -fx-font-size: 16px;
+    -fx-font-weight: 900;
+}
+
+.recommendation-secondary-meta {
+    -fx-text-fill: #6c7ca6;
+    -fx-font-size: 12px;
+}
+
+.recommendation-secondary-actions {
+    -fx-alignment: center-right;
+}
+
+.recommendation-objective-button {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.95) 0%, rgba(240, 245, 255, 0.96) 100%);
+    -fx-border-color: rgba(106, 131, 213, 0.16);
+    -fx-border-width: 1px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 10px 16px;
+    -fx-text-fill: #3656ab;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.recommendation-objective-button:hover {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 1.0) 0%, rgba(235, 242, 255, 1.0) 100%);
+    -fx-border-color: rgba(97, 130, 223, 0.24);
+}
+
+.recommendation-objective-button-active {
+    -fx-background-color: linear-gradient(to right, #6e87ff 0%, #7aa9ff 100%);
+    -fx-border-color: transparent;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(90, 126, 230, 0.20), 16, 0.18, 0, 5);
+}
+
+.recommendation-briefing-root .reservation-choice-chip {
+    -fx-background-color: rgba(242, 246, 255, 0.95);
+    -fx-border-color: rgba(112, 136, 212, 0.14);
+    -fx-text-fill: #4e669d;
+}
+
+.recommendation-briefing-root .reservation-choice-chip-highlight {
+    -fx-background-color: linear-gradient(to right, rgba(102, 129, 255, 0.14) 0%, rgba(86, 180, 255, 0.16) 100%);
+    -fx-border-color: rgba(98, 145, 255, 0.24);
+    -fx-text-fill: #2447a3;
+}
+
+.recommendation-score-panel {
+    -fx-background-color:
+        radial-gradient(center 18% 0%, radius 58%, rgba(105, 138, 255, 0.14) 0%, rgba(105, 138, 255, 0.00) 72%),
+        linear-gradient(to bottom, #f8fbff 0%, #edf4ff 100%);
+    -fx-border-color: rgba(106, 131, 213, 0.14);
+    -fx-border-width: 1px;
+    -fx-background-radius: 22px;
+    -fx-border-radius: 22px;
+    -fx-padding: 14px 16px;
+}
+
+.recommendation-score-kicker {
+    -fx-text-fill: #6d7da6;
+    -fx-font-size: 10px;
+    -fx-font-weight: 800;
+}
+
+.recommendation-score-value {
+    -fx-text-fill: #132242;
+    -fx-font-size: 20px;
+    -fx-font-weight: 900;
+}
+
+.recommendation-score-caption {
+    -fx-text-fill: #5670bf;
+    -fx-font-size: 11px;
+    -fx-font-weight: 800;
+}
+
+.recommendation-confidence-bar {
+    -fx-pref-height: 7px;
+    -fx-max-width: Infinity;
+}
+
+.recommendation-confidence-bar > .track {
+    -fx-background-color: rgba(132, 151, 208, 0.16);
+    -fx-background-radius: 999px;
+}
+
+.recommendation-confidence-bar > .bar {
+    -fx-background-radius: 999px;
+}
+
+.recommendation-confidence-bar-high > .bar {
+    -fx-background-color: linear-gradient(to right, #57c2ff 0%, #4be0cf 100%);
+}
+
+.recommendation-confidence-bar-medium > .bar {
+    -fx-background-color: linear-gradient(to right, #5f7fff 0%, #72a6ff 100%);
+}
+
+.recommendation-confidence-bar-base > .bar {
+    -fx-background-color: linear-gradient(to right, #9aa7c9 0%, #b5bfd9 100%);
+}

@@ -134,6 +134,7 @@ public class ReservationController {
     private static final String STATUS_PENDING = "attente";
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
+    private static final int RECOMMENDATION_BRIEFING_LIMIT = 3;
     private static final int STUDENT_REVIEW_MAX_LENGTH = 1000;
     private static final int STUDENT_REVIEW_SOFT_LIMIT = 850;
     private static final double MATCHING_SWIPE_HORIZONTAL_THRESHOLD = 150.0;
@@ -4008,7 +4009,7 @@ public class ReservationController {
         DialogPane dialogPane = briefingDialog.getDialogPane();
         ButtonType closeButton = new ButtonType("Fermer", ButtonBar.ButtonData.CANCEL_CLOSE);
 
-        briefingDialog.setTitle("Analyse personnalisee");
+        briefingDialog.setTitle("Recommandations personnalisees");
         dialogPane.getButtonTypes().setAll(closeButton);
         dialogPane.setPrefWidth(900);
         dialogPane.setPrefHeight(760);
@@ -4016,6 +4017,7 @@ public class ReservationController {
             buildRecommendationBriefingContent(candidateSessions, briefingDialog)
         );
         applyCurrentTheme(dialogPane);
+        appendDialogStylesheet(dialogPane, PAYMENT_DIALOG_STYLESHEET);
         briefingDialog.showAndWait();
     }
 
@@ -4046,7 +4048,7 @@ public class ReservationController {
                 continue;
             }
             selectedRecommendations.add(recommendation);
-            if (selectedRecommendations.size() >= 5) {
+            if (selectedRecommendations.size() >= RECOMMENDATION_BRIEFING_LIMIT) {
                 return selectedRecommendations;
             }
         }
@@ -4061,7 +4063,7 @@ public class ReservationController {
                 continue;
             }
             selectedRecommendations.add(recommendation);
-            if (selectedRecommendations.size() >= 5) {
+            if (selectedRecommendations.size() >= RECOMMENDATION_BRIEFING_LIMIT) {
                 return selectedRecommendations;
             }
         }
@@ -4076,7 +4078,7 @@ public class ReservationController {
                 continue;
             }
             selectedRecommendations.add(recommendation);
-            if (selectedRecommendations.size() >= 5) {
+            if (selectedRecommendations.size() >= RECOMMENDATION_BRIEFING_LIMIT) {
                 break;
             }
         }
@@ -4086,32 +4088,96 @@ public class ReservationController {
 
     private ScrollPane buildRecommendationBriefingContent(List<Seance> candidateSessions,
                                                           Dialog<ButtonType> briefingDialog) {
-        VBox root = new VBox(12.0);
+        VBox root = new VBox(18.0);
+        root.setPadding(new Insets(18.0));
+        root.getStyleClass().add("recommendation-briefing-root");
+
+        Label eyebrowLabel = new Label("GUIDE PERSONNALISE");
+        eyebrowLabel.getStyleClass().add("workspace-eyebrow");
+
+        Label titleLabel = new Label("Des recommandations plus claires pour choisir plus vite");
+        titleLabel.setWrapText(true);
+        titleLabel.getStyleClass().add("workspace-title");
+
         Label introLabel = new Label(
-            "Choisissez une orientation de recommandation. Les seances ci-dessous sont classees selon "
-                + "votre historique accepte, la disponibilite, le format prefere et l'experience du tuteur."
+            "Seulement l'essentiel pour choisir vite: matiere, tuteur, creneau, format et prix."
         );
         introLabel.setWrapText(true);
-        introLabel.getStyleClass().add("reservation-section-copy");
+        introLabel.getStyleClass().add("workspace-subtitle");
+
+        FlowPane heroMetricRow = new FlowPane(10.0, 10.0);
+        heroMetricRow.getStyleClass().add("recommendation-hero-metrics");
+        heroMetricRow.getChildren().addAll(
+            buildRecommendationOverviewMetric(String.valueOf(candidateSessions.size()), "seances analysees"),
+            buildRecommendationOverviewMetric(String.valueOf(RecommendationObjective.values().length), "orientations disponibles"),
+            buildRecommendationOverviewMetric("Top " + RECOMMENDATION_BRIEFING_LIMIT, "resultats visibles")
+        );
+
+        VBox heroCard = new VBox(16.0, eyebrowLabel, titleLabel, introLabel, heroMetricRow);
+        heroCard.getStyleClass().add("recommendation-hero-card");
+
+        Label objectiveKicker = new Label("ORIENTATION");
+        objectiveKicker.getStyleClass().add("recommendation-section-kicker");
+
+        Label objectiveCopy = new Label("Choisissez simplement le type de recommandation qui vous convient.");
+        objectiveCopy.setWrapText(true);
+        objectiveCopy.getStyleClass().add("reservation-section-copy");
 
         FlowPane objectiveBar = new FlowPane(10.0, 10.0);
+        objectiveBar.getStyleClass().add("recommendation-objective-bar");
+
+        VBox objectiveCard = new VBox(10.0, objectiveKicker, objectiveCopy, objectiveBar);
+        objectiveCard.getStyleClass().add("recommendation-toolbar-card");
+
+        Label summaryKicker = new Label("CHOIX PRINCIPAL");
+        summaryKicker.getStyleClass().add("recommendation-section-kicker");
+
+        Label summaryTitleLabel = new Label();
+        summaryTitleLabel.setWrapText(true);
+        summaryTitleLabel.getStyleClass().add("recommendation-spotlight-title");
+
         Label summaryLabel = new Label();
         summaryLabel.setWrapText(true);
         summaryLabel.getStyleClass().add("reservation-section-copy");
 
-        VBox recommendationList = new VBox(12.0);
+        VBox summaryCopy = new VBox(6.0, summaryKicker, summaryTitleLabel, summaryLabel);
+        HBox.setHgrow(summaryCopy, Priority.ALWAYS);
+
+        VBox leadScoreHost = new VBox();
+        leadScoreHost.getStyleClass().add("recommendation-lead-score-host");
+
+        FlowPane summaryFacts = new FlowPane(10.0, 10.0);
+        summaryFacts.getStyleClass().add("recommendation-summary-facts");
+
+        HBox summaryHeader = new HBox(16.0, summaryCopy, leadScoreHost);
+        summaryHeader.setAlignment(Pos.TOP_LEFT);
+
+        VBox summaryCard = new VBox(14.0, summaryHeader, summaryFacts);
+        summaryCard.getStyleClass().add("recommendation-summary-card");
+
+        Label alternativesTitleLabel = new Label("Autres options");
+        alternativesTitleLabel.getStyleClass().add("recommendation-alternatives-title");
+
+        VBox recommendationList = new VBox(14.0);
+        recommendationList.getStyleClass().add("recommendation-card-list");
+        VBox alternativesSection = new VBox(10.0, alternativesTitleLabel, recommendationList);
+        alternativesSection.getStyleClass().add("recommendation-alternatives-section");
         Map<RecommendationObjective, Button> objectiveButtons = new LinkedHashMap<>();
 
         for (RecommendationObjective objective : RecommendationObjective.values()) {
             Button objectiveButton = new Button(objective.label());
-            objectiveButton.getStyleClass().add("backoffice-secondary-button");
+            objectiveButton.getStyleClass().addAll("backoffice-secondary-button", "recommendation-objective-button");
             objectiveButton.setOnAction(event ->
                 refreshRecommendationBriefing(
                     candidateSessions,
                     objective,
                     objectiveButtons,
                     recommendationList,
+                    summaryTitleLabel,
                     summaryLabel,
+                    summaryFacts,
+                    leadScoreHost,
+                    alternativesSection,
                     briefingDialog
                 )
             );
@@ -4124,16 +4190,20 @@ public class ReservationController {
             RecommendationObjective.GENERAL,
             objectiveButtons,
             recommendationList,
+            summaryTitleLabel,
             summaryLabel,
+            summaryFacts,
+            leadScoreHost,
+            alternativesSection,
             briefingDialog
         );
 
-        root.getChildren().addAll(introLabel, objectiveBar, summaryLabel, recommendationList);
+        root.getChildren().addAll(heroCard, objectiveCard, summaryCard, alternativesSection);
 
         ScrollPane scrollPane = new ScrollPane(root);
         scrollPane.setFitToWidth(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setPrefViewportHeight(620);
+        scrollPane.setPrefViewportHeight(650);
         scrollPane.getStyleClass().add("reservation-choice-scroll");
         return scrollPane;
     }
@@ -4142,142 +4212,177 @@ public class ReservationController {
                                                RecommendationObjective objective,
                                                Map<RecommendationObjective, Button> objectiveButtons,
                                                VBox recommendationList,
+                                               Label summaryTitleLabel,
                                                Label summaryLabel,
+                                               FlowPane summaryFacts,
+                                               VBox leadScoreHost,
+                                               VBox alternativesSection,
                                                Dialog<ButtonType> briefingDialog) {
         updateRecommendationObjectiveButtons(objectiveButtons, objective);
         List<RecommendedSession> recommendations = buildRecommendationBriefingRecommendations(candidateSessions, objective);
+        summaryTitleLabel.setText(buildRecommendationObjectiveHeadline(objective, recommendations));
         summaryLabel.setText(buildRecommendationObjectiveSummary(objective, recommendations));
+        updateRecommendationSummarySpotlight(summaryFacts, leadScoreHost, recommendations);
+        setNodeVisible(alternativesSection, recommendations.size() > 1);
         renderRecommendationBriefingCards(recommendationList, recommendations, briefingDialog);
     }
 
     private void updateRecommendationObjectiveButtons(Map<RecommendationObjective, Button> objectiveButtons,
                                                       RecommendationObjective activeObjective) {
         objectiveButtons.forEach((objective, button) -> {
-            button.getStyleClass().removeAll("backoffice-primary-button", "backoffice-secondary-button");
+            button.getStyleClass().removeAll(
+                "backoffice-primary-button",
+                "backoffice-secondary-button",
+                "recommendation-objective-button-active"
+            );
+            if (!button.getStyleClass().contains("recommendation-objective-button")) {
+                button.getStyleClass().add("recommendation-objective-button");
+            }
             button.getStyleClass().add(
                 objective == activeObjective ? "backoffice-primary-button" : "backoffice-secondary-button"
             );
+            if (objective == activeObjective) {
+                button.getStyleClass().add("recommendation-objective-button-active");
+            }
         });
+    }
+
+    private String buildRecommendationObjectiveHeadline(RecommendationObjective objective,
+                                                        List<RecommendedSession> recommendations) {
+        if (recommendations.isEmpty()) {
+            return objective.label();
+        }
+
+        RecommendedSession leadRecommendation = recommendations.get(0);
+        String titlePrefix = leadRecommendation.highlighted()
+            ? "Top choix du moment"
+            : "Meilleur compromis du moment";
+        return titlePrefix + ": " + safeText(leadRecommendation.seance().getMatiere());
     }
 
     private String buildRecommendationObjectiveSummary(RecommendationObjective objective,
                                                        List<RecommendedSession> recommendations) {
         if (recommendations.isEmpty()) {
-            return objective.description() + " Aucune seance n'est exploitable avec les filtres actuels.";
+            return objective.description() + " Aucune seance solide n'apparait avec les filtres actuels.";
         }
 
         RecommendedSession leadRecommendation = recommendations.get(0);
-        StringBuilder summary = new StringBuilder(objective.description())
-            .append(" Meilleure proposition actuelle: ")
-            .append(safeText(leadRecommendation.seance().getMatiere()))
-            .append(" avec ")
-            .append(Math.round(leadRecommendation.score()))
-            .append("/100");
-
         if (leadRecommendation.fallback()) {
-            summary.append(". Aucun score fort n'a domine, la meilleure option disponible a ete retenue.");
-        } else {
-            summary.append(" en ").append(leadRecommendation.confidenceLabel().toLowerCase()).append(".");
+            return new StringBuilder(objective.description())
+                .append(" ")
+                .append(safeText(leadRecommendation.seance().getMatiere()))
+                .append(" reste l'option la plus simple et stable pour le moment.")
+                .toString();
         }
-        return summary.toString();
+
+        return new StringBuilder(objective.description())
+            .append(" ")
+            .append(safeText(leadRecommendation.seance().getMatiere()))
+            .append(" ressort comme le choix le plus fluide pour cette orientation.")
+            .toString();
+    }
+
+    private void updateRecommendationSummarySpotlight(FlowPane summaryFacts,
+                                                      VBox leadScoreHost,
+                                                      List<RecommendedSession> recommendations) {
+        summaryFacts.getChildren().clear();
+        leadScoreHost.getChildren().clear();
+
+        if (recommendations.isEmpty()) {
+            setNodeVisible(leadScoreHost, false);
+            summaryFacts.getChildren().add(
+                buildRecommendationFactCard("Conseil", "Elargissez la recherche ou changez d'orientation.")
+            );
+            return;
+        }
+
+        RecommendedSession leadRecommendation = recommendations.get(0);
+        Seance leadSeance = leadRecommendation.seance();
+        ReservationStats reservationStats = reservationService.getStatsBySeanceId(leadSeance.getId());
+        int availableSeats = Math.max(0, leadSeance.getMaxParticipants() - reservationStats.total());
+
+        leadScoreHost.getChildren().add(buildRecommendationScorePanel(leadRecommendation));
+        setNodeVisible(leadScoreHost, true);
+
+        summaryFacts.getChildren().addAll(
+            buildRecommendationFactCard("Tuteur", tutorDirectoryService.getTutorDisplayName(leadSeance.getTuteurId())),
+            buildRecommendationFactCard("Creneau", formatDateTimeOrPlaceholder(leadSeance.getStartAt())),
+            buildRecommendationFactCard("Format", mapModeLabel(leadSeance.getMode())),
+            buildRecommendationFactCard("Tarif", formatSessionPrice(leadSeance.getPrice()))
+        );
     }
 
     private void renderRecommendationBriefingCards(VBox recommendationList,
                                                    List<RecommendedSession> recommendations,
                                                    Dialog<ButtonType> briefingDialog) {
         recommendationList.getChildren().clear();
-        if (recommendations.isEmpty()) {
-            Label emptyLabel = new Label(
-                "Aucune seance recommandee n'est disponible pour cette orientation avec les filtres actuels."
-            );
-            emptyLabel.setWrapText(true);
-            emptyLabel.getStyleClass().add("reservation-section-copy");
-            recommendationList.getChildren().add(emptyLabel);
+        if (recommendations.size() <= 1) {
             return;
         }
 
         recommendationList.getChildren().addAll(
             recommendations.stream()
-                .map(recommendation -> buildRecommendationBriefingCard(recommendation, briefingDialog))
+                .skip(1)
+                .map(recommendation -> buildRecommendationSecondaryCard(recommendation, briefingDialog))
                 .toList()
         );
     }
 
-    private VBox buildRecommendationBriefingCard(RecommendedSession recommendation,
-                                                 Dialog<ButtonType> briefingDialog) {
+    private HBox buildRecommendationSecondaryCard(RecommendedSession recommendation,
+                                                  Dialog<ButtonType> briefingDialog) {
         Seance seance = recommendation.seance();
         ReservationStats reservationStats = reservationService.getStatsBySeanceId(seance.getId());
         int availableSeats = Math.max(0, seance.getMaxParticipants() - reservationStats.total());
 
-        VBox card = new VBox(12.0);
-        card.getStyleClass().add("reservation-form-shell");
+        HBox card = new HBox(14.0);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.getStyleClass().addAll("reservation-form-shell", "recommendation-secondary-card");
 
-        HBox titleRow = new HBox(10.0);
         Label titleLabel = new Label(safeText(seance.getMatiere()));
-        titleLabel.getStyleClass().add("subsection-title");
+        titleLabel.setWrapText(true);
+        titleLabel.getStyleClass().addAll("subsection-title", "recommendation-secondary-title");
 
-        Region titleSpacer = new Region();
-        HBox.setHgrow(titleSpacer, Priority.ALWAYS);
-
-        titleRow.getChildren().addAll(
-            titleLabel,
-            titleSpacer,
-            recommendation.highlighted()
-                ? buildChoiceChipHighlight("Top recommande")
-                : buildChoiceChip("Rang #" + recommendation.rank()),
-            buildChoiceChipHighlight(Math.round(recommendation.score()) + "/100"),
-            buildRecommendationConfidenceChip(recommendation)
-        );
-
-        Label metaLabel = new Label(
-            "Tuteur: " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId())
-                + " | " + formatDateTimeOrPlaceholder(seance.getStartAt())
-                + " | " + seance.getDurationMin() + " min"
-                + " | " + mapModeLabel(seance.getMode())
-                + " | " + formatSessionPrice(seance.getPrice())
-                + " | " + formatAvailableSeats(availableSeats)
-                + " | " + formatReservationCount(reservationStats.total())
-        );
-        metaLabel.setWrapText(true);
-        metaLabel.getStyleClass().add("reservation-section-copy");
-
-        FlowPane signalRow = new FlowPane(10.0, 10.0);
-        signalRow.getChildren().add(buildChoiceChip(recommendation.objective().chipLabel()));
-        signalRow.getChildren().add(buildChoiceChip(recommendation.tutorTierLabel()));
-        signalRow.getChildren().add(buildChoiceChip(buildRecommendationStrengthLabel(recommendation.score())));
-        if (recommendation.fallback()) {
-            signalRow.getChildren().add(buildChoiceChip("Selection de secours"));
-        }
-        recommendation.signals().stream()
-            .limit(4)
-            .map(this::buildChoiceChip)
-            .forEach(signalRow.getChildren()::add);
-
-        Label reasonKicker = new Label("Motif principal");
-        reasonKicker.getStyleClass().add("reservation-infrastructure-kicker");
+        Label tutorLabel = new Label("Avec " + tutorDirectoryService.getTutorDisplayName(seance.getTuteurId()));
+        tutorLabel.setWrapText(true);
+        tutorLabel.getStyleClass().add("recommendation-secondary-meta");
 
         Label reasonLabel = new Label(recommendation.reason());
         reasonLabel.setWrapText(true);
-        reasonLabel.getStyleClass().add("reservation-section-copy");
+        reasonLabel.setTextOverrun(OverrunStyle.WORD_ELLIPSIS);
+        reasonLabel.getStyleClass().add("recommendation-secondary-meta");
 
-        HBox actionRow = new HBox(10.0);
+        FlowPane metaChips = new FlowPane(8.0, 8.0);
+        metaChips.getStyleClass().add("recommendation-chip-row");
+        metaChips.getChildren().addAll(
+            buildChoiceChipHighlight(Math.round(recommendation.score()) + "/100"),
+            buildChoiceChip(formatDateTimeOrPlaceholder(seance.getStartAt())),
+            buildChoiceChip(mapModeLabel(seance.getMode())),
+            buildRecommendationAvailabilityChip(availableSeats)
+        );
 
-        Button detailButton = new Button("Voir detail");
+        VBox copyColumn = new VBox(8.0, titleLabel, tutorLabel, metaChips, reasonLabel);
+        copyColumn.getStyleClass().add("recommendation-secondary-copy");
+        copyColumn.setMinWidth(0.0);
+        HBox.setHgrow(copyColumn, Priority.ALWAYS);
+
+        FlowPane actionRow = new FlowPane(8.0, 8.0);
+        actionRow.getStyleClass().addAll("recommendation-action-row", "recommendation-secondary-actions");
+
+        Button detailButton = new Button("Details");
         detailButton.getStyleClass().add("backoffice-secondary-button");
         detailButton.setOnAction(event -> showSessionDetails(seance, reservationStats));
 
-        Button catalogButton = new Button("Afficher dans le catalogue");
-        catalogButton.getStyleClass().add("backoffice-secondary-button");
-        catalogButton.setOnAction(event -> focusRecommendedSessionInCatalogue(recommendation, briefingDialog));
-
-        Button reserveButton = buildRecommendationReserveButton(seance, reservationStats, briefingDialog);
-
-        actionRow.getChildren().addAll(detailButton, catalogButton);
+        actionRow.getChildren().add(detailButton);
         if (canReserveAsParticipant(seance)) {
-            actionRow.getChildren().add(reserveButton);
+            actionRow.getChildren().add(buildRecommendationReserveButton(seance, reservationStats, briefingDialog));
+        } else {
+            Button catalogButton = new Button("Catalogue");
+            catalogButton.getStyleClass().add("backoffice-secondary-button");
+            catalogButton.setOnAction(event -> focusRecommendedSessionInCatalogue(recommendation, briefingDialog));
+            actionRow.getChildren().add(catalogButton);
         }
 
-        card.getChildren().addAll(titleRow, metaLabel, signalRow, reasonKicker, reasonLabel, actionRow);
+        card.getChildren().addAll(copyColumn, actionRow);
         configureSessionCardDoubleClick(card, seance, reservationStats);
         return card;
     }
@@ -4302,6 +4407,87 @@ public class ReservationController {
         return buildChoiceChip(recommendation.confidenceLabel());
     }
 
+    private VBox buildRecommendationOverviewMetric(String value, String label) {
+        VBox metricCard = new VBox(4.0);
+        metricCard.getStyleClass().add("recommendation-overview-metric");
+        metricCard.setMinWidth(150.0);
+
+        Label valueLabel = new Label(safeText(value));
+        valueLabel.setWrapText(true);
+        valueLabel.getStyleClass().add("recommendation-overview-value");
+
+        Label labelLabel = new Label(safeText(label));
+        labelLabel.setWrapText(true);
+        labelLabel.getStyleClass().add("recommendation-overview-label");
+
+        metricCard.getChildren().addAll(valueLabel, labelLabel);
+        return metricCard;
+    }
+
+    private VBox buildRecommendationFactCard(String label, String value) {
+        VBox factCard = new VBox(4.0);
+        factCard.getStyleClass().add("recommendation-fact-card");
+        factCard.setMinWidth(126.0);
+        factCard.setPrefWidth(166.0);
+
+        Label labelLabel = new Label(safeText(label));
+        labelLabel.getStyleClass().add("recommendation-fact-label");
+
+        Label valueLabel = new Label(safeText(value));
+        valueLabel.setWrapText(true);
+        valueLabel.getStyleClass().add("recommendation-fact-value");
+
+        factCard.getChildren().addAll(labelLabel, valueLabel);
+        return factCard;
+    }
+
+    private VBox buildRecommendationScorePanel(RecommendedSession recommendation) {
+        VBox scorePanel = new VBox(9.0);
+        scorePanel.getStyleClass().add("recommendation-score-panel");
+        scorePanel.setMinWidth(156.0);
+        scorePanel.setPrefWidth(156.0);
+
+        Label rankLabel = new Label("Compatibilite");
+        rankLabel.getStyleClass().add("recommendation-score-kicker");
+
+        Label scoreValueLabel = new Label(Math.round(recommendation.score()) + "/100");
+        scoreValueLabel.getStyleClass().add("recommendation-score-value");
+
+        Label scoreCaptionLabel = new Label(recommendation.confidenceLabel());
+        scoreCaptionLabel.setWrapText(true);
+        scoreCaptionLabel.getStyleClass().add("recommendation-score-caption");
+
+        ProgressBar confidenceBar = new ProgressBar(Math.max(0.0, Math.min(1.0, recommendation.confidenceProgress())));
+        confidenceBar.setMaxWidth(Double.MAX_VALUE);
+        confidenceBar.getStyleClass().addAll(
+            "recommendation-confidence-bar",
+            resolveRecommendationConfidenceBarStyle(recommendation.confidenceProgress())
+        );
+
+        scorePanel.getChildren().addAll(rankLabel, scoreValueLabel, scoreCaptionLabel, confidenceBar);
+        return scorePanel;
+    }
+
+    private Label buildRecommendationAvailabilityChip(int availableSeats) {
+        if (availableSeats <= 1) {
+            return buildChoiceChipHighlight(availableSeats <= 0 ? "Complet" : "Derniere place");
+        }
+        if (availableSeats <= 3) {
+            return buildChoiceChipHighlight(availableSeats + " places");
+        }
+        return buildChoiceChip(availableSeats + " places");
+    }
+
+    private String resolveRecommendationConfidenceBarStyle(double confidenceProgress) {
+        if (confidenceProgress >= 0.78) {
+            return "recommendation-confidence-bar-high";
+        }
+        if (confidenceProgress >= 0.58) {
+            return "recommendation-confidence-bar-medium";
+        }
+        return "recommendation-confidence-bar-base";
+    }
+
     private void focusRecommendedSessionInCatalogue(RecommendedSession recommendation, Dialog<ButtonType> briefingDialog) {
         if (recommendation == null || recommendation.seance() == null) {
             return;
@@ -4322,7 +4508,7 @@ public class ReservationController {
     private Button buildRecommendationReserveButton(Seance seance,
                                                     ReservationStats reservationStats,
                                                     Dialog<ButtonType> briefingDialog) {
-        Button reserveButton = new Button(seance.getPrice() > 0.0 ? "Reserver & payer" : "Reserver cette seance");
+        Button reserveButton = new Button(seance.getPrice() > 0.0 ? "Reserver & payer" : "Reserver");
         reserveButton.getStyleClass().add("backoffice-primary-button");
 
         if (!canReserveAsParticipant(seance)) {
@@ -6090,7 +6276,7 @@ public class ReservationController {
         return root;
     }
 
-    private void configureSessionCardDoubleClick(VBox card, Seance seance, ReservationStats reservationStats) {
+    private void configureSessionCardDoubleClick(Node card, Seance seance, ReservationStats reservationStats) {
         if (card == null || seance == null) {
             return;
         }
