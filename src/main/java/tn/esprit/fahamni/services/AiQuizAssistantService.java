@@ -12,13 +12,17 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AiQuizAssistantService {
+    private static final int MIN_GENERATED_QUESTION_COUNT = 2;
+    private static final int MAX_GENERATED_QUESTION_COUNT = 6;
 
     private static final Pattern QUESTION_BLOCK_PATTERN =
             Pattern.compile("QUESTION\\s+(\\d+)\\s*:(.*?)(?=QUESTION\\s+\\d+\\s*:|$)", Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
@@ -40,16 +44,15 @@ public class AiQuizAssistantService {
     public GeneratedQuizDraft generateQuizDraft(String topic, String title, int questionCount, String difficulty) {
         String normalizedTopic = safeText(topic, "General Knowledge");
         String normalizedTitle = safeText(title, normalizedTopic + " Smart Quiz");
-        int normalizedCount = Math.max(2, Math.min(5, questionCount));
+        int normalizedCount = Math.max(MIN_GENERATED_QUESTION_COUNT, Math.min(MAX_GENERATED_QUESTION_COUNT, questionCount));
         String normalizedDifficulty = safeText(difficulty, "Medium");
 
         if (!isOpenAiReady()) {
-            Quiz fallbackQuiz = buildFallbackQuizDraft(normalizedTopic, normalizedTitle, normalizedCount, normalizedDifficulty);
             return new GeneratedQuizDraft(
-                    fallbackQuiz,
-                    "Local fallback",
-                    true,
-                    buildAiUnavailableMessage() + " A local quiz draft was generated instead."
+                    null,
+                    "Unavailable",
+                    false,
+                    buildAiUnavailableMessage()
             );
         }
 
@@ -61,15 +64,15 @@ public class AiQuizAssistantService {
         );
 
         if (remoteDraft.isPresent()) {
-            return new GeneratedQuizDraft(remoteDraft.get(), resolveAiProviderLabel(), true, "Quiz generated with " + resolveAiProviderLabel() + ".");
+            Quiz sanitizedQuiz = sanitizeGeneratedQuizDraft(remoteDraft.get(), normalizedTopic, normalizedTitle, normalizedCount, normalizedDifficulty);
+            return new GeneratedQuizDraft(sanitizedQuiz, resolveAiProviderLabel(), true, "Quiz generated with " + resolveAiProviderLabel() + ".");
         }
 
-        Quiz fallbackQuiz = buildFallbackQuizDraft(normalizedTopic, normalizedTitle, normalizedCount, normalizedDifficulty);
         return new GeneratedQuizDraft(
-                fallbackQuiz,
-                "Local fallback",
-                true,
-                resolveAiProviderLabel() + " quiz generation did not return a usable draft. A local quiz draft was generated instead."
+                null,
+                resolveAiProviderLabel(),
+                false,
+                resolveAiProviderLabel() + " quiz generation did not return a usable draft. Please try again."
         );
     }
 
@@ -92,6 +95,23 @@ public class AiQuizAssistantService {
         }
 
         return buildFallbackMetadata(fallbackTopic, normalizedQuestion, normalizedChoices);
+    }
+
+    public boolean requiresCodeSnippet(String questionText, List<String> choices) {
+        String normalizedQuestion = safeText(questionText, "");
+        List<String> normalizedChoices = choices == null ? List.of() : choices.stream()
+                .filter(choice -> !isBlank(choice))
+                .map(String::trim)
+                .toList();
+
+        Optional<Boolean> remoteDecision = tryDetectQuestionRequiresCodeSnippetWithOpenAi(normalizedQuestion, normalizedChoices);
+        if (remoteDecision.isPresent()) {
+            return remoteDecision.get();
+        }
+
+        Question fallbackQuestion = new Question();
+        fallbackQuestion.setQuestion(normalizedQuestion);
+        return fallbackQuestion.looksLikeCodeOutputPrompt();
     }
 
     public GeneratedHint generateHint(Quiz quiz, Question question, Long selectedChoiceId) {
@@ -121,6 +141,25 @@ public class AiQuizAssistantService {
                 true,
                 resolveAiProviderLabel() + " hint generation is unavailable right now. A local hint was generated instead."
         );
+    }
+
+    public CodeAnswerEvaluation evaluateCodeAnswer(Question question, String submittedAnswer) {
+        if (question == null || !question.isCodeQuestion()) {
+            return new CodeAnswerEvaluation(false, "Unavailable", false, "No code question is available for evaluation.");
+        }
+        if (isBlank(submittedAnswer)) {
+            return new CodeAnswerEvaluation(false, "Local validation", true, "No answer was submitted.");
+        }
+        if (!isOpenAiReady()) {
+            return new CodeAnswerEvaluation(false, "Unavailable", false, buildAiUnavailableMessage());
+        }
+
+        Optional<Boolean> remoteDecision = tryEvaluateCodeAnswerWithOpenAi(question, submittedAnswer);
+        if (remoteDecision.isPresent()) {
+            return new CodeAnswerEvaluation(remoteDecision.get(), resolveAiProviderLabel(), true, "Code answer evaluated with " + resolveAiProviderLabel() + ".");
+        }
+
+        return new CodeAnswerEvaluation(false, resolveAiProviderLabel(), false, resolveAiProviderLabel() + " code evaluation is unavailable right now.");
     }
 
     protected Optional<String> tryGenerateHintWithOpenAi(Quiz quiz, Question question, Long selectedChoiceId) {
@@ -188,6 +227,64 @@ public class AiQuizAssistantService {
         }
     }
 
+    protected Optional<Boolean> tryEvaluateCodeAnswerWithOpenAi(Question question, String submittedAnswer) {
+        String apiKey = getOpenAiApiKey();
+        String model = resolveRequestedModelName();
+        if (isBlank(apiKey) || isBlank(model) || question == null || isBlank(question.getQuestion()) || isBlank(submittedAnswer)) {
+            return Optional.empty();
+        }
+
+        String prompt = buildCodeEvaluationPrompt(question, submittedAnswer);
+        String requestBody = buildChatRequestBody(
+                model,
+                "You evaluate learner code answers. Reply with exactly one line: VERDICT: CORRECT or VERDICT: INCORRECT",
+                prompt,
+                0.1
+        );
+
+        try {
+            Optional<String> content = sendChatCompletion(apiKey, requestBody)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank());
+
+            return content.flatMap(this::parseCodeEvaluationVerdict);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        } catch (IOException exception) {
+            return Optional.empty();
+        }
+    }
+
+    protected Optional<Boolean> tryDetectQuestionRequiresCodeSnippetWithOpenAi(String questionText, List<String> choices) {
+        String apiKey = getOpenAiApiKey();
+        String model = resolveRequestedModelName();
+        if (isBlank(apiKey) || isBlank(model) || isBlank(questionText)) {
+            return Optional.empty();
+        }
+
+        String prompt = buildCodeSnippetDetectionPrompt(questionText, choices);
+        String requestBody = buildChatRequestBody(
+                model,
+                "You classify whether a quiz question requires a displayed code snippet. Reply with exactly one line: REQUIRES_CODE_SNIPPET: YES or REQUIRES_CODE_SNIPPET: NO",
+                prompt,
+                0.1
+        );
+
+        try {
+            Optional<String> content = sendChatCompletion(apiKey, requestBody)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank());
+
+            return content.flatMap(this::parseCodeSnippetRequirementVerdict);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
+        } catch (IOException exception) {
+            return Optional.empty();
+        }
+    }
+
     private String buildHintPrompt(Quiz quiz, Question question, Long selectedChoiceId) {
         String topic = quiz != null && !isBlank(quiz.getKeyword()) ? quiz.getKeyword().trim() : "General knowledge";
         String title = quiz != null && !isBlank(quiz.getTitre()) ? quiz.getTitre().trim() : "Quiz";
@@ -199,6 +296,9 @@ public class AiQuizAssistantService {
         prompt.append("Quiz title: ").append(title).append("\n");
         prompt.append("Topic: ").append(topic).append("\n");
         prompt.append("Question: ").append(question.getQuestion().trim()).append("\n");
+        if (question.isCodeOutputQuestion() && !isBlank(question.getStarterCode())) {
+            prompt.append("Code shown:\n").append(question.getStarterCode().trim()).append("\n");
+        }
         prompt.append("Answer candidates:\n");
 
         char label = 'A';
@@ -225,6 +325,56 @@ public class AiQuizAssistantService {
         return prompt.toString();
     }
 
+    private String buildCodeEvaluationPrompt(Question question, String submittedAnswer) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Question: ").append(safeText(question.getQuestion(), "")).append("\n");
+        prompt.append("Code language: ").append(safeText(question.getCodeLanguage(), "General code")).append("\n");
+        if (!isBlank(question.getStarterCode())) {
+            prompt.append("Starter code:\n").append(question.getStarterCode().trim()).append("\n");
+        }
+        prompt.append("Reference answer:\n").append(safeText(question.getExpectedAnswer(), "")).append("\n");
+        if (!isBlank(question.getExplanation())) {
+            prompt.append("Explanation or intent:\n").append(question.getExplanation().trim()).append("\n");
+        }
+        prompt.append("Learner answer:\n").append(submittedAnswer.trim()).append("\n");
+        prompt.append("""
+                Decide whether the learner answer correctly solves the task.
+                Rules:
+                - accept alternative but logically correct implementations
+                - ignore formatting differences
+                - reject answers that do not satisfy the requested behavior
+                - be strict about actual correctness, not style
+                - reply with exactly one line:
+                VERDICT: CORRECT
+                or
+                VERDICT: INCORRECT
+                """);
+        return prompt.toString();
+    }
+
+    private String buildCodeSnippetDetectionPrompt(String questionText, List<String> choices) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Question: ").append(safeText(questionText, "")).append("\n");
+        if (choices != null && !choices.isEmpty()) {
+            prompt.append("Choices:\n");
+            char label = 'A';
+            for (String choice : choices) {
+                prompt.append(label).append(". ").append(choice).append("\n");
+                label++;
+            }
+        }
+        prompt.append("""
+                Decide whether a learner would need to see a code snippet to answer this question properly.
+                Mark YES when the wording refers to code output, execution, a snippet, a program fragment, or analyzing shown code.
+                Mark NO for normal concept questions, even if they are about programming.
+                Reply with exactly one line:
+                REQUIRES_CODE_SNIPPET: YES
+                or
+                REQUIRES_CODE_SNIPPET: NO
+                """);
+        return prompt.toString();
+    }
+
     private String sanitizeHintText(String hint) {
         String normalized = hint == null ? "" : hint.trim();
         if (normalized.isEmpty()) {
@@ -245,6 +395,30 @@ public class AiQuizAssistantService {
         }
 
         return normalized.replaceAll("\\s+", " ");
+    }
+
+    private Optional<Boolean> parseCodeEvaluationVerdict(String content) {
+        if (isBlank(content)) {
+            return Optional.empty();
+        }
+
+        Matcher matcher = Pattern.compile("(?im)^VERDICT\\s*:\\s*(CORRECT|INCORRECT)\\s*$").matcher(content.trim());
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+        return Optional.of("CORRECT".equalsIgnoreCase(matcher.group(1)));
+    }
+
+    private Optional<Boolean> parseCodeSnippetRequirementVerdict(String content) {
+        if (isBlank(content)) {
+            return Optional.empty();
+        }
+
+        Matcher matcher = Pattern.compile("(?im)^REQUIRES_CODE_SNIPPET\\s*:\\s*(YES|NO)\\s*$").matcher(content.trim());
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+        return Optional.of("YES".equalsIgnoreCase(matcher.group(1)));
     }
 
     private String buildFallbackHint(Quiz quiz, Question question, Long selectedChoiceId) {
@@ -394,7 +568,7 @@ public class AiQuizAssistantService {
         String prompt = buildGenerationPrompt(topic, title, questionCount, difficulty);
         String requestBody = buildChatRequestBody(
                 model,
-                "You generate short educational multiple-choice quizzes. Follow the exact response template.",
+                "You generate original educational quizzes. Follow the exact response template and never use filler or generic template-style questions.",
                 prompt,
                 0.8
         );
@@ -635,10 +809,48 @@ public class AiQuizAssistantService {
             return null;
         }
 
+        String questionType = normalizeQuestionType(extractPrefixedValue(block, "TYPE", Question.TYPE_MULTIPLE_CHOICE));
+        String topic = extractPrefixedValue(block, "TOPIC", "");
+        String difficulty = normalizeDifficultyLabel(extractPrefixedValue(block, "DIFFICULTY", "Medium"));
         String hint = extractPrefixedValue(block, "HINT", "");
         String explanation = extractPrefixedValue(block, "EXPLANATION", "");
-        String answerLabel = extractAnswerLabel(block);
 
+        Question question = new Question();
+        question.setQuestion(questionText.trim());
+        question.setQuestionType(questionType);
+        question.setTopic(topic.trim());
+        question.setDifficulty(difficulty);
+        question.setHint(hint.trim());
+        question.setExplanation(explanation.trim());
+
+        if (question.looksLikeCodeOutputPrompt() && !Question.TYPE_CODE.equals(questionType)) {
+            question.setQuestionType(Question.TYPE_CODE_OUTPUT);
+            questionType = Question.TYPE_CODE_OUTPUT;
+        }
+
+        if (Question.TYPE_CODE.equals(questionType)) {
+            question.setCodeLanguage(extractPrefixedValue(block, "CODE_LANGUAGE", "").trim());
+            question.setStarterCode(decodeEscapedMultilineValue(extractPrefixedValue(block, "STARTER_CODE", "")));
+            question.setExpectedAnswer(decodeEscapedMultilineValue(extractPrefixedValue(block, "EXPECTED_ANSWER", "")));
+            question.setCodeEvaluationMode(normalizeCodeEvaluationMode(
+                    extractPrefixedValue(block, "CODE_EVALUATION_MODE", Question.CODE_EVALUATION_STRICT)
+            ));
+            return isBlank(question.getExpectedAnswer()) ? null : question;
+        }
+
+        if (Question.TYPE_CODE_OUTPUT.equals(questionType)) {
+            question.setCodeLanguage(extractPrefixedValue(block, "CODE_LANGUAGE", "").trim());
+            question.setStarterCode(decodeEscapedMultilineValue(extractPrefixedValue(block, "STARTER_CODE", "")));
+            if (isBlank(question.getStarterCode())) {
+                return null;
+            }
+        }
+
+        if (question.looksLikeCodeOutputPrompt() && isBlank(question.getStarterCode())) {
+            return null;
+        }
+
+        String answerLabel = extractAnswerLabel(block);
         List<String> choices = List.of(
                 extractChoiceValue(block, "A"),
                 extractChoiceValue(block, "B"),
@@ -649,11 +861,6 @@ public class AiQuizAssistantService {
         if (choices.stream().anyMatch(this::isBlank)) {
             return null;
         }
-
-        Question question = new Question();
-        question.setQuestion(questionText.trim());
-        question.setHint(hint.trim());
-        question.setExplanation(explanation.trim());
 
         for (int index = 0; index < choices.size(); index++) {
             Choice choice = new Choice();
@@ -676,7 +883,7 @@ public class AiQuizAssistantService {
         normalized = normalized.replaceAll("(?m)^\\s*#+\\s*", "");
         normalized = normalized.replaceAll("(?im)^\\s*\\*\\*(QUESTION\\s+\\d+)\\*\\*\\s*:?\\s*$", "$1:");
         normalized = normalized.replaceAll("(?im)^\\s*(QUESTION\\s+\\d+)\\s*$", "$1:");
-        normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?(TITLE|KEYWORD|TEXT|HINT|EXPLANATION)\\s*[:\\-]?\\s*", "$1: ");
+        normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?(TITLE|KEYWORD|TYPE|TOPIC|DIFFICULTY|TEXT|HINT|EXPLANATION|CODE_LANGUAGE|STARTER_CODE|EXPECTED_ANSWER|CODE_EVALUATION_MODE)\\s*[:\\-]?\\s*", "$1: ");
         normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?(?:CORRECT\\s+ANSWER|RIGHT\\s+ANSWER)\\s*[:\\-]?\\s*", "ANSWER: ");
         normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?ANSWER\\s*[:\\-]?\\s*", "ANSWER: ");
         normalized = normalized.replaceAll("(?im)^\\s*(?:[-*]\\s*)?([ABCD])\\s*[\\)\\.:\\-]\\s*", "$1: ");
@@ -695,7 +902,7 @@ public class AiQuizAssistantService {
                 continue;
             }
             if (looksLikeChoiceLine(line)
-                    || line.matches("(?i)^(ANSWER|HINT|EXPLANATION)\\s*:.*$")) {
+                    || line.matches("(?i)^(TYPE|TOPIC|DIFFICULTY|ANSWER|HINT|EXPLANATION|CODE_LANGUAGE|STARTER_CODE|EXPECTED_ANSWER|CODE_EVALUATION_MODE)\\s*:.*$")) {
                 break;
             }
             return line;
@@ -736,6 +943,130 @@ public class AiQuizAssistantService {
         }
 
         return quiz;
+    }
+
+    private Quiz sanitizeGeneratedQuizDraft(Quiz quiz, String topic, String title, int questionCount, String difficulty) {
+        if (quiz == null) {
+            return buildFallbackQuizDraft(topic, title, questionCount, difficulty);
+        }
+
+        if (isBlank(quiz.getTitre())) {
+            quiz.setTitre(title);
+        }
+        if (isBlank(quiz.getKeyword())) {
+            quiz.setKeyword(topic);
+        }
+
+        List<Question> questions = quiz.getQuestions();
+        if (questions == null || questions.isEmpty()) {
+            return buildFallbackQuizDraft(topic, title, questionCount, difficulty);
+        }
+
+        for (Question question : questions) {
+            if (question == null) {
+                continue;
+            }
+            if (question.isMultipleChoiceQuestion()) {
+                repairGeneratedMultipleChoiceQuestion(question);
+            }
+        }
+
+        return quiz;
+    }
+
+    private void repairGeneratedMultipleChoiceQuestion(Question question) {
+        if (question == null || question.getChoices() == null || question.getChoices().isEmpty()) {
+            return;
+        }
+
+        Choice originalCorrectChoice = findCorrectChoice(question);
+        String correctChoiceText = originalCorrectChoice != null ? safeText(originalCorrectChoice.getChoice(), "") : "";
+
+        List<String> uniqueWrongChoices = new ArrayList<>();
+        Set<String> seenChoices = new LinkedHashSet<>();
+
+        if (!isBlank(correctChoiceText)) {
+            seenChoices.add(correctChoiceText.trim().toLowerCase(Locale.ROOT));
+        }
+
+        for (Choice choice : question.getChoices()) {
+            if (choice == null || isBlank(choice.getChoice()) || Boolean.TRUE.equals(choice.getIsCorrect())) {
+                continue;
+            }
+            String trimmedChoice = choice.getChoice().trim();
+            String normalizedChoice = trimmedChoice.toLowerCase(Locale.ROOT);
+            if (seenChoices.add(normalizedChoice)) {
+                uniqueWrongChoices.add(trimmedChoice);
+            }
+        }
+
+        List<String> fallbackDistractors = buildFallbackDistractors(question, correctChoiceText);
+        for (String distractor : fallbackDistractors) {
+            if (isBlank(distractor)) {
+                continue;
+            }
+            String trimmedDistractor = distractor.trim();
+            String normalizedDistractor = trimmedDistractor.toLowerCase(Locale.ROOT);
+            if (seenChoices.add(normalizedDistractor)) {
+                uniqueWrongChoices.add(trimmedDistractor);
+            }
+            if (uniqueWrongChoices.size() >= 3) {
+                break;
+            }
+        }
+
+        while (uniqueWrongChoices.size() < 3) {
+            String generated = "Alternative " + (uniqueWrongChoices.size() + 2);
+            if (seenChoices.add(generated.toLowerCase(Locale.ROOT))) {
+                uniqueWrongChoices.add(generated);
+            }
+        }
+
+        question.getChoices().clear();
+
+        Choice repairedCorrectChoice = new Choice();
+        repairedCorrectChoice.setChoice(!isBlank(correctChoiceText) ? correctChoiceText.trim() : "Correct answer");
+        repairedCorrectChoice.setIsCorrect(true);
+        question.addChoice(repairedCorrectChoice);
+
+        for (int index = 0; index < 3; index++) {
+            Choice wrongChoice = new Choice();
+            wrongChoice.setChoice(uniqueWrongChoices.get(index));
+            wrongChoice.setIsCorrect(false);
+            question.addChoice(wrongChoice);
+        }
+    }
+
+    private List<String> buildFallbackDistractors(Question question, String correctChoiceText) {
+        List<String> distractors = new ArrayList<>();
+        String normalizedCorrectChoice = safeText(correctChoiceText, "").trim();
+
+        if (normalizedCorrectChoice.matches("-?\\d+")) {
+            try {
+                int numericValue = Integer.parseInt(normalizedCorrectChoice);
+                distractors.add(String.valueOf(numericValue + 1));
+                distractors.add(String.valueOf(numericValue - 1));
+                distractors.add(String.valueOf(numericValue + 2));
+            } catch (NumberFormatException ignored) {
+                // Fall through to generic distractors.
+            }
+        } else if (normalizedCorrectChoice.equalsIgnoreCase("true") || normalizedCorrectChoice.equalsIgnoreCase("false")) {
+            distractors.add(normalizedCorrectChoice.equalsIgnoreCase("true") ? "false" : "true");
+            distractors.add("Compilation error");
+            distractors.add("Runtime error");
+        } else if (!normalizedCorrectChoice.isBlank()) {
+            distractors.add(normalizedCorrectChoice + " ");
+            distractors.add("Compilation error");
+            distractors.add("Runtime error");
+            if (question != null && question.isCodeOutputQuestion()) {
+                distractors.add('"' + normalizedCorrectChoice.replace("\"", "") + '"');
+            }
+        }
+
+        distractors.add("None of the above");
+        distractors.add("The code does not compile");
+        distractors.add("The code throws a runtime error");
+        return distractors;
     }
 
     private List<QuestionTemplate> buildFallbackTemplates(String topic, String difficulty) {
@@ -795,6 +1126,17 @@ public class AiQuizAssistantService {
                 "More confusion about what to do next",
                 "Less connection between the goal and the chosen approach",
                 "A process that sounds impressive but solves nothing important",
+                0
+        ));
+
+        templates.add(new QuestionTemplate(
+                "When reviewing work related to " + topic + ", what is the best sign that the approach is actually correct?",
+                "Look for evidence that the approach matches the goal and constraints, not just that it looks familiar.",
+                "The strongest signal is that the approach fits the goal, respects the constraints, and can be explained clearly from first principles.",
+                "It solves the stated problem while matching the context and constraints",
+                "It uses the most advanced-sounding terminology available",
+                "It copies a popular example without checking whether the situation is the same",
+                "It adds extra complexity even when the simpler path already works",
                 0
         ));
 
@@ -900,8 +1242,10 @@ public class AiQuizAssistantService {
     }
 
     private String buildGenerationPrompt(String topic, String title, int questionCount, String difficulty) {
+        boolean allowCodeQuestions = allowsCodeQuestions(topic);
+        int targetCodeQuestionCount = recommendCodeQuestionCount(topic, questionCount, difficulty);
         return """
-                Create a multiple-choice quiz for topic "%s".
+                Create an original educational quiz for topic "%s".
                 Quiz title: %s
                 Difficulty: %s
                 Number of questions: %d
@@ -910,23 +1254,58 @@ public class AiQuizAssistantService {
                 TITLE: ...
                 KEYWORD: ...
                 QUESTION 1:
+                TYPE: MULTIPLE_CHOICE or CODE or CODE_OUTPUT
+                TOPIC: ...
+                DIFFICULTY: Easy|Medium|Hard
                 TEXT: ...
-                A: ...
-                B: ...
-                C: ...
-                D: ...
-                ANSWER: A
+                A: ...               (for MULTIPLE_CHOICE and CODE_OUTPUT)
+                B: ...               (for MULTIPLE_CHOICE and CODE_OUTPUT)
+                C: ...               (for MULTIPLE_CHOICE and CODE_OUTPUT)
+                D: ...               (for MULTIPLE_CHOICE and CODE_OUTPUT)
+                ANSWER: A            (for MULTIPLE_CHOICE and CODE_OUTPUT)
+                CODE_LANGUAGE: ...   (for CODE and CODE_OUTPUT)
+                STARTER_CODE: ...    (for CODE and CODE_OUTPUT, keep on one line, use \\n for line breaks if needed)
+                EXPECTED_ANSWER: ... (only for CODE, keep on one line, use \\n for line breaks if needed)
+                CODE_EVALUATION_MODE: STRICT or AI (only for CODE)
                 HINT: ...
                 EXPLANATION: ...
 
                 Continue the same template for every question.
                 Requirements:
-                - 4 choices per question
-                - exactly 1 correct answer
+                - write genuinely new questions, not generic placeholders or templates
+                - every question must feel specific to the topic, not reusable boilerplate
+                - include scenario-based or syntax-based questions when helpful
+                - for MULTIPLE_CHOICE and CODE_OUTPUT questions, provide 4 choices and exactly 1 correct answer
+                - use CODE_OUTPUT for "what is the output of this code" style questions
+                - for CODE questions, use CODE_EVALUATION_MODE: STRICT when the answer should match a precise syntax pattern
+                - use CODE_EVALUATION_MODE: AI when multiple different correct solutions are possible
+                - for CODE questions, provide a precise expected answer and explain the intended behavior clearly
                 - concise hints
                 - concise explanations
                 - no markdown
-                """.formatted(topic, title, difficulty, questionCount);
+                - avoid repeating the same wording pattern across questions
+                - if the topic is programming, software, SQL, or scripting, you may include a mix of CODE and CODE_OUTPUT questions
+                - include at least 1 CODE_OUTPUT question when it naturally fits the topic
+                - never omit TYPE, TOPIC, or DIFFICULTY
+                """.formatted(topic, title, difficulty, questionCount, allowCodeQuestions ? targetCodeQuestionCount : 0);
+    }
+
+    private boolean allowsCodeQuestions(String topic) {
+        String normalizedTopic = topic == null ? "" : topic.toLowerCase(Locale.ROOT);
+        return containsAny(normalizedTopic, "java", "python", "javascript", "typescript", "coding", "programming",
+                "software", "development", "sql", "database", "script", "bash", "shell", "c++", "c#", "php");
+    }
+
+    private int recommendCodeQuestionCount(String topic, int questionCount, String difficulty) {
+        if (!allowsCodeQuestions(topic)) {
+            return 0;
+        }
+
+        String normalizedDifficulty = safeText(difficulty, "Medium").toLowerCase(Locale.ROOT);
+        if ("hard".equals(normalizedDifficulty)) {
+            return Math.min(2, Math.max(1, questionCount / 2));
+        }
+        return 1;
     }
 
     private String extractPrefixedValue(String content, String prefix, String fallback) {
@@ -966,6 +1345,40 @@ public class AiQuizAssistantService {
         return isBlank(value) ? fallback : value.trim();
     }
 
+    private String normalizeQuestionType(String questionType) {
+        if (isBlank(questionType)) {
+            return Question.TYPE_MULTIPLE_CHOICE;
+        }
+
+        String normalized = questionType.trim().toLowerCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+        if ("code_editor".equals(normalized) || "code".equals(normalized)) {
+            return Question.TYPE_CODE;
+        }
+        if (Question.TYPE_CODE_OUTPUT.equals(normalized) || "output".equals(normalized) || "codeoutput".equals(normalized)) {
+            return Question.TYPE_CODE_OUTPUT;
+        }
+        return Question.TYPE_MULTIPLE_CHOICE;
+    }
+
+    private String normalizeCodeEvaluationMode(String value) {
+        if (isBlank(value)) {
+            return Question.CODE_EVALUATION_STRICT;
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        return Question.CODE_EVALUATION_AI.equals(normalized)
+                ? Question.CODE_EVALUATION_AI
+                : Question.CODE_EVALUATION_STRICT;
+    }
+
+    private String decodeEscapedMultilineValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\n", "\n").replace("\\t", "\t").trim();
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -993,6 +1406,9 @@ public class AiQuizAssistantService {
     }
 
     public record QuestionMetadata(String topic, String difficulty) {
+    }
+
+    public record CodeAnswerEvaluation(boolean correct, String provider, boolean success, String message) {
     }
 
     private record TopicProfile(

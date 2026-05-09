@@ -131,6 +131,11 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.18.2</version>
         </dependency>
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>codemirror</artifactId>
+            <version>5.65.20</version>
+        </dependency>
 
         <dependency>
             <groupId>org.jmonkeyengine</groupId>

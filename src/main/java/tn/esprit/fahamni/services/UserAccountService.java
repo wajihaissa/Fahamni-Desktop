@@ -4,6 +4,7 @@ import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.PasswordSecurity;
+import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.UserInputValidator;
 import tn.esprit.fahamni.utils.UserSession;
 
@@ -400,10 +401,19 @@ public class UserAccountService {
     }
 
     private void ensureProfileColumns() throws SQLException {
-        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `avatar_path` VARCHAR(255) NULL");
-        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `phone_number` VARCHAR(40) NULL");
-        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `bio` TEXT NULL");
-        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `certifications` TEXT NULL");
+        ensureUserColumn("avatar_path", "VARCHAR(255) NULL");
+        ensureUserColumn("phone_number", "VARCHAR(40) NULL");
+        ensureUserColumn("bio", "TEXT NULL");
+        ensureUserColumn("certifications", "TEXT NULL");
+    }
+
+    private void ensureUserColumn(String columnName, String definition) throws SQLException {
+        if (connection == null
+            || !DatabaseSchemaUtils.tableExists(connection, "user")
+            || DatabaseSchemaUtils.columnExists(connection, "user", columnName)) {
+            return;
+        }
+        DatabaseSchemaUtils.executeDdl(connection, "ALTER TABLE `user` ADD COLUMN `" + columnName + "` " + definition);
     }
 
     private String loadCurrentAvatarPath(int userId) throws SQLException {
@@ -465,12 +475,6 @@ public class UserAccountService {
             }
         }
         return null;
-    }
-
-    private void executeAlterIfNeeded(String sql) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.execute();
-        }
     }
 
     private String normalizePhoneNumber(String value) {

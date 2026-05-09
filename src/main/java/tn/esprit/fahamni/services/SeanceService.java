@@ -48,6 +48,7 @@ public class SeanceService implements IServices<Seance> {
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
+    private String cachedSeanceIdColumn;
 
     public SeanceService() {
         ensurePriceColumn();
@@ -140,9 +141,10 @@ public class SeanceService implements IServices<Seance> {
         }
 
         String sql = """
-            SELECT id, matiere, start_at, duration_min, max_participants, status,
+            SELECT %s AS id, matiere, start_at, duration_min, max_participants, status,
                    description, created_at, updated_at, tuteur_id,
             """
+            .formatted(getSeanceIdColumn())
             + (supportsSeanceModeColumn() ? "mode_seance" : "'" + Seance.MODE_ONLINE + "' AS mode_seance")
             + ", "
             + (supportsSeanceSalleColumn() ? "salle_id" : "NULL AS salle_id")
@@ -150,8 +152,9 @@ public class SeanceService implements IServices<Seance> {
             + (supportsSeancePriceColumn() ? "price_tnd" : "NULL AS price_tnd")
             + """
             FROM seance
-            ORDER BY id DESC
+            ORDER BY %s DESC
             """;
+        sql = sql.formatted(getSeanceIdColumn());
 
         try (PreparedStatement pst = cnx.prepareStatement(sql);
              ResultSet rs = pst.executeQuery()) {
@@ -302,7 +305,7 @@ public class SeanceService implements IServices<Seance> {
             + (hasModeColumn ? ", mode_seance = ?" : "")
             + (hasSalleColumn ? ", salle_id = ?" : "")
             + (hasPriceColumn ? ", price_tnd = ?" : "")
-            + " WHERE id = ?";
+            + " WHERE " + getSeanceIdColumn() + " = ?";
 
         try (PreparedStatement pst = requireConnection().prepareStatement(sql)) {
             String normalizedSubject = normalizeText(seance.getMatiere());
@@ -364,7 +367,7 @@ public class SeanceService implements IServices<Seance> {
         }
 
         Connection connection = requireConnection();
-        String sql = "DELETE FROM seance WHERE id = ?";
+        String sql = "DELETE FROM seance WHERE " + getSeanceIdColumn() + " = ?";
         boolean previousAutoCommit;
         try {
             previousAutoCommit = connection.getAutoCommit();
@@ -885,23 +888,31 @@ public class SeanceService implements IServices<Seance> {
         return columnExists("seance", "price_tnd");
     }
 
-    private boolean tableExists(String tableName) {
-        if (cnx == null || tableName == null || tableName.isBlank()) {
-            return false;
+    private String getSeanceIdColumn() {
+        if (cachedSeanceIdColumn != null && !cachedSeanceIdColumn.isBlank()) {
+            return cachedSeanceIdColumn;
         }
-        try (ResultSet tables = cnx.getMetaData().getTables(cnx.getCatalog(), null, tableName, null)) {
-            return tables.next();
+        if (columnExists("seance", "id")) {
+            cachedSeanceIdColumn = "id";
+        } else if (columnExists("seance", "idSeance")) {
+            cachedSeanceIdColumn = "idSeance";
+        } else {
+            cachedSeanceIdColumn = "id";
+        }
+        return cachedSeanceIdColumn;
+    }
+
+    private boolean tableExists(String tableName) {
+        try {
+            return DatabaseSchemaUtils.tableExists(cnx, tableName);
         } catch (SQLException e) {
             return false;
         }
     }
 
     private boolean columnExists(String tableName, String columnName) {
-        if (!tableExists(tableName)) {
-            return false;
-        }
-        try (ResultSet columns = cnx.getMetaData().getColumns(cnx.getCatalog(), null, tableName, columnName)) {
-            return columns.next();
+        try {
+            return DatabaseSchemaUtils.columnExists(cnx, tableName, columnName);
         } catch (SQLException e) {
             return false;
         }
