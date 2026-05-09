@@ -25,10 +25,7 @@ public final class JwtService {
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
     private static final long TOKEN_LIFETIME_SECONDS = 8 * 60 * 60;
-    private static final String SECRET_KEY = System.getenv().getOrDefault(
-        "FAHAMNI_JWT_SECRET",
-        "fahamni-desktop-demo-secret-change-me"
-    );
+    private static final String SECRET_KEY = resolveSecretKey();
 
     private JwtService() {
     }
@@ -145,5 +142,14 @@ public final class JwtService {
 
     private static String escape(String value) {
         return value == null ? "" : value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    private static String resolveSecretKey() {
+        String configuredSecret = LocalConfig.get("FAHAMNI_JWT_SECRET");
+        if (configuredSecret != null && !configuredSecret.isBlank()) {
+            return configuredSecret.trim();
+        }
+
+        return "fahamni-desktop-demo-secret-change-me";
     }
 }

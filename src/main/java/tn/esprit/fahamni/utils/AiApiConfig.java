@@ -22,10 +22,10 @@ public record AiApiConfig(
 
     public static AiApiConfig fromEnv() {
         return new AiApiConfig(
-            System.getenv("GEMINI_API_KEY"),
-            System.getenv("GEMINI_MODEL"),
-            resolveBaseUri(System.getenv("GEMINI_BASE_URL")),
-            resolveTimeout(System.getenv("GEMINI_TIMEOUT_SECONDS"))
+            LocalConfig.get("GEMINI_API_KEY"),
+            LocalConfig.get("GEMINI_MODEL"),
+            resolveBaseUri(LocalConfig.get("GEMINI_BASE_URL")),
+            resolveTimeout(LocalConfig.get("GEMINI_TIMEOUT_SECONDS"))
         );
     }
 

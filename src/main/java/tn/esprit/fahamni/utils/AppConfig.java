@@ -115,6 +115,12 @@ public final class AppConfig {
         if (!prop.isBlank()) {
             return prop.trim();
         }
+
+        String localValue = LocalConfig.get(key);
+        if (localValue != null && !localValue.isBlank()) {
+            return localValue.trim();
+        }
+
         return getEnv(key, fallback);
     }
 
@@ -122,6 +128,11 @@ public final class AppConfig {
         String prop = System.getProperty(key);
         if (prop != null && !prop.isBlank() && !prop.startsWith("${")) {
             return prop.trim();
+        }
+
+        String localValue = LocalConfig.get(key);
+        if (localValue != null && !localValue.isBlank()) {
+            return localValue.trim();
         }
 
         String value = System.getenv(key);
