@@ -49,6 +49,7 @@ public class SeanceService implements IServices<Seance> {
     private final MockTutorDirectoryService tutorDirectoryService = new MockTutorDirectoryService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private String cachedSeanceIdColumn;
+    private final SessionRoomCustomizationService sessionRoomCustomizationService = new SessionRoomCustomizationService();
 
     public SeanceService() {
         ensurePriceColumn();
@@ -139,6 +140,8 @@ public class SeanceService implements IServices<Seance> {
         if (cnx == null) {
             return seances;
         }
+
+        sessionRoomCustomizationService.publishApprovedDraftSessions();
 
         String sql = """
             SELECT %s AS id, matiere, start_at, duration_min, max_participants, status,
@@ -380,6 +383,7 @@ public class SeanceService implements IServices<Seance> {
 
         try (PreparedStatement pst = connection.prepareStatement(sql)) {
             deleteSeanceEquipements(connection, seance.getId());
+            sessionRoomCustomizationService.deleteBySeanceId(seance.getId());
             pst.setInt(1, seance.getId());
             int deletedRows = pst.executeUpdate();
             if (deletedRows == 0) {
@@ -486,6 +490,10 @@ public class SeanceService implements IServices<Seance> {
         if (infrastructureError != null) {
             return infrastructureError;
         }
+        String customizationError = sessionRoomCustomizationService.getPublicationBlockingReason(seance);
+        if (customizationError != null) {
+            return customizationError;
+        }
         return null;
     }
 
@@ -533,12 +541,21 @@ public class SeanceService implements IServices<Seance> {
                 String roomName = rs.getString("nom");
                 int capacity = rs.getInt("capacite");
                 String status = rs.getString("etat");
+                int allowedCapacity = capacity;
+                Integer overrideCapacity = seance.getRoomCapacityValidationOverride();
+                if (overrideCapacity != null && overrideCapacity > allowedCapacity) {
+                    allowedCapacity = overrideCapacity;
+                }
 
                 if (!isAvailable(status)) {
                     return "La salle \"" + roomName + "\" n'est pas disponible.";
                 }
-                if (seance.getMaxParticipants() > capacity) {
-                    return "La capacite de la salle \"" + roomName + "\" est limitee a " + capacity + " places.";
+                if (seance.getMaxParticipants() > allowedCapacity) {
+                    return allowedCapacity > capacity
+                        ? "La salle \"" + roomName + "\" accepte " + capacity
+                            + " places en configuration initiale et jusqu'a " + allowedCapacity
+                            + " places avec personnalisation."
+                        : "La capacite de la salle \"" + roomName + "\" est limitee a " + capacity + " places.";
                 }
             }
         } catch (SQLException e) {

@@ -83,6 +83,11 @@ public class NotificationService implements IServices<Notification> {
         return getUnread(0);
     }
 
+    /** Dernieres notifications admin, lues et non lues */
+    public List<Notification> getAllForAdmin(int limit) {
+        return getAll(0, limit);
+    }
+
     /** Notifications non lues d'un tuteur */
     public List<Notification> getUnreadForUser(int userId) {
         return getUnread(userId);
@@ -154,6 +159,10 @@ public class NotificationService implements IServices<Notification> {
         markAllRead(0);
     }
 
+    public void markReadForAdminMatching(String messageFragment) {
+        markReadMatching(0, messageFragment);
+    }
+
     public void markAllReadForUser(int userId) {
         markAllRead(userId);
     }
@@ -167,6 +176,19 @@ public class NotificationService implements IServices<Notification> {
             ps.executeUpdate();
         } catch (Exception e) {
             System.err.println("NotificationService.markAllRead: " + e.getMessage());
+        }
+    }
+
+    private void markReadMatching(int recipientId, String messageFragment) {
+        Connection c = cnx();
+        if (c == null || messageFragment == null || messageFragment.isBlank()) return;
+        try (PreparedStatement ps = c.prepareStatement(
+                "UPDATE notification SET is_read = 1 WHERE recipient_id = ? AND is_read = 0 AND message LIKE ?")) {
+            ps.setInt(1, recipientId);
+            ps.setString(2, "%" + messageFragment.trim() + "%");
+            ps.executeUpdate();
+        } catch (Exception e) {
+            System.err.println("NotificationService.markReadMatching: " + e.getMessage());
         }
     }
 

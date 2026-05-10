@@ -44,7 +44,7 @@
 
                 <HBox alignment="CENTER_RIGHT" spacing="10.0" styleClass="front-navbar-actions">
                     <HBox alignment="CENTER" spacing="10.0" styleClass="front-navbar-utility-inline">
-                        <StackPane styleClass="front-alert-button-wrap">
+                        <StackPane fx:id="alertButtonWrap" styleClass="front-alert-button-wrap">
                             <Button fx:id="alertButton" onAction="#toggleAlertsPopup" styleClass="front-navbar-icon-button">
                                 <graphic>
                                     <StackPane styleClass="front-alert-icon-shell">

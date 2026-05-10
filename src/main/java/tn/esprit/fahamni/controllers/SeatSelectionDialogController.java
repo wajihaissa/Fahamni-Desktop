@@ -53,12 +53,22 @@ public class SeatSelectionDialogController {
     private SeatSelectionLayoutResolver.LayoutProjection currentLayoutProjection = SeatSelectionLayoutResolver.emptyProjection();
 
     public void configure(Seance seance, List<SeatSelectionOption> seatOptions, Button confirmButton, String typeDisposition) {
+        configure(seance, seatOptions, confirmButton, typeDisposition, null);
+    }
+
+    public void configure(
+        Seance seance,
+        List<SeatSelectionOption> seatOptions,
+        Button confirmButton,
+        String typeDisposition,
+        List<SeatSelectionLayoutResolver.SeatLayoutInput> customLayoutInputs
+    ) {
         this.confirmButton = confirmButton;
         this.selectedPlaceId = null;
         this.selectedSeatButton = null;
         this.currentLayoutProjection = SeatSelectionLayoutResolver.resolve(
             typeDisposition,
-            buildSeatLayoutInputs(seatOptions == null ? List.of() : seatOptions)
+            customLayoutInputs == null ? buildSeatLayoutInputs(seatOptions == null ? List.of() : seatOptions) : customLayoutInputs
         );
 
         if (this.confirmButton != null) {

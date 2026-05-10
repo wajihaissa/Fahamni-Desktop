@@ -1649,3 +1649,321 @@
 .recommendation-confidence-bar-base > .bar {
     -fx-background-color: linear-gradient(to right, #9aa7c9 0%, #b5bfd9 100%);
 }
+
+.room-customization-dialog-root {
+    -fx-background-color:
+        radial-gradient(center 10% 6%, radius 34%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.00) 74%),
+        radial-gradient(center 88% 10%, radius 28%, rgba(183, 172, 255, 0.12) 0%, rgba(183, 172, 255, 0.00) 72%),
+        linear-gradient(to bottom, #f5f7fc 0%, #eef2f8 100%);
+}
+
+.room-customization-dialog-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+}
+
+.room-customization-dialog-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.room-customization-dialog-shell {
+    -fx-spacing: 18px;
+    -fx-padding: 24px;
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.99) 0%, rgba(247, 248, 252, 0.98) 100%);
+    -fx-border-color: #dde2ec;
+    -fx-border-width: 1px;
+    -fx-background-radius: 26px;
+    -fx-border-radius: 26px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.07), 18, 0.16, 0, 5);
+}
+
+.room-customization-hero {
+    -fx-background-color:
+        linear-gradient(to right, #fcfcff 0%, #f4f7ff 100%);
+    -fx-border-color: #e4e7f3;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-padding: 16px 18px;
+    -fx-effect: none;
+}
+
+.room-customization-header {
+    -fx-spacing: 6px;
+}
+
+.room-customization-title {
+    -fx-text-fill: #1f2737;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-subtitle {
+    -fx-text-fill: #6f788b;
+    -fx-font-size: 13px;
+}
+
+.room-customization-chip-row {
+    -fx-alignment: center-left;
+    -fx-spacing: 8px;
+}
+
+.room-customization-chip {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-border-color: rgba(223, 236, 248, 0.28);
+    -fx-border-width: 1px;
+    -fx-background-radius: 999px;
+    -fx-border-radius: 999px;
+    -fx-padding: 6px 12px;
+    -fx-text-fill: rgba(244, 248, 252, 0.92);
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-chip.accent {
+    -fx-background-color: linear-gradient(to right, rgba(255, 245, 229, 0.92) 0%, rgba(255, 233, 205, 0.92) 100%);
+    -fx-border-color: rgba(247, 211, 166, 0.95);
+    -fx-text-fill: #8d4a0d;
+}
+
+.room-customization-hero-copy {
+    -fx-background-color: #f8f9fd;
+    -fx-border-color: #e4e8f2;
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+    -fx-padding: 10px 12px;
+    -fx-text-fill: #556176;
+    -fx-font-size: 12px;
+}
+
+.room-customization-stat-card {
+    -fx-spacing: 4px;
+    -fx-padding: 14px 15px;
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #fafafe 100%);
+    -fx-border-color: #e3e6ef;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.05), 12, 0.14, 0, 4);
+}
+
+.room-customization-stat-label {
+    -fx-text-fill: #6a7a8d;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-stat-value {
+    -fx-text-fill: #5e50c6;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-stat-note {
+    -fx-text-fill: #6f788b;
+    -fx-font-size: 11px;
+}
+
+.room-customization-section-card {
+    -fx-spacing: 12px;
+    -fx-padding: 18px 18px 16px 18px;
+    -fx-background-color: linear-gradient(to bottom, #f7f8ff 0%, #eef3ff 100%);
+    -fx-border-color: #dbe1f3;
+    -fx-border-width: 1px;
+    -fx-background-radius: 18px;
+    -fx-border-radius: 18px;
+    -fx-effect: none;
+}
+
+.room-customization-section-title {
+    -fx-text-fill: #1f2737;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-section-copy {
+    -fx-text-fill: #6f788b;
+    -fx-font-size: 12px;
+}
+
+.room-customization-field-row {
+    -fx-alignment: top-left;
+}
+
+.room-customization-field {
+    -fx-spacing: 6px;
+}
+
+.room-customization-field-label {
+    -fx-text-fill: #424d63;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-input.combo-box-base,
+.room-customization-spinner,
+.room-customization-textarea {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f5f9fc 100%);
+    -fx-border-color: #cfdae4;
+    -fx-border-width: 1px;
+    -fx-background-radius: 15px;
+    -fx-border-radius: 15px;
+    -fx-text-fill: #24364d;
+    -fx-prompt-text-fill: #9aa7b4;
+}
+
+.room-customization-input.combo-box-base:focused,
+.room-customization-spinner:focused,
+.room-customization-textarea:focused,
+.room-customization-spinner .text-field:focused {
+    -fx-border-color: #6b5dd3;
+    -fx-effect: dropshadow(gaussian, rgba(107, 93, 211, 0.18), 12, 0.18, 0, 2);
+}
+
+.room-customization-spinner,
+.room-customization-input.combo-box-base {
+    -fx-pref-height: 42px;
+}
+
+.room-customization-spinner .text-field,
+.room-customization-textarea .content {
+    -fx-background-color: transparent;
+}
+
+.room-customization-textarea {
+    -fx-padding: 2px;
+}
+
+.room-customization-toggle {
+    -fx-text-fill: #46556f;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 2px 0 2px;
+}
+
+.room-customization-toggle .box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cfd7e7;
+    -fx-border-radius: 7px;
+    -fx-background-radius: 7px;
+}
+
+.room-customization-toggle:selected .box {
+    -fx-background-color: #f0edff;
+    -fx-border-color: #6b5dd3;
+}
+
+.room-customization-toggle:selected .mark {
+    -fx-background-color: #4f46ba;
+}
+
+.room-customization-status-text {
+    -fx-text-fill: #1f3d6d;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-admin-box {
+    -fx-spacing: 6px;
+    -fx-padding: 12px 14px;
+    -fx-background-color: #f8f9fd;
+    -fx-border-color: #e4e8f2;
+    -fx-border-width: 1px;
+    -fx-background-radius: 14px;
+    -fx-border-radius: 14px;
+}
+
+.room-customization-admin-title {
+    -fx-text-fill: #17356d;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-admin-copy {
+    -fx-text-fill: #42546f;
+    -fx-font-size: 12px;
+}
+
+.room-customization-feedback {
+    -fx-padding: 12px 14px;
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-border-width: 1px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.room-customization-feedback.success {
+    -fx-background-color: #ecf7f0;
+    -fx-border-color: #d5ecdd;
+    -fx-text-fill: #1d6b46;
+}
+
+.room-customization-feedback.error {
+    -fx-background-color: #fff0f1;
+    -fx-border-color: #f2d6da;
+    -fx-text-fill: #b9495a;
+}
+
+.room-customization-button-row {
+    -fx-alignment: center-left;
+    -fx-padding: 8px 0 0 0;
+}
+
+.room-customization-button {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 16px;
+    -fx-border-radius: 16px;
+    -fx-padding: 12px 16px;
+    -fx-cursor: hand;
+}
+
+.room-customization-button-primary {
+    -fx-background-color: linear-gradient(to right, #5e4dc7 0%, #4c67cb 100%);
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(94, 77, 199, 0.20), 12, 0.18, 0, 4);
+}
+
+.room-customization-button-primary:hover {
+    -fx-background-color: linear-gradient(to right, #6d5dd3 0%, #5b76d6 100%);
+}
+
+.room-customization-button-secondary {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f8f9fd 100%);
+    -fx-border-color: #d7dcef;
+    -fx-border-width: 1px;
+    -fx-text-fill: #344158;
+}
+
+.room-customization-button-secondary:hover {
+    -fx-background-color: #f4f2ff;
+    -fx-border-color: #c8c0f0;
+    -fx-text-fill: #5b49be;
+}
+
+.room-customization-button-ghost {
+    -fx-background-color: linear-gradient(to bottom, #ffffff 0%, #f4f7fa 100%);
+    -fx-border-color: #d6e0e8;
+    -fx-border-width: 1px;
+    -fx-text-fill: #44586d;
+}
+
+.room-customization-button-ghost:hover {
+    -fx-background-color: #f4f8fb;
+    -fx-border-color: #c4d4e2;
+}
+
+.room-customization-button-danger {
+    -fx-background-color: linear-gradient(to bottom, #fff3f6 0%, #fde8ef 100%);
+    -fx-border-color: #f1c8d8;
+    -fx-border-width: 1px;
+    -fx-text-fill: #b64a72;
+}
+
+.room-customization-button-danger:hover {
+    -fx-background-color: linear-gradient(to bottom, #fff8fa 0%, #fbdce7 100%);
+    -fx-border-color: #e9b8cb;
+}

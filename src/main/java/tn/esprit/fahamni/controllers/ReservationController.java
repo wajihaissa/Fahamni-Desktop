@@ -6,15 +6,19 @@ import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import tn.esprit.fahamni.Models.Equipement;
+import tn.esprit.fahamni.Models.Place;
 import tn.esprit.fahamni.Models.Salle;
 import tn.esprit.fahamni.Models.SalleEquipement;
 import tn.esprit.fahamni.Models.Seance;
+import tn.esprit.fahamni.Models.SessionRoomCustomizationConfig;
+import tn.esprit.fahamni.Models.SessionRoomCustomizationRequest;
 import tn.esprit.fahamni.room3d.Room3DPreviewData;
 import tn.esprit.fahamni.room3d.Room3DPreviewService;
 import tn.esprit.fahamni.room3d.Room3DViewMode;
 import tn.esprit.fahamni.room3d.Room3DViewerLauncher;
 import tn.esprit.fahamni.room3d.RoomSeatVisualState;
 import tn.esprit.fahamni.services.AdminEquipementService;
+import tn.esprit.fahamni.services.AdminPlaceService;
 import tn.esprit.fahamni.services.AdminSalleService;
 import tn.esprit.fahamni.services.MatchingService;
 import tn.esprit.fahamni.services.MatchingService.MatchingAcceptanceResult;
@@ -34,6 +38,7 @@ import tn.esprit.fahamni.services.ReservationService.StudentReservationItem;
 import tn.esprit.fahamni.services.ReservationService.TutorReservationRequest;
 import tn.esprit.fahamni.services.SalleEquipementService;
 import tn.esprit.fahamni.services.SessionCreationContext;
+import tn.esprit.fahamni.services.SessionRoomCustomizationService;
 import tn.esprit.fahamni.services.SeanceService;
 import tn.esprit.fahamni.services.TutorRecommendationService.RecommendationObjective;
 import tn.esprit.fahamni.services.TutorRecommendationService;
@@ -132,6 +137,37 @@ public class ReservationController {
     private static final String MODE_ONSITE_LABEL = "Presentiel";
     private static final String STATUS_AVAILABLE = "disponible";
     private static final String STATUS_PENDING = "attente";
+    private static final int ROOM_CUSTOMIZATION_CAPACITY_BONUS = 10;
+    private static final List<String> ROOM_CUSTOMIZATION_DISPOSITIONS = List.of(
+        "classe",
+        "u",
+        "conference",
+        "reunion",
+        "atelier",
+        "informatique"
+    );
+    private static final List<String> ROOM_CUSTOMIZATION_TABLE_STYLES = List.of(
+        "standard",
+        "individuelle",
+        "double",
+        "ronde",
+        "reunion",
+        "atelier"
+    );
+    private static final Map<String, List<String>> ROOM_CUSTOMIZATION_TABLE_STYLES_BY_DISPOSITION = Map.of(
+        "classe", List.of("standard", "individuelle", "double", "ronde"),
+        "u", List.of("standard", "reunion"),
+        "conference", List.of("standard"),
+        "reunion", List.of("reunion", "ronde"),
+        "atelier", List.of("atelier", "double", "ronde"),
+        "informatique", List.of("standard")
+    );
+    private static final List<String> ROOM_CUSTOMIZATION_CHAIR_STYLES = List.of(
+        "standard",
+        "conference",
+        "ergonomique",
+        "amphi"
+    );
     private static final List<Integer> SESSION_PAGE_SIZE_OPTIONS = List.of(5, 10, 20);
     private static final int DEFAULT_SESSION_PAGE_SIZE = 5;
     private static final int RECOMMENDATION_BRIEFING_LIMIT = 3;
@@ -156,10 +192,12 @@ public class ReservationController {
     private final ReservationService reservationService = new ReservationService();
     private final AdminSalleService salleService = new AdminSalleService();
     private final AdminEquipementService equipementService = new AdminEquipementService();
+    private final AdminPlaceService placeService = new AdminPlaceService();
     private final SalleEquipementService salleEquipementService = new SalleEquipementService();
     private final TutorRecommendationService tutorRecommendationService = new TutorRecommendationService();
     private final MatchingService matchingService = new MatchingService();
     private final Room3DPreviewService room3DPreviewService = new Room3DPreviewService();
+    private final SessionRoomCustomizationService sessionRoomCustomizationService = new SessionRoomCustomizationService();
     private final List<Salle> availableSalles = new ArrayList<>();
     private final List<Equipement> availableEquipements = new ArrayList<>();
     private final Map<Integer, List<SalleEquipement>> roomFixedEquipementsBySalleId = new LinkedHashMap<>();
@@ -256,6 +294,12 @@ public class ReservationController {
 
     @FXML
     private Button sessionRoomPreview3DButton;
+
+    @FXML
+    private Button sessionRoomCustomizeButton;
+
+    @FXML
+    private Label sessionRoomCustomizationStatusLabel;
 
     @FXML
     private Label sessionRoomPreviewDescriptionLabel;
@@ -366,6 +410,7 @@ public class ReservationController {
         loadSessionDashboard();
         showAvailableSessionsSection();
         applyPendingSessionPrefill();
+        updateRoomCustomizationCallToAction();
     }
 
     @FXML
@@ -455,6 +500,27 @@ public class ReservationController {
     }
 
     @FXML
+    private void handleCustomizeSelectedRoom() {
+        hideFeedback();
+
+        if (!Seance.MODE_ONSITE.equals(resolveSelectedMode())) {
+            showFeedback("La personnalisation de salle est disponible uniquement pour une seance presentielle.", false);
+            return;
+        }
+
+        Salle selectedSalle = resolveSelectedSalle();
+        if (selectedSalle == null) {
+            showFeedback("Choisissez une salle avant de preparer une demande de personnalisation.", false);
+            return;
+        }
+
+        SessionRoomCustomizationRequest existingRequest = editingSessionId == null
+            ? null
+            : sessionRoomCustomizationService.findBySeanceIdQuietly(editingSessionId);
+        openRoomCustomizationDialog(selectedSalle, existingRequest);
+    }
+
+    @FXML
     private void handleClearSessionForm() {
         pendingMatchingPlan = null;
         clearSessionForm();
@@ -504,6 +570,10 @@ public class ReservationController {
     }
 
     private Seance buildSeance(int status) {
+        return buildSeance(status, false);
+    }
+
+    private Seance buildSeance(int status, boolean forceCustomizationCapacityBonus) {
         String subject = requireText(sessionSubjectField.getText(), "Renseignez la matiere de la seance.");
         LocalDateTime startAt = parseStartAt();
         int duration = parseBoundedInt(
@@ -542,13 +612,20 @@ public class ReservationController {
             if (selectedSalle == null) {
                 throw new IllegalArgumentException("Choisissez une salle disponible pour une seance presentielle.");
             }
+            boolean allowCustomizationCapacityBonus = forceCustomizationCapacityBonus
+                || hasCurrentSessionCustomizationRequestForSalle(selectedSalle);
+            int allowedCapacity = resolveAllowedOnsiteCapacity(selectedSalle, allowCustomizationCapacityBonus);
             findRoomScheduleConflict(selectedSalle.getIdSalle(), startAt, duration)
                 .ifPresent(conflict -> {
                     throw new IllegalArgumentException(buildRoomScheduleConflictReason(conflict));
                 });
-            if (capacity > selectedSalle.getCapacite()) {
+            if (capacity > allowedCapacity) {
                 throw new IllegalArgumentException(
-                    "La salle choisie accepte seulement " + selectedSalle.getCapacite() + " participants."
+                    allowCustomizationCapacityBonus
+                        ? "La salle choisie accepte " + selectedSalle.getCapacite()
+                            + " participants en configuration initiale et jusqu'a " + allowedCapacity
+                            + " participants avec une demande de personnalisation."
+                        : "La salle choisie accepte seulement " + selectedSalle.getCapacite() + " participants."
                 );
             }
             salleId = selectedSalle.getIdSalle();
@@ -576,6 +653,14 @@ public class ReservationController {
         seance.setMode(mode);
         seance.setSalleId(salleId);
         seance.setEquipementQuantites(equipementQuantites);
+        if (Seance.MODE_ONSITE.equals(mode) && salleId != null && salleId > 0) {
+            Salle selectedSalle = resolveSelectedSalle();
+            boolean allowCustomizationCapacityBonus = forceCustomizationCapacityBonus
+                || hasCurrentSessionCustomizationRequestForSalle(selectedSalle);
+            if (selectedSalle != null && allowCustomizationCapacityBonus) {
+                seance.setRoomCapacityValidationOverride(resolveAllowedOnsiteCapacity(selectedSalle, true));
+            }
+        }
         return seance;
     }
 
@@ -1304,6 +1389,7 @@ public class ReservationController {
             buildInfrastructureFactCard("Acces", selectedSalle.isAccesHandicape() ? "Handicap" : "Standard")
         );
         updateRoomFixedEquipmentPreview(selectedSalle.getIdSalle());
+        updateRoomCustomizationCallToAction();
     }
 
     private void showRoomUnavailablePreview(String reason) {
@@ -1317,6 +1403,7 @@ public class ReservationController {
         }
         sessionRoomFactsContainer.getChildren().clear();
         resetRoomFixedEquipmentPreview();
+        updateRoomCustomizationCallToAction();
     }
 
     private void resetRoomPreview() {
@@ -1330,6 +1417,62 @@ public class ReservationController {
         }
         sessionRoomFactsContainer.getChildren().clear();
         resetRoomFixedEquipmentPreview();
+        updateRoomCustomizationCallToAction();
+    }
+
+    private void updateRoomCustomizationCallToAction() {
+        if (sessionRoomCustomizeButton == null || sessionRoomCustomizationStatusLabel == null) {
+            return;
+        }
+
+        boolean onsite = Seance.MODE_ONSITE.equals(resolveSelectedMode());
+        Salle selectedSalle = resolveSelectedSalle();
+        String conflictReason = selectedSalle == null ? null : roomScheduleConflicts.get(selectedSalle.getIdSalle());
+        SessionRoomCustomizationRequest request = editingSessionId == null
+            ? null
+            : sessionRoomCustomizationService.findBySeanceIdQuietly(editingSessionId);
+
+        boolean canOpenCustomization = onsite && selectedSalle != null && conflictReason == null;
+        sessionRoomCustomizeButton.setDisable(!canOpenCustomization);
+
+        if (!onsite) {
+            sessionRoomCustomizeButton.setText("Personnaliser la salle");
+            sessionRoomCustomizationStatusLabel.setText("La personnalisation est disponible uniquement pour une seance presentielle.");
+            return;
+        }
+
+        if (selectedSalle == null) {
+            sessionRoomCustomizeButton.setText("Personnaliser la salle");
+            sessionRoomCustomizationStatusLabel.setText("Choisissez d'abord une salle pour preparer une demande de personnalisation.");
+            return;
+        }
+
+        if (conflictReason != null) {
+            sessionRoomCustomizeButton.setText("Personnaliser la salle");
+            sessionRoomCustomizationStatusLabel.setText("La salle doit etre libre sur le creneau choisi avant de personnaliser son amenagement.");
+            return;
+        }
+
+        if (request == null) {
+            sessionRoomCustomizeButton.setText("Personnaliser la salle");
+            sessionRoomCustomizationStatusLabel.setText(
+                editingSessionId == null
+                    ? "La demande sera rattachee a un brouillon automatiquement lors de l'envoi."
+                    : "Aucune personnalisation n'a encore ete envoyee pour cette seance."
+            );
+            return;
+        }
+
+        if (request.baseSalleId() != selectedSalle.getIdSalle()) {
+            sessionRoomCustomizeButton.setText("Mettre a jour la demande");
+            sessionRoomCustomizationStatusLabel.setText(
+                "La salle selectionnee differe de la demande enregistree. Ouvrez-la pour synchroniser la personnalisation."
+            );
+            return;
+        }
+
+        sessionRoomCustomizeButton.setText(request.isApproved() ? "Modifier la demande" : "Reouvrir la demande");
+        sessionRoomCustomizationStatusLabel.setText(formatCustomizationRequestStatus(request));
     }
 
     private void updateEquipmentPreview() {
@@ -4775,7 +4918,13 @@ public class ReservationController {
             if (cancelDialogButton != null) {
                 cancelDialogButton.getStyleClass().add("backoffice-secondary-button");
             }
-            controller.configure(seance, seatOptions, confirmButton, resolveSalleDisposition(seance.getSalleId()));
+            controller.configure(
+                seance,
+                seatOptions,
+                confirmButton,
+                resolveEffectiveSalleDisposition(seance),
+                resolveEffectiveSeatLayoutInputs(seance, seatOptions)
+            );
 
             seatDialog.setResultConverter(buttonType ->
                 buttonType == confirmButtonType ? controller.getSelectedPlaceId() : null
@@ -4904,13 +5053,14 @@ public class ReservationController {
     }
 
     private void launchSeatSelection3DFlow(Seance seance, List<SeatSelectionOption> seatOptions) {
-        Salle salle = resolveSalleById(seance == null ? null : seance.getSalleId());
-        if (salle == null) {
+        Salle baseSalle = resolveSalleById(seance == null ? null : seance.getSalleId());
+        if (baseSalle == null) {
             showReservationActionFeedback("Impossible de charger la salle liee a cette seance pour la selection 3D.", false);
             return;
         }
 
-        Room3DPreviewData previewData = buildSeatSelection3DPreview(salle, seatOptions);
+        Salle effectiveSalle = sessionRoomCustomizationService.resolveEffectiveSalleForSeance(seance, baseSalle);
+        Room3DPreviewData previewData = buildSeatSelection3DPreview(seance, effectiveSalle, seatOptions);
         stopActiveRoom3DSelectionMonitor();
         Room3DViewerLauncher.clearSelectedSeatSnapshot();
         Room3DViewerLauncher.showPreview(previewData);
@@ -5176,16 +5326,11 @@ public class ReservationController {
         }
     }
 
-    private Room3DPreviewData buildSeatSelection3DPreview(Salle salle, List<SeatSelectionOption> seatOptions) {
+    private Room3DPreviewData buildSeatSelection3DPreview(Seance seance, Salle salle, List<SeatSelectionOption> seatOptions) {
+        List<SeatSelectionLayoutResolver.SeatLayoutInput> effectiveLayoutInputs = resolveEffectiveSeatLayoutInputs(seance, seatOptions);
         SeatSelectionLayoutResolver.LayoutProjection layoutProjection = SeatSelectionLayoutResolver.resolve(
-            salle == null ? null : salle.getTypeDisposition(),
-            seatOptions.stream()
-                .map(option -> new SeatSelectionLayoutResolver.SeatLayoutInput(
-                    option.placeId(),
-                    option.row(),
-                    option.column()
-                ))
-                .toList()
+            resolveEffectiveSalleDisposition(seance, salle),
+            effectiveLayoutInputs
         );
         List<Room3DPreviewData.SeatPreview> seats = seatOptions.stream()
             .map(option -> {
@@ -6569,6 +6714,992 @@ public class ReservationController {
         showAddSessionSection();
     }
 
+    private void openRoomCustomizationDialog(Salle selectedSalle, SessionRoomCustomizationRequest existingRequest) {
+        List<Place> configuredPlaces = loadConfiguredPlacesForSalle(selectedSalle.getIdSalle());
+        int maxCapacity = resolveCustomizationMaxCapacity(selectedSalle, configuredPlaces);
+        SessionRoomCustomizationConfig initialConfig = resolveInitialCustomizationConfig(selectedSalle, existingRequest, maxCapacity);
+
+        Label helperLabel = new Label(
+            editingSessionId == null
+                ? "Brouillon cree a l'envoi. Utilisez l'editeur 3D puis Valider pour synchroniser."
+                : "Liee a cette seance. Utilisez l'editeur 3D puis Valider pour synchroniser."
+        );
+        helperLabel.setWrapText(true);
+
+        ComboBox<String> dispositionComboBox = new ComboBox<>();
+        dispositionComboBox.getItems().setAll(ROOM_CUSTOMIZATION_DISPOSITIONS);
+        dispositionComboBox.setMaxWidth(Double.MAX_VALUE);
+        dispositionComboBox.setValue(firstNonBlank(initialConfig.disposition(), selectedSalle.getTypeDisposition(), "classe"));
+        dispositionComboBox.getStyleClass().add("room-customization-input");
+
+        Spinner<Integer> capacitySpinner = new Spinner<>();
+        capacitySpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(
+            1,
+            Math.max(1, maxCapacity),
+            clampCustomizationCapacity(initialConfig.capacity(), Math.max(1, maxCapacity))
+        ));
+        capacitySpinner.setEditable(true);
+        capacitySpinner.setMaxWidth(Double.MAX_VALUE);
+        capacitySpinner.getStyleClass().addAll("room-customization-input", "room-customization-spinner");
+
+        ComboBox<String> tableStyleComboBox = new ComboBox<>();
+        tableStyleComboBox.setMaxWidth(Double.MAX_VALUE);
+        tableStyleComboBox.getStyleClass().add("room-customization-input");
+        updateCompatibleTableStyleChoices(
+            tableStyleComboBox,
+            dispositionComboBox.getValue(),
+            firstNonBlank(initialConfig.tableStyle(), "standard")
+        );
+
+        ComboBox<String> chairStyleComboBox = new ComboBox<>();
+        chairStyleComboBox.setMaxWidth(Double.MAX_VALUE);
+        chairStyleComboBox.getStyleClass().add("room-customization-input");
+        updateCompatibleChairStyleChoices(
+            chairStyleComboBox,
+            dispositionComboBox.getValue(),
+            selectedSalle == null ? null : selectedSalle.getTypeSalle(),
+            firstNonBlank(initialConfig.chairStyle(), "standard")
+        );
+
+        CheckBox accessibilityCheckBox = new CheckBox("Prevoir un amenagement PMR renforce");
+        accessibilityCheckBox.setSelected(initialConfig.accessibilityRequiredOrDefault(selectedSalle.isAccesHandicape()));
+        accessibilityCheckBox.getStyleClass().add("room-customization-toggle");
+
+        TextArea commentArea = new TextArea(existingRequest == null || existingRequest.commentTuteur() == null
+            ? ""
+            : existingRequest.commentTuteur());
+        commentArea.setPromptText("Ex: disposition atelier avec tables rondes pour une seance collaborative.");
+        commentArea.setPrefRowCount(4);
+        commentArea.setWrapText(true);
+        commentArea.getStyleClass().add("room-customization-textarea");
+
+        Label requestStatusLabel = new Label(
+            existingRequest == null
+                ? "Aucune demande enregistree pour cette seance."
+                : formatCustomizationRequestStatus(existingRequest)
+        );
+        requestStatusLabel.setWrapText(true);
+        requestStatusLabel.getStyleClass().add("room-customization-status-text");
+
+        VBox adminContextBox = new VBox(6.0);
+        adminContextBox.getStyleClass().add("room-customization-admin-box");
+        if (existingRequest != null && normalizeText(existingRequest.commentAdmin()) != null) {
+            Label adminCommentTitle = new Label("Dernier retour admin");
+            adminCommentTitle.getStyleClass().add("room-customization-admin-title");
+            Label adminCommentValue = new Label(existingRequest.commentAdmin());
+            adminCommentValue.setWrapText(true);
+            adminCommentValue.getStyleClass().add("room-customization-admin-copy");
+            adminContextBox.getChildren().addAll(adminCommentTitle, adminCommentValue);
+        } else {
+            adminContextBox.setManaged(false);
+            adminContextBox.setVisible(false);
+        }
+
+        Label dialogFeedbackLabel = new Label();
+        dialogFeedbackLabel.setWrapText(true);
+        dialogFeedbackLabel.setManaged(false);
+        dialogFeedbackLabel.setVisible(false);
+        dialogFeedbackLabel.getStyleClass().add("room-customization-feedback");
+
+        Button previewButton = new Button("Editer en 3D");
+        Button saveButton = new Button(existingRequest == null ? "Envoyer la demande" : "Mettre a jour la demande");
+        Button closeButton = new Button("Fermer");
+        Button cancelRequestButton = new Button("Annuler la demande");
+        previewButton.getStyleClass().addAll("room-customization-button", "room-customization-button-secondary");
+        saveButton.getStyleClass().addAll("room-customization-button", "room-customization-button-primary");
+        closeButton.getStyleClass().addAll("room-customization-button", "room-customization-button-ghost");
+        cancelRequestButton.getStyleClass().addAll("room-customization-button", "room-customization-button-danger");
+        previewButton.setMinWidth(138.0);
+        saveButton.setMinWidth(176.0);
+        closeButton.setMinWidth(108.0);
+        cancelRequestButton.setMinWidth(150.0);
+        saveButton.setDefaultButton(true);
+        closeButton.setCancelButton(true);
+        final long[] lastObservedCustomizationCommitVersion = {Room3DViewerLauncher.getCustomizationCommitVersion()};
+
+        HBox buttonRow = new HBox(10.0);
+        buttonRow.getStyleClass().add("room-customization-button-row");
+        buttonRow.setAlignment(Pos.CENTER_LEFT);
+        buttonRow.getChildren().add(previewButton);
+        Region actionSpacer = new Region();
+        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+        buttonRow.getChildren().add(actionSpacer);
+        if (existingRequest != null) {
+            buttonRow.getChildren().add(cancelRequestButton);
+        }
+        buttonRow.getChildren().addAll(saveButton, closeButton);
+
+        HBox statsRow = new HBox(
+            12.0,
+            buildCustomizationStatCard(
+                "Capacite initiale",
+                String.valueOf(Math.max(1, selectedSalle.getCapacite())),
+                "places de base"
+            ),
+            buildCustomizationStatCard(
+                "Limite autorisee",
+                String.valueOf(Math.max(1, maxCapacity)),
+                "+" + ROOM_CUSTOMIZATION_CAPACITY_BONUS + " places max"
+            ),
+            buildCustomizationStatCard(
+                "Plan detecte",
+                configuredPlaces.isEmpty() ? "0" : String.valueOf(configuredPlaces.size()),
+                configuredPlaces.isEmpty() ? "projection virtuelle" : "places physiques"
+            )
+        );
+        VBox heroCard = new VBox(
+            14.0,
+            buildCustomizationHeaderBlock(
+                "Personnalisation de salle",
+                formatOptionalText(selectedSalle.getNom()) + " | " + formatOptionalText(selectedSalle.getTypeSalle())
+            ),
+            statsRow,
+            helperLabel
+        );
+        heroCard.getStyleClass().addAll("room-customization-hero", "reservation-preview-hero");
+        helperLabel.getStyleClass().add("room-customization-hero-copy");
+
+        VBox statusCard = buildCustomizationSection(
+            "Etat de la demande",
+            "Consultez l'etat courant.",
+            requestStatusLabel,
+            adminContextBox
+        );
+
+        VBox configurationCard = buildCustomizationSection(
+            "Configuration souhaitee",
+            "Ajustez la salle.",
+            buildCustomizationFieldRow(
+                buildCustomizationField("Disposition demandee", dispositionComboBox),
+                buildCustomizationField("Capacite cible", capacitySpinner)
+            ),
+            buildCustomizationFieldRow(
+                buildCustomizationField("Style de tables", tableStyleComboBox),
+                buildCustomizationField("Style de chaises", chairStyleComboBox)
+            ),
+            accessibilityCheckBox
+        );
+
+        VBox notesCard = buildCustomizationSection(
+            "Intention pedagogique",
+            "Optionnel.",
+            buildCustomizationTextArea("Commentaire pour l'admin", commentArea)
+        );
+
+        VBox content = new VBox(
+            18.0,
+            heroCard,
+            statusCard,
+            configurationCard,
+            notesCard,
+            dialogFeedbackLabel,
+            buttonRow
+        );
+        content.getStyleClass().addAll("room-customization-dialog-shell", "reservation-content");
+
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("room-customization-dialog-scroll");
+
+        StackPane sceneRoot = new StackPane(scrollPane);
+        sceneRoot.getStyleClass().add("room-customization-dialog-root");
+        sceneRoot.setId("tutorDiscoveryRoot");
+        StackPane.setMargin(scrollPane, new Insets(22.0));
+
+        Scene scene = new Scene(sceneRoot, 860.0, 700.0);
+        applyCurrentTheme(scene);
+        appendSceneStylesheet(scene, PAYMENT_DIALOG_STYLESHEET);
+
+        Stage stage = new Stage();
+        stage.setTitle("Personnalisation de salle");
+        stage.initModality(Modality.WINDOW_MODAL);
+        Window owner = resolveReservationWindow();
+        if (owner != null) {
+            stage.initOwner(owner);
+        }
+        stage.setScene(scene);
+        stage.setMinWidth(780.0);
+        stage.setMinHeight(640.0);
+
+        Timeline customizationValidationMonitor = new Timeline(
+            new KeyFrame(Duration.millis(250), monitorEvent -> {
+                long latestCommitVersion = Room3DViewerLauncher.getCustomizationCommitVersion();
+                if (latestCommitVersion <= lastObservedCustomizationCommitVersion[0]) {
+                    return;
+                }
+
+                lastObservedCustomizationCommitVersion[0] = latestCommitVersion;
+                syncCommittedCustomizationPreviewToForm(
+                    selectedSalle,
+                    maxCapacity,
+                    dispositionComboBox,
+                    capacitySpinner,
+                    tableStyleComboBox,
+                    chairStyleComboBox,
+                    accessibilityCheckBox,
+                    dialogFeedbackLabel,
+                    true,
+                    false
+                );
+            })
+        );
+        customizationValidationMonitor.setCycleCount(Timeline.INDEFINITE);
+        customizationValidationMonitor.play();
+        stage.setOnHidden(event -> customizationValidationMonitor.stop());
+
+        dispositionComboBox.valueProperty().addListener((obs, oldValue, newValue) -> {
+            updateCompatibleTableStyleChoices(
+                tableStyleComboBox,
+                newValue,
+                tableStyleComboBox.getValue()
+            );
+            updateCompatibleChairStyleChoices(
+                chairStyleComboBox,
+                newValue,
+                selectedSalle == null ? null : selectedSalle.getTypeSalle(),
+                chairStyleComboBox.getValue()
+            );
+        });
+
+        previewButton.setOnAction(event -> {
+            try {
+                SessionRoomCustomizationConfig configuration = buildRoomCustomizationConfig(
+                    selectedSalle,
+                    configuredPlaces,
+                    dispositionComboBox.getValue(),
+                    capacitySpinner.getValue(),
+                    tableStyleComboBox.getValue(),
+                    chairStyleComboBox.getValue(),
+                    accessibilityCheckBox.isSelected()
+                );
+                Room3DViewerLauncher.showPreview(buildCustomizationPreviewData(
+                    selectedSalle,
+                    configuration,
+                    "Editeur 3D de la demande",
+                    "Modifiez la disposition, la capacite et l'acces PMR depuis la fenetre 3D, puis cliquez sur Valider pour resynchroniser ce formulaire."
+                ));
+                showModalFeedback(dialogFeedbackLabel, "Editeur 3D ouvert. Utilisez les boutons de personnalisation puis cliquez sur Valider dans la fenetre 3D.", true);
+            } catch (RuntimeException exception) {
+                showModalFeedback(dialogFeedbackLabel, resolveReadableMessage(exception), false);
+            }
+        });
+
+        saveButton.setOnAction(event -> {
+            try {
+                long latestCommitVersion = Room3DViewerLauncher.getCustomizationCommitVersion();
+                if (latestCommitVersion > lastObservedCustomizationCommitVersion[0]
+                    && syncCommittedCustomizationPreviewToForm(
+                        selectedSalle,
+                        maxCapacity,
+                        dispositionComboBox,
+                        capacitySpinner,
+                        tableStyleComboBox,
+                        chairStyleComboBox,
+                        accessibilityCheckBox,
+                        dialogFeedbackLabel,
+                        false,
+                        false
+                    )) {
+                    lastObservedCustomizationCommitVersion[0] = latestCommitVersion;
+                }
+
+                SessionRoomCustomizationConfig configuration = buildRoomCustomizationConfig(
+                    selectedSalle,
+                    configuredPlaces,
+                    dispositionComboBox.getValue(),
+                    capacitySpinner.getValue(),
+                    tableStyleComboBox.getValue(),
+                    chairStyleComboBox.getValue(),
+                    accessibilityCheckBox.isSelected()
+                );
+                String customizationCapacityError = validateCustomizationAgainstSessionCapacity(configuration);
+                if (customizationCapacityError != null) {
+                    showModalFeedback(dialogFeedbackLabel, customizationCapacityError, false);
+                    return;
+                }
+                int seanceId = ensureDraftSessionForCustomization();
+                sessionRoomCustomizationService.saveOrUpdateRequest(
+                    seanceId,
+                    selectedSalle.getIdSalle(),
+                    getCurrentTutorId(),
+                    configuration,
+                    commentArea.getText()
+                );
+                updateRoomCustomizationCallToAction();
+                loadSessionDashboard();
+
+                showFeedback("La demande de personnalisation a ete envoyee a l'admin.", true);
+                stage.close();
+            } catch (RuntimeException | SQLException exception) {
+                showModalFeedback(dialogFeedbackLabel, resolveReadableMessage(exception), false);
+            }
+        });
+
+        cancelRequestButton.setOnAction(event -> {
+            if (existingRequest == null || editingSessionId == null) {
+                return;
+            }
+
+            Alert confirmationAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmationAlert.setTitle("Annuler la personnalisation");
+            confirmationAlert.setHeaderText("Retirer la demande liee a cette seance ?");
+            confirmationAlert.setContentText("La salle reviendra a sa configuration standard pour cette seance.");
+            Optional<ButtonType> confirmation = confirmationAlert.showAndWait();
+            if (confirmation.isEmpty() || confirmation.get() != ButtonType.OK) {
+                return;
+            }
+
+            try {
+                sessionRoomCustomizationService.cancelRequest(
+                    editingSessionId,
+                    "Annulee par le tuteur depuis l'interface de personnalisation."
+                );
+                updateRoomCustomizationCallToAction();
+                showFeedback("La personnalisation de salle liee a cette seance a ete annulee.", true);
+                stage.close();
+            } catch (RuntimeException | SQLException exception) {
+                showModalFeedback(dialogFeedbackLabel, resolveReadableMessage(exception), false);
+            }
+        });
+
+        closeButton.setOnAction(event -> stage.close());
+        stage.showAndWait();
+    }
+
+    private SessionRoomCustomizationConfig resolveInitialCustomizationConfig(
+        Salle selectedSalle,
+        SessionRoomCustomizationRequest existingRequest,
+        int maxCapacity
+    ) {
+        SessionRoomCustomizationConfig baseConfig = null;
+        if (existingRequest != null) {
+            baseConfig = existingRequest.requestedConfig() != null
+                ? existingRequest.requestedConfig()
+                : existingRequest.effectiveApprovedConfig();
+        }
+
+        Integer preferredCapacity = baseConfig != null && baseConfig.capacity() != null
+            ? baseConfig.capacity()
+            : selectedSalle == null ? null : selectedSalle.getCapacite();
+        int clampedCapacity = clampCustomizationCapacity(preferredCapacity, maxCapacity);
+
+        return new SessionRoomCustomizationConfig(
+            firstNonBlank(baseConfig == null ? null : baseConfig.disposition(), selectedSalle.getTypeDisposition(), "classe"),
+            clampedCapacity,
+            normalizeCompatibleTableStyle(
+                firstNonBlank(baseConfig == null ? null : baseConfig.disposition(), selectedSalle.getTypeDisposition(), "classe"),
+                firstNonBlank(baseConfig == null ? null : baseConfig.tableStyle(), "standard")
+            ),
+            normalizeCompatibleChairStyle(
+                firstNonBlank(baseConfig == null ? null : baseConfig.disposition(), selectedSalle.getTypeDisposition(), "classe"),
+                selectedSalle == null ? null : selectedSalle.getTypeSalle(),
+                firstNonBlank(baseConfig == null ? null : baseConfig.chairStyle(), "standard")
+            ),
+            baseConfig != null ? baseConfig.accessibilityRequired() : selectedSalle.isAccesHandicape(),
+            baseConfig == null ? List.of() : baseConfig.seatLayout()
+        );
+    }
+
+    private int ensureDraftSessionForCustomization() {
+        if (editingSessionId != null && editingSessionId > 0) {
+            return editingSessionId;
+        }
+
+        Seance draftSeance = buildSeance(0, true);
+        draftSeance.setCreatedAt(LocalDateTime.now());
+        seanceService.add(draftSeance);
+        editingSessionId = draftSeance.getId();
+
+        sessionFormTitleLabel.setText("Modifier une seance");
+        sessionFormModeChipLabel.setText("Brouillon actif");
+        editingSessionLabel.setText(
+            "Brouillon #" + editingSessionId + " cree pour rattacher la personnalisation a cette seance."
+        );
+        editingSessionLabel.setManaged(true);
+        editingSessionLabel.setVisible(true);
+        loadSessionDashboard();
+        updateRoomCustomizationCallToAction();
+        return editingSessionId;
+    }
+
+    private SessionRoomCustomizationConfig buildRoomCustomizationConfig(
+        Salle selectedSalle,
+        List<Place> configuredPlaces,
+        String disposition,
+        Integer requestedCapacity,
+        String tableStyle,
+        String chairStyle,
+        boolean accessibilityRequired
+    ) {
+        if (selectedSalle == null) {
+            throw new IllegalArgumentException("La salle de base est obligatoire.");
+        }
+
+        String normalizedDisposition = firstNonBlank(disposition, selectedSalle.getTypeDisposition(), "classe");
+        int maxCapacity = resolveCustomizationMaxCapacity(selectedSalle, configuredPlaces);
+        int effectiveCapacity = clampCustomizationCapacity(requestedCapacity, maxCapacity);
+        List<SessionRoomCustomizationConfig.SeatLayoutSlot> seatLayout = buildCustomizationSeatLayout(
+            selectedSalle,
+            configuredPlaces,
+            normalizedDisposition,
+            effectiveCapacity,
+            accessibilityRequired
+        );
+
+        int finalCapacity = seatLayout.isEmpty() ? effectiveCapacity : Math.min(effectiveCapacity, seatLayout.size());
+        if (finalCapacity <= 0) {
+            throw new IllegalArgumentException("Aucune place ne peut etre projetee pour cette personnalisation.");
+        }
+
+        if (!seatLayout.isEmpty() && finalCapacity != effectiveCapacity) {
+            seatLayout = buildCustomizationSeatLayout(
+                selectedSalle,
+                configuredPlaces,
+                normalizedDisposition,
+                finalCapacity,
+                accessibilityRequired
+            );
+        }
+
+        return new SessionRoomCustomizationConfig(
+            normalizedDisposition,
+            finalCapacity,
+            normalizeCompatibleTableStyle(normalizedDisposition, firstNonBlank(tableStyle, "standard")),
+            normalizeCompatibleChairStyle(
+                normalizedDisposition,
+                selectedSalle == null ? null : selectedSalle.getTypeSalle(),
+                firstNonBlank(chairStyle, "standard")
+            ),
+            accessibilityRequired,
+            seatLayout
+        );
+    }
+
+    private List<SessionRoomCustomizationConfig.SeatLayoutSlot> buildCustomizationSeatLayout(
+        Salle selectedSalle,
+        List<Place> configuredPlaces,
+        String disposition,
+        int capacity,
+        boolean accessibilityRequired
+    ) {
+        Salle previewSalle = buildCustomizationPreviewSalle(
+            selectedSalle,
+            new SessionRoomCustomizationConfig(disposition, capacity, null, null, accessibilityRequired, List.of())
+        );
+        Room3DPreviewData previewData = room3DPreviewService.buildPreview(previewSalle, true, Room3DViewMode.DESIGN_REVIEW);
+        List<Room3DPreviewData.SeatPreview> generatedSeats = previewData.seats();
+        int seatCount = Math.min(capacity, generatedSeats.size());
+        if (seatCount <= 0) {
+            return List.of();
+        }
+
+        List<SessionRoomCustomizationConfig.SeatLayoutSlot> seatLayout = new ArrayList<>(seatCount);
+        for (int index = 0; index < seatCount; index++) {
+            Room3DPreviewData.SeatPreview generatedSeat = generatedSeats.get(index);
+            int seatKey = index < configuredPlaces.size()
+                ? configuredPlaces.get(index).getIdPlace()
+                : generatedSeat.number();
+            seatLayout.add(new SessionRoomCustomizationConfig.SeatLayoutSlot(
+                seatKey,
+                generatedSeat.row(),
+                generatedSeat.column()
+            ));
+        }
+        return seatLayout;
+    }
+
+    private Room3DPreviewData buildCustomizationPreviewData(
+        Salle selectedSalle,
+        SessionRoomCustomizationConfig configuration,
+        String headline,
+        String note
+    ) {
+        Salle previewSalle = buildCustomizationPreviewSalle(selectedSalle, configuration);
+        List<Room3DPreviewData.SeatPreview> seats = configuration.seatLayout().isEmpty()
+            ? room3DPreviewService.buildPreview(previewSalle, true, Room3DViewMode.CUSTOMIZATION).seats()
+            : mapCustomizationSeatsForPreview(configuration);
+
+        return room3DPreviewService.buildPreviewFromSeats(
+            previewSalle,
+            Room3DViewMode.CUSTOMIZATION,
+            configuration.disposition(),
+            seats
+        ).withAnnotations(
+            headline,
+            note,
+            formatCustomizationConfigSummary(configuration)
+        ).withFurnitureStyles(configuration.tableStyle(), configuration.chairStyle())
+            .withInitialCapacity(selectedSalle == null ? configuration.capacity() == null ? 0 : configuration.capacity() : selectedSalle.getCapacite());
+    }
+
+    private boolean syncCommittedCustomizationPreviewToForm(
+        Salle selectedSalle,
+        int maxCapacity,
+        ComboBox<String> dispositionComboBox,
+        Spinner<Integer> capacitySpinner,
+        ComboBox<String> tableStyleComboBox,
+        ComboBox<String> chairStyleComboBox,
+        CheckBox accessibilityCheckBox,
+        Label feedbackLabel,
+        boolean announceSuccess,
+        boolean announceMissingPreview
+    ) {
+        Room3DPreviewData customizationPreview = resolveCommittedCustomizationPreview(selectedSalle);
+        if (customizationPreview == null) {
+            if (announceMissingPreview && feedbackLabel != null) {
+                showModalFeedback(
+                    feedbackLabel,
+                    "Aucune validation 3D n'a ete detectee pour cette salle. Ouvrez l'editeur puis cliquez sur Valider dans la fenetre 3D.",
+                    false
+                );
+            }
+            return false;
+        }
+
+        applyCustomizationPreviewToForm(
+            customizationPreview,
+            selectedSalle,
+            maxCapacity,
+            dispositionComboBox,
+            capacitySpinner,
+            tableStyleComboBox,
+            chairStyleComboBox,
+            accessibilityCheckBox
+        );
+        if (announceSuccess && feedbackLabel != null) {
+            showModalFeedback(feedbackLabel, "La validation 3D a ete appliquee au formulaire.", true);
+        }
+        return true;
+    }
+
+    private void applyCustomizationPreviewToForm(
+        Room3DPreviewData customizationPreview,
+        Salle selectedSalle,
+        int maxCapacity,
+        ComboBox<String> dispositionComboBox,
+        Spinner<Integer> capacitySpinner,
+        ComboBox<String> tableStyleComboBox,
+        ComboBox<String> chairStyleComboBox,
+        CheckBox accessibilityCheckBox
+    ) {
+        if (customizationPreview == null) {
+            return;
+        }
+
+        dispositionComboBox.setValue(firstNonBlank(customizationPreview.disposition(), dispositionComboBox.getValue(), "classe"));
+        updateCompatibleTableStyleChoices(
+            tableStyleComboBox,
+            dispositionComboBox.getValue(),
+            customizationPreview.tableStyle()
+        );
+        setSpinnerIntegerValue(capacitySpinner, clampCustomizationCapacity(customizationPreview.capacity(), Math.max(1, maxCapacity)));
+        accessibilityCheckBox.setSelected(customizationPreview.accessible());
+        tableStyleComboBox.setValue(normalizeCompatibleTableStyle(dispositionComboBox.getValue(), customizationPreview.tableStyle()));
+        updateCompatibleChairStyleChoices(
+            chairStyleComboBox,
+            dispositionComboBox.getValue(),
+            selectedSalle == null ? null : selectedSalle.getTypeSalle(),
+            customizationPreview.chairStyle()
+        );
+    }
+
+    private Room3DPreviewData resolveCommittedCustomizationPreview(Salle selectedSalle) {
+        return resolveCustomizationPreviewForSelectedSalle(Room3DViewerLauncher.getCommittedCustomizationPreviewData(), selectedSalle);
+    }
+
+    private Room3DPreviewData resolveCustomizationPreviewForSelectedSalle(Room3DPreviewData previewData, Salle selectedSalle) {
+        if (previewData == null || !previewData.isCustomizationMode() || selectedSalle == null) {
+            return null;
+        }
+
+        String selectedRoomName = normalizeText(selectedSalle.getNom());
+        String previewRoomName = normalizeText(previewData.roomName());
+        if (selectedRoomName == null || previewRoomName == null) {
+            return null;
+        }
+
+        if (!selectedRoomName.equalsIgnoreCase(previewRoomName)) {
+            return null;
+        }
+        return previewData;
+    }
+
+    private List<Room3DPreviewData.SeatPreview> mapCustomizationSeatsForPreview(SessionRoomCustomizationConfig configuration) {
+        List<Room3DPreviewData.SeatPreview> seats = new ArrayList<>();
+        int number = 1;
+        for (SessionRoomCustomizationConfig.SeatLayoutSlot slot : configuration.seatLayout()) {
+            seats.add(new Room3DPreviewData.SeatPreview(
+                slot.seatKey(),
+                number++,
+                slot.row(),
+                slot.column(),
+                RoomSeatVisualState.AVAILABLE,
+                false
+            ));
+        }
+        return seats;
+    }
+
+    private Salle buildCustomizationPreviewSalle(Salle selectedSalle, SessionRoomCustomizationConfig configuration) {
+        return new Salle(
+            selectedSalle.getIdSalle(),
+            selectedSalle.getNom(),
+            configuration.capacity() == null ? selectedSalle.getCapacite() : configuration.capacity(),
+            selectedSalle.getLocalisation(),
+            selectedSalle.getTypeSalle(),
+            selectedSalle.getEtat(),
+            selectedSalle.getDescription(),
+            selectedSalle.getBatiment(),
+            selectedSalle.getEtage(),
+            firstNonBlank(configuration.disposition(), selectedSalle.getTypeDisposition(), "classe"),
+            configuration.accessibilityRequiredOrDefault(selectedSalle.isAccesHandicape()),
+            selectedSalle.getStatutDetaille(),
+            selectedSalle.getDateDerniereMaintenance()
+        );
+    }
+
+    private int resolveCustomizationMaxCapacity(Salle selectedSalle, List<Place> configuredPlaces) {
+        int roomCapacity = selectedSalle == null ? 1 : Math.max(1, selectedSalle.getCapacite());
+        return roomCapacity + ROOM_CUSTOMIZATION_CAPACITY_BONUS;
+    }
+
+    private String validateCustomizationAgainstSessionCapacity(SessionRoomCustomizationConfig configuration) {
+        if (configuration == null) {
+            return null;
+        }
+
+        Integer currentSessionCapacity = parseOptionalPositiveInteger(sessionCapacityField == null ? null : sessionCapacityField.getText());
+        if (currentSessionCapacity == null || currentSessionCapacity <= 0) {
+            return null;
+        }
+
+        int customizationCapacity = resolveCustomizationEffectiveCapacity(configuration);
+        if (customizationCapacity <= 0 || customizationCapacity >= currentSessionCapacity) {
+            return null;
+        }
+
+        return "La personnalisation prevoit seulement " + customizationCapacity
+            + " place(s), alors que la seance est reglee sur " + currentSessionCapacity
+            + " participant(s). Reduisez d'abord la capacite de la seance ou augmentez la personnalisation.";
+    }
+
+    private int resolveCustomizationEffectiveCapacity(SessionRoomCustomizationConfig configuration) {
+        if (configuration == null) {
+            return 0;
+        }
+        if (configuration.hasSeatLayout()) {
+            return configuration.seatLayoutSize();
+        }
+        return configuration.capacity() == null ? 0 : configuration.capacity();
+    }
+
+    private int resolveAllowedOnsiteCapacity(Salle selectedSalle, boolean allowCustomizationCapacityBonus) {
+        if (selectedSalle == null) {
+            return 1;
+        }
+        int roomCapacity = Math.max(1, selectedSalle.getCapacite());
+        return allowCustomizationCapacityBonus
+            ? roomCapacity + ROOM_CUSTOMIZATION_CAPACITY_BONUS
+            : roomCapacity;
+    }
+
+    private boolean hasCurrentSessionCustomizationRequestForSalle(Salle selectedSalle) {
+        if (selectedSalle == null || editingSessionId == null || editingSessionId <= 0) {
+            return false;
+        }
+
+        SessionRoomCustomizationRequest request = sessionRoomCustomizationService.findBySeanceIdQuietly(editingSessionId);
+        return request != null
+            && !request.isCancelled()
+            && request.baseSalleId() == selectedSalle.getIdSalle();
+    }
+
+    private List<Place> loadConfiguredPlacesForSalle(int salleId) {
+        if (salleId <= 0) {
+            return List.of();
+        }
+
+        try {
+            return placeService.getBySalle(salleId);
+        } catch (SQLException | IllegalArgumentException | IllegalStateException exception) {
+            return List.of();
+        }
+    }
+
+    private int clampCustomizationCapacity(Integer requestedCapacity, int maxCapacity) {
+        int effectiveMax = Math.max(1, maxCapacity);
+        if (requestedCapacity == null || requestedCapacity <= 0) {
+            return effectiveMax;
+        }
+        return Math.max(1, Math.min(effectiveMax, requestedCapacity));
+    }
+
+    private List<String> resolveCompatibleTableStyles(String disposition) {
+        String normalizedDisposition = normalizeText(disposition);
+        if (normalizedDisposition == null) {
+            return ROOM_CUSTOMIZATION_TABLE_STYLES;
+        }
+        return ROOM_CUSTOMIZATION_TABLE_STYLES_BY_DISPOSITION.getOrDefault(
+            normalizedDisposition.toLowerCase(Locale.ROOT),
+            ROOM_CUSTOMIZATION_TABLE_STYLES
+        );
+    }
+
+    private String normalizeCompatibleTableStyle(String disposition, String candidateStyle) {
+        List<String> compatibleStyles = resolveCompatibleTableStyles(disposition);
+        String normalizedCandidate = normalizeText(candidateStyle);
+        if (normalizedCandidate != null) {
+            for (String compatibleStyle : compatibleStyles) {
+                if (compatibleStyle.equalsIgnoreCase(normalizedCandidate)) {
+                    return compatibleStyle;
+                }
+            }
+        }
+        return compatibleStyles.isEmpty() ? "standard" : compatibleStyles.get(0);
+    }
+
+    private List<String> resolveCompatibleChairStyles(String disposition, String roomType) {
+        String normalizedDisposition = normalizeText(disposition);
+        String normalizedRoomType = normalizeText(roomType);
+
+        if ("conference".equalsIgnoreCase(normalizedDisposition)) {
+            if ("amphitheatre".equalsIgnoreCase(normalizedRoomType)) {
+                return List.of("amphi");
+            }
+            return List.of("conference");
+        }
+        if ("reunion".equalsIgnoreCase(normalizedDisposition) || "u".equalsIgnoreCase(normalizedDisposition)) {
+            return List.of("standard", "conference", "ergonomique");
+        }
+        if ("atelier".equalsIgnoreCase(normalizedDisposition)) {
+            return List.of("standard", "conference", "ergonomique");
+        }
+        if ("informatique".equalsIgnoreCase(normalizedDisposition) || "classe".equalsIgnoreCase(normalizedDisposition)) {
+            return List.of("standard", "ergonomique");
+        }
+        return List.of("standard", "conference", "ergonomique");
+    }
+
+    private String normalizeCompatibleChairStyle(String disposition, String roomType, String candidateStyle) {
+        List<String> compatibleStyles = resolveCompatibleChairStyles(disposition, roomType);
+        String normalizedCandidate = normalizeText(candidateStyle);
+        if (normalizedCandidate != null) {
+            for (String compatibleStyle : compatibleStyles) {
+                if (compatibleStyle.equalsIgnoreCase(normalizedCandidate)) {
+                    return compatibleStyle;
+                }
+            }
+        }
+        return compatibleStyles.isEmpty() ? "standard" : compatibleStyles.get(0);
+    }
+
+    private void updateCompatibleChairStyleChoices(
+        ComboBox<String> chairStyleComboBox,
+        String disposition,
+        String roomType,
+        String preferredStyle
+    ) {
+        if (chairStyleComboBox == null) {
+            return;
+        }
+
+        List<String> compatibleStyles = resolveCompatibleChairStyles(disposition, roomType);
+        chairStyleComboBox.getItems().setAll(compatibleStyles);
+        chairStyleComboBox.setValue(normalizeCompatibleChairStyle(disposition, roomType, preferredStyle));
+        chairStyleComboBox.setDisable(compatibleStyles.size() <= 1);
+    }
+
+    private void updateCompatibleTableStyleChoices(ComboBox<String> tableStyleComboBox, String disposition, String preferredStyle) {
+        if (tableStyleComboBox == null) {
+            return;
+        }
+
+        List<String> compatibleStyles = resolveCompatibleTableStyles(disposition);
+        tableStyleComboBox.getItems().setAll(compatibleStyles);
+        tableStyleComboBox.setValue(normalizeCompatibleTableStyle(disposition, preferredStyle));
+        boolean editable = supportsTableStyleCustomization(disposition) && compatibleStyles.size() > 1;
+        tableStyleComboBox.setDisable(!editable);
+    }
+
+    private boolean supportsTableStyleCustomization(String disposition) {
+        String normalizedDisposition = normalizeText(disposition);
+        return normalizedDisposition == null || !"conference".equalsIgnoreCase(normalizedDisposition);
+    }
+
+    private Integer parseOptionalPositiveInteger(String rawValue) {
+        String normalizedValue = normalizeText(rawValue);
+        if (normalizedValue == null) {
+            return null;
+        }
+
+        try {
+            int parsedValue = Integer.parseInt(normalizedValue);
+            return parsedValue > 0 ? parsedValue : null;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private void setSpinnerIntegerValue(Spinner<Integer> spinner, int value) {
+        if (spinner == null || spinner.getValueFactory() == null) {
+            return;
+        }
+
+        SpinnerValueFactory<Integer> valueFactory = spinner.getValueFactory();
+        if (valueFactory instanceof SpinnerValueFactory.IntegerSpinnerValueFactory integerFactory) {
+            int boundedValue = Math.max(integerFactory.getMin(), Math.min(integerFactory.getMax(), value));
+            integerFactory.setValue(boundedValue);
+            return;
+        }
+        valueFactory.setValue(value);
+    }
+
+    private String formatCustomizationRequestStatus(SessionRoomCustomizationRequest request) {
+        if (request == null) {
+            return "Aucune personnalisation enregistree pour cette seance.";
+        }
+
+        String summary = switch (request.status()) {
+            case SessionRoomCustomizationService.STATUS_PENDING ->
+                "Demande en attente de validation admin.";
+            case SessionRoomCustomizationService.STATUS_IN_REVIEW ->
+                "Demande en cours d'analyse par l'admin.";
+            case SessionRoomCustomizationService.STATUS_APPROVED ->
+                "Personnalisation approuvee pour cette seance.";
+            case SessionRoomCustomizationService.STATUS_REJECTED ->
+                "Demande rejetee. Reouvrez-la pour ajuster la configuration.";
+            case SessionRoomCustomizationService.STATUS_CANCELLED ->
+                "Personnalisation annulee pour cette seance.";
+            default ->
+                "Demande de personnalisation liee a cette seance.";
+        };
+
+        SessionRoomCustomizationConfig referenceConfig = request.requestedConfig() != null
+            ? request.requestedConfig()
+            : request.effectiveApprovedConfig();
+        if (referenceConfig == null) {
+            return summary;
+        }
+        return summary + " " + formatCustomizationConfigSummary(referenceConfig);
+    }
+
+    private String formatCustomizationConfigSummary(SessionRoomCustomizationConfig configuration) {
+        if (configuration == null) {
+            return "Aucune configuration detaillee.";
+        }
+
+        List<String> fragments = new ArrayList<>();
+        fragments.add("Disposition " + formatLabel(configuration.disposition()));
+        if (configuration.capacity() != null) {
+            fragments.add(configuration.capacity() + " places");
+        }
+        if (normalizeText(configuration.tableStyle()) != null) {
+            fragments.add("tables " + configuration.tableStyle());
+        }
+        if (normalizeText(configuration.chairStyle()) != null) {
+            fragments.add("chaises " + configuration.chairStyle());
+        }
+        if (Boolean.TRUE.equals(configuration.accessibilityRequired())) {
+            fragments.add("acces PMR renforce");
+        }
+        return String.join(" | ", fragments);
+    }
+
+    private VBox buildCustomizationHeaderBlock(String title, String subtitle) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("room-customization-title");
+        Label subtitleLabel = new Label(subtitle);
+        subtitleLabel.setWrapText(true);
+        subtitleLabel.getStyleClass().add("room-customization-subtitle");
+        VBox box = new VBox(6.0, titleLabel, subtitleLabel);
+        box.getStyleClass().add("room-customization-header");
+        return box;
+    }
+
+    private HBox buildCustomizationChipRow(Label... chips) {
+        HBox row = new HBox(8.0);
+        row.getStyleClass().add("room-customization-chip-row");
+        if (chips != null) {
+            row.getChildren().addAll(chips);
+        }
+        return row;
+    }
+
+    private Label buildCustomizationChip(String text, boolean accent) {
+        Label chip = new Label(text);
+        chip.getStyleClass().add("room-customization-chip");
+        if (accent) {
+            chip.getStyleClass().add("accent");
+        }
+        return chip;
+    }
+
+    private VBox buildCustomizationStatCard(String labelText, String valueText, String noteText) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("room-customization-stat-label");
+        Label value = new Label(valueText);
+        value.getStyleClass().add("room-customization-stat-value");
+        Label note = new Label(noteText);
+        note.setWrapText(true);
+        note.getStyleClass().add("room-customization-stat-note");
+        VBox card = new VBox(4.0, label, value, note);
+        card.getStyleClass().addAll("room-customization-stat-card", "workspace-stat-card");
+        HBox.setHgrow(card, Priority.ALWAYS);
+        card.setMaxWidth(Double.MAX_VALUE);
+        return card;
+    }
+
+    private VBox buildCustomizationSection(String title, String description, Node... children) {
+        Label titleLabel = new Label(title);
+        titleLabel.getStyleClass().add("room-customization-section-title");
+
+        Label descriptionLabel = new Label(description);
+        descriptionLabel.setWrapText(true);
+        descriptionLabel.getStyleClass().add("room-customization-section-copy");
+
+        VBox card = new VBox(12.0, titleLabel, descriptionLabel);
+        card.getStyleClass().addAll("room-customization-section-card", "reservation-preview-block");
+        if (children != null) {
+            card.getChildren().addAll(children);
+        }
+        return card;
+    }
+
+    private VBox buildCustomizationField(String labelText, Node field) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("room-customization-field-label");
+        VBox box = new VBox(6.0, label, field);
+        box.getStyleClass().add("room-customization-field");
+        box.setPrefWidth(220.0);
+        VBox.setVgrow(field, Priority.NEVER);
+        return box;
+    }
+
+    private HBox buildCustomizationFieldRow(VBox firstField, VBox secondField) {
+        HBox row = new HBox(14.0, firstField, secondField);
+        row.getStyleClass().add("room-customization-field-row");
+        HBox.setHgrow(firstField, Priority.ALWAYS);
+        HBox.setHgrow(secondField, Priority.ALWAYS);
+        return row;
+    }
+
+    private VBox buildCustomizationTextArea(String labelText, TextArea textArea) {
+        Label label = new Label(labelText);
+        label.getStyleClass().add("room-customization-field-label");
+        VBox box = new VBox(6.0, label, textArea);
+        box.getStyleClass().add("room-customization-field");
+        return box;
+    }
+
+    private void showModalFeedback(Label feedbackLabel, String message, boolean success) {
+        feedbackLabel.setText(message);
+        feedbackLabel.getStyleClass().removeAll("success", "error");
+        feedbackLabel.getStyleClass().add(success ? "success" : "error");
+        feedbackLabel.setManaged(true);
+        feedbackLabel.setVisible(true);
+    }
+
     private void confirmDeleteSession(Seance seance) {
         if (!canManageSession(seance)) {
             showSessionListFeedback("Seul le tuteur proprietaire peut supprimer cette seance.", false);
@@ -6681,6 +7812,41 @@ public class ReservationController {
         }
         String normalizedValue = value.trim().replaceAll("\\s+", " ");
         return normalizedValue.isEmpty() ? null : normalizedValue;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+
+        for (String value : values) {
+            String normalizedValue = normalizeText(value);
+            if (normalizedValue != null) {
+                return normalizedValue;
+            }
+        }
+        return null;
+    }
+
+    private String resolveReadableMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "Veuillez reessayer dans un instant.";
+        }
+
+        String directMessage = normalizeText(throwable.getMessage());
+        if (directMessage != null) {
+            return directMessage;
+        }
+
+        Throwable cause = throwable.getCause();
+        while (cause != null) {
+            String causeMessage = normalizeText(cause.getMessage());
+            if (causeMessage != null) {
+                return causeMessage;
+            }
+            cause = cause.getCause();
+        }
+        return "Veuillez reessayer dans un instant.";
     }
 
     private String formatOptionalText(String value) {
@@ -7364,6 +8530,21 @@ public class ReservationController {
         return salle.getTypeDisposition();
     }
 
+    private String resolveEffectiveSalleDisposition(Seance seance) {
+        return resolveEffectiveSalleDisposition(seance, resolveSalleById(seance == null ? null : seance.getSalleId()));
+    }
+
+    private String resolveEffectiveSalleDisposition(Seance seance, Salle salle) {
+        if (seance == null || seance.getId() <= 0) {
+            return salle == null ? null : salle.getTypeDisposition();
+        }
+
+        return sessionRoomCustomizationService.resolveEffectiveDispositionForSeance(
+            seance.getId(),
+            salle == null ? null : salle.getTypeDisposition()
+        );
+    }
+
     private Salle resolveSalleById(Integer salleId) {
         if (salleId == null || salleId <= 0) {
             return null;
@@ -7402,10 +8583,29 @@ public class ReservationController {
         try {
             int configuredSeatCount = reservationService.countConfiguredSeatsBySalle(salleId);
             roomSeatCountsBySalleId.put(salleId, configuredSeatCount);
-            return configuredSeatCount;
+            return sessionRoomCustomizationService.resolveEffectiveSeatCountForSeance(seance, configuredSeatCount);
         } catch (RuntimeException exception) {
-            return seance.getMaxParticipants();
+            return sessionRoomCustomizationService.resolveEffectiveSeatCountForSeance(seance, seance.getMaxParticipants());
         }
+    }
+
+    private List<SeatSelectionLayoutResolver.SeatLayoutInput> resolveEffectiveSeatLayoutInputs(
+        Seance seance,
+        List<SeatSelectionOption> seatOptions
+    ) {
+        List<SeatSelectionLayoutResolver.SeatLayoutInput> fallbackInputs = seatOptions == null
+            ? List.of()
+            : seatOptions.stream()
+                .map(option -> new SeatSelectionLayoutResolver.SeatLayoutInput(
+                    option.placeId(),
+                    option.row(),
+                    option.column()
+                ))
+                .toList();
+        if (seance == null || seance.getId() <= 0) {
+            return fallbackInputs;
+        }
+        return sessionRoomCustomizationService.resolveEffectiveSeatLayoutInputs(seance.getId(), fallbackInputs);
     }
 
     private String formatDisplayedPlaceCount(Seance seance) {

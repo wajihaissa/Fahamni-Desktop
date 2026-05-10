@@ -34,9 +34,11 @@ import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
+import com.jme3.scene.shape.Cylinder;
 import com.jme3.scene.shape.Quad;
 import com.jme3.collision.CollisionResults;
 import com.jme3.texture.Texture;
+import tn.esprit.fahamni.Models.Salle;
 
 import java.nio.file.Path;
 import java.util.EnumMap;
@@ -73,6 +75,9 @@ public class Room3DApplication extends SimpleApplication {
     private static final float EXPORT_BUTTON_WIDTH = 118f;
     private static final float EXPORT_BUTTON_HEIGHT = 24f;
     private static final float EXPORT_BUTTON_FONT_SCALE = 0.78f;
+    private static final float CUSTOMIZATION_BUTTON_WIDTH = 176f;
+    private static final float CUSTOMIZATION_BUTTON_HEIGHT = 26f;
+    private static final float CUSTOMIZATION_BUTTON_GAP = 8f;
     private static final ColorRGBA CAMERA_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.9f, 0.94f, 0.98f, 0.92f);
     private static final ColorRGBA CAMERA_BUTTON_HOVER_COLOR = new ColorRGBA(0.76f, 0.86f, 0.97f, 0.96f);
     private static final ColorRGBA CAMERA_BUTTON_ACTIVE_COLOR = new ColorRGBA(0.18f, 0.42f, 0.72f, 0.98f);
@@ -80,6 +85,14 @@ public class Room3DApplication extends SimpleApplication {
     private static final ColorRGBA EXPORT_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.82f, 0.9f, 0.84f, 0.96f);
     private static final ColorRGBA EXPORT_BUTTON_HOVER_COLOR = new ColorRGBA(0.22f, 0.56f, 0.34f, 0.98f);
     private static final ColorRGBA EXPORT_BUTTON_TEXT_COLOR = new ColorRGBA(0.14f, 0.27f, 0.17f, 1f);
+    private static final ColorRGBA CUSTOMIZATION_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.96f, 0.93f, 0.88f, 0.96f);
+    private static final ColorRGBA CUSTOMIZATION_BUTTON_HOVER_COLOR = new ColorRGBA(0.9f, 0.8f, 0.63f, 0.98f);
+    private static final ColorRGBA CUSTOMIZATION_BUTTON_TEXT_COLOR = new ColorRGBA(0.34f, 0.24f, 0.12f, 1f);
+    private static final ColorRGBA CUSTOMIZATION_BUTTON_DISABLED_COLOR = new ColorRGBA(0.9f, 0.9f, 0.9f, 0.94f);
+    private static final ColorRGBA CUSTOMIZATION_BUTTON_DISABLED_TEXT_COLOR = new ColorRGBA(0.56f, 0.56f, 0.56f, 1f);
+    private static final ColorRGBA CUSTOMIZATION_CONFIRM_BUTTON_DEFAULT_COLOR = new ColorRGBA(0.32f, 0.62f, 0.4f, 0.98f);
+    private static final ColorRGBA CUSTOMIZATION_CONFIRM_BUTTON_HOVER_COLOR = new ColorRGBA(0.22f, 0.5f, 0.31f, 0.98f);
+    private static final ColorRGBA CUSTOMIZATION_CONFIRM_BUTTON_TEXT_COLOR = ColorRGBA.White;
 
     private static final float WALL_HEIGHT = 3.8f;
     private static final float CEILING_THICKNESS = 0.05f;
@@ -141,8 +154,10 @@ public class Room3DApplication extends SimpleApplication {
     private Material selectedIndicatorMaterial;
 
     private final Room3DExportService exportService = new Room3DExportService();
+    private final Room3DPreviewService previewService = new Room3DPreviewService();
     private final Map<Node, SeatVisual> seatVisuals = new HashMap<>();
     private final Map<CameraPreset, CameraPresetButton> cameraPresetButtons = new EnumMap<>(CameraPreset.class);
+    private final Map<CustomizationAction, HudActionButton> customizationButtons = new EnumMap<>(CustomizationAction.class);
     private Node hoveredSeatNode;
     private Node selectedSeatNode;
     private Vector2f primaryClickStart;
@@ -153,6 +168,7 @@ public class Room3DApplication extends SimpleApplication {
     private CameraPreset activeCameraPreset = CameraPreset.ENTRANCE;
     private CameraPreset hoveredCameraPreset;
     private boolean hoveredExportButton;
+    private CustomizationAction hoveredCustomizationAction;
     private CameraTransition activeCameraTransition;
     private float activeCameraTransitionElapsed;
     private float activeCameraFov = SHOWCASE_CAMERA_FOV;
@@ -322,6 +338,7 @@ public class Room3DApplication extends SimpleApplication {
         updateBitmapTextVisibility(interactionHintText);
         hideHoverText();
         updateHudPositions();
+        Room3DViewerLauncher.updateActivePreviewSnapshot(previewData);
     }
 
     private void loadExportedScene() {
@@ -371,6 +388,7 @@ public class Room3DApplication extends SimpleApplication {
         updateBitmapTextVisibility(interactionHintText);
         hideHoverText();
         updateHudPositions();
+        Room3DViewerLauncher.updateActivePreviewSnapshot(previewData);
     }
 
     private void resetViewerState() {
@@ -380,6 +398,7 @@ public class Room3DApplication extends SimpleApplication {
         guiNode.detachAllChildren();
         seatVisuals.clear();
         cameraPresetButtons.clear();
+        customizationButtons.clear();
         hoveredSeatNode = null;
         selectedSeatNode = null;
         primaryClickStart = null;
@@ -389,6 +408,7 @@ public class Room3DApplication extends SimpleApplication {
         activeCameraPreset = CameraPreset.ENTRANCE;
         hoveredCameraPreset = null;
         hoveredExportButton = false;
+        hoveredCustomizationAction = null;
         activeCameraTransition = null;
         activeCameraTransitionElapsed = 0f;
         activeCameraFov = SHOWCASE_CAMERA_FOV;
@@ -440,6 +460,9 @@ public class Room3DApplication extends SimpleApplication {
         if (!isExportedSceneMode()) {
             initialiseCameraPresetButtons();
         }
+        if (previewData != null && previewData.isCustomizationMode()) {
+            initialiseCustomizationButtons();
+        }
         initialiseExportButton();
 
         guiNode.attachChild(titleText);
@@ -461,6 +484,28 @@ public class Room3DApplication extends SimpleApplication {
         }
 
         updateCameraPresetButtonStyles();
+    }
+
+    private void initialiseCustomizationButtons() {
+        customizationButtons.clear();
+
+        for (CustomizationAction action : CustomizationAction.values()) {
+            HudActionButton button = createHudActionButton(
+                "customization-button-" + action.name().toLowerCase(Locale.ROOT),
+                action.defaultLabel(),
+                CUSTOMIZATION_BUTTON_WIDTH,
+                CUSTOMIZATION_BUTTON_HEIGHT,
+                CUSTOMIZATION_BUTTON_DEFAULT_COLOR.clone(),
+                CUSTOMIZATION_BUTTON_TEXT_COLOR,
+                0.78f,
+                true
+            );
+            customizationButtons.put(action, button);
+            guiNode.attachChild(button.node());
+        }
+
+        updateCustomizationButtonLabels();
+        updateCustomizationButtonStyles();
     }
 
     private void initialiseExportButton() {
@@ -499,6 +544,7 @@ public class Room3DApplication extends SimpleApplication {
         }
         if (statusText.getCullHint() != Spatial.CullHint.Always) {
             statusText.setLocalTranslation(18f, topY, 0f);
+            topY -= estimateTextBlockHeight(statusText.getText(), statusText.getLineHeight()) + 10f;
         }
 
         float interactionBaseline = 24f + interactionHintText.getLineHeight();
@@ -510,6 +556,7 @@ public class Room3DApplication extends SimpleApplication {
                 0f
             );
         }
+        updateCustomizationButtonPositions(topY);
         updateCameraPresetButtonPositions();
         updateHoverTextPosition();
     }
@@ -594,6 +641,26 @@ public class Room3DApplication extends SimpleApplication {
         }
     }
 
+    private void updateCustomizationButtonPositions(float anchorTopY) {
+        if (customizationButtons.isEmpty()) {
+            return;
+        }
+
+        float startX = 18f;
+        float startY = Math.max(96f, anchorTopY - 8f - CUSTOMIZATION_BUTTON_HEIGHT);
+
+        for (CustomizationAction action : CustomizationAction.values()) {
+            HudActionButton button = customizationButtons.get(action);
+            if (button == null) {
+                continue;
+            }
+
+            float x = startX + (action.column() * (CUSTOMIZATION_BUTTON_WIDTH + CUSTOMIZATION_BUTTON_GAP));
+            float y = startY - (action.row() * (CUSTOMIZATION_BUTTON_HEIGHT + CUSTOMIZATION_BUTTON_GAP));
+            button.node().setLocalTranslation(x, y, 0f);
+        }
+    }
+
     private void updateCameraPresetButtonStyles() {
         for (CameraPreset preset : CameraPreset.values()) {
             CameraPresetButton button = cameraPresetButtons.get(preset);
@@ -622,6 +689,357 @@ public class Room3DApplication extends SimpleApplication {
         ColorRGBA backgroundColor = hoveredExportButton ? EXPORT_BUTTON_HOVER_COLOR : EXPORT_BUTTON_DEFAULT_COLOR;
         exportButton.background().getMaterial().setColor("Color", backgroundColor);
         exportButton.label().setColor(hoveredExportButton ? ColorRGBA.White : EXPORT_BUTTON_TEXT_COLOR);
+    }
+
+    private void updateCustomizationButtonLabels() {
+        if (customizationButtons.isEmpty() || previewData == null) {
+            return;
+        }
+
+        for (CustomizationAction action : CustomizationAction.values()) {
+            HudActionButton button = customizationButtons.get(action);
+            if (button == null) {
+                continue;
+            }
+
+            button.label().setText(resolveCustomizationButtonLabel(action));
+            centerHudActionButtonLabel(button);
+        }
+    }
+
+    private void updateCustomizationButtonStyles() {
+        for (CustomizationAction action : CustomizationAction.values()) {
+            HudActionButton button = customizationButtons.get(action);
+            if (button == null) {
+                continue;
+            }
+
+            boolean enabled = isCustomizationActionEnabled(action);
+            boolean hovered = enabled && action == hoveredCustomizationAction;
+            ColorRGBA backgroundColor = resolveCustomizationButtonBackgroundColor(action, enabled, hovered);
+            ColorRGBA labelColor = resolveCustomizationButtonTextColor(action, enabled, hovered);
+
+            button.background().getMaterial().setColor("Color", backgroundColor);
+            button.label().setColor(labelColor);
+        }
+    }
+
+    private ColorRGBA resolveCustomizationButtonBackgroundColor(CustomizationAction action, boolean enabled, boolean hovered) {
+        if (!enabled) {
+            return CUSTOMIZATION_BUTTON_DISABLED_COLOR;
+        }
+        if (action == CustomizationAction.CONFIRM_CHANGES) {
+            return hovered ? CUSTOMIZATION_CONFIRM_BUTTON_HOVER_COLOR : CUSTOMIZATION_CONFIRM_BUTTON_DEFAULT_COLOR;
+        }
+        return hovered ? CUSTOMIZATION_BUTTON_HOVER_COLOR : CUSTOMIZATION_BUTTON_DEFAULT_COLOR;
+    }
+
+    private ColorRGBA resolveCustomizationButtonTextColor(CustomizationAction action, boolean enabled, boolean hovered) {
+        if (!enabled) {
+            return CUSTOMIZATION_BUTTON_DISABLED_TEXT_COLOR;
+        }
+        if (action == CustomizationAction.CONFIRM_CHANGES) {
+            return CUSTOMIZATION_CONFIRM_BUTTON_TEXT_COLOR;
+        }
+        return hovered ? ColorRGBA.White : CUSTOMIZATION_BUTTON_TEXT_COLOR;
+    }
+
+    private void centerHudActionButtonLabel(HudActionButton button) {
+        if (button == null || button.label() == null) {
+            return;
+        }
+
+        float centeredX = Math.max(8f, (button.width() - button.label().getLineWidth()) / 2f);
+        float centeredBaseline = Math.max(16f, button.height() - ((button.height() - button.label().getLineHeight()) / 2f) - 4f);
+        button.label().setLocalTranslation(centeredX, centeredBaseline, 0f);
+    }
+
+    private String resolveCustomizationButtonLabel(CustomizationAction action) {
+        if (previewData == null || action == null) {
+            return "";
+        }
+
+        return switch (action) {
+            case CYCLE_DISPOSITION -> "Dispo: " + formatCustomizationDispositionLabel(previewData.disposition());
+            case TOGGLE_ACCESSIBILITY -> "PMR: " + (previewData.accessible() ? "oui" : "non");
+            case CYCLE_TABLE_STYLE -> supportsTableStyleCustomization(previewData.disposition())
+                ? "Tables: " + formatFurnitureStyleLabel(previewData.tableStyle(), "standard")
+                : "Tables: indisponible";
+            case CYCLE_CHAIR_STYLE -> "Chaises: " + formatFurnitureStyleLabel(previewData.chairStyle(), "standard");
+            case DECREASE_CAPACITY -> "- 1 place";
+            case INCREASE_CAPACITY -> "+ 1 place";
+            case CONFIRM_CHANGES -> "Valider les reglages";
+        };
+    }
+
+    private String formatCustomizationDispositionLabel(String disposition) {
+        String normalizedDisposition = normalize(disposition);
+        return switch (normalizedDisposition) {
+            case "u" -> "en U";
+            case "conference" -> "conference";
+            case "reunion" -> "reunion";
+            case "atelier" -> "atelier";
+            case "informatique" -> "info";
+            default -> "classe";
+        };
+    }
+
+    private String formatFurnitureStyleLabel(String style, String fallback) {
+        String normalizedStyle = normalize(style);
+        if (normalizedStyle.isBlank()) {
+            normalizedStyle = normalize(fallback);
+        }
+        return switch (normalizedStyle) {
+            case "individuelle" -> "individuelle";
+            case "double" -> "double";
+            case "ronde" -> "ronde";
+            case "reunion" -> "reunion";
+            case "atelier" -> "atelier";
+            case "conference" -> "conference";
+            case "ergonomique" -> "ergonomique";
+            case "amphi" -> "amphi";
+            default -> "standard";
+        };
+    }
+
+    private void applyCustomizationAction(CustomizationAction action) {
+        if (previewData == null || !previewData.isCustomizationMode() || action == null || !isCustomizationActionEnabled(action)) {
+            return;
+        }
+
+        if (action == CustomizationAction.CONFIRM_CHANGES) {
+            confirmCustomizationChanges();
+            updateCustomizationButtonLabels();
+            updateCustomizationButtonStyles();
+            return;
+        }
+
+        int currentCapacity = Math.max(1, previewData.capacity() > 0 ? previewData.capacity() : previewData.seatCount());
+        String nextDisposition = previewData.disposition();
+        int nextCapacity = currentCapacity;
+        boolean nextAccessible = previewData.accessible();
+        String nextTableStyle = previewData.tableStyle();
+        String nextChairStyle = previewData.chairStyle();
+
+        switch (action) {
+            case CYCLE_DISPOSITION -> {
+                nextDisposition = nextCustomizationDisposition(previewData.disposition());
+                nextTableStyle = normalizeCompatibleTableStyle(nextDisposition, nextTableStyle);
+                nextChairStyle = normalizeCompatibleChairStyle(nextDisposition, previewData.roomType(), nextChairStyle);
+            }
+            case TOGGLE_ACCESSIBILITY -> nextAccessible = !previewData.accessible();
+            case CYCLE_TABLE_STYLE -> nextTableStyle = nextCustomizationTableStyle(previewData.disposition(), previewData.tableStyle());
+            case CYCLE_CHAIR_STYLE -> nextChairStyle = nextCustomizationChairStyle(
+                previewData.disposition(),
+                previewData.roomType(),
+                previewData.chairStyle()
+            );
+            case DECREASE_CAPACITY -> nextCapacity = Math.max(1, currentCapacity - 1);
+            case INCREASE_CAPACITY -> nextCapacity = Math.min(resolveCustomizationCapacityLimit(), currentCapacity + 1);
+        }
+
+        CameraPreset presetToRestore = activeCameraPreset;
+        previewData = buildEditedCustomizationPreviewData(nextDisposition, nextCapacity, nextAccessible, nextTableStyle, nextChairStyle);
+        rebuildScene();
+        applyCameraPreset(presetToRestore, false);
+
+        showStatusMessage(
+            "Personnalisation 3D: " + formatCustomizationDispositionLabel(previewData.disposition())
+                + ", " + previewData.capacity() + " places, tables "
+                + formatFurnitureStyleLabel(previewData.tableStyle(), "standard")
+                + ", chaises " + formatFurnitureStyleLabel(previewData.chairStyle(), "standard")
+                + ", PMR " + (previewData.accessible() ? "oui" : "non") + ".",
+            new ColorRGBA(0.18f, 0.42f, 0.72f, 1f)
+        );
+        updateCustomizationButtonLabels();
+        updateCustomizationButtonStyles();
+    }
+
+    private void confirmCustomizationChanges() {
+        if (previewData == null || !previewData.isCustomizationMode()) {
+            return;
+        }
+
+        Room3DViewerLauncher.commitCustomizationPreviewSnapshot(previewData);
+        showStatusMessage(
+            "Reglages valides. Revenez au formulaire: il sera synchronise avec cette configuration.",
+            new ColorRGBA(0.14f, 0.5f, 0.28f, 1f)
+        );
+    }
+
+    private Room3DPreviewData buildEditedCustomizationPreviewData(
+        String disposition,
+        int capacity,
+        boolean accessible,
+        String tableStyle,
+        String chairStyle
+    ) {
+        Salle syntheticSalle = new Salle(
+            0,
+            previewData.roomName(),
+            Math.max(1, capacity),
+            previewData.location(),
+            previewData.roomType(),
+            previewData.roomStatus(),
+            previewData.summaryNote(),
+            previewData.building(),
+            null,
+            disposition,
+            accessible,
+            null,
+            null
+        );
+
+        Room3DPreviewData generatedPreview = previewService.buildPreview(
+            syntheticSalle,
+            true,
+            Room3DViewMode.CUSTOMIZATION
+        );
+        return generatedPreview.withAnnotations(
+            previewData.headline(),
+            previewData.summaryNote(),
+            previewData.legendNote()
+        ).withFurnitureStyles(
+            normalizeCompatibleTableStyle(disposition, tableStyle),
+            normalizeCompatibleChairStyle(disposition, previewData.roomType(), chairStyle)
+        ).withInitialCapacity(previewData.initialCapacity());
+    }
+
+    private String nextCustomizationDisposition(String currentDisposition) {
+        String normalizedDisposition = normalize(currentDisposition);
+        if ("classe".equals(normalizedDisposition)) {
+            return "u";
+        }
+        if ("u".equals(normalizedDisposition)) {
+            return "conference";
+        }
+        if ("conference".equals(normalizedDisposition)) {
+            return "reunion";
+        }
+        if ("reunion".equals(normalizedDisposition)) {
+            return "atelier";
+        }
+        if ("atelier".equals(normalizedDisposition)) {
+            return "informatique";
+        }
+        return "classe";
+    }
+
+    private String nextCustomizationTableStyle(String disposition, String currentTableStyle) {
+        java.util.List<String> compatibleStyles = resolveCompatibleTableStyles(disposition);
+        if (compatibleStyles.isEmpty()) {
+            return "standard";
+        }
+
+        String normalizedCurrent = normalizeCompatibleTableStyle(disposition, currentTableStyle);
+        int currentIndex = compatibleStyles.indexOf(normalizedCurrent);
+        if (currentIndex < 0) {
+            return compatibleStyles.get(0);
+        }
+        return compatibleStyles.get((currentIndex + 1) % compatibleStyles.size());
+    }
+
+    private String nextCustomizationChairStyle(String disposition, String roomType, String currentChairStyle) {
+        java.util.List<String> compatibleStyles = resolveCompatibleChairStyles(disposition, roomType);
+        if (compatibleStyles.isEmpty()) {
+            return "standard";
+        }
+
+        String normalizedCurrent = normalizeCompatibleChairStyle(disposition, roomType, currentChairStyle);
+        int currentIndex = compatibleStyles.indexOf(normalizedCurrent);
+        if (currentIndex < 0) {
+            return compatibleStyles.get(0);
+        }
+        return compatibleStyles.get((currentIndex + 1) % compatibleStyles.size());
+    }
+
+    private java.util.List<String> resolveCompatibleTableStyles(String disposition) {
+        String normalizedDisposition = normalize(disposition);
+        return switch (normalizedDisposition) {
+            case "u" -> java.util.List.of("standard", "reunion");
+            case "conference" -> java.util.List.of("standard");
+            case "reunion" -> java.util.List.of("reunion", "ronde");
+            case "atelier" -> java.util.List.of("atelier", "double", "ronde");
+            case "informatique" -> java.util.List.of("standard");
+            default -> java.util.List.of("standard", "individuelle", "double", "ronde");
+        };
+    }
+
+    private boolean supportsTableStyleCustomization(String disposition) {
+        return !"conference".equals(normalize(disposition));
+    }
+
+    private java.util.List<String> resolveCompatibleChairStyles(String disposition, String roomType) {
+        String normalizedDisposition = normalize(disposition);
+        String normalizedRoomType = normalize(roomType);
+
+        if ("conference".equals(normalizedDisposition)) {
+            if ("amphitheatre".equals(normalizedRoomType)) {
+                return java.util.List.of("amphi");
+            }
+            return java.util.List.of("conference");
+        }
+        if ("reunion".equals(normalizedDisposition) || "u".equals(normalizedDisposition)) {
+            return java.util.List.of("standard", "conference", "ergonomique");
+        }
+        if ("atelier".equals(normalizedDisposition)) {
+            return java.util.List.of("standard", "conference", "ergonomique");
+        }
+        if ("informatique".equals(normalizedDisposition) || "classe".equals(normalizedDisposition)) {
+            return java.util.List.of("standard", "ergonomique");
+        }
+        return java.util.List.of("standard", "conference", "ergonomique");
+    }
+
+    private boolean isCustomizationActionEnabled(CustomizationAction action) {
+        if (action == null) {
+            return false;
+        }
+        int currentCapacity = previewData == null ? 0 : Math.max(1, previewData.capacity() > 0 ? previewData.capacity() : previewData.seatCount());
+        if (action == CustomizationAction.DECREASE_CAPACITY) {
+            return currentCapacity > 1;
+        }
+        if (action == CustomizationAction.INCREASE_CAPACITY) {
+            return previewData != null && currentCapacity < resolveCustomizationCapacityLimit();
+        }
+        if (action == CustomizationAction.CYCLE_TABLE_STYLE) {
+            return previewData != null && supportsTableStyleCustomization(previewData.disposition());
+        }
+        if (action == CustomizationAction.CYCLE_CHAIR_STYLE) {
+            return previewData != null
+                && resolveCompatibleChairStyles(previewData.disposition(), previewData.roomType()).size() > 1;
+        }
+        return true;
+    }
+
+    private int resolveCustomizationCapacityLimit() {
+        if (previewData == null) {
+            return 1;
+        }
+        int baseCapacity = Math.max(1, previewData.initialCapacity() > 0 ? previewData.initialCapacity() : previewData.capacity());
+        return baseCapacity + 10;
+    }
+
+    private String normalizeCompatibleChairStyle(String disposition, String roomType, String chairStyle) {
+        java.util.List<String> compatibleStyles = resolveCompatibleChairStyles(disposition, roomType);
+        String normalizedCandidate = normalize(chairStyle);
+        for (String compatibleStyle : compatibleStyles) {
+            if (compatibleStyle.equals(normalizedCandidate)) {
+                return compatibleStyle;
+            }
+        }
+        return compatibleStyles.isEmpty() ? "standard" : compatibleStyles.get(0);
+    }
+
+    private String normalizeCompatibleTableStyle(String disposition, String tableStyle) {
+        java.util.List<String> compatibleStyles = resolveCompatibleTableStyles(disposition);
+        String normalizedCandidate = normalize(tableStyle);
+        for (String compatibleStyle : compatibleStyles) {
+            if (compatibleStyle.equals(normalizedCandidate)) {
+                return compatibleStyle;
+            }
+        }
+        return compatibleStyles.isEmpty() ? "standard" : compatibleStyles.get(0);
     }
 
     private void initialiseMaterials() {
@@ -1031,13 +1449,21 @@ public class Room3DApplication extends SimpleApplication {
 
     private void attachReunionTable(LayoutMetrics metrics) {
         ReunionTableLayout reunionTableLayout = buildReunionTableLayout(metrics);
-        Node centralTable = createTableNode(
-            "central-table",
-            reunionTableLayout.tableWidth(),
-            reunionTableLayout.tableDepth(),
-            0.76f,
-            deskMaterial
-        );
+        String tableStyle = normalize(previewData == null ? null : previewData.tableStyle());
+        Node centralTable = "ronde".equals(tableStyle)
+            ? createRoundTableNode(
+                "central-table-round",
+                resolveRoundReunionTableRadius(reunionTableLayout),
+                0.76f,
+                deskMaterial
+            )
+            : createTableNode(
+                "central-table",
+                "atelier".equals(tableStyle) ? reunionTableLayout.tableWidth() + 0.18f : reunionTableLayout.tableWidth(),
+                "atelier".equals(tableStyle) ? reunionTableLayout.tableDepth() + 0.12f : reunionTableLayout.tableDepth(),
+                0.76f,
+                "atelier".equals(tableStyle) ? stageMaterial : deskMaterial
+            );
         centralTable.setLocalTranslation(0f, 0f, reunionTableLayout.tableZ());
         centralTable.attachChild(createSimpleBox(
             "conference-hub",
@@ -1053,33 +1479,34 @@ public class Room3DApplication extends SimpleApplication {
 
     private void attachConferenceUTable(LayoutMetrics metrics) {
         ConferenceUShapeLayout uShapeLayout = buildConferenceUShapeLayout(metrics);
+        String tableStyle = normalize(previewData == null ? null : previewData.tableStyle());
         float tableHeight = 0.74f;
         Node leftWing = createTableNode(
             "conference-u-left-wing",
-            uShapeLayout.sideTableWidth(),
-            uShapeLayout.sideTableDepth(),
+            "reunion".equals(tableStyle) ? uShapeLayout.sideTableWidth() + 0.18f : uShapeLayout.sideTableWidth(),
+            "atelier".equals(tableStyle) ? uShapeLayout.sideTableDepth() + 0.08f : uShapeLayout.sideTableDepth(),
             tableHeight,
-            deskMaterial
+            "atelier".equals(tableStyle) ? stageMaterial : deskMaterial
         );
         leftWing.setLocalTranslation(uShapeLayout.leftTableX(), 0f, uShapeLayout.sideTableCenterZ());
         sceneRoot.attachChild(leftWing);
 
         Node rightWing = createTableNode(
             "conference-u-right-wing",
-            uShapeLayout.sideTableWidth(),
-            uShapeLayout.sideTableDepth(),
+            "reunion".equals(tableStyle) ? uShapeLayout.sideTableWidth() + 0.18f : uShapeLayout.sideTableWidth(),
+            "atelier".equals(tableStyle) ? uShapeLayout.sideTableDepth() + 0.08f : uShapeLayout.sideTableDepth(),
             tableHeight,
-            deskMaterial
+            "atelier".equals(tableStyle) ? stageMaterial : deskMaterial
         );
         rightWing.setLocalTranslation(uShapeLayout.rightTableX(), 0f, uShapeLayout.sideTableCenterZ());
         sceneRoot.attachChild(rightWing);
 
         Node backWing = createTableNode(
             "conference-u-back-wing",
-            uShapeLayout.backTableWidth(),
-            uShapeLayout.backTableDepth(),
+            "reunion".equals(tableStyle) ? uShapeLayout.backTableWidth() + 0.24f : uShapeLayout.backTableWidth(),
+            "atelier".equals(tableStyle) ? uShapeLayout.backTableDepth() + 0.08f : uShapeLayout.backTableDepth(),
             tableHeight,
-            deskMaterial
+            "atelier".equals(tableStyle) ? stageMaterial : deskMaterial
         );
         backWing.setLocalTranslation(0f, 0f, uShapeLayout.backTableZ());
         backWing.attachChild(createSimpleBox(
@@ -1193,6 +1620,10 @@ public class Room3DApplication extends SimpleApplication {
 
     private Vector3f resolveReunionSeatPosition(Room3DPreviewData.SeatPreview seat, LayoutMetrics metrics) {
         ReunionTableLayout reunionTableLayout = buildReunionTableLayout(metrics);
+        if (isRoundReunionLayout()) {
+            return resolveRoundReunionSeatPosition(seat, metrics, reunionTableLayout);
+        }
+
         ReunionSeatSlot seatSlot = resolveReunionSeatSlot(seat);
 
         return switch (seatSlot.side()) {
@@ -1322,6 +1753,10 @@ public class Room3DApplication extends SimpleApplication {
         ReunionTableLayout reunionTableLayout
     ) {
         float microphoneSurfaceY = 0.77f;
+        if (isRoundReunionLayout()) {
+            return resolveRoundReunionMicrophonePosition(seat, reunionTableLayout, microphoneSurfaceY);
+        }
+
         ReunionSeatSlot seatSlot = resolveReunionSeatSlot(seat);
 
         return switch (seatSlot.side()) {
@@ -1354,41 +1789,19 @@ public class Room3DApplication extends SimpleApplication {
         seatNode.setUserData(SEAT_STATUS_KEY, seat.state().displayLabel());
 
         Material seatMaterial = resolveSeatMaterial(seat.state());
-        if (isTieredAuditoriumLayout()) {
+        String chairStyle = normalize(previewData == null ? null : previewData.chairStyle());
+        if (shouldUseAuditoriumChairStyle(chairStyle)) {
             attachAuditoriumSeatGeometry(seatNode, seat.number(), seatMaterial);
+        } else if ("conference".equals(chairStyle)) {
+            attachConferenceChairGeometry(seatNode, seat.number(), seatMaterial);
+        } else if ("ergonomique".equals(chairStyle)) {
+            attachErgonomicChairGeometry(seatNode, seat.number(), seatMaterial);
         } else {
-            seatNode.attachChild(createSimpleBox(
-                "seat-base-" + seat.number(),
-                0.22f,
-                0.035f,
-                0.22f,
-                seatMaterial,
-                new Vector3f(0f, 0.43f, 0f)
-            ));
-            seatNode.attachChild(createSimpleBox(
-                "seat-back-" + seat.number(),
-                0.22f,
-                0.22f,
-                0.03f,
-                seatMaterial,
-                new Vector3f(0f, 0.7f, -0.18f)
-            ));
-            seatNode.attachChild(createSimpleBox(
-                "seat-support-" + seat.number(),
-                0.03f,
-                0.18f,
-                0.03f,
-                metalMaterial,
-                new Vector3f(0f, 0.19f, -0.02f)
-            ));
-            seatNode.attachChild(createChairLeg("seat-leg-fl-" + seat.number(), 0.17f, -0.14f));
-            seatNode.attachChild(createChairLeg("seat-leg-fr-" + seat.number(), -0.17f, -0.14f));
-            seatNode.attachChild(createChairLeg("seat-leg-bl-" + seat.number(), 0.17f, 0.14f));
-            seatNode.attachChild(createChairLeg("seat-leg-br-" + seat.number(), -0.17f, 0.14f));
+            attachStandardChairGeometry(seatNode, seat.number(), seatMaterial);
         }
 
         if (shouldAttachIndividualDesk(disposition)) {
-            Node deskNode = createSeatDeskNode(seat.number(), disposition);
+            Node deskNode = createSeatDeskNode(seat.number(), disposition, previewData == null ? null : previewData.tableStyle());
             deskNode.setLocalTranslation(0f, 0f, 0.6f);
             seatNode.attachChild(deskNode);
         }
@@ -1398,6 +1811,96 @@ public class Room3DApplication extends SimpleApplication {
         seatVisuals.put(seatNode, new SeatVisual(seat, interactionIndicator));
 
         return seatNode;
+    }
+
+    private void attachStandardChairGeometry(Node seatNode, int seatNumber, Material seatMaterial) {
+        seatNode.attachChild(createSimpleBox(
+            "seat-base-" + seatNumber,
+            0.22f,
+            0.035f,
+            0.22f,
+            seatMaterial,
+            new Vector3f(0f, 0.43f, 0f)
+        ));
+        seatNode.attachChild(createSimpleBox(
+            "seat-back-" + seatNumber,
+            0.22f,
+            0.22f,
+            0.03f,
+            seatMaterial,
+            new Vector3f(0f, 0.7f, -0.18f)
+        ));
+        seatNode.attachChild(createSimpleBox(
+            "seat-support-" + seatNumber,
+            0.03f,
+            0.18f,
+            0.03f,
+            metalMaterial,
+            new Vector3f(0f, 0.19f, -0.02f)
+        ));
+        seatNode.attachChild(createChairLeg("seat-leg-fl-" + seatNumber, 0.17f, -0.14f));
+        seatNode.attachChild(createChairLeg("seat-leg-fr-" + seatNumber, -0.17f, -0.14f));
+        seatNode.attachChild(createChairLeg("seat-leg-bl-" + seatNumber, 0.17f, 0.14f));
+        seatNode.attachChild(createChairLeg("seat-leg-br-" + seatNumber, -0.17f, 0.14f));
+    }
+
+    private void attachConferenceChairGeometry(Node seatNode, int seatNumber, Material seatMaterial) {
+        seatNode.attachChild(createSimpleBox(
+            "conference-seat-base-" + seatNumber,
+            0.2f,
+            0.03f,
+            0.2f,
+            seatMaterial,
+            new Vector3f(0f, 0.45f, 0f)
+        ));
+        seatNode.attachChild(createSimpleBox(
+            "conference-seat-back-" + seatNumber,
+            0.19f,
+            0.2f,
+            0.028f,
+            seatMaterial,
+            new Vector3f(0f, 0.68f, -0.17f)
+        ));
+        seatNode.attachChild(createSimpleBox(
+            "conference-seat-left-arm-" + seatNumber,
+            0.02f,
+            0.1f,
+            0.16f,
+            accentMaterial,
+            new Vector3f(-0.23f, 0.52f, -0.01f)
+        ));
+        seatNode.attachChild(createSimpleBox(
+            "conference-seat-right-arm-" + seatNumber,
+            0.02f,
+            0.1f,
+            0.16f,
+            accentMaterial,
+            new Vector3f(0.23f, 0.52f, -0.01f)
+        ));
+        seatNode.attachChild(createChairLeg("conference-seat-leg-fl-" + seatNumber, 0.16f, -0.13f));
+        seatNode.attachChild(createChairLeg("conference-seat-leg-fr-" + seatNumber, -0.16f, -0.13f));
+        seatNode.attachChild(createChairLeg("conference-seat-leg-bl-" + seatNumber, 0.16f, 0.13f));
+        seatNode.attachChild(createChairLeg("conference-seat-leg-br-" + seatNumber, -0.16f, 0.13f));
+    }
+
+    private void attachErgonomicChairGeometry(Node seatNode, int seatNumber, Material seatMaterial) {
+        attachStandardChairGeometry(seatNode, seatNumber, seatMaterial);
+        seatNode.attachChild(createSimpleBox(
+            "ergonomic-seat-headrest-" + seatNumber,
+            0.13f,
+            0.07f,
+            0.025f,
+            seatMaterial,
+            new Vector3f(0f, 0.96f, -0.18f)
+        ));
+        seatNode.attachChild(createSimpleBox(
+            "ergonomic-seat-lumbar-" + seatNumber,
+            0.11f,
+            0.07f,
+            0.022f,
+            accentMaterial,
+            new Vector3f(0f, 0.63f, -0.17f)
+        ));
     }
 
     private void attachAuditoriumSeatGeometry(Node seatNode, int seatNumber, Material seatMaterial) {
@@ -1491,6 +1994,11 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private void applyReunionSeatOrientation(Node seatNode, Room3DPreviewData.SeatPreview seat) {
+        if (isRoundReunionLayout()) {
+            seatNode.rotate(0f, resolveRoundReunionSeatYaw(seat), 0f);
+            return;
+        }
+
         ReunionSeatSlot seatSlot = resolveReunionSeatSlot(seat);
         switch (seatSlot.side()) {
             case FRONT -> seatNode.rotate(0f, HALF_TURN_Y, 0f);
@@ -1517,11 +2025,15 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private boolean shouldAttachIndividualDesk(String disposition) {
-        if ("reunion".equals(disposition) || isTieredAuditoriumLayout()) {
+        if ("reunion".equals(disposition) || "conference".equals(disposition) || isTieredAuditoriumLayout()) {
             return false;
         }
 
         return !isUShapeLayout();
+    }
+
+    private boolean shouldUseAuditoriumChairStyle(String chairStyle) {
+        return isTieredAuditoriumLayout() || "amphi".equals(chairStyle);
     }
 
     private boolean isUShapeLayout() {
@@ -1765,6 +2277,23 @@ public class Room3DApplication extends SimpleApplication {
             minTableDepth,
             maxTableDepth
         );
+        if (isRoundReunionLayout()) {
+            int seatCount = Math.max(1, previewData.seatCount());
+            float desiredSeatSpacing = resolveRoundReunionSeatSpacing(seatCount);
+            float chairClearance = resolveRoundReunionChairClearance(seatCount);
+            float orbitRadiusFromSeatCount = seatCount <= 1
+                ? 1.55f
+                : (seatCount * desiredSeatSpacing) / FastMath.TWO_PI;
+            float minTableDiameter = 2.2f;
+            float maxTableDiameter = Math.max(minTableDiameter, Math.min(maxTableWidth, maxTableDepth) - 0.45f);
+            float targetTableDiameter = Math.max(
+                minTableDiameter,
+                (orbitRadiusFromSeatCount - chairClearance) * 2f
+            );
+            float tableDiameter = clamp(targetTableDiameter, minTableDiameter, maxTableDiameter);
+            tableWidth = tableDiameter;
+            tableDepth = tableDiameter;
+        }
         float frontSeatZ = tableZ + (tableDepth / 2f) + frontBackChairOffset;
         float backSeatZ = tableZ - (tableDepth / 2f) - frontBackChairOffset;
         float leftSeatX = -(tableWidth / 2f) - sideChairOffset;
@@ -1880,6 +2409,10 @@ public class Room3DApplication extends SimpleApplication {
     }
 
     private float resolveReunionMicrophoneYaw(Room3DPreviewData.SeatPreview seat) {
+        if (isRoundReunionLayout()) {
+            return resolveRoundReunionSeatAngle(seat);
+        }
+
         return switch (resolveReunionSeatSlot(seat).side()) {
             case FRONT -> 0f;
             case BACK -> HALF_TURN_Y;
@@ -1957,7 +2490,8 @@ public class Room3DApplication extends SimpleApplication {
         return indicator;
     }
 
-    private Node createSeatDeskNode(int seatNumber, String disposition) {
+    private Node createSeatDeskNode(int seatNumber, String disposition, String tableStyle) {
+        String normalizedTableStyle = normalize(tableStyle);
         Node deskNode;
         if ("informatique".equals(disposition)) {
             deskNode = createTableNode("lab-desk-" + seatNumber, 0.82f, 0.5f, 0.73f, deskMaterial);
@@ -1988,8 +2522,23 @@ public class Room3DApplication extends SimpleApplication {
             return deskNode;
         }
 
+        if ("ronde".equals(normalizedTableStyle)) {
+            deskNode = createRoundTableNode("round-desk-" + seatNumber, 0.3f, 0.72f, deskMaterial);
+            deskNode.attachChild(createSimpleBox(
+                "round-pad-" + seatNumber,
+                0.09f,
+                0.008f,
+                0.09f,
+                accentMaterial,
+                new Vector3f(0f, 0.75f, 0f)
+            ));
+            return deskNode;
+        }
+
         if ("conference".equals(disposition) || "u".equals(disposition)) {
-            deskNode = createTableNode("conference-desk-" + seatNumber, 0.72f, 0.46f, 0.73f, deskMaterial);
+            float width = "reunion".equals(normalizedTableStyle) ? 0.94f : 0.72f;
+            float depth = "reunion".equals(normalizedTableStyle) ? 0.54f : 0.46f;
+            deskNode = createTableNode("conference-desk-" + seatNumber, width, depth, 0.73f, deskMaterial);
             deskNode.attachChild(createSimpleBox(
                 "conference-pad-" + seatNumber,
                 0.15f,
@@ -2001,7 +2550,15 @@ public class Room3DApplication extends SimpleApplication {
             return deskNode;
         }
 
-        deskNode = createTableNode("class-desk-" + seatNumber, 0.72f, 0.42f, 0.72f, deskMaterial);
+        float width = switch (normalizedTableStyle) {
+            case "individuelle" -> 0.58f;
+            case "double" -> 0.96f;
+            case "atelier" -> 0.82f;
+            default -> 0.72f;
+        };
+        float depth = "atelier".equals(normalizedTableStyle) ? 0.5f : 0.42f;
+        Material topMaterial = "atelier".equals(normalizedTableStyle) ? stageMaterial : deskMaterial;
+        deskNode = createTableNode("class-desk-" + seatNumber, width, depth, 0.72f, topMaterial);
         deskNode.attachChild(createSimpleBox(
             "class-book-" + seatNumber,
             0.14f,
@@ -2083,6 +2640,124 @@ public class Room3DApplication extends SimpleApplication {
             new Vector3f(-0.2f, 0.81f, 0.08f)
         ));
         return deskNode;
+    }
+
+    private Node createRoundTableNode(String name, float radius, float topHeight, Material topMaterial) {
+        Node tableNode = new Node(name);
+
+        Cylinder topMesh = new Cylinder(24, 24, radius, 0.04f, true);
+        Geometry top = new Geometry(name + "-top", topMesh);
+        top.setMaterial(topMaterial);
+        top.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        top.rotate(FastMath.HALF_PI, 0f, 0f);
+        top.setLocalTranslation(0f, topHeight, 0f);
+        tableNode.attachChild(top);
+
+        Cylinder legMesh = new Cylinder(16, 16, 0.04f, Math.max(0.45f, topHeight - 0.08f), true);
+        Geometry leg = new Geometry(name + "-leg", legMesh);
+        leg.setMaterial(metalMaterial);
+        leg.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        leg.rotate(FastMath.HALF_PI, 0f, 0f);
+        leg.setLocalTranslation(0f, Math.max(0.22f, (topHeight - 0.08f) / 2f), 0f);
+        tableNode.attachChild(leg);
+
+        Cylinder footMesh = new Cylinder(16, 16, Math.max(0.16f, radius * 0.48f), 0.02f, true);
+        Geometry foot = new Geometry(name + "-foot", footMesh);
+        foot.setMaterial(metalMaterial);
+        foot.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        foot.rotate(FastMath.HALF_PI, 0f, 0f);
+        foot.setLocalTranslation(0f, 0.02f, 0f);
+        tableNode.attachChild(foot);
+        return tableNode;
+    }
+
+    private boolean isRoundReunionLayout() {
+        return "reunion".equals(normalize(previewData == null ? null : previewData.disposition()))
+            && "ronde".equals(normalize(previewData == null ? null : previewData.tableStyle()));
+    }
+
+    private Vector3f resolveRoundReunionSeatPosition(
+        Room3DPreviewData.SeatPreview seat,
+        LayoutMetrics metrics,
+        ReunionTableLayout reunionTableLayout
+    ) {
+        float angle = resolveRoundReunionSeatAngle(seat);
+        float orbitRadius = resolveRoundReunionChairOrbitRadius(metrics, reunionTableLayout);
+        return new Vector3f(
+            FastMath.sin(angle) * orbitRadius,
+            0f,
+            reunionTableLayout.tableZ() + (FastMath.cos(angle) * orbitRadius)
+        );
+    }
+
+    private Vector3f resolveRoundReunionMicrophonePosition(
+        Room3DPreviewData.SeatPreview seat,
+        ReunionTableLayout reunionTableLayout,
+        float microphoneSurfaceY
+    ) {
+        float angle = resolveRoundReunionSeatAngle(seat);
+        float microphoneRadius = Math.max(0.38f, resolveRoundReunionTableRadius(reunionTableLayout) - 0.14f);
+        return new Vector3f(
+            FastMath.sin(angle) * microphoneRadius,
+            microphoneSurfaceY,
+            reunionTableLayout.tableZ() + (FastMath.cos(angle) * microphoneRadius)
+        );
+    }
+
+    private float resolveRoundReunionSeatYaw(Room3DPreviewData.SeatPreview seat) {
+        return resolveRoundReunionSeatAngle(seat) + HALF_TURN_Y;
+    }
+
+    private float resolveRoundReunionSeatAngle(Room3DPreviewData.SeatPreview seat) {
+        int seatCount = Math.max(1, previewData.seatCount());
+        int seatIndex = resolveReunionSeatIndex(seat);
+        return (seatIndex / (float) seatCount) * FastMath.TWO_PI;
+    }
+
+    private int resolveReunionSeatIndex(Room3DPreviewData.SeatPreview seat) {
+        int seatIndex = previewData.seats().indexOf(seat);
+        if (seatIndex >= 0) {
+            return seatIndex;
+        }
+        return Math.max(0, Math.min(Math.max(0, previewData.seatCount() - 1), seat.number() - 1));
+    }
+
+    private float resolveRoundReunionChairOrbitRadius(LayoutMetrics metrics, ReunionTableLayout reunionTableLayout) {
+        float tableRadius = resolveRoundReunionTableRadius(reunionTableLayout);
+        float chairClearance = resolveRoundReunionChairClearance(previewData.seatCount());
+        float minimumRadius = tableRadius + chairClearance;
+        float desiredSeatSpacing = resolveRoundReunionSeatSpacing(previewData.seatCount());
+        float radiusFromSeatCount = previewData.seatCount() <= 1
+            ? minimumRadius
+            : (previewData.seatCount() * desiredSeatSpacing) / FastMath.TWO_PI;
+        float maxAvailableRadius = Math.max(
+            minimumRadius,
+            (Math.min(metrics.roomWidth(), metrics.roomDepth()) / 2f) - 0.72f
+        );
+        return clamp(Math.max(minimumRadius, radiusFromSeatCount), minimumRadius, maxAvailableRadius);
+    }
+
+    private float resolveRoundReunionTableRadius(ReunionTableLayout reunionTableLayout) {
+        float tableDiameter = Math.min(reunionTableLayout.tableWidth(), reunionTableLayout.tableDepth());
+        return Math.max(0.9f, tableDiameter / 2f);
+    }
+
+    private float resolveRoundReunionSeatSpacing(int seatCount) {
+        int normalizedSeatCount = Math.max(1, seatCount);
+        if (normalizedSeatCount <= 8) {
+            return 0.78f;
+        }
+        if (normalizedSeatCount <= 16) {
+            return 0.72f;
+        }
+        if (normalizedSeatCount <= 24) {
+            return 0.68f;
+        }
+        return 0.66f;
+    }
+
+    private float resolveRoundReunionChairClearance(int seatCount) {
+        return seatCount <= 12 ? 0.46f : 0.5f;
     }
 
     private Node createConferenceLecternNode() {
@@ -2660,6 +3335,13 @@ public class Room3DApplication extends SimpleApplication {
         if (previewData == null) {
             return "";
         }
+        if (previewData.isCustomizationMode()) {
+            return "Disposition " + formatCustomizationDispositionLabel(previewData.disposition())
+                + " | " + previewData.capacity() + " places | tables "
+                + formatFurnitureStyleLabel(previewData.tableStyle(), "standard")
+                + " | chaises " + formatFurnitureStyleLabel(previewData.chairStyle(), "standard")
+                + " | PMR " + (previewData.accessible() ? "oui" : "non");
+        }
         if (previewData.summaryNote() != null) {
             return previewData.summaryNote();
         }
@@ -2676,6 +3358,9 @@ public class Room3DApplication extends SimpleApplication {
         if (previewData.supportsSeatSelection()) {
             return "Choisissez une place disponible dans la salle.";
         }
+        if (previewData.isCustomizationMode()) {
+            return "Ajustez la salle avec les boutons de gauche, puis cliquez sur Valider pour renvoyer les reglages au formulaire.";
+        }
         if (previewData.isDesignReview()) {
             return "Inspectez la proposition 3D puis revenez dans le backoffice pour confirmer ou relancer l'AI.";
         }
@@ -2685,6 +3370,9 @@ public class Room3DApplication extends SimpleApplication {
     private String buildLegendText() {
         if (isExportedSceneMode() || previewData == null) {
             return "";
+        }
+        if (previewData.isCustomizationMode()) {
+            return "Boutons a gauche: disposition, PMR, styles tables/chaises, capacite. Cliquez sur Valider pour pousser la configuration vers le formulaire.";
         }
         if (previewData.isDesignReview()) {
             return "";
@@ -2703,6 +3391,9 @@ public class Room3DApplication extends SimpleApplication {
     private String buildInteractionHintText() {
         if (isExportedSceneMode()) {
             return "Guide: glisser pour deplacer la camera | bouton ou touche E export .j3o | ZQSD/WASD";
+        }
+        if (previewData != null && previewData.isCustomizationMode()) {
+            return "Guide: glisser pour deplacer la camera | boutons camera a droite | disposition, PMR, styles et capacite a gauche | bouton Valider pour synchroniser | bouton ou touche E export .j3o | ZQSD/WASD";
         }
         if (previewData != null && previewData.isDesignReview()) {
             return "Guide: glisser pour deplacer la camera | boutons camera | bouton ou touche E export .j3o | ZQSD/WASD | validation dans le backoffice";
@@ -2855,6 +3546,9 @@ public class Room3DApplication extends SimpleApplication {
         if (previewData.headline() != null) {
             return previewData.headline();
         }
+        if (previewData.isCustomizationMode()) {
+            return "Personnalisation 3D | " + previewData.roomName();
+        }
         if (previewData.isDesignReview()) {
             return "Conception 3D | " + previewData.roomName();
         }
@@ -2950,14 +3644,19 @@ public class Room3DApplication extends SimpleApplication {
         Vector2f cursorPosition = inputManager.getCursorPosition();
         CameraPreset newHoveredPreset = findCameraPresetAtCursor(cursorPosition);
         boolean newHoveredExportButton = isExportButtonAtCursor(cursorPosition);
-        if (newHoveredPreset == hoveredCameraPreset && newHoveredExportButton == hoveredExportButton) {
+        CustomizationAction newHoveredCustomizationAction = findCustomizationActionAtCursor(cursorPosition);
+        if (newHoveredPreset == hoveredCameraPreset
+            && newHoveredExportButton == hoveredExportButton
+            && newHoveredCustomizationAction == hoveredCustomizationAction) {
             return;
         }
 
         hoveredCameraPreset = newHoveredPreset;
         hoveredExportButton = newHoveredExportButton;
+        hoveredCustomizationAction = newHoveredCustomizationAction;
         updateCameraPresetButtonStyles();
         updateExportButtonStyle();
+        updateCustomizationButtonStyles();
     }
 
     private void handlePrimarySeatInteraction(boolean isPressed) {
@@ -2986,6 +3685,12 @@ public class Room3DApplication extends SimpleApplication {
         CameraPreset clickedPreset = findCameraPresetAtCursor(inputManager.getCursorPosition());
         if (clickedPreset != null) {
             applyCameraPreset(clickedPreset, true);
+            return;
+        }
+
+        CustomizationAction customizationAction = findCustomizationActionAtCursor(inputManager.getCursorPosition());
+        if (customizationAction != null) {
+            applyCustomizationAction(customizationAction);
             return;
         }
 
@@ -3026,8 +3731,24 @@ public class Room3DApplication extends SimpleApplication {
         return exportButton != null && isCursorInsideButton(cursorPosition, exportButton);
     }
 
+    private CustomizationAction findCustomizationActionAtCursor(Vector2f cursorPosition) {
+        if (cursorPosition == null || customizationButtons.isEmpty()) {
+            return null;
+        }
+
+        for (CustomizationAction action : CustomizationAction.values()) {
+            HudActionButton button = customizationButtons.get(action);
+            if (button != null && isCustomizationActionEnabled(action) && isCursorInsideButton(cursorPosition, button)) {
+                return action;
+            }
+        }
+        return null;
+    }
+
     private boolean isCursorOverHudButton(Vector2f cursorPosition) {
-        return findCameraPresetAtCursor(cursorPosition) != null || isExportButtonAtCursor(cursorPosition);
+        return findCameraPresetAtCursor(cursorPosition) != null
+            || findCustomizationActionAtCursor(cursorPosition) != null
+            || isExportButtonAtCursor(cursorPosition);
     }
 
     private boolean isCursorInsideButton(Vector2f cursorPosition, HudActionButton button) {
@@ -3330,6 +4051,38 @@ public class Room3DApplication extends SimpleApplication {
 
     private String normalize(String value) {
         return value == null ? "" : value.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private enum CustomizationAction {
+        CYCLE_DISPOSITION("Disposition", 0, 0),
+        TOGGLE_ACCESSIBILITY("PMR", 0, 1),
+        CYCLE_TABLE_STYLE("Tables", 1, 0),
+        CYCLE_CHAIR_STYLE("Chaises", 1, 1),
+        DECREASE_CAPACITY("- place", 2, 0),
+        INCREASE_CAPACITY("+ place", 2, 1),
+        CONFIRM_CHANGES("Valider", 3, 0);
+
+        private final String defaultLabel;
+        private final int row;
+        private final int column;
+
+        CustomizationAction(String defaultLabel, int row, int column) {
+            this.defaultLabel = defaultLabel;
+            this.row = row;
+            this.column = column;
+        }
+
+        public String defaultLabel() {
+            return defaultLabel;
+        }
+
+        public int row() {
+            return row;
+        }
+
+        public int column() {
+            return column;
+        }
     }
 
     private enum CameraPreset {

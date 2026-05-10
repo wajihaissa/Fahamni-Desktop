@@ -18,6 +18,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ReservationService {
@@ -94,6 +95,7 @@ public class ReservationService {
     private final Connection cnx = MyDataBase.getInstance().getCnx();
     private final StripePaymentService stripePaymentService = new StripePaymentService();
     private final PaymentReceiptEmailService paymentReceiptEmailService = new PaymentReceiptEmailService();
+    private final SessionRoomCustomizationService sessionRoomCustomizationService = new SessionRoomCustomizationService();
 
     private final List<Reservation> reservations = new ArrayList<>(List.of(
         new Reservation("Mathematics - Algebra Fundamentals", "Ahmed Ben Ali",
@@ -433,7 +435,7 @@ public class ReservationService {
                     options.add(new SeatSelectionOption(place, rs.getInt("reserved") > 0));
                 }
             }
-            return options;
+            return filterSeatSelectionOptionsByApprovedCustomization(seance, options);
         } catch (SQLException exception) {
             throw new IllegalStateException("Chargement du plan de salle impossible: " + exception.getMessage(), exception);
         }
@@ -1813,12 +1815,20 @@ public class ReservationService {
             throw new IllegalArgumentException("Cette seance presentielle ne reference aucune salle valide.");
         }
 
-        int configuredPlaces = countPlacesForSalle(connection, seance.getSalleId());
+        Set<Integer> approvedSeatKeys = sessionRoomCustomizationService.resolveApprovedSeatKeysForSeance(seance.getId());
+        int configuredPlaces = approvedSeatKeys.isEmpty()
+            ? countPlacesForSalle(connection, seance.getSalleId())
+            : approvedSeatKeys.size();
         if (configuredPlaces <= 0) {
             throw new IllegalArgumentException("Aucune place n'est configuree pour la salle de cette seance.");
         }
         if (selectedPlaceId == null || selectedPlaceId <= 0) {
             throw new IllegalArgumentException("Choisissez une place disponible avant de confirmer la reservation.");
+        }
+        if (!approvedSeatKeys.isEmpty() && !approvedSeatKeys.contains(selectedPlaceId)) {
+            throw new IllegalArgumentException(
+                "La place selectionnee ne fait pas partie de la configuration personnalisee approuvee pour cette seance."
+            );
         }
 
         try (PreparedStatement pst = connection.prepareStatement(SELECT_PLACE_BY_SEANCE_AND_ID_SQL)) {
@@ -1851,6 +1861,24 @@ public class ReservationService {
                 return new SelectedPlace(place.getIdPlace(), buildPlaceLabel(place));
             }
         }
+    }
+
+    private List<SeatSelectionOption> filterSeatSelectionOptionsByApprovedCustomization(
+        Seance seance,
+        List<SeatSelectionOption> options
+    ) {
+        if (seance == null || seance.getId() <= 0 || options == null || options.isEmpty()) {
+            return options == null ? List.of() : options;
+        }
+
+        Set<Integer> approvedSeatKeys = sessionRoomCustomizationService.resolveApprovedSeatKeysForSeance(seance.getId());
+        if (approvedSeatKeys.isEmpty()) {
+            return options;
+        }
+
+        return options.stream()
+            .filter(option -> approvedSeatKeys.contains(option.placeId()))
+            .toList();
     }
 
     private int countPlacesForSalle(Connection connection, int salleId) throws SQLException {

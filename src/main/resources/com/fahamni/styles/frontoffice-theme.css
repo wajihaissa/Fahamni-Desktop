@@ -4465,6 +4465,21 @@
             -fx-text-fill: #5f49bf;
         }
 
+        .front-alert-button-wrap.has-unread .front-navbar-icon-button {
+            -fx-background-color:
+                linear-gradient(to bottom right, #7d6cf0 0%, #5e49cb 100%);
+            -fx-border-color: rgba(111, 89, 225, 0.42);
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.32), 20, 0.24, 0, 4);
+        }
+
+        .front-alert-button-wrap.has-unread .front-navbar-icon-button:hover {
+            -fx-background-color:
+                linear-gradient(to bottom right, #8a79f4 0%, #6854d4 100%);
+            -fx-border-color: rgba(111, 89, 225, 0.56);
+            -fx-text-fill: white;
+        }
+
         .front-alert-icon-shell {
             -fx-min-width: 18px;
             -fx-pref-width: 18px;
@@ -4715,6 +4730,27 @@
             -fx-background-radius: 999px;
         }
 
+        .front-alert-button-wrap.has-unread .front-alert-badge {
+            -fx-background-color:
+                linear-gradient(to bottom, #ff5a6d 0%, #e11d48 100%);
+            -fx-text-fill: white;
+            -fx-font-size: 9px;
+            -fx-font-weight: 800;
+            -fx-padding: 2px 6px;
+            -fx-min-width: 20px;
+            -fx-min-height: 20px;
+            -fx-border-color: white;
+            -fx-border-width: 2px;
+            -fx-border-radius: 999px;
+            -fx-background-radius: 999px;
+            -fx-effect: dropshadow(gaussian, rgba(225, 29, 72, 0.34), 12, 0.20, 0, 2);
+        }
+
+        .front-alert-button-wrap.has-many-unread .front-alert-badge {
+            -fx-padding: 2px 7px;
+            -fx-min-width: 24px;
+        }
+
         /* Premium front shell */
 
         .front-premium-shell-root {
@@ -4859,6 +4895,21 @@
             -fx-border-width: 2px;
             -fx-border-radius: 999px;
             -fx-background-radius: 999px;
+        }
+
+        .front-navbar-shell-root.theme-light .front-alert-button-wrap.has-unread .front-navbar-icon-button {
+            -fx-background-color:
+                linear-gradient(to bottom right, #7d6cf0 0%, #5e49cb 100%);
+            -fx-border-color: rgba(111, 89, 225, 0.40);
+            -fx-text-fill: white;
+            -fx-effect: dropshadow(gaussian, rgba(95, 73, 191, 0.24), 18, 0.20, 0, 4);
+        }
+
+        .front-navbar-shell-root.theme-light .front-alert-button-wrap.has-unread .front-alert-badge {
+            -fx-background-color:
+                linear-gradient(to bottom, #ff5a6d 0%, #e11d48 100%);
+            -fx-text-fill: white;
+            -fx-border-color: white;
         }
 
         .front-premium-profile-button {
@@ -5249,4 +5300,26 @@
             -fx-background-color: #4fd8ff;
             -fx-text-fill: #06121d;
             -fx-border-color: #08111b;
+        }
+
+        .front-navbar-shell-root.theme-dark .front-alert-button-wrap.has-unread .front-navbar-icon-button {
+            -fx-background-color:
+                linear-gradient(to bottom right, rgba(79, 216, 255, 0.28) 0%, rgba(74, 125, 255, 0.34) 100%);
+            -fx-border-color: rgba(79, 216, 255, 0.34);
+            -fx-text-fill: #eefcff;
+            -fx-effect: dropshadow(gaussian, rgba(79, 216, 255, 0.28), 18, 0.22, 0, 4);
+        }
+
+        .front-navbar-shell-root.theme-dark .front-alert-button-wrap.has-unread .front-navbar-icon-button:hover {
+            -fx-background-color:
+                linear-gradient(to bottom right, rgba(79, 216, 255, 0.34) 0%, rgba(74, 125, 255, 0.40) 100%);
+            -fx-border-color: rgba(79, 216, 255, 0.46);
+            -fx-text-fill: #ffffff;
+        }
+
+        .front-navbar-shell-root.theme-dark .front-alert-button-wrap.has-unread .front-alert-badge {
+            -fx-background-color: linear-gradient(to bottom, #7fe7ff 0%, #4fd8ff 100%);
+            -fx-text-fill: #06121d;
+            -fx-border-color: #08111b;
+            -fx-effect: dropshadow(gaussian, rgba(79, 216, 255, 0.28), 12, 0.20, 0, 2);
         }

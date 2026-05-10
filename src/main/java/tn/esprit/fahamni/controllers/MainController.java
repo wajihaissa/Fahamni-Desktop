@@ -3,6 +3,8 @@ package tn.esprit.fahamni.controllers;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.ScaleTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -17,6 +19,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
@@ -24,6 +27,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
@@ -56,6 +60,7 @@ public class MainController {
         "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c3.87 0 7.18-2.45 8.44-5.88-.65.28-1.36.43-2.12.43-2.97 0-5.38-2.41-5.38-5.38 0-2.7 1.99-4.94 4.58-5.33A8.96 8.96 0 0 0 12 3z";
     private static final String THEME_SUN_ICON =
         "M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm8.04-18.95l-1.41-1.41-1.8 1.79 1.42 1.42 1.79-1.8zM17.24 19.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 13h3v-2h-3v2zm-8-8h-2v3h2V5zm0 4a3 3 0 100 6 3 3 0 000-6zm-7.03 10.66l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z";
+    private static final Duration ALERT_BADGE_REFRESH_INTERVAL = Duration.seconds(20);
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
 
@@ -63,6 +68,7 @@ public class MainController {
     @FXML private AnchorPane contentPane;
     @FXML private Label pageTitle;
     @FXML private Button alertButton;
+    @FXML private StackPane alertButtonWrap;
     @FXML private Label alertNotifBadge;
     @FXML private Button dashboardButton;
     @FXML private Button reservationsButton;
@@ -91,6 +97,8 @@ public class MainController {
     private GlobalChatbotController globalChatbotController;
     private boolean globalAiLoaded;
     private boolean globalAiOpen;
+    private Timeline alertBadgeRefreshTimeline;
+    private Tooltip alertButtonTooltip;
     private static final DateTimeFormatter NOTIF_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @FXML
@@ -125,28 +133,21 @@ public class MainController {
 
         showDashboard();
         refreshBlogBadge();
+        initializeAlertBadgeRefresh();
     }
 
     public void refreshBlogBadge() {
-        if (alertNotifBadge == null) {
+        if (alertNotifBadge == null || alertButton == null) {
             return;
         }
         try {
             if (!UserSession.hasCurrentUser() || UserSession.getCurrentUserId() <= 0) {
-                alertNotifBadge.setVisible(false);
-                alertNotifBadge.setManaged(false);
+                applyAlertIndicatorState(0);
                 return;
             }
 
             int count = notifService.countUnreadForUser(UserSession.getCurrentUserId());
-            if (count > 0) {
-                alertNotifBadge.setText(count > 99 ? "99+" : String.valueOf(count));
-                alertNotifBadge.setVisible(true);
-                alertNotifBadge.setManaged(true);
-            } else {
-                alertNotifBadge.setVisible(false);
-                alertNotifBadge.setManaged(false);
-            }
+            applyAlertIndicatorState(count);
         } catch (Exception e) {
             System.err.println("refreshBlogBadge: " + e.getMessage());
         }
@@ -239,6 +240,10 @@ public class MainController {
         }
 
         int userId = UserSession.hasCurrentUser() ? UserSession.getCurrentUserId() : 0;
+        if (userId > 0 && notifService.countUnreadForUser(userId) > 0) {
+            notifService.markAllReadForUser(userId);
+            refreshBlogBadge();
+        }
         List<Notification> notifications = userId > 0
                 ? notifService.getAllForUser(userId)
                 : new ArrayList<>();
@@ -336,24 +341,6 @@ public class MainController {
 
             scroll.setContent(list);
             container.getChildren().add(scroll);
-
-            if (unreadCount > 0 && userId > 0) {
-                Button markReadButton = new Button("Tout marquer comme lu");
-                markReadButton.setMaxWidth(Double.MAX_VALUE);
-                markReadButton.setStyle(
-                    "-fx-background-color: #f8f7ff; -fx-text-fill: #5f49bf;" +
-                    "-fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 10;" +
-                    "-fx-cursor: hand; -fx-border-color: #e2e8f0;" +
-                    "-fx-border-width: 1 0 0 0;");
-                markReadButton.setOnAction(event -> {
-                    notifService.markAllReadForUser(userId);
-                    if (alertsPopup != null) {
-                        alertsPopup.hide();
-                    }
-                    refreshBlogBadge();
-                });
-                container.getChildren().add(markReadButton);
-            }
         }
 
         alertsPopup = new Popup();
@@ -363,11 +350,6 @@ public class MainController {
         double x = alertButton.localToScreen(alertButton.getBoundsInLocal()).getMaxX() - 340;
         double y = alertButton.localToScreen(alertButton.getBoundsInLocal()).getMaxY() + 8;
         alertsPopup.show(alertButton.getScene().getWindow(), x, y);
-
-        if (unreadCount > 0 && userId > 0) {
-            notifService.markAllReadForUser(userId);
-            refreshBlogBadge();
-        }
     }
 
     @FXML
@@ -417,6 +399,9 @@ public class MainController {
     @FXML
     private void handleLogout() {
         hideAccountMenuInstant();
+        if (alertBadgeRefreshTimeline != null) {
+            alertBadgeRefreshTimeline.stop();
+        }
         SessionCreationContext.clearPendingSelection();
         UserSession.clear();
         try {
@@ -798,6 +783,60 @@ public class MainController {
             action.run();
         } else {
             Platform.runLater(action);
+        }
+    }
+
+    private void initializeAlertBadgeRefresh() {
+        if (alertBadgeRefreshTimeline != null) {
+            alertBadgeRefreshTimeline.stop();
+        }
+
+        alertBadgeRefreshTimeline = new Timeline(new KeyFrame(ALERT_BADGE_REFRESH_INTERVAL, event -> refreshBlogBadge()));
+        alertBadgeRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        alertBadgeRefreshTimeline.play();
+    }
+
+    private void applyAlertIndicatorState(int unreadCount) {
+        boolean hasUnread = unreadCount > 0;
+
+        if (alertNotifBadge != null) {
+            if (hasUnread) {
+                alertNotifBadge.setText(unreadCount > 99 ? "99+" : String.valueOf(unreadCount));
+                alertNotifBadge.setVisible(true);
+                alertNotifBadge.setManaged(true);
+            } else {
+                alertNotifBadge.setText("");
+                alertNotifBadge.setVisible(false);
+                alertNotifBadge.setManaged(false);
+            }
+        }
+
+        if (alertButtonWrap != null) {
+            alertButtonWrap.getStyleClass().removeAll("has-unread", "has-many-unread");
+            if (hasUnread) {
+                alertButtonWrap.getStyleClass().add("has-unread");
+                if (unreadCount >= 10) {
+                    alertButtonWrap.getStyleClass().add("has-many-unread");
+                }
+            }
+        }
+
+        if (alertButton != null) {
+            alertButton.getStyleClass().removeAll("has-unread", "has-many-unread");
+            if (hasUnread) {
+                alertButton.getStyleClass().add("has-unread");
+                if (unreadCount >= 10) {
+                    alertButton.getStyleClass().add("has-many-unread");
+                }
+            }
+
+            if (alertButtonTooltip == null) {
+                alertButtonTooltip = new Tooltip();
+                alertButton.setTooltip(alertButtonTooltip);
+            }
+            alertButtonTooltip.setText(hasUnread
+                ? unreadCount + " notification(s) non lue(s)"
+                : "Aucune nouvelle notification");
         }
     }
 }

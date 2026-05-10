@@ -28,6 +28,7 @@ public class Seance {
     private Integer salleId;
     private List<Integer> equipementIds = new ArrayList<>();
     private Map<Integer, Integer> equipementQuantites = new LinkedHashMap<>();
+    private Integer roomCapacityValidationOverride;
 
     // Optional display helpers kept for current mock views.
     private String displayTitle;
@@ -167,6 +168,16 @@ public class Seance {
 
     public void setSalleId(Integer salleId) {
         this.salleId = salleId;
+    }
+
+    public Integer getRoomCapacityValidationOverride() {
+        return roomCapacityValidationOverride;
+    }
+
+    public void setRoomCapacityValidationOverride(Integer roomCapacityValidationOverride) {
+        this.roomCapacityValidationOverride = roomCapacityValidationOverride == null || roomCapacityValidationOverride <= 0
+            ? null
+            : roomCapacityValidationOverride;
     }
 
     public List<Integer> getEquipementIds() {

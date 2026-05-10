@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.String?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane id="backofficeCustomizationRequestsRoot" fitToWidth="true" hbarPolicy="NEVER" styleClass="backoffice-scroll"
+            xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.fahamni.controllers.BackofficeCustomizationRequestsController">
+    <content>
+        <VBox spacing="18.0" styleClass="backoffice-page">
+            <padding>
+                <Insets top="24.0" right="28.0" bottom="28.0" left="28.0"/>
+            </padding>
+
+            <VBox spacing="6.0" styleClass="backoffice-header-block">
+                <Label text="Demandes de personnalisation des salles" styleClass="backoffice-panel-title"/>
+                <Label text="Retrouvez toutes les demandes tuteur, les notifications entrantes et les decisions prises sur les salles." styleClass="backoffice-panel-copy"/>
+            </VBox>
+
+            <VBox spacing="14.0">
+                <styleClass>
+                    <String fx:value="backoffice-panel"/>
+                    <String fx:value="backoffice-room-hero"/>
+                </styleClass>
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <VBox spacing="4.0">
+                        <Label text="Pilotage des demandes" styleClass="backoffice-section-title"/>
+                        <Label text="Une vue unique pour suivre, ouvrir et valider les configurations souhaitees." styleClass="backoffice-panel-copy"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="Espace admin" styleClass="backoffice-room-chip"/>
+                </HBox>
+
+                <HBox spacing="14.0">
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS" styleClass="backoffice-stat-card">
+                        <Label text="Demandes" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="totalRequestsLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Toutes les demandes enregistrees." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS" styleClass="backoffice-stat-card">
+                        <Label text="A traiter" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="pendingRequestsLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Demandes en attente ou en analyse." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+
+                    <VBox spacing="6.0" HBox.hgrow="ALWAYS" styleClass="backoffice-stat-card">
+                        <Label text="Approuvees" styleClass="backoffice-stat-title"/>
+                        <Label fx:id="approvedRequestsLabel" text="0" styleClass="backoffice-stat-value"/>
+                        <Label text="Configurations deja validees." styleClass="backoffice-stat-copy"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <styleClass>
+                    <String fx:value="backoffice-panel"/>
+                </styleClass>
+                <TextField fx:id="searchField" prefWidth="320.0" promptText="Rechercher par seance, tuteur ou salle" styleClass="backoffice-form-input"/>
+                <ComboBox fx:id="statusFilterComboBox" prefWidth="180.0" styleClass="backoffice-form-input"/>
+                <Button onAction="#handleResetFilters" text="Reinitialiser" styleClass="backoffice-secondary-button"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="requestsCountLabel" text="0 demande affichee" styleClass="backoffice-panel-copy"/>
+                <Button onAction="#handleRefreshRequests" text="Actualiser" styleClass="backoffice-secondary-button"/>
+            </HBox>
+
+            <VBox spacing="12.0">
+                <styleClass>
+                    <String fx:value="backoffice-panel"/>
+                </styleClass>
+                <VBox spacing="4.0">
+                    <Label text="Liste des demandes" styleClass="backoffice-section-title"/>
+                    <Label text="Chaque carte propose les actions rapides de visualisation, validation ou refus." styleClass="backoffice-panel-copy"/>
+                </VBox>
+
+                <FlowPane fx:id="requestCardsContainer" hgap="12.0" vgap="12.0" prefWrapLength="1080.0"
+                          styleClass="backoffice-requests-grid" VBox.vgrow="ALWAYS"/>
+            </VBox>
+
+            <Label fx:id="feedbackLabel" managed="false" visible="false" wrapText="true" styleClass="backoffice-feedback"/>
+        </VBox>
+    </content>
+</ScrollPane>

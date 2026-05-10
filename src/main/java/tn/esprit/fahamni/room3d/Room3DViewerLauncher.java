@@ -2,6 +2,10 @@ package tn.esprit.fahamni.room3d;
 
 import com.jme3.system.AppSettings;
 
+import java.awt.DisplayMode;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.HeadlessException;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -13,6 +17,9 @@ public final class Room3DViewerLauncher {
     private static boolean activeViewerReady;
     private static Integer selectedSeatIdSnapshot;
     private static String selectedSeatLabelSnapshot;
+    private static Room3DPreviewData activePreviewSnapshot;
+    private static Room3DPreviewData committedCustomizationPreviewSnapshot;
+    private static long customizationCommitVersion;
 
     private Room3DViewerLauncher() {
     }
@@ -23,6 +30,7 @@ public final class Room3DViewerLauncher {
         synchronized (LOCK) {
             clearSelectedSeatSnapshotLocked();
             activeViewerReady = false;
+            activePreviewSnapshot = previewData;
 
             if (activeApplication != null) {
                 Room3DApplication application = activeApplication;
@@ -95,6 +103,24 @@ public final class Room3DViewerLauncher {
         }
     }
 
+    public static Room3DPreviewData getActivePreviewData() {
+        synchronized (LOCK) {
+            return activePreviewSnapshot;
+        }
+    }
+
+    public static Room3DPreviewData getCommittedCustomizationPreviewData() {
+        synchronized (LOCK) {
+            return committedCustomizationPreviewSnapshot;
+        }
+    }
+
+    public static long getCustomizationCommitVersion() {
+        synchronized (LOCK) {
+            return customizationCommitVersion;
+        }
+    }
+
     public static boolean waitForActiveViewerReady(long timeoutMillis) {
         long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMillis);
         while (System.currentTimeMillis() < deadline) {
@@ -157,6 +183,7 @@ public final class Room3DViewerLauncher {
             if (activeApplication == application) {
                 activeApplication = null;
                 activeViewerReady = false;
+                activePreviewSnapshot = null;
             }
         }
     }
@@ -178,6 +205,19 @@ public final class Room3DViewerLauncher {
         }
     }
 
+    static void updateActivePreviewSnapshot(Room3DPreviewData previewData) {
+        synchronized (LOCK) {
+            activePreviewSnapshot = previewData;
+        }
+    }
+
+    static void commitCustomizationPreviewSnapshot(Room3DPreviewData previewData) {
+        synchronized (LOCK) {
+            committedCustomizationPreviewSnapshot = previewData;
+            customizationCommitVersion++;
+        }
+    }
+
     private static void startApplication(Room3DApplication application, Room3DPreviewData previewData) {
         startApplication(application, buildWindowTitle(previewData));
     }
@@ -187,7 +227,8 @@ public final class Room3DViewerLauncher {
             AppSettings settings = new AppSettings(true);
             settings.setTitle(windowTitle);
             settings.setResizable(true);
-            settings.setResolution(1280, 720);
+            int[] preferredResolution = resolvePreferredWindowResolution();
+            settings.setResolution(preferredResolution[0], preferredResolution[1]);
             settings.setSamples(8);
             settings.setGammaCorrection(true);
             settings.setVSync(true);
@@ -199,6 +240,33 @@ public final class Room3DViewerLauncher {
         } catch (RuntimeException exception) {
             onApplicationClosed(application);
             throw exception;
+        }
+    }
+
+    private static int[] resolvePreferredWindowResolution() {
+        int fallbackWidth = 1600;
+        int fallbackHeight = 900;
+
+        try {
+            GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            GraphicsDevice screen = environment.getDefaultScreenDevice();
+            if (screen == null) {
+                return new int[] {fallbackWidth, fallbackHeight};
+            }
+
+            DisplayMode displayMode = screen.getDisplayMode();
+            if (displayMode == null) {
+                return new int[] {fallbackWidth, fallbackHeight};
+            }
+
+            int screenWidth = Math.max(1280, displayMode.getWidth());
+            int screenHeight = Math.max(720, displayMode.getHeight());
+
+            int width = Math.min(Math.max(1360, screenWidth - 160), 1760);
+            int height = Math.min(Math.max(820, screenHeight - 160), 1040);
+            return new int[] {width, height};
+        } catch (HeadlessException exception) {
+            return new int[] {fallbackWidth, fallbackHeight};
         }
     }
 
@@ -224,6 +292,9 @@ public final class Room3DViewerLauncher {
         }
         if (previewData != null && previewData.isDesignReview()) {
             return "Fahamni - Conception 3D de salle";
+        }
+        if (previewData != null && previewData.isCustomizationMode()) {
+            return "Fahamni - Personnalisation 3D de salle";
         }
         return "Fahamni - Apercu 3D de salle";
     }

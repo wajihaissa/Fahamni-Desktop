@@ -15,7 +15,10 @@ public record Room3DPreviewData(
     List<SeatPreview> seats,
     String headline,
     String summaryNote,
-    String legendNote
+    String legendNote,
+    String tableStyle,
+    String chairStyle,
+    int initialCapacity
 ) {
     public Room3DPreviewData(
         String roomName,
@@ -28,7 +31,7 @@ public record Room3DPreviewData(
         boolean accessible,
         List<SeatPreview> seats
     ) {
-        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, Room3DViewMode.PREVIEW, seats, null, null, null);
+        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, Room3DViewMode.PREVIEW, seats, null, null, null, null, null, capacity);
     }
 
     public Room3DPreviewData(
@@ -43,7 +46,7 @@ public record Room3DPreviewData(
         Room3DViewMode viewMode,
         List<SeatPreview> seats
     ) {
-        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, viewMode, seats, null, null, null);
+        this(roomName, building, location, roomType, disposition, roomStatus, capacity, accessible, viewMode, seats, null, null, null, null, null, capacity);
     }
 
     public Room3DPreviewData {
@@ -59,6 +62,9 @@ public record Room3DPreviewData(
         headline = normalizeOptionalText(headline);
         summaryNote = normalizeOptionalText(summaryNote);
         legendNote = normalizeOptionalText(legendNote);
+        tableStyle = normalizeOptionalText(tableStyle);
+        chairStyle = normalizeOptionalText(chairStyle);
+        initialCapacity = initialCapacity <= 0 ? capacity : initialCapacity;
     }
 
     public boolean supportsSeatSelection() {
@@ -67,6 +73,10 @@ public record Room3DPreviewData(
 
     public boolean isDesignReview() {
         return viewMode.isDesignReview();
+    }
+
+    public boolean isCustomizationMode() {
+        return viewMode.isCustomizationMode();
     }
 
     public int seatCount() {
@@ -136,7 +146,52 @@ public record Room3DPreviewData(
             seats,
             headline,
             summaryNote,
-            legendNote
+            legendNote,
+            tableStyle,
+            chairStyle,
+            initialCapacity
+        );
+    }
+
+    public Room3DPreviewData withFurnitureStyles(String tableStyle, String chairStyle) {
+        return new Room3DPreviewData(
+            roomName,
+            building,
+            location,
+            roomType,
+            disposition,
+            roomStatus,
+            capacity,
+            accessible,
+            viewMode,
+            seats,
+            headline,
+            summaryNote,
+            legendNote,
+            tableStyle,
+            chairStyle,
+            initialCapacity
+        );
+    }
+
+    public Room3DPreviewData withInitialCapacity(int initialCapacity) {
+        return new Room3DPreviewData(
+            roomName,
+            building,
+            location,
+            roomType,
+            disposition,
+            roomStatus,
+            capacity,
+            accessible,
+            viewMode,
+            seats,
+            headline,
+            summaryNote,
+            legendNote,
+            tableStyle,
+            chairStyle,
+            initialCapacity
         );
     }
 
