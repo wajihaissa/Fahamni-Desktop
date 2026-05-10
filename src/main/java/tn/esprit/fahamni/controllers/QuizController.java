@@ -24,7 +24,10 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Screen;
+import javafx.stage.Stage;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.Models.quiz.Choice;
@@ -39,6 +42,8 @@ import tn.esprit.fahamni.services.AiQuizAssistantService;
 import tn.esprit.fahamni.services.QuizCertificationMailer;
 import tn.esprit.fahamni.services.QuizAnalyticsService;
 import tn.esprit.fahamni.services.QuizService;
+import tn.esprit.fahamni.utils.EmbeddedCodeEditor;
+import tn.esprit.fahamni.utils.FrontOfficeThemePreference;
 import tn.esprit.fahamni.utils.UserSession;
 
 import java.text.NumberFormat;
@@ -323,156 +328,204 @@ public class QuizController {
     }
 
     private void handleStartQuiz(Quiz quiz) {
-        if (quiz == null || quiz.getQuestions().isEmpty()) {
-            showAlert(Alert.AlertType.INFORMATION, "Quiz unavailable", "This quiz is not ready or does not have any questions yet.");
-            return;
-        }
-
-        Dialog<QuizResult> dialog = new Dialog<>();
-        dialog.setTitle("Start quiz");
-        dialog.setHeaderText(null);
-
-        ButtonType backButtonType = new ButtonType("Back", ButtonBar.ButtonData.LEFT);
-        ButtonType nextButtonType = new ButtonType("Next", ButtonBar.ButtonData.OTHER);
-        ButtonType finishButtonType = new ButtonType("Finish Quiz", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(backButtonType, nextButtonType, finishButtonType, ButtonType.CANCEL);
-        dialog.getDialogPane().getStyleClass().addAll("quiz-dialog-pane", "quiz-experience-dialog");
-        dialog.getDialogPane().setPrefWidth(700);
-        applyCurrentTheme(dialog.getDialogPane());
-
-        VBox content = new VBox(18);
-        content.getStyleClass().add("quiz-dialog-shell");
-        content.setPadding(new Insets(18));
-        content.setPrefWidth(620);
-
-        VBox heroBox = new VBox(8);
-        heroBox.getStyleClass().add("quiz-dialog-hero");
-
-        Label keywordLabel = new Label(quiz.getKeyword().isBlank() ? "General quiz" : quiz.getKeyword());
-        keywordLabel.getStyleClass().add("quiz-dialog-eyebrow");
-
-        Label titleLabel = new Label(quiz.getTitre());
-        titleLabel.getStyleClass().add("quiz-dialog-title");
-        titleLabel.setWrapText(true);
-
-        Label subtitleLabel = new Label(buildQuizStartSubtitle(quiz));
-        subtitleLabel.getStyleClass().add("quiz-dialog-subtitle");
-        subtitleLabel.setWrapText(true);
-
-        heroBox.getChildren().addAll(keywordLabel, titleLabel, subtitleLabel);
-
-        HBox progressHeader = new HBox(10);
-        progressHeader.setAlignment(Pos.CENTER_LEFT);
-
-        Label stepLabel = new Label();
-        stepLabel.getStyleClass().add("quiz-progress-step");
-
-        Label progressLabel = new Label();
-        progressLabel.getStyleClass().add("quiz-progress-label");
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        progressHeader.getChildren().addAll(stepLabel, spacer, progressLabel);
-
-        ProgressBar progressBar = new ProgressBar(0);
-        progressBar.getStyleClass().add("quiz-progress-bar");
-        progressBar.setMaxWidth(Double.MAX_VALUE);
-
-        VBox questionHost = new VBox();
-        questionHost.getStyleClass().add("quiz-question-stage");
-
-        content.getChildren().addAll(heroBox, progressHeader, progressBar, questionHost);
-
-        ScrollPane contentScroll = new ScrollPane(content);
-        contentScroll.setFitToWidth(true);
-        contentScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        contentScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        contentScroll.setPrefViewportWidth(640);
-        contentScroll.setPrefViewportHeight(620);
-        contentScroll.getStyleClass().add("quiz-dialog-scroll");
-
-        dialog.getDialogPane().setContent(contentScroll);
-
-        Map<Long, ToggleGroup> answers = new HashMap<>();
-        int totalQuestions = quiz.getQuestions().size();
-        int[] currentIndex = {0};
-
-        Button backButton = (Button) dialog.getDialogPane().lookupButton(backButtonType);
-        Button nextButton = (Button) dialog.getDialogPane().lookupButton(nextButtonType);
-        Button finishButton = (Button) dialog.getDialogPane().lookupButton(finishButtonType);
-        Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
-
-        backButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
-        nextButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
-        finishButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
-        cancelButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
-
-        Runnable refreshControls = () -> updateQuizStepState(
-                quiz,
-                answers,
-                currentIndex[0],
-                totalQuestions,
-                stepLabel,
-                progressLabel,
-                progressBar,
-                backButton,
-                nextButton,
-                finishButton
-        );
-
-        Runnable refreshStep = () -> {
-            renderQuestionStep(quiz, answers, currentIndex[0], totalQuestions, questionHost, refreshControls);
-            refreshControls.run();
-        };
-
-        backButton.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-            if (currentIndex[0] > 0) {
-                currentIndex[0]--;
-                refreshStep.run();
+        try {
+            if (quiz == null || quiz.getQuestions().isEmpty()) {
+                showAlert(Alert.AlertType.INFORMATION, "Quiz unavailable", "This quiz is not ready or does not have any questions yet.");
+                return;
             }
-        });
 
-        nextButton.addEventFilter(ActionEvent.ACTION, event -> {
-            event.consume();
-            if (currentIndex[0] < totalQuestions - 1) {
-                currentIndex[0]++;
-                refreshStep.run();
+            Question malformedQuestion = findMalformedRenderableQuestion(quiz);
+            if (malformedQuestion != null) {
+                showAlert(
+                        Alert.AlertType.ERROR,
+                        "Quiz unavailable",
+                        "This quiz contains an incomplete code-snippet question.",
+                        "Question: " + malformedQuestion.getQuestion() + "\n\nAdd the missing code snippet in backoffice before launching this quiz."
+                );
+                return;
             }
-        });
 
-        refreshStep.run();
+            Dialog<QuizResult> dialog = new Dialog<>();
+            dialog.setTitle("Start quiz");
+            dialog.setHeaderText(null);
+            dialog.setResizable(true);
 
-        dialog.setResultConverter(button -> {
-            if (button == finishButtonType) {
-                Map<Long, Long> selectedAnswers = new HashMap<>();
-                for (Question question : quiz.getQuestions()) {
-                    ToggleGroup group = answers.get(question.getId());
-                    if (group != null && group.getSelectedToggle() != null) {
-                        selectedAnswers.put(question.getId(), (Long) group.getSelectedToggle().getUserData());
-                    }
+            ButtonType backButtonType = new ButtonType("Back", ButtonBar.ButtonData.LEFT);
+            ButtonType nextButtonType = new ButtonType("Next", ButtonBar.ButtonData.OTHER);
+            ButtonType finishButtonType = new ButtonType("Finish Quiz", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(backButtonType, nextButtonType, finishButtonType, ButtonType.CANCEL);
+            dialog.getDialogPane().getStyleClass().addAll("quiz-dialog-pane", "quiz-experience-dialog");
+            dialog.getDialogPane().setPrefSize(1180, 820);
+            dialog.getDialogPane().setMinSize(960, 700);
+            dialog.getDialogPane().setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+            applyCurrentTheme(dialog.getDialogPane());
+
+            VBox content = new VBox(18);
+            content.getStyleClass().add("quiz-dialog-shell");
+            content.setPadding(new Insets(18));
+            content.setPrefWidth(1120);
+            content.setPrefHeight(760);
+
+            VBox heroBox = new VBox(8);
+            heroBox.getStyleClass().add("quiz-dialog-hero");
+
+            Label keywordLabel = new Label(quiz.getKeyword().isBlank() ? "General quiz" : quiz.getKeyword());
+            keywordLabel.getStyleClass().add("quiz-dialog-eyebrow");
+
+            Label titleLabel = new Label(quiz.getTitre());
+            titleLabel.getStyleClass().add("quiz-dialog-title");
+            titleLabel.setWrapText(true);
+
+            Label subtitleLabel = new Label(buildQuizStartSubtitle(quiz));
+            subtitleLabel.getStyleClass().add("quiz-dialog-subtitle");
+            subtitleLabel.setWrapText(true);
+
+            heroBox.getChildren().addAll(keywordLabel, titleLabel, subtitleLabel);
+
+            HBox progressHeader = new HBox(10);
+            progressHeader.setAlignment(Pos.CENTER_LEFT);
+
+            Label stepLabel = new Label();
+            stepLabel.getStyleClass().add("quiz-progress-step");
+
+            Label progressLabel = new Label();
+            progressLabel.getStyleClass().add("quiz-progress-label");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            progressHeader.getChildren().addAll(stepLabel, spacer, progressLabel);
+
+            ProgressBar progressBar = new ProgressBar(0);
+            progressBar.getStyleClass().add("quiz-progress-bar");
+            progressBar.setMaxWidth(Double.MAX_VALUE);
+
+            VBox questionHost = new VBox();
+            questionHost.getStyleClass().add("quiz-question-stage");
+            VBox.setVgrow(questionHost, Priority.ALWAYS);
+
+            content.getChildren().addAll(heroBox, progressHeader, progressBar, questionHost);
+
+            ScrollPane contentScroll = new ScrollPane(content);
+            contentScroll.setFitToWidth(true);
+            contentScroll.setFitToHeight(true);
+            contentScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+            contentScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+            contentScroll.setPrefViewportWidth(1120);
+            contentScroll.setPrefViewportHeight(760);
+            contentScroll.setMinViewportHeight(620);
+            contentScroll.getStyleClass().add("quiz-dialog-scroll");
+
+            dialog.getDialogPane().setContent(contentScroll);
+
+            Map<Long, ToggleGroup> answers = new HashMap<>();
+            Map<Long, EmbeddedCodeEditor> codeAnswers = new HashMap<>();
+            int totalQuestions = quiz.getQuestions().size();
+            int[] currentIndex = {0};
+
+            Button backButton = (Button) dialog.getDialogPane().lookupButton(backButtonType);
+            Button nextButton = (Button) dialog.getDialogPane().lookupButton(nextButtonType);
+            Button finishButton = (Button) dialog.getDialogPane().lookupButton(finishButtonType);
+            Button cancelButton = (Button) dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+
+            backButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
+            nextButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+            finishButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
+            cancelButton.getStyleClass().addAll("review-button", "quiz-nav-button", "quiz-nav-button-secondary");
+
+            Runnable refreshControls = () -> updateQuizStepState(
+                    quiz,
+                    answers,
+                    codeAnswers,
+                    currentIndex[0],
+                    totalQuestions,
+                    stepLabel,
+                    progressLabel,
+                    progressBar,
+                    backButton,
+                    nextButton,
+                    finishButton
+            );
+
+            Runnable refreshStep = () -> {
+                renderQuestionStep(quiz, answers, codeAnswers, currentIndex[0], totalQuestions, questionHost, refreshControls);
+                refreshControls.run();
+            };
+
+            backButton.addEventFilter(ActionEvent.ACTION, event -> {
+                event.consume();
+                if (currentIndex[0] > 0) {
+                    currentIndex[0]--;
+                    refreshStep.run();
                 }
-                return quizService.submitQuiz(quiz.getId(), selectedAnswers, getQuizUser());
-            }
-            return null;
-        });
+            });
 
-        Optional<QuizResult> result = dialog.showAndWait();
-        result.ifPresent(quizResult -> {
-            if (quizResult.getId() != null) {
-                showQuizCompletionDialog(quiz, quizResult);
-                refreshQuizData();
-                quizCertificationMailer.sendPassCertificateAsync(quizResult.getUser(), quiz, quizResult)
-                        .thenAccept(mailDispatchResult -> Platform.runLater(() -> handleCertificateMailResult(mailDispatchResult)));
-            } else {
-                showAlert(Alert.AlertType.ERROR, "Save failed", "The quiz result could not be saved.");
-            }
-        });
+            nextButton.addEventFilter(ActionEvent.ACTION, event -> {
+                event.consume();
+                if (currentIndex[0] < totalQuestions - 1) {
+                    currentIndex[0]++;
+                    refreshStep.run();
+                }
+            });
+
+            refreshStep.run();
+
+            dialog.setResultConverter(button -> {
+                if (button == finishButtonType) {
+                    Map<Long, Long> selectedAnswers = new HashMap<>();
+                    for (Question question : quiz.getQuestions()) {
+                        ToggleGroup group = answers.get(question.getId());
+                        if (group != null && group.getSelectedToggle() != null) {
+                            selectedAnswers.put(question.getId(), (Long) group.getSelectedToggle().getUserData());
+                        }
+                    }
+                    Map<Long, String> submittedCodeAnswers = new HashMap<>();
+                    for (Question question : quiz.getQuestions()) {
+                        EmbeddedCodeEditor codeEditor = codeAnswers.get(question.getId());
+                        if (codeEditor != null && !codeEditor.getText().isBlank()) {
+                            submittedCodeAnswers.put(question.getId(), codeEditor.getText());
+                        }
+                    }
+                    return quizService.submitQuiz(quiz.getId(), selectedAnswers, submittedCodeAnswers, getQuizUser());
+                }
+                return null;
+            });
+
+            dialog.setOnShown(event -> {
+                Stage stage = (Stage) dialog.getDialogPane().getScene().getWindow();
+                stage.setMinWidth(960);
+                stage.setMinHeight(700);
+                javafx.geometry.Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+                stage.setWidth(Math.min(bounds.getWidth() * 0.96, 1440));
+                stage.setHeight(Math.min(bounds.getHeight() * 0.94, 980));
+                stage.centerOnScreen();
+            });
+
+            Optional<QuizResult> result = dialog.showAndWait();
+            result.ifPresent(quizResult -> {
+                if (quizResult.getId() != null) {
+                    showQuizCompletionDialog(quiz, quizResult);
+                    refreshQuizData();
+                    quizCertificationMailer.sendPassCertificateAsync(quizResult.getUser(), quiz, quizResult)
+                            .thenAccept(mailDispatchResult -> Platform.runLater(() -> handleCertificateMailResult(mailDispatchResult)));
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "Save failed", "The quiz result could not be saved.");
+                }
+            });
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            showAlert(
+                    Alert.AlertType.ERROR,
+                    "Quiz launch failed",
+                    "The quiz could not be opened.",
+                    exception.getClass().getSimpleName() + ": " + safeText(exception.getMessage(), "No additional details.")
+            );
+        }
     }
 
     private void renderQuestionStep(
             Quiz quiz,
             Map<Long, ToggleGroup> answers,
+            Map<Long, EmbeddedCodeEditor> codeAnswers,
             int questionIndex,
             int totalQuestions,
             VBox questionHost,
@@ -485,6 +538,7 @@ public class QuizController {
                 questionIndex,
                 totalQuestions,
                 answers,
+                codeAnswers,
                 onAnswerChanged
         ));
     }
@@ -492,6 +546,7 @@ public class QuizController {
     private void updateQuizStepState(
             Quiz quiz,
             Map<Long, ToggleGroup> answers,
+            Map<Long, EmbeddedCodeEditor> codeAnswers,
             int questionIndex,
             int totalQuestions,
             Label stepLabel,
@@ -502,14 +557,11 @@ public class QuizController {
             Button finishButton
     ) {
         long answeredCount = quiz.getQuestions().stream()
-                .filter(currentQuestion -> {
-                    ToggleGroup group = answers.get(currentQuestion.getId());
-                    return group != null && group.getSelectedToggle() != null;
-                })
+                .filter(currentQuestion -> isQuestionAnswered(currentQuestion, answers, codeAnswers))
                 .count();
 
-        ToggleGroup currentGroup = answers.get(quiz.getQuestions().get(questionIndex).getId());
-        boolean answered = currentGroup != null && currentGroup.getSelectedToggle() != null;
+        Question currentQuestion = quiz.getQuestions().get(questionIndex);
+        boolean answered = isQuestionAnswered(currentQuestion, answers, codeAnswers);
 
         progressBar.setProgress(answeredCount / (double) totalQuestions);
         stepLabel.setText("Question " + (questionIndex + 1) + " of " + totalQuestions);
@@ -530,6 +582,7 @@ public class QuizController {
             int questionIndex,
             int totalQuestions,
             Map<Long, ToggleGroup> answers,
+            Map<Long, EmbeddedCodeEditor> codeAnswers,
             Runnable onAnswerChanged
     ) {
         VBox questionBox = new VBox(16);
@@ -541,7 +594,7 @@ public class QuizController {
         Label numberBadge = new Label((questionIndex + 1) + "/" + totalQuestions);
         numberBadge.getStyleClass().add("quiz-step-badge");
 
-        Label questionPrompt = new Label("Choose the best answer");
+        Label questionPrompt = new Label(resolveQuestionPrompt(question));
         questionPrompt.getStyleClass().add("quiz-step-copy");
 
         questionMeta.getChildren().addAll(numberBadge, questionPrompt);
@@ -550,18 +603,88 @@ public class QuizController {
         questionLabel.getStyleClass().add("quiz-question-label");
         questionLabel.setWrapText(true);
 
-        ToggleGroup group = answers.computeIfAbsent(question.getId(), ignored -> new ToggleGroup());
+        ToggleGroup group = null;
+        final ToggleGroup hintGroup;
+        if (question.isCodeQuestion()) {
+            HBox codeLayout = new HBox(18);
+            codeLayout.getStyleClass().add("quiz-code-layout");
 
-        VBox choicesBox = new VBox(12);
-        for (Choice currentChoice : question.getChoices()) {
-            RadioButton radioButton = new RadioButton(currentChoice.getChoice());
-            radioButton.setToggleGroup(group);
-            radioButton.setUserData(currentChoice.getId());
-            radioButton.getStyleClass().add("quiz-choice-button");
-            radioButton.setWrapText(true);
-            radioButton.setMaxWidth(Double.MAX_VALUE);
-            radioButton.setOnAction(event -> onAnswerChanged.run());
-            choicesBox.getChildren().add(radioButton);
+            VBox promptColumn = new VBox(12);
+            promptColumn.getStyleClass().add("quiz-code-prompt-column");
+            promptColumn.setPrefWidth(340);
+            promptColumn.setMinWidth(260);
+
+            VBox editorColumn = new VBox(10);
+            editorColumn.getStyleClass().add("quiz-code-editor-column");
+            HBox.setHgrow(editorColumn, Priority.ALWAYS);
+            VBox.setVgrow(editorColumn, Priority.ALWAYS);
+
+            promptColumn.getChildren().add(questionLabel);
+
+            if (!safeText(question.getCodeLanguage(), "").isBlank()) {
+                Label languageBadge = new Label("Syntax: " + question.getCodeLanguage());
+                languageBadge.getStyleClass().add("quiz-step-copy");
+                promptColumn.getChildren().add(languageBadge);
+            }
+
+            if (!safeText(question.getStarterCode(), "").isBlank()) {
+                Label starterLabel = new Label("Starter code");
+                starterLabel.getStyleClass().add("quiz-step-copy");
+
+                Label starterCodeLabel = new Label(question.getStarterCode());
+                starterCodeLabel.getStyleClass().addAll("quiz-hint-label", "quiz-code-preview");
+                starterCodeLabel.setWrapText(true);
+
+                promptColumn.getChildren().addAll(starterLabel, starterCodeLabel);
+            }
+
+            EmbeddedCodeEditor codeEditor = codeAnswers.computeIfAbsent(question.getId(), ignored -> {
+                EmbeddedCodeEditor editor = new EmbeddedCodeEditor();
+                editor.setOnContentChanged(onAnswerChanged);
+                return editor;
+            });
+            codeEditor.setEditorLanguage(question.getCodeLanguage());
+            if (codeEditor.getText().isBlank() && !safeText(question.getStarterCode(), "").isBlank()) {
+                codeEditor.setText(question.getStarterCode());
+            }
+
+            Label editorLabel = new Label("Your answer");
+            editorLabel.getStyleClass().add("quiz-step-copy");
+
+            StackPane editorHost = new StackPane(codeEditor);
+            editorHost.getStyleClass().add("quiz-code-editor-host");
+            editorHost.setMaxWidth(Double.MAX_VALUE);
+            VBox.setVgrow(editorHost, Priority.ALWAYS);
+
+            editorColumn.getChildren().addAll(editorLabel, editorHost);
+            codeLayout.getChildren().addAll(promptColumn, editorColumn);
+
+            hintGroup = null;
+            questionBox.getChildren().addAll(questionMeta, codeLayout);
+            Platform.runLater(codeEditor::focusEditor);
+        } else {
+            VBox answerBox = new VBox(12);
+            group = answers.computeIfAbsent(question.getId(), ignored -> new ToggleGroup());
+
+            if (question.isCodeOutputQuestion()) {
+                VBox codePreviewBox = buildCodePreviewBox(question, "Code to analyze");
+                questionBox.getChildren().addAll(questionMeta, questionLabel, codePreviewBox);
+            } else {
+                questionBox.getChildren().addAll(questionMeta, questionLabel);
+            }
+
+            for (Choice currentChoice : question.getChoices()) {
+                RadioButton radioButton = new RadioButton(currentChoice.getChoice());
+                radioButton.setToggleGroup(group);
+                radioButton.setUserData(currentChoice.getId());
+                radioButton.getStyleClass().add("quiz-choice-button");
+                radioButton.setWrapText(true);
+                radioButton.setMaxWidth(Double.MAX_VALUE);
+                radioButton.setOnAction(event -> onAnswerChanged.run());
+                answerBox.getChildren().add(radioButton);
+            }
+            hintGroup = group;
+            questionBox.getChildren().add(answerBox);
         }
 
         Label hintLabel = new Label();
@@ -573,7 +696,7 @@ public class QuizController {
         Button hintButton = new Button("Get AI Hint");
         hintButton.getStyleClass().addAll("quiz-hint-button", "review-button");
         hintButton.setOnAction(event -> {
-            Toggle selectedToggle = group.getSelectedToggle();
+            Toggle selectedToggle = hintGroup != null ? hintGroup.getSelectedToggle() : null;
             Long selectedChoiceId = selectedToggle != null ? (Long) selectedToggle.getUserData() : null;
             AiQuizAssistantService.GeneratedHint generatedHint =
                     aiQuizAssistantService.generateHint(quiz, question, selectedChoiceId);
@@ -587,8 +710,25 @@ public class QuizController {
         VBox utilityBox = new VBox(10, hintButton, hintLabel);
         utilityBox.getStyleClass().add("quiz-utility-box");
 
-        questionBox.getChildren().addAll(questionMeta, questionLabel, choicesBox, utilityBox);
+        questionBox.getChildren().add(utilityBox);
         return questionBox;
+    }
+
+    private boolean isQuestionAnswered(
+            Question question,
+            Map<Long, ToggleGroup> answers,
+            Map<Long, EmbeddedCodeEditor> codeAnswers
+    ) {
+        if (question == null) {
+            return false;
+        }
+        if (question.isCodeQuestion()) {
+            EmbeddedCodeEditor codeEditor = codeAnswers.get(question.getId());
+            return codeEditor != null && !codeEditor.getText().isBlank();
+        }
+
+        ToggleGroup group = answers.get(question.getId());
+        return group != null && group.getSelectedToggle() != null;
     }
 
     private void showQuizCompletionDialog(Quiz quiz, QuizResult result) {
@@ -694,6 +834,7 @@ public class QuizController {
             return;
         }
         dialogPane.getStylesheets().setAll(availableQuizzesBox.getScene().getStylesheets());
+        FrontOfficeThemePreference.apply(dialogPane);
     }
 
     private VBox buildResultStat(String label, String value) {
@@ -1123,27 +1264,47 @@ public class QuizController {
         VBox card = new VBox(10);
         card.getStyleClass().addAll("quiz-question-stage-card", "quiz-result-stat-card");
 
-        Choice correctChoice = findCorrectChoice(question);
-        Choice selectedChoice = findChoiceById(question, attempt != null ? attempt.getSelectedChoiceId() : null);
         boolean correct = attempt != null && Boolean.TRUE.equals(attempt.getCorrect());
+        card.getStyleClass().add(correct ? "quiz-review-card-correct" : "quiz-review-card-wrong");
 
         Label promptLabel = new Label(question.getQuestion());
         promptLabel.getStyleClass().add("quiz-question-label");
         promptLabel.setWrapText(true);
 
+        Label statusBadge = new Label(correct ? "Correct" : "Wrong");
+        statusBadge.getStyleClass().addAll(
+                "quiz-result-status",
+                correct ? "quiz-review-status-correct" : "quiz-review-status-wrong"
+        );
+
         Label metaLabel = new Label("Topic: " + safeText(question.getTopic(), "General")
-                + " | Difficulty: " + safeText(question.getDifficulty(), "Medium")
-                + " | " + (correct ? "Correct" : "Needs review"));
+                + " | Difficulty: " + safeText(question.getDifficulty(), "Medium"));
         metaLabel.getStyleClass().add("quiz-dialog-subtitle");
         metaLabel.setWrapText(true);
 
-        Label selectedLabel = new Label("Your answer: " + (selectedChoice != null ? selectedChoice.getChoice() : "No answer"));
-        selectedLabel.getStyleClass().add("quiz-hint-label");
-        selectedLabel.setWrapText(true);
-
-        Label correctLabel = new Label("Correct answer: " + (correctChoice != null ? correctChoice.getChoice() : "Unavailable"));
-        correctLabel.getStyleClass().add("quiz-hint-label");
-        correctLabel.setWrapText(true);
+        VBox answerReviewBox = new VBox(10);
+        if (question.isCodeQuestion()) {
+            answerReviewBox.getChildren().add(
+                    buildCodeReviewSection(
+                            safeText(attempt != null ? attempt.getSubmittedAnswer() : null, "No answer"),
+                            safeText(question.getExpectedAnswer(), "Unavailable"),
+                            question.getCodeLanguage()
+                    )
+            );
+        } else {
+            if (question.isCodeOutputQuestion()) {
+                answerReviewBox.getChildren().add(buildCodePreviewBox(question, "Code shown"));
+            }
+            Choice correctChoice = findCorrectChoice(question);
+            Choice selectedChoice = findChoiceById(question, attempt != null ? attempt.getSelectedChoiceId() : null);
+            Label selectedLabel = new Label("Your answer: " + (selectedChoice != null ? selectedChoice.getChoice() : "No answer"));
+            Label correctLabel = new Label("Correct answer: " + (correctChoice != null ? correctChoice.getChoice() : "Unavailable"));
+            selectedLabel.getStyleClass().add("quiz-hint-label");
+            correctLabel.getStyleClass().add("quiz-hint-label");
+            selectedLabel.setWrapText(true);
+            correctLabel.setWrapText(true);
+            answerReviewBox.getChildren().addAll(selectedLabel, correctLabel);
+        }
 
         String explanationText = !safeText(question.getExplanation(), "").isBlank()
                 ? question.getExplanation()
@@ -1154,8 +1315,55 @@ public class QuizController {
         explanationLabel.getStyleClass().add("quiz-hint-label");
         explanationLabel.setWrapText(true);
 
-        card.getChildren().addAll(promptLabel, metaLabel, selectedLabel, correctLabel, explanationLabel);
+        card.getChildren().addAll(statusBadge, promptLabel, metaLabel, answerReviewBox, explanationLabel);
         return card;
+    }
+
+    private VBox buildCodeReviewSection(String submittedCode, String expectedCode, String language) {
+        VBox section = new VBox(8);
+        section.getStyleClass().add("quiz-review-code-section");
+
+        Label heading = new Label("Code review");
+        heading.getStyleClass().add("quiz-step-copy");
+
+        EmbeddedCodeEditor codePreview = new EmbeddedCodeEditor();
+        codePreview.setEditorLanguage(language);
+        codePreview.setReadOnly(true);
+        codePreview.setText(buildReviewCodeBlock(submittedCode, expectedCode, language));
+        codePreview.setPrefHeight(240);
+        codePreview.setMinHeight(200);
+        codePreview.setMaxHeight(280);
+
+        StackPane editorHost = new StackPane(codePreview);
+        editorHost.getStyleClass().addAll("quiz-code-editor-host", "quiz-review-code-host");
+        editorHost.setMaxWidth(Double.MAX_VALUE);
+
+        section.getChildren().addAll(heading, editorHost);
+        return section;
+    }
+
+    private String buildReviewCodeBlock(String submittedCode, String expectedCode, String language) {
+        String normalizedSubmitted = safeText(submittedCode, "No answer");
+        String normalizedExpected = safeText(expectedCode, "Unavailable");
+        return buildCodeSectionComment("Your answer", language) + "\n"
+                + normalizedSubmitted
+                + "\n\n"
+                + buildCodeSectionComment("Expected answer", language) + "\n"
+                + normalizedExpected;
+    }
+
+    private String buildCodeSectionComment(String label, String language) {
+        if (language == null || language.isBlank()) {
+            return "// " + label;
+        }
+
+        String normalized = language.trim().toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "python", "py" -> "# " + label;
+            case "sql" -> "-- " + label;
+            case "html", "xml" -> "<!-- " + label + " -->";
+            default -> "// " + label;
+        };
     }
 
     private Choice findCorrectChoice(Question question) {
@@ -1230,5 +1438,58 @@ public class QuizController {
         okButton.getStyleClass().addAll("start-quiz-button", "quiz-nav-button", "quiz-nav-button-primary");
 
         dialog.showAndWait();
+    }
+
+    private Question findMalformedRenderableQuestion(Quiz quiz) {
+        if (quiz == null || quiz.getQuestions() == null) {
+            return null;
+        }
+
+        return quiz.getQuestions().stream()
+                .filter(question -> question != null
+                        && !question.isCodeQuestion()
+                        && aiQuizAssistantService.requiresCodeSnippet(
+                        question.getQuestion(),
+                        question.getChoices() == null ? List.of() : question.getChoices().stream().map(Choice::getChoice).toList()
+                )
+                        && !question.hasStarterCode())
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String resolveQuestionPrompt(Question question) {
+        if (question == null) {
+            return "Choose the best answer";
+        }
+        if (question.isCodeQuestion()) {
+            return "Write the expected code";
+        }
+        if (question.isCodeOutputQuestion()) {
+            return "Analyze the code snippet and choose the best answer";
+        }
+        return "Choose the best answer";
+    }
+
+    private VBox buildCodePreviewBox(Question question, String headingText) {
+        VBox previewBox = new VBox(8);
+        previewBox.getStyleClass().add("quiz-review-code-section");
+
+        Label heading = new Label(headingText);
+        heading.getStyleClass().add("quiz-step-copy");
+
+        EmbeddedCodeEditor codePreview = new EmbeddedCodeEditor();
+        codePreview.setEditorLanguage(question != null ? question.getCodeLanguage() : "");
+        codePreview.setReadOnly(true);
+        codePreview.setText(safeText(question != null ? question.getStarterCode() : null, ""));
+        codePreview.setPrefHeight(220);
+        codePreview.setMinHeight(180);
+        codePreview.setMaxHeight(260);
+
+        StackPane previewHost = new StackPane(codePreview);
+        previewHost.getStyleClass().addAll("quiz-code-editor-host", "quiz-review-code-host");
+        previewHost.setMaxWidth(Double.MAX_VALUE);
+
+        previewBox.getChildren().addAll(heading, previewHost);
+        return previewBox;
     }
 }

@@ -7,6 +7,7 @@ public class QuizAnswerAttempt {
     private Long quizResultId;
     private Long questionId;
     private Long selectedChoiceId;
+    private String submittedAnswer;
     private Boolean correct;
     private Instant answeredAt;
 
@@ -40,6 +41,14 @@ public class QuizAnswerAttempt {
 
     public void setSelectedChoiceId(Long selectedChoiceId) {
         this.selectedChoiceId = selectedChoiceId;
+    }
+
+    public String getSubmittedAnswer() {
+        return submittedAnswer;
+    }
+
+    public void setSubmittedAnswer(String submittedAnswer) {
+        this.submittedAnswer = submittedAnswer;
     }
 
     public Boolean getCorrect() {

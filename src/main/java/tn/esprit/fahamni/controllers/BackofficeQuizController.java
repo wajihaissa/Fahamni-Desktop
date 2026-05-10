@@ -13,7 +13,9 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import tn.esprit.fahamni.Models.quiz.Choice;
 import tn.esprit.fahamni.Models.quiz.Question;
 import tn.esprit.fahamni.Models.quiz.Quiz;
@@ -31,6 +33,9 @@ import java.util.Locale;
 import java.util.Set;
 
 public class BackofficeQuizController {
+    private static final String QUESTION_MODE_MULTIPLE_CHOICE = "Multiple Choice";
+    private static final String QUESTION_MODE_CODE_SNIPPET = "Code Snippet + MCQ";
+    private static final String QUESTION_MODE_CODE_EDITOR = "Code Editor";
 
     @FXML private TableView<Quiz> quizzesTable;
     @FXML private TableColumn<Quiz, String> titleColumn;
@@ -51,7 +56,17 @@ public class BackofficeQuizController {
     @FXML private TextField choice2Field;
     @FXML private TextField choice3Field;
     @FXML private TextField choice4Field;
+    @FXML private TextField codeLanguageField;
+    @FXML private TextField codeOutputLanguageField;
+    @FXML private TextArea starterCodeArea;
+    @FXML private TextArea expectedAnswerArea;
+    @FXML private TextArea codeOutputArea;
+    @FXML private VBox multipleChoiceEditorBox;
+    @FXML private VBox codeOutputEditorBox;
+    @FXML private VBox codeEditorBox;
 
+    @FXML private ComboBox<String> questionTypeComboBox;
+    @FXML private ComboBox<String> codeEvaluationModeComboBox;
     @FXML private ComboBox<String> correctChoiceComboBox;
     @FXML private ComboBox<Integer> aiQuestionCountComboBox;
     @FXML private ComboBox<String> aiDifficultyComboBox;
@@ -65,7 +80,7 @@ public class BackofficeQuizController {
     private final List<Question> currentQuestions = new ArrayList<>();
     private Quiz selectedQuiz = null;
     private int selectedQuestionIndex = -1;
-    private static final int MAX_QUESTIONS = 5;
+    private static final int MAX_QUESTIONS = 6;
     private static final int MIN_TITLE_LENGTH = 3;
     private static final int MIN_KEYWORD_LENGTH = 2;
     private static final int MIN_QUESTION_LENGTH = 10;
@@ -109,11 +124,21 @@ public class BackofficeQuizController {
         createdAtColumn.setCellFactory(tc -> createCell(Pos.CENTER));
         lastScoreColumn.setCellFactory(tc -> createCell(Pos.CENTER));
 
+        questionTypeComboBox.getItems().setAll(
+                QUESTION_MODE_MULTIPLE_CHOICE,
+                QUESTION_MODE_CODE_SNIPPET,
+                QUESTION_MODE_CODE_EDITOR
+        );
+        questionTypeComboBox.setValue(QUESTION_MODE_MULTIPLE_CHOICE);
+        questionTypeComboBox.valueProperty().addListener((obs, oldVal, newVal) -> updateQuestionEditorMode());
+        codeEvaluationModeComboBox.getItems().setAll("Strict Syntax", "AI Logic Check");
+        codeEvaluationModeComboBox.setValue("AI Logic Check");
+
         correctChoiceComboBox.getItems().setAll("Choix A", "Choix B", "Choix C", "Choix D");
         correctChoiceComboBox.setValue("Choix A");
         if (aiQuestionCountComboBox != null) {
-            aiQuestionCountComboBox.getItems().setAll(3, 4, 5);
-            aiQuestionCountComboBox.setValue(5);
+            aiQuestionCountComboBox.getItems().setAll(3, 4, 5, 6);
+            aiQuestionCountComboBox.setValue(6);
         }
         if (aiDifficultyComboBox != null) {
             aiDifficultyComboBox.getItems().setAll("Easy", "Medium", "Hard");
@@ -127,6 +152,7 @@ public class BackofficeQuizController {
                 .addListener((obs, oldVal, newVal) -> populateQuestionEditor(newVal == null ? -1 : newVal.intValue()));
 
         refreshQuizData();
+        updateQuestionEditorMode();
     }
 
     @FXML
@@ -334,6 +360,20 @@ public class BackofficeQuizController {
     private Question buildQuestionFromFields() {
         Question question = new Question();
         question.setQuestion(normalizeText(questionField.getText()));
+        question.setQuestionType(resolveSelectedQuestionType());
+
+        if (question.isCodeQuestion()) {
+            question.setCodeLanguage(normalizeText(codeLanguageField.getText()));
+            question.setStarterCode(normalizeMultilineText(starterCodeArea.getText()));
+            question.setExpectedAnswer(normalizeMultilineText(expectedAnswerArea.getText()));
+            question.setCodeEvaluationMode(resolveSelectedCodeEvaluationMode());
+            return question;
+        }
+
+        if (question.isCodeOutputQuestion()) {
+            question.setCodeLanguage(normalizeText(codeOutputLanguageField.getText()));
+            question.setStarterCode(normalizeMultilineText(codeOutputArea.getText()));
+        }
 
         String[] choiceTexts = {
                 normalizeText(choice1Field.getText()),
@@ -407,7 +447,48 @@ public class BackofficeQuizController {
             return "La question semble etre un texte de test. Remplacez-la par un vrai enonce.";
         }
 
+        if (isCodeEditorSelected()) {
+            String normalizedCodeLanguage = normalizeText(codeLanguageField.getText());
+            String normalizedStarterCode = normalizeMultilineText(starterCodeArea.getText());
+            String normalizedExpectedAnswer = normalizeMultilineText(expectedAnswerArea.getText());
+
+            applyNormalizedCodeEditorValues(normalizedCodeLanguage, normalizedStarterCode, normalizedExpectedAnswer);
+
+            if (normalizedExpectedAnswer == null) {
+                return "Ajoutez la reponse de reference pour corriger la question de code.";
+            }
+            if (normalizedExpectedAnswer.length() < 2) {
+                return "La reponse de reference doit contenir du vrai code.";
+            }
+            if (Question.CODE_EVALUATION_AI.equals(resolveSelectedCodeEvaluationMode())
+                    && (normalizedCodeLanguage == null || normalizedCodeLanguage.length() < 2)) {
+                return "Precisez le langage pour permettre la correction IA.";
+            }
+            if (hasDuplicateQuestion(normalizedQuestion, isEditing ? selectedQuestionIndex : -1)) {
+                return "Cette question existe deja dans ce quiz.";
+            }
+            return null;
+        }
+
+        if (isCodeOutputSelected()) {
+            String normalizedCodeLanguage = normalizeText(codeOutputLanguageField.getText());
+            String normalizedCodeOutput = normalizeMultilineText(codeOutputArea.getText());
+            applyNormalizedCodeOutputValues(normalizedCodeLanguage, normalizedCodeOutput);
+
+            if (normalizedCodeOutput == null) {
+                return "Ajoutez le code dont l'etudiant doit predire la sortie.";
+            }
+            if (normalizedCodeOutput.length() < 2) {
+                return "Le code affiche doit contenir une vraie instruction.";
+            }
+        }
+
         List<String> normalizedChoices = List.of(normalizedChoice1, normalizedChoice2, normalizedChoice3, normalizedChoice4);
+        boolean requiresCodeSnippet = aiQuizAssistantService.requiresCodeSnippet(normalizedQuestion, normalizedChoices);
+        if (requiresCodeSnippet && !isCodeOutputSelected()) {
+            return "Cette question parle d'un code a analyser. Utilisez le mode Code Snippet + MCQ et ajoutez le code a afficher.";
+        }
+
         if (normalizedChoices.stream().anyMatch(choice -> choice == null || choice.isBlank())) {
             return "Veuillez remplir tous les choix.";
         }
@@ -422,11 +503,9 @@ public class BackofficeQuizController {
             }
         }
 
-        if (hasDuplicateQuestion(normalizedQuestion, isEditing ? selectedQuestionIndex : -1)) {
-            return "Cette question existe deja dans ce quiz.";
-        }
-
-        return null;
+        return hasDuplicateQuestion(normalizedQuestion, isEditing ? selectedQuestionIndex : -1)
+                ? "Cette question existe deja dans ce quiz."
+                : null;
     }
 
     private String validateAndNormalizeCurrentQuestions() {
@@ -447,6 +526,34 @@ public class BackofficeQuizController {
             }
             if (!normalizedQuestions.add(normalizedQuestion.toLowerCase(Locale.ROOT))) {
                 return "Deux questions du quiz sont identiques.";
+            }
+
+            if (question.isCodeQuestion()) {
+                question.setQuestionType(Question.TYPE_CODE);
+                question.setCodeLanguage(normalizeText(question.getCodeLanguage()));
+                question.setStarterCode(normalizeMultilineText(question.getStarterCode()));
+                question.setExpectedAnswer(normalizeMultilineText(question.getExpectedAnswer()));
+                question.setCodeEvaluationMode(normalizeCodeEvaluationMode(question.getCodeEvaluationMode()));
+                if (question.getExpectedAnswer() == null || question.getExpectedAnswer().length() < 2) {
+                    return "Chaque question de code doit definir une reponse de reference.";
+                }
+                continue;
+            }
+
+            if (question.isCodeOutputQuestion()) {
+                question.setQuestionType(Question.TYPE_CODE_OUTPUT);
+                question.setCodeLanguage(normalizeText(question.getCodeLanguage()));
+                question.setStarterCode(normalizeMultilineText(question.getStarterCode()));
+                if (question.getStarterCode() == null || question.getStarterCode().length() < 2) {
+                    return "Chaque question de sortie de code doit afficher un extrait de code.";
+                }
+            }
+
+            if (aiQuizAssistantService.requiresCodeSnippet(
+                    question.getQuestion(),
+                    question.getChoices().stream().map(Choice::getChoice).toList()
+            ) && !question.hasStarterCode()) {
+                return "Une question demande le resultat d'un code mais aucun code n'est fourni.";
             }
 
             List<Choice> choices = question.getChoices();
@@ -514,6 +621,14 @@ public class BackofficeQuizController {
             return null;
         }
         String normalized = value.trim().replaceAll("\\s+", " ");
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String normalizeMultilineText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.replace("\r\n", "\n").replace('\r', '\n').trim();
         return normalized.isEmpty() ? null : normalized;
     }
 
@@ -608,6 +723,21 @@ public class BackofficeQuizController {
         choice4Field.setText(normalizedChoice4 == null ? "" : normalizedChoice4);
     }
 
+    private void applyNormalizedCodeEditorValues(
+            String normalizedCodeLanguage,
+            String normalizedStarterCode,
+            String normalizedExpectedAnswer
+    ) {
+        codeLanguageField.setText(normalizedCodeLanguage == null ? "" : normalizedCodeLanguage);
+        starterCodeArea.setText(normalizedStarterCode == null ? "" : normalizedStarterCode);
+        expectedAnswerArea.setText(normalizedExpectedAnswer == null ? "" : normalizedExpectedAnswer);
+    }
+
+    private void applyNormalizedCodeOutputValues(String normalizedCodeLanguage, String normalizedCodeOutput) {
+        codeOutputLanguageField.setText(normalizedCodeLanguage == null ? "" : normalizedCodeLanguage);
+        codeOutputArea.setText(normalizedCodeOutput == null ? "" : normalizedCodeOutput);
+    }
+
     private void populateQuestionEditor(int index) {
         if (index < 0 || index >= currentQuestions.size()) {
             clearQuestionEditor();
@@ -618,12 +748,32 @@ public class BackofficeQuizController {
         Question question = currentQuestions.get(index);
         questionField.setText(question.getQuestion());
 
+        questionTypeComboBox.setValue(resolveQuestionTypeLabel(question));
+        updateQuestionEditorMode();
+
+        if (question.isCodeQuestion()) {
+            codeLanguageField.setText(question.getCodeLanguage() != null ? question.getCodeLanguage() : "");
+            starterCodeArea.setText(question.getStarterCode() != null ? question.getStarterCode() : "");
+            expectedAnswerArea.setText(question.getExpectedAnswer() != null ? question.getExpectedAnswer() : "");
+            codeEvaluationModeComboBox.setValue(question.usesAiCodeEvaluation() ? "AI Logic Check" : "Strict Syntax");
+            clearChoiceFields();
+            clearCodeOutputFields();
+            return;
+        }
+
+        if (question.isCodeOutputQuestion()) {
+            codeOutputLanguageField.setText(question.getCodeLanguage() != null ? question.getCodeLanguage() : "");
+            codeOutputArea.setText(question.getStarterCode() != null ? question.getStarterCode() : "");
+            clearCodeEditorFields();
+        }
+
         List<Choice> choices = question.getChoices();
         choice1Field.setText(getChoiceText(choices, 0));
         choice2Field.setText(getChoiceText(choices, 1));
         choice3Field.setText(getChoiceText(choices, 2));
         choice4Field.setText(getChoiceText(choices, 3));
         correctChoiceComboBox.setValue(resolveCorrectChoiceLabel(choices));
+        clearCodeEditorFields();
     }
 
     private String getChoiceText(List<Choice> choices, int index) {
@@ -656,7 +806,13 @@ public class BackofficeQuizController {
     private void updateQuestionsList() {
         ObservableList<String> questionsList = FXCollections.observableArrayList();
         for (int i = 0; i < currentQuestions.size(); i++) {
-            questionsList.add((i + 1) + ". " + currentQuestions.get(i).getQuestion());
+            Question question = currentQuestions.get(i);
+            String typeLabel = question.isCodeQuestion()
+                    ? (question.usesAiCodeEvaluation() ? "[Code AI] " : "[Code Strict] ")
+                    : question.isCodeOutputQuestion()
+                    ? "[Code Snippet] "
+                    : "[MCQ] ";
+            questionsList.add((i + 1) + ". " + typeLabel + question.getQuestion());
         }
         if (questionsListView != null) {
             questionsListView.setItems(questionsList);
@@ -676,15 +832,17 @@ public class BackofficeQuizController {
 
     private void clearQuestionEditor() {
         questionField.clear();
-        choice1Field.clear();
-        choice2Field.clear();
-        choice3Field.clear();
-        choice4Field.clear();
+        questionTypeComboBox.setValue(QUESTION_MODE_MULTIPLE_CHOICE);
+        clearChoiceFields();
+        clearCodeOutputFields();
+        clearCodeEditorFields();
         correctChoiceComboBox.setValue("Choix A");
+        codeEvaluationModeComboBox.setValue("Strict Syntax");
         selectedQuestionIndex = -1;
         if (questionsListView != null) {
             questionsListView.getSelectionModel().clearSelection();
         }
+        updateQuestionEditorMode();
     }
 
     private <T> TableCell<Quiz, T> createCell(Pos alignment) {
@@ -696,6 +854,88 @@ public class BackofficeQuizController {
                 setAlignment(alignment);
             }
         };
+    }
+
+    private boolean isCodeEditorSelected() {
+        return QUESTION_MODE_CODE_EDITOR.equals(questionTypeComboBox.getValue());
+    }
+
+    private boolean isCodeOutputSelected() {
+        return QUESTION_MODE_CODE_SNIPPET.equals(questionTypeComboBox.getValue());
+    }
+
+    private String resolveSelectedQuestionType() {
+        if (isCodeEditorSelected()) {
+            return Question.TYPE_CODE;
+        }
+        if (isCodeOutputSelected()) {
+            return Question.TYPE_CODE_OUTPUT;
+        }
+        return Question.TYPE_MULTIPLE_CHOICE;
+    }
+
+    private String resolveQuestionTypeLabel(Question question) {
+        if (question != null) {
+            if (question.isCodeQuestion()) {
+                return QUESTION_MODE_CODE_EDITOR;
+            }
+            if (question.isCodeOutputQuestion()) {
+                return QUESTION_MODE_CODE_SNIPPET;
+            }
+        }
+        return QUESTION_MODE_MULTIPLE_CHOICE;
+    }
+
+    private void updateQuestionEditorMode() {
+        boolean codeMode = isCodeEditorSelected();
+        boolean codeOutputMode = isCodeOutputSelected();
+
+        setNodeVisibility(multipleChoiceEditorBox, !codeMode);
+        setNodeVisibility(codeOutputEditorBox, codeOutputMode);
+        setNodeVisibility(codeEditorBox, codeMode);
+    }
+
+    private void setNodeVisibility(javafx.scene.Node node, boolean visible) {
+        if (node == null) {
+            return;
+        }
+        node.setVisible(visible);
+        node.setManaged(visible);
+    }
+
+    private void clearChoiceFields() {
+        choice1Field.clear();
+        choice2Field.clear();
+        choice3Field.clear();
+        choice4Field.clear();
+    }
+
+    private void clearCodeEditorFields() {
+        codeLanguageField.clear();
+        starterCodeArea.clear();
+        expectedAnswerArea.clear();
+    }
+
+    private void clearCodeOutputFields() {
+        if (codeOutputLanguageField != null) {
+            codeOutputLanguageField.clear();
+        }
+        if (codeOutputArea != null) {
+            codeOutputArea.clear();
+        }
+    }
+
+    private String resolveSelectedCodeEvaluationMode() {
+        return "AI Logic Check".equals(codeEvaluationModeComboBox.getValue())
+                ? Question.CODE_EVALUATION_AI
+                : Question.CODE_EVALUATION_STRICT;
+    }
+
+    private String normalizeCodeEvaluationMode(String value) {
+        if (Question.CODE_EVALUATION_AI.equalsIgnoreCase(value)) {
+            return Question.CODE_EVALUATION_AI;
+        }
+        return Question.CODE_EVALUATION_STRICT;
     }
 
     private void refreshQuizData() {

@@ -30,9 +30,15 @@ public class QuizService {
     private static final double PASS_PERCENTAGE = Quiz.DEFAULT_PASS_PERCENTAGE;
 
     private final Connection cnx;
+    private final AiQuizAssistantService aiQuizAssistantService;
 
     public QuizService() {
+        this(new AiQuizAssistantService());
+    }
+
+    QuizService(AiQuizAssistantService aiQuizAssistantService) {
         this.cnx = MyDataBase.getInstance().getCnx();
+        this.aiQuizAssistantService = aiQuizAssistantService;
     }
 
     public Quiz createQuiz(Quiz quiz) {
@@ -40,7 +46,7 @@ public class QuizService {
         String questionQuery = buildQuestionInsertQuery();
         String choiceQuery = "INSERT INTO choice (choice, is_correct, question_id) VALUES (?, ?, ?)";
 
-        if (!isQuizStructureValid(quiz)) {
+        if (cnx == null || !isQuizStructureValid(quiz)) {
             return null;
         }
 
@@ -61,6 +67,11 @@ public class QuizService {
                 }
             }
 
+            if (!persistedQuizQuestionsValid(quiz.getId())) {
+                cnx.rollback();
+                return null;
+            }
+
             cnx.commit();
             return quiz;
         } catch (SQLException e) {
@@ -76,6 +87,10 @@ public class QuizService {
         List<Quiz> quizzes = new ArrayList<>();
         String query = "SELECT * FROM quiz";
 
+        if (cnx == null) {
+            return quizzes;
+        }
+
         try (Statement stmt = cnx.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
             while (rs.next()) {
@@ -90,6 +105,10 @@ public class QuizService {
 
     public Quiz getQuizById(Long id) {
         String query = "SELECT * FROM quiz WHERE id = ?";
+
+        if (cnx == null || id == null) {
+            return null;
+        }
 
         try (PreparedStatement stmt = cnx.prepareStatement(query)) {
             stmt.setLong(1, id);
@@ -108,7 +127,7 @@ public class QuizService {
     public Quiz updateQuiz(Long id, Quiz updatedQuiz) {
         String query = "UPDATE quiz SET titre = ?, keyword = ? WHERE id = ?";
 
-        if (!isQuizStructureValid(updatedQuiz)) {
+        if (cnx == null || id == null || !isQuizStructureValid(updatedQuiz)) {
             return null;
         }
 
@@ -128,6 +147,10 @@ public class QuizService {
             }
 
             replaceQuizQuestions(id, updatedQuiz.getQuestions());
+            if (!persistedQuizQuestionsValid(id)) {
+                cnx.rollback();
+                return null;
+            }
             cnx.commit();
             return getQuizById(id);
         } catch (SQLException e) {
@@ -143,6 +166,10 @@ public class QuizService {
         String deleteAttemptsQuery = "DELETE qaa FROM quiz_answer_attempt qaa INNER JOIN quiz_result qr ON qaa.quiz_result_id = qr.id WHERE qr.quiz_id = ?";
         String deleteResultsQuery = "DELETE FROM quiz_result WHERE quiz_id = ?";
         String deleteQuizQuery = "DELETE FROM quiz WHERE id = ?";
+
+        if (cnx == null || id == null) {
+            return false;
+        }
 
         try {
             cnx.setAutoCommit(false);
@@ -264,17 +291,31 @@ public class QuizService {
     }
 
     public QuizResult submitQuiz(Long quizId, Map<Long, Long> selectedChoiceIdsByQuestionId, User user) {
+        return submitQuiz(quizId, selectedChoiceIdsByQuestionId, Map.of(), user);
+    }
+
+    public QuizResult submitQuiz(
+            Long quizId,
+            Map<Long, Long> selectedChoiceIdsByQuestionId,
+            Map<Long, String> submittedAnswersByQuestionId,
+            User user
+    ) {
         Quiz quiz = getQuizById(quizId);
-        if (quiz == null || !isQuizStructureValid(quiz)) {
+        if (quiz == null || !isQuizStructureValid(quiz) || !hasPersistableUser(user)) {
             return null;
         }
 
-        QuizResult result = evaluateQuiz(quiz, selectedChoiceIdsByQuestionId);
+        QuizResult result = evaluateQuiz(quiz, selectedChoiceIdsByQuestionId, submittedAnswersByQuestionId);
         result.setUser(user);
 
         try {
             cnx.setAutoCommit(false);
-            QuizResult persistedResult = persistQuizResult(quiz, result, selectedChoiceIdsByQuestionId);
+            QuizResult persistedResult = persistQuizResult(
+                    quiz,
+                    result,
+                    selectedChoiceIdsByQuestionId,
+                    submittedAnswersByQuestionId
+            );
             if (persistedResult == null) {
                 cnx.rollback();
                 return null;
@@ -293,12 +334,20 @@ public class QuizService {
     }
 
     public QuizResult evaluateQuiz(Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) {
+        return evaluateQuiz(quiz, selectedChoiceIdsByQuestionId, Map.of());
+    }
+
+    public QuizResult evaluateQuiz(
+            Quiz quiz,
+            Map<Long, Long> selectedChoiceIdsByQuestionId,
+            Map<Long, String> submittedAnswersByQuestionId
+    ) {
         if (quiz == null || !isQuizStructureValid(quiz)) {
             return null;
         }
 
         int totalQuestions = quiz.getQuestions().size();
-        int score = calculateScore(quiz, selectedChoiceIdsByQuestionId);
+        int score = calculateScore(quiz, selectedChoiceIdsByQuestionId, submittedAnswersByQuestionId);
 
         QuizResult result = new QuizResult();
         result.setQuiz(quiz);
@@ -322,7 +371,7 @@ public class QuizService {
                 return false;
             }
 
-            if (!hasValidChoiceSet(question.getChoices())) {
+            if (question.isMultipleChoiceQuestion() && !hasValidChoiceSet(question.getChoices())) {
                 return false;
             }
         }
@@ -338,13 +387,20 @@ public class QuizService {
         copy.setDifficulty(source.getDifficulty());
         copy.setHint(source.getHint());
         copy.setExplanation(source.getExplanation());
+        copy.setQuestionType(source.getQuestionType());
+        copy.setCodeLanguage(source.getCodeLanguage());
+        copy.setStarterCode(source.getStarterCode());
+        copy.setExpectedAnswer(source.getExpectedAnswer());
+        copy.setCodeEvaluationMode(source.getCodeEvaluationMode());
         copy.setQuiz(quizShell);
 
-        for (Choice sourceChoice : source.getChoices()) {
-            Choice choiceCopy = new Choice();
-            choiceCopy.setChoice(sourceChoice.getChoice());
-            choiceCopy.setIsCorrect(sourceChoice.getIsCorrect());
-            copy.addChoice(choiceCopy);
+        if (source.getChoices() != null) {
+            for (Choice sourceChoice : source.getChoices()) {
+                Choice choiceCopy = new Choice();
+                choiceCopy.setChoice(sourceChoice.getChoice());
+                choiceCopy.setIsCorrect(sourceChoice.getIsCorrect());
+                copy.addChoice(choiceCopy);
+            }
         }
 
         return copy;
@@ -411,13 +467,20 @@ public class QuizService {
         question.setDifficulty(resolveQuestionDifficulty(questionRs));
         question.setHint(resolveQuestionHint(questionRs));
         question.setExplanation(resolveQuestionExplanation(questionRs));
+        question.setQuestionType(resolveQuestionType(questionRs));
+        question.setCodeLanguage(resolveCodeLanguage(questionRs));
+        question.setStarterCode(resolveStarterCode(questionRs));
+        question.setExpectedAnswer(resolveExpectedAnswer(questionRs));
+        question.setCodeEvaluationMode(resolveCodeEvaluationMode(questionRs));
         question.setQuiz(quiz);
 
-        try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
-            choiceStmt.setLong(1, question.getId());
-            try (ResultSet choiceRs = choiceStmt.executeQuery()) {
-                while (choiceRs.next()) {
-                    question.addChoice(mapResultSetToChoice(choiceRs));
+        if (question.isMultipleChoiceQuestion()) {
+            try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
+                choiceStmt.setLong(1, question.getId());
+                try (ResultSet choiceRs = choiceStmt.executeQuery()) {
+                    while (choiceRs.next()) {
+                        question.addChoice(mapResultSetToChoice(choiceRs));
+                    }
                 }
             }
         }
@@ -434,12 +497,19 @@ public class QuizService {
         question.setDifficulty(resolveQuestionDifficulty(questionRs));
         question.setHint(resolveQuestionHint(questionRs));
         question.setExplanation(resolveQuestionExplanation(questionRs));
+        question.setQuestionType(resolveQuestionType(questionRs));
+        question.setCodeLanguage(resolveCodeLanguage(questionRs));
+        question.setStarterCode(resolveStarterCode(questionRs));
+        question.setExpectedAnswer(resolveExpectedAnswer(questionRs));
+        question.setCodeEvaluationMode(resolveCodeEvaluationMode(questionRs));
 
-        try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
-            choiceStmt.setLong(1, question.getId());
-            try (ResultSet choiceRs = choiceStmt.executeQuery()) {
-                while (choiceRs.next()) {
-                    question.addChoice(mapResultSetToChoice(choiceRs));
+        if (question.isMultipleChoiceQuestion()) {
+            try (PreparedStatement choiceStmt = cnx.prepareStatement(choiceQuery)) {
+                choiceStmt.setLong(1, question.getId());
+                try (ResultSet choiceRs = choiceStmt.executeQuery()) {
+                    while (choiceRs.next()) {
+                        question.addChoice(mapResultSetToChoice(choiceRs));
+                    }
                 }
             }
         }
@@ -476,6 +546,9 @@ public class QuizService {
         answerAttempt.setQuizResultId(getNullableLong(rs, "quiz_result_id"));
         answerAttempt.setQuestionId(getNullableLong(rs, "question_id"));
         answerAttempt.setSelectedChoiceId(getNullableLong(rs, "selected_choice_id"));
+        if (hasColumn(rs, "submitted_answer")) {
+            answerAttempt.setSubmittedAnswer(rs.getString("submitted_answer"));
+        }
         answerAttempt.setCorrect(getNullableBoolean(rs, "is_correct"));
 
         Timestamp answeredAt = rs.getTimestamp("answered_at");
@@ -566,8 +639,10 @@ public class QuizService {
             }
         }
 
-        for (Choice choice : question.getChoices()) {
-            insertChoice(choiceStatement, choice, question);
+        if (question.isMultipleChoiceQuestion()) {
+            for (Choice choice : question.getChoices()) {
+                insertChoice(choiceStatement, choice, question);
+            }
         }
     }
 
@@ -648,32 +723,49 @@ public class QuizService {
         }
     }
 
-    private QuizResult persistQuizResult(Quiz quiz, QuizResult result, Map<Long, Long> selectedChoiceIdsByQuestionId) throws SQLException {
+    private QuizResult persistQuizResult(
+            Quiz quiz,
+            QuizResult result,
+            Map<Long, Long> selectedChoiceIdsByQuestionId,
+            Map<Long, String> submittedAnswersByQuestionId
+    ) throws SQLException {
         QuizResult persistedResult = saveQuizResult(quiz, result);
         if (persistedResult == null) {
             return null;
         }
 
         if (tableExists("quiz_answer_attempt")) {
-            saveAnswerAttempts(persistedResult, quiz, selectedChoiceIdsByQuestionId);
+            saveAnswerAttempts(persistedResult, quiz, selectedChoiceIdsByQuestionId, submittedAnswersByQuestionId);
         }
 
         return persistedResult;
     }
 
-    private void saveAnswerAttempts(QuizResult result, Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) throws SQLException {
-        String query = """
+    private void saveAnswerAttempts(
+            QuizResult result,
+            Quiz quiz,
+            Map<Long, Long> selectedChoiceIdsByQuestionId,
+            Map<Long, String> submittedAnswersByQuestionId
+    ) throws SQLException {
+        String query = hasQuizAnswerAttemptColumn("submitted_answer")
+                ? """
+                INSERT INTO quiz_answer_attempt (quiz_result_id, question_id, selected_choice_id, submitted_answer, is_correct, answered_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """
+                : """
                 INSERT INTO quiz_answer_attempt (quiz_result_id, question_id, selected_choice_id, is_correct, answered_at)
                 VALUES (?, ?, ?, ?, ?)
                 """;
 
         try (PreparedStatement stmt = cnx.prepareStatement(query)) {
             for (Question question : quiz.getQuestions()) {
-                Choice correctChoice = getCorrectChoice(question);
                 Long selectedChoiceId = selectedChoiceIdsByQuestionId != null
                         ? selectedChoiceIdsByQuestionId.get(question.getId())
                         : null;
-                boolean isCorrect = correctChoice != null && selectedChoiceId != null && selectedChoiceId.equals(correctChoice.getId());
+                String submittedAnswer = submittedAnswersByQuestionId != null
+                        ? submittedAnswersByQuestionId.get(question.getId())
+                        : null;
+                boolean isCorrect = isAnswerCorrect(question, selectedChoiceId, submittedAnswer);
 
                 stmt.setLong(1, result.getId());
                 stmt.setLong(2, question.getId());
@@ -682,8 +774,12 @@ public class QuizService {
                 } else {
                     stmt.setNull(3, Types.BIGINT);
                 }
-                stmt.setBoolean(4, isCorrect);
-                stmt.setTimestamp(5, Timestamp.from(result.getCompletedAt() != null ? result.getCompletedAt() : Instant.now()));
+                int nextIndex = 4;
+                if (hasQuizAnswerAttemptColumn("submitted_answer")) {
+                    stmt.setString(nextIndex++, normalizeSubmittedAnswer(submittedAnswer));
+                }
+                stmt.setBoolean(nextIndex++, isCorrect);
+                stmt.setTimestamp(nextIndex, Timestamp.from(result.getCompletedAt() != null ? result.getCompletedAt() : Instant.now()));
                 stmt.addBatch();
             }
 
@@ -767,6 +863,31 @@ public class QuizService {
             placeholders.add("?");
         }
 
+        if (hasQuestionColumn("question_type")) {
+            columns.add("question_type");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("code_language")) {
+            columns.add("code_language");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("starter_code")) {
+            columns.add("starter_code");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("expected_answer")) {
+            columns.add("expected_answer");
+            placeholders.add("?");
+        }
+
+        if (hasQuestionColumn("code_evaluation_mode")) {
+            columns.add("code_evaluation_mode");
+            placeholders.add("?");
+        }
+
         columns.add("quiz_id");
         placeholders.add("?");
 
@@ -801,6 +922,26 @@ public class QuizService {
 
         if (hasQuestionColumn("explanation")) {
             statement.setString(index++, question.getExplanation());
+        }
+
+        if (hasQuestionColumn("question_type")) {
+            statement.setString(index++, question.getNormalizedQuestionType());
+        }
+
+        if (hasQuestionColumn("code_language")) {
+            statement.setString(index++, question.getCodeLanguage());
+        }
+
+        if (hasQuestionColumn("starter_code")) {
+            statement.setString(index++, question.getStarterCode());
+        }
+
+        if (hasQuestionColumn("expected_answer")) {
+            statement.setString(index++, question.getExpectedAnswer());
+        }
+
+        if (hasQuestionColumn("code_evaluation_mode")) {
+            statement.setString(index++, question.getNormalizedCodeEvaluationMode());
         }
 
         statement.setLong(index, quiz.getId());
@@ -869,19 +1010,21 @@ public class QuizService {
                 .orElse(null);
     }
 
-    private int calculateScore(Quiz quiz, Map<Long, Long> selectedChoiceIdsByQuestionId) {
+    private int calculateScore(
+            Quiz quiz,
+            Map<Long, Long> selectedChoiceIdsByQuestionId,
+            Map<Long, String> submittedAnswersByQuestionId
+    ) {
         int score = 0;
 
         for (Question question : quiz.getQuestions()) {
-            Choice correctChoice = getCorrectChoice(question);
-            if (correctChoice == null) {
-                continue;
-            }
-
             Long selectedChoiceId = selectedChoiceIdsByQuestionId != null
                     ? selectedChoiceIdsByQuestionId.get(question.getId())
                     : null;
-            if (selectedChoiceId != null && selectedChoiceId.equals(correctChoice.getId())) {
+            String submittedAnswer = submittedAnswersByQuestionId != null
+                    ? submittedAnswersByQuestionId.get(question.getId())
+                    : null;
+            if (isAnswerCorrect(question, selectedChoiceId, submittedAnswer)) {
                 score++;
             }
         }
@@ -898,10 +1041,20 @@ public class QuizService {
     }
 
     private boolean hasValidQuestionShell(Question question) {
+        boolean requiresCodeSnippet = question != null
+                && !question.isCodeQuestion()
+                && aiQuizAssistantService.requiresCodeSnippet(
+                question.getQuestion(),
+                question.getChoices() == null ? List.of() : question.getChoices().stream().map(Choice::getChoice).toList()
+        );
         return question != null
                 && !isBlank(question.getQuestion())
-                && question.getChoices() != null
-                && question.getChoices().size() >= 2;
+                && !(requiresCodeSnippet && !question.hasStarterCode())
+                && (question.isCodeQuestion()
+                ? !isBlank(question.getExpectedAnswer())
+                : question.isCodeOutputQuestion()
+                ? !isBlank(question.getStarterCode()) && question.getChoices() != null && question.getChoices().size() >= 2
+                : question.getChoices() != null && question.getChoices().size() >= 2);
     }
 
     private boolean hasValidChoiceSet(List<Choice> choices) {
@@ -980,6 +1133,16 @@ public class QuizService {
         return tableHasColumn("question", columnName);
     }
 
+    private boolean hasQuizAnswerAttemptColumn(String columnName) {
+        return tableHasColumn("quiz_answer_attempt", columnName);
+    }
+
+    private boolean hasPersistableUser(User user) {
+        return user != null
+                && user.getId() != null
+                && userExists(user.getId());
+    }
+
     private boolean userExists(Integer userId) {
         if (userId == null || !tableExists("user")) {
             return false;
@@ -997,6 +1160,9 @@ public class QuizService {
     }
 
     private boolean tableHasColumn(String tableName, String columnName) {
+        if (cnx == null) {
+            return false;
+        }
         try {
             try (ResultSet columns = getDatabaseMetaData().getColumns(cnx.getCatalog(), null, tableName, columnName)) {
                 return columns.next();
@@ -1007,6 +1173,9 @@ public class QuizService {
     }
 
     private boolean tableExists(String tableName) {
+        if (cnx == null) {
+            return false;
+        }
         try {
             try (ResultSet tables = getDatabaseMetaData().getTables(cnx.getCatalog(), null, tableName, new String[]{"TABLE"})) {
                 return tables.next();
@@ -1056,6 +1225,55 @@ public class QuizService {
         return explanation == null ? "" : explanation;
     }
 
+    private String resolveQuestionType(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "question_type")) {
+            return Question.TYPE_MULTIPLE_CHOICE;
+        }
+        String questionType = rs.getString("question_type");
+        if (isBlank(questionType)) {
+            return Question.TYPE_MULTIPLE_CHOICE;
+        }
+        return questionType.trim().toLowerCase();
+    }
+
+    private String resolveCodeLanguage(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "code_language")) {
+            return "";
+        }
+        String codeLanguage = rs.getString("code_language");
+        return codeLanguage == null ? "" : codeLanguage;
+    }
+
+    private String resolveStarterCode(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "starter_code")) {
+            return "";
+        }
+        String starterCode = rs.getString("starter_code");
+        return starterCode == null ? "" : starterCode;
+    }
+
+    private String resolveExpectedAnswer(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "expected_answer")) {
+            return "";
+        }
+        String expectedAnswer = rs.getString("expected_answer");
+        return expectedAnswer == null ? "" : expectedAnswer;
+    }
+
+    private String resolveCodeEvaluationMode(ResultSet rs) throws SQLException {
+        if (!hasColumn(rs, "code_evaluation_mode")) {
+            return Question.CODE_EVALUATION_STRICT;
+        }
+        String evaluationMode = rs.getString("code_evaluation_mode");
+        if (isBlank(evaluationMode)) {
+            return Question.CODE_EVALUATION_STRICT;
+        }
+        String normalized = evaluationMode.trim().toLowerCase();
+        return Question.CODE_EVALUATION_AI.equals(normalized)
+                ? Question.CODE_EVALUATION_AI
+                : Question.CODE_EVALUATION_STRICT;
+    }
+
     private Long resolveSourceQuestionId(ResultSet rs) throws SQLException {
         if (!hasColumn(rs, "source_question_id")) {
             return null;
@@ -1082,5 +1300,68 @@ public class QuizService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private boolean persistedQuizQuestionsValid(Long quizId) {
+        if (quizId == null) {
+            return false;
+        }
+        Quiz persistedQuiz = getQuizById(quizId);
+        return persistedQuiz != null && isQuizStructureValid(persistedQuiz);
+    }
+
+    private boolean isAnswerCorrect(Question question, Long selectedChoiceId, String submittedAnswer) {
+        if (question == null) {
+            return false;
+        }
+
+        if (question.isCodeQuestion()) {
+            if (!isBlank(submittedAnswer)) {
+                AiQuizAssistantService.CodeAnswerEvaluation evaluation =
+                        aiQuizAssistantService.evaluateCodeAnswer(question, submittedAnswer);
+                if (evaluation.success()) {
+                    return evaluation.correct();
+                }
+            }
+            String expectedAnswer = normalizeCodeAnswer(question.getExpectedAnswer());
+            String actualAnswer = normalizeCodeAnswer(submittedAnswer);
+            return !expectedAnswer.isEmpty() && expectedAnswer.equals(actualAnswer);
+        }
+
+        Choice correctChoice = getCorrectChoice(question);
+        return correctChoice != null && selectedChoiceId != null && selectedChoiceId.equals(correctChoice.getId());
+    }
+
+    private String normalizeSubmittedAnswer(String submittedAnswer) {
+        return submittedAnswer == null ? null : submittedAnswer.strip();
+    }
+
+    private String normalizeCodeAnswer(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String normalized = value.replace("\r\n", "\n").replace('\r', '\n');
+        String[] lines = normalized.split("\n", -1);
+        StringBuilder builder = new StringBuilder();
+        for (String line : lines) {
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(stripTrailingWhitespace(line));
+        }
+        return builder.toString().trim();
+    }
+
+    private String stripTrailingWhitespace(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+
+        int end = value.length();
+        while (end > 0 && Character.isWhitespace(value.charAt(end - 1))) {
+            end--;
+        }
+        return value.substring(0, end);
     }
 }
