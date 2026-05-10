@@ -94,52 +94,6 @@ public class MyDataBase {
         )
         """;
 
-    private static final String CREATE_RESERVATION_PLACE_TABLE_SQL = """
-        CREATE TABLE IF NOT EXISTS reservation_place (
-            idReservationPlace INT AUTO_INCREMENT PRIMARY KEY,
-            idReservation INT NOT NULL,
-            idSeance INT NOT NULL,
-            idPlace INT NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT fk_reservation_place_reservation
-                FOREIGN KEY (idReservation) REFERENCES reservation(id)
-                ON DELETE CASCADE,
-            CONSTRAINT fk_reservation_place_seance
-                FOREIGN KEY (idSeance) REFERENCES seance(id)
-                ON DELETE CASCADE,
-            CONSTRAINT fk_reservation_place_place
-                FOREIGN KEY (idPlace) REFERENCES place(idPlace)
-                ON DELETE RESTRICT,
-            CONSTRAINT uk_reservation_place_reservation UNIQUE (idReservation),
-            CONSTRAINT uk_reservation_place_seance_place UNIQUE (idSeance, idPlace)
-        )
-        """;
-
-    private static final String CREATE_RESERVATION_PAYMENT_TABLE_SQL = """
-        CREATE TABLE IF NOT EXISTS reservation_payment (
-            reservation_id INT PRIMARY KEY,
-            provider VARCHAR(30) NOT NULL DEFAULT 'stripe',
-            amount_millimes INT NOT NULL,
-            currency_token VARCHAR(10) NOT NULL DEFAULT 'TND',
-            status VARCHAR(30) NOT NULL DEFAULT 'pending',
-            payment_ref VARCHAR(120) NULL,
-            payment_url TEXT NULL,
-            provider_status VARCHAR(60) NULL,
-            transaction_status VARCHAR(60) NULL,
-            provider_payload TEXT NULL,
-            initiated_at DATETIME NULL,
-            last_checked_at DATETIME NULL,
-            completed_at DATETIME NULL,
-            receipt_email VARCHAR(255) NULL,
-            receipt_email_sent_at DATETIME NULL,
-            created_at DATETIME NOT NULL,
-            updated_at DATETIME NULL,
-            CONSTRAINT fk_reservation_payment_reservation
-                FOREIGN KEY (reservation_id) REFERENCES reservation(id)
-                ON DELETE CASCADE
-        )
-        """;
-
     private static final String CREATE_MATIERE_TABLE_SQL = """
         CREATE TABLE IF NOT EXISTS matiere (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -392,10 +346,7 @@ public class MyDataBase {
             ensureSalleColumn(connection, "dateDerniereMaintenance", "DATE NULL AFTER statutDetaille");
             ensureSeanceColumn(connection, "mode_seance", "VARCHAR(30) NOT NULL DEFAULT 'en_ligne'");
             ensureSeanceColumn(connection, "salle_id", "INT NULL");
-            ensureSeanceColumn(connection, "price_tnd", "DECIMAL(10,3) NULL DEFAULT NULL");
             createTableIfMissing(connection, "seance_equipement", CREATE_SEANCE_EQUIPEMENT_TABLE_SQL);
-            ensureReservationPlaceTable(connection);
-            ensureReservationPaymentTable(connection);
             ensureQuizColumn(connection, "keyword", "VARCHAR(190) NOT NULL DEFAULT '' AFTER titre");
             ensureQuizColumn(connection, "created_at", "DATETIME NULL AFTER keyword");
             ensureQuestionColumn(connection, "topic", "VARCHAR(190) NULL AFTER question");
@@ -413,10 +364,6 @@ public class MyDataBase {
             ensureQuizAnswerAttemptTable(connection);
             ensureCourseTables(connection);
             ensureCallRoomTable(connection);
-            ensureUserProfileColumns(connection);
-            ensureUserReviewColumns(connection);
-            ensureUserTwoFactorColumns(connection);
-            ensureUserFaceColumns(connection);
         } catch (SQLException exception) {
             System.out.println("Unable to align managed schema automatically: " + exception.getMessage());
         }
@@ -446,24 +393,6 @@ public class MyDataBase {
         );
     }
 
-    private void ensureReservationPlaceTable(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "reservation")
-            || !DatabaseSchemaUtils.tableExists(connection, "seance")
-            || !DatabaseSchemaUtils.tableExists(connection, "place")) {
-            return;
-        }
-        createTableIfMissing(connection, "reservation_place", CREATE_RESERVATION_PLACE_TABLE_SQL);
-    }
-
-    private void ensureReservationPaymentTable(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "reservation")) {
-            return;
-        }
-        createTableIfMissing(connection, "reservation_payment", CREATE_RESERVATION_PAYMENT_TABLE_SQL);
-        ensureColumn(connection, "reservation_payment", "receipt_email", "VARCHAR(255) NULL AFTER completed_at");
-        ensureColumn(connection, "reservation_payment", "receipt_email_sent_at", "DATETIME NULL AFTER receipt_email");
-    }
-
     private void ensureCourseTables(Connection connection) throws SQLException {
         createTableIfMissing(connection, "matiere", CREATE_MATIERE_TABLE_SQL);
         ensureCourseMatiereColumn(connection, "description", "TEXT NULL AFTER titre");
@@ -481,7 +410,6 @@ public class MyDataBase {
         createTableIfMissing(connection, "section", CREATE_SECTION_TABLE_SQL);
         createTableIfMissing(connection, "resource", CREATE_RESOURCE_TABLE_SQL);
         createTableIfMissing(connection, "flashcard_attempt", CREATE_FLASHCARD_ATTEMPT_TABLE_SQL);
-        ensureFlashcardAttemptColumns(connection);
 
         ensureIndex(
             connection,
@@ -519,74 +447,6 @@ public class MyDataBase {
             "idx_flashcard_attempt_section",
             "CREATE INDEX idx_flashcard_attempt_section ON flashcard_attempt(section_id)"
         );
-    }
-
-    private void ensureFlashcardAttemptColumns(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "flashcard_attempt")) {
-            return;
-        }
-
-        if (!DatabaseSchemaUtils.columnExists(connection, "flashcard_attempt", "matiere_id")) {
-            DatabaseSchemaUtils.executeDdl(
-                connection,
-                "ALTER TABLE flashcard_attempt ADD COLUMN matiere_id INT NULL AFTER is_correct"
-            );
-        }
-
-        if (DatabaseSchemaUtils.columnExists(connection, "flashcard_attempt", "subject_id")
-            && DatabaseSchemaUtils.columnExists(connection, "flashcard_attempt", "matiere_id")) {
-            DatabaseSchemaUtils.executeDdl(
-                connection,
-                "UPDATE flashcard_attempt SET matiere_id = subject_id WHERE matiere_id IS NULL"
-            );
-        }
-    }
-
-    private void ensureUserProfileColumns(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "user")) {
-            return;
-        }
-        ensureColumn(connection, "user", "avatar_path", "VARCHAR(255) NULL");
-        ensureColumn(connection, "user", "phone_number", "VARCHAR(40) NULL");
-        ensureColumn(connection, "user", "bio", "TEXT NULL");
-        ensureColumn(connection, "user", "certifications", "TEXT NULL");
-    }
-
-    private void ensureUserReviewColumns(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "user")) {
-            return;
-        }
-        ensureColumn(connection, "user", "registration_status", "VARCHAR(32) NULL");
-        ensureColumn(connection, "user", "review_note", "TEXT NULL");
-        ensureColumn(connection, "user", "reviewed_at", "DATETIME NULL");
-        ensureColumn(connection, "user", "profile_active", "TINYINT(1) NULL");
-        DatabaseSchemaUtils.executeDdl(
-            connection,
-            "UPDATE `user` SET `registration_status` = 'APPROVED' WHERE `registration_status` IS NULL OR TRIM(`registration_status`) = ''"
-        );
-        DatabaseSchemaUtils.executeDdl(
-            connection,
-            "UPDATE `user` SET `profile_active` = 1 WHERE `profile_active` IS NULL"
-        );
-    }
-
-    private void ensureUserTwoFactorColumns(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "user")) {
-            return;
-        }
-        ensureColumn(connection, "user", "two_factor_enabled", "BOOLEAN NOT NULL DEFAULT FALSE");
-        ensureColumn(connection, "user", "two_factor_secret", "TEXT NULL");
-        ensureColumn(connection, "user", "two_factor_recovery_codes", "JSON NULL");
-        ensureColumn(connection, "user", "two_factor_confirmed_at", "DATETIME NULL");
-    }
-
-    private void ensureUserFaceColumns(Connection connection) throws SQLException {
-        if (!DatabaseSchemaUtils.tableExists(connection, "user")) {
-            return;
-        }
-        ensureColumn(connection, "user", "face_id_enabled", "BOOLEAN NOT NULL DEFAULT FALSE");
-        ensureColumn(connection, "user", "face_id_token", "VARCHAR(255) NULL");
-        ensureColumn(connection, "user", "face_id_enrolled_at", "DATETIME NULL");
     }
 
     private void createTableIfMissing(Connection connection, String tableName, String createSql) throws SQLException {

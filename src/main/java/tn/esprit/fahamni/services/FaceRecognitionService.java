@@ -7,7 +7,6 @@ import com.google.gson.JsonParser;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.Models.UserRole;
 import tn.esprit.fahamni.utils.AppConfig;
-import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserInputValidator;
@@ -333,18 +332,15 @@ public class FaceRecognitionService {
     }
 
     private void ensureFaceColumns() throws SQLException {
-        ensureUserColumn("face_id_enabled", "BOOLEAN NOT NULL DEFAULT FALSE");
-        ensureUserColumn("face_id_token", "VARCHAR(255) NULL");
-        ensureUserColumn("face_id_enrolled_at", "DATETIME NULL");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `face_id_enabled` BOOLEAN NOT NULL DEFAULT FALSE");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `face_id_token` VARCHAR(255) NULL");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `face_id_enrolled_at` DATETIME NULL");
     }
 
-    private void ensureUserColumn(String columnName, String definition) throws SQLException {
-        if (connection == null
-            || !DatabaseSchemaUtils.tableExists(connection, "user")
-            || DatabaseSchemaUtils.columnExists(connection, "user", columnName)) {
-            return;
+    private void executeAlterIfNeeded(String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.execute();
         }
-        DatabaseSchemaUtils.executeDdl(connection, "ALTER TABLE `user` ADD COLUMN `" + columnName + "` " + definition);
     }
 
     private JsonObject postWithRetries(String endpoint, Map<String, String> formData) throws IOException, InterruptedException, BusyFaceServiceException {

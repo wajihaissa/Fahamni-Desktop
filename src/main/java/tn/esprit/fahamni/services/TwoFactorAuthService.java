@@ -15,7 +15,6 @@ import org.apache.commons.codec.binary.Base32;
 import org.mindrot.jbcrypt.BCrypt;
 import tn.esprit.fahamni.Models.User;
 import tn.esprit.fahamni.utils.AppConfig;
-import tn.esprit.fahamni.utils.DatabaseSchemaUtils;
 import tn.esprit.fahamni.utils.MyDataBase;
 import tn.esprit.fahamni.utils.OperationResult;
 import tn.esprit.fahamni.utils.UserSession;
@@ -419,19 +418,16 @@ public class TwoFactorAuthService {
     }
 
     private void ensureTwoFactorColumns() throws SQLException {
-        ensureUserColumn("two_factor_enabled", "BOOLEAN NOT NULL DEFAULT FALSE");
-        ensureUserColumn("two_factor_secret", "TEXT NULL");
-        ensureUserColumn("two_factor_recovery_codes", "JSON NULL");
-        ensureUserColumn("two_factor_confirmed_at", "DATETIME NULL");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `two_factor_enabled` BOOLEAN NOT NULL DEFAULT FALSE");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `two_factor_secret` TEXT NULL");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `two_factor_recovery_codes` JSON NULL");
+        executeAlterIfNeeded("ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `two_factor_confirmed_at` DATETIME NULL");
     }
 
-    private void ensureUserColumn(String columnName, String definition) throws SQLException {
-        if (connection == null
-            || !DatabaseSchemaUtils.tableExists(connection, "user")
-            || DatabaseSchemaUtils.columnExists(connection, "user", columnName)) {
-            return;
+    private void executeAlterIfNeeded(String sql) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.execute();
         }
-        DatabaseSchemaUtils.executeDdl(connection, "ALTER TABLE `user` ADD COLUMN `" + columnName + "` " + definition);
     }
 
     private String buildOtpAuthUri(String email, String secret) {

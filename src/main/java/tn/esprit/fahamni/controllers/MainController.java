@@ -1,8 +1,6 @@
 package tn.esprit.fahamni.controllers;
 
 import javafx.animation.FadeTransition;
-import javafx.animation.ParallelTransition;
-import javafx.animation.ScaleTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
@@ -31,7 +29,6 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.shape.SVGPath;
 import javafx.stage.Popup;
 import javafx.util.Duration;
 import tn.esprit.fahamni.Models.Notification;
@@ -56,10 +53,6 @@ import java.util.List;
 public class MainController {
 
     private static final double GLOBAL_AI_PANEL_WIDTH = 400.0;
-    private static final String THEME_MOON_ICON =
-        "M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c3.87 0 7.18-2.45 8.44-5.88-.65.28-1.36.43-2.12.43-2.97 0-5.38-2.41-5.38-5.38 0-2.7 1.99-4.94 4.58-5.33A8.96 8.96 0 0 0 12 3z";
-    private static final String THEME_SUN_ICON =
-        "M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.8 1.42-1.42zM1 13h3v-2H1v2zm10 9h2v-3h-2v3zm8.04-18.95l-1.41-1.41-1.8 1.79 1.42 1.42 1.79-1.8zM17.24 19.16l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 13h3v-2h-3v2zm-8-8h-2v3h2V5zm0 4a3 3 0 100 6 3 3 0 000-6zm-7.03 10.66l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z";
     private static final Duration ALERT_BADGE_REFRESH_INTERVAL = Duration.seconds(20);
     private final NotificationService notifService = new NotificationService();
     private final UserAccountService userAccountService = new UserAccountService();
@@ -81,8 +74,6 @@ public class MainController {
     @FXML private Button blogButton;
     @FXML private Button aboutButton;
     @FXML private Button aiButton;
-    @FXML private Button themeToggleButton;
-    @FXML private SVGPath themeToggleIcon;
     @FXML private Button accountButton;
     @FXML private Label profileAvatarLabel;
     @FXML private Label profileNameLabel;
@@ -220,13 +211,6 @@ public class MainController {
     @FXML
     private void showFahamniAi() {
         toggleGlobalAi();
-    }
-
-    @FXML
-    private void toggleTheme() {
-        FrontOfficeThemePreference.toggle();
-        applyThemeMode();
-        playThemeSwitchAnimation();
     }
 
     @FXML
@@ -490,14 +474,6 @@ public class MainController {
 
     private void applyThemeMode() {
         FrontOfficeThemePreference.apply(rootPane);
-        boolean lightMode = FrontOfficeThemePreference.isLightMode();
-        if (themeToggleButton != null) {
-            themeToggleButton.setText("");
-            themeToggleButton.setAccessibleText(lightMode ? "Passer en mode sombre" : "Passer en mode clair");
-        }
-        if (themeToggleIcon != null) {
-            themeToggleIcon.setContent(lightMode ? THEME_MOON_ICON : THEME_SUN_ICON);
-        }
         refreshAccountMenuTheme();
         if (alertsPopup != null && alertsPopup.isShowing()) {
             alertsPopup.hide();
@@ -526,28 +502,6 @@ public class MainController {
         fadeTransition.setFromValue(0.0);
         fadeTransition.setToValue(1.0);
         fadeTransition.play();
-    }
-
-    private void playThemeSwitchAnimation() {
-        if (rootPane == null) {
-            return;
-        }
-
-        rootPane.setOpacity(0.94);
-        rootPane.setScaleX(0.994);
-        rootPane.setScaleY(0.994);
-
-        FadeTransition fadeTransition = new FadeTransition(Duration.millis(220), rootPane);
-        fadeTransition.setFromValue(0.94);
-        fadeTransition.setToValue(1.0);
-
-        ScaleTransition scaleTransition = new ScaleTransition(Duration.millis(220), rootPane);
-        scaleTransition.setFromX(0.994);
-        scaleTransition.setFromY(0.994);
-        scaleTransition.setToX(1.0);
-        scaleTransition.setToY(1.0);
-
-        new ParallelTransition(fadeTransition, scaleTransition).play();
     }
 
     private void installContentClip() {

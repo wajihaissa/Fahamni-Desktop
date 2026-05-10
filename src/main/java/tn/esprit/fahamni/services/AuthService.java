@@ -9,7 +9,6 @@ import tn.esprit.fahamni.utils.PasswordSecurity;
 import tn.esprit.fahamni.utils.UserInputValidator;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -54,7 +53,7 @@ public class AuthService {
                 try (PreparedStatement ps = c.prepareStatement(
                     "SELECT id, " + nameCol + ", " + roleCol + ", password, status, " +
                         "COALESCE(registration_status, 'APPROVED') AS registration_status " +
-                        "FROM `user` WHERE email = ?")) {
+                        "FROM user WHERE email = ?")) {
                     ps.setString(1, normalizedEmail);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
@@ -226,31 +225,12 @@ public class AuthService {
     }
 
     private void ensureAuthUserSchema(Connection c) throws SQLException {
-        addColumnIfMissing(c, "registration_status", "ALTER TABLE `user` ADD COLUMN `registration_status` VARCHAR(32) NULL");
-        addColumnIfMissing(c, "review_note", "ALTER TABLE `user` ADD COLUMN `review_note` TEXT NULL");
-        addColumnIfMissing(c, "reviewed_at", "ALTER TABLE `user` ADD COLUMN `reviewed_at` DATETIME NULL");
-        addColumnIfMissing(c, "profile_active", "ALTER TABLE `user` ADD COLUMN `profile_active` TINYINT(1) NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `registration_status` VARCHAR(32) NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `review_note` TEXT NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `reviewed_at` DATETIME NULL");
+        executeStatement(c, "ALTER TABLE `user` ADD COLUMN IF NOT EXISTS `profile_active` TINYINT(1) NULL");
         executeStatement(c, "UPDATE `user` SET `registration_status` = 'APPROVED' WHERE `registration_status` IS NULL OR TRIM(`registration_status`) = ''");
         executeStatement(c, "UPDATE `user` SET `profile_active` = 1 WHERE `profile_active` IS NULL");
-    }
-
-    private void addColumnIfMissing(Connection c, String columnName, String alterSql) throws SQLException {
-        if (columnExists(c, columnName)) {
-            return;
-        }
-        executeStatement(c, alterSql);
-    }
-
-    private boolean columnExists(Connection c, String columnName) throws SQLException {
-        DatabaseMetaData metaData = c.getMetaData();
-        try (ResultSet columns = metaData.getColumns(c.getCatalog(), null, "user", columnName)) {
-            if (columns.next()) {
-                return true;
-            }
-        }
-        try (ResultSet columns = metaData.getColumns(c.getCatalog(), null, "USER", columnName)) {
-            return columns.next();
-        }
     }
 
     private void executeStatement(Connection c, String sql) throws SQLException {

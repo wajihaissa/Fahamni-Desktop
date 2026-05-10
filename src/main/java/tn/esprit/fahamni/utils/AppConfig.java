@@ -69,11 +69,11 @@ public final class AppConfig {
     }
 
     public static String getFaceApiKey() {
-        return getEnv("FACEPP_API_KEY", "");
+        return getEnv("FACEPP_API_KEY", "zJ4uLBQ77Y3sN8YLj_X9OtH-mwXsBe67");
     }
 
     public static String getFaceApiSecret() {
-        return getEnv("FACEPP_API_SECRET", "");
+        return getEnv("FACEPP_API_SECRET", "X3uNLB7q2V_Vty3uFmpaJtGazC5sQ4qg");
     }
 
     public static String getFaceApiBaseUrl() {
@@ -87,7 +87,7 @@ public final class AppConfig {
     }
 
     public static String getAppSecret() {
-        return getEnv("APP_SECRET", "");
+        return getEnv("APP_SECRET", "fahamni_desktop_super_secret_2026_2fa_encrypt_key");
     }
 
     public static boolean isAppSecretConfigured() {
@@ -115,12 +115,6 @@ public final class AppConfig {
         if (!prop.isBlank()) {
             return prop.trim();
         }
-
-        String localValue = LocalConfig.get(key);
-        if (localValue != null && !localValue.isBlank()) {
-            return localValue.trim();
-        }
-
         return getEnv(key, fallback);
     }
 
@@ -128,11 +122,6 @@ public final class AppConfig {
         String prop = System.getProperty(key);
         if (prop != null && !prop.isBlank() && !prop.startsWith("${")) {
             return prop.trim();
-        }
-
-        String localValue = LocalConfig.get(key);
-        if (localValue != null && !localValue.isBlank()) {
-            return localValue.trim();
         }
 
         String value = System.getenv(key);

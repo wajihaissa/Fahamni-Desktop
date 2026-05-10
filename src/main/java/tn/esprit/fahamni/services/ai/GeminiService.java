@@ -1,7 +1,5 @@
 package tn.esprit.fahamni.services.ai;
 
-import tn.esprit.fahamni.utils.EnvConfig;
-
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -24,9 +22,6 @@ public class GeminiService {
     private static final String API_KEY_ENV = "GEMINI_API_KEY";
     private static final String MODEL_ENV = "GEMINI_MODEL";
     private static final String DEFAULT_MODEL = "gemini-1.5-flash";
-    private static final String DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
-    private static final String OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
-    private static final String GITHUB_MODELS_CHAT_COMPLETIONS_URL = "https://models.github.ai/inference/chat/completions";
     private static final String[] FALLBACK_MODELS = {
         "gemini-1.0-pro",
         "gemini-1.5-pro",
@@ -50,23 +45,19 @@ public class GeminiService {
 
     private String askGeminiInternal(String prompt) throws Exception {
         System.out.println("[GeminiService] Request started - prompt length: " + prompt.length());
-
+        
         String apiKey = resolveApiKey();
-        if (looksLikeOpenAiCompatibleKey(apiKey)) {
-            System.out.println("[GeminiService] Using OpenAI-compatible fallback");
-            return askOpenAiCompatible(prompt, apiKey);
-        }
         System.out.println("[GeminiService] API Key resolved");
-
+        
         String model = resolveModel();
         System.out.println("[GeminiService] Model resolved: " + model);
-
+        
         // Try primary model first, then fallback models
         String response = tryCallModel(prompt, apiKey, model);
         if (response != null) {
             return response;
         }
-
+        
         // If primary model fails, try fallback models
         System.out.println("[GeminiService] Primary model unavailable, trying fallback models...");
         for (String fallbackModel : FALLBACK_MODELS) {
@@ -217,79 +208,8 @@ public class GeminiService {
         return DEFAULT_MODEL;
     }
 
-    private String askOpenAiCompatible(String prompt, String apiKey) throws Exception {
-        String endpoint = apiKey.startsWith("github_pat_") ? GITHUB_MODELS_CHAT_COMPLETIONS_URL : OPENAI_CHAT_COMPLETIONS_URL;
-        String model = readValueFromDotEnv("OPENAI_MODEL");
-        if (model == null || model.isBlank()) {
-            model = EnvConfig.get("OPENAI_MODEL");
-        }
-        if (model == null || model.isBlank()) {
-            model = DEFAULT_OPENAI_MODEL;
-        }
-
-        HttpURLConnection connection = null;
-        try {
-            connection = (HttpURLConnection) new URL(endpoint).openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(20000);
-            connection.setReadTimeout(45000);
-
-            JSONObject payload = new JSONObject()
-                .put("model", model)
-                .put("messages", new JSONArray()
-                    .put(new JSONObject().put("role", "system").put("content", "You are Fahamni AI, a concise and helpful teaching assistant."))
-                    .put(new JSONObject().put("role", "user").put("content", prompt)));
-
-            byte[] jsonBytes = payload.toString().getBytes(StandardCharsets.UTF_8);
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(jsonBytes);
-                os.flush();
-            }
-
-            int statusCode = connection.getResponseCode();
-            InputStream stream = statusCode >= 200 && statusCode < 300
-                ? connection.getInputStream()
-                : connection.getErrorStream();
-            String responseBody = readStream(stream);
-
-            if (statusCode < 200 || statusCode >= 300) {
-                throw new RuntimeException("OpenAI-compatible request failed (" + statusCode + "): " + responseBody);
-            }
-
-            JSONObject responseJson = new JSONObject(responseBody);
-            JSONArray choices = responseJson.optJSONArray("choices");
-            if (choices == null || choices.isEmpty()) {
-                return "No response candidate returned by the AI provider.";
-            }
-
-            JSONObject firstChoice = choices.optJSONObject(0);
-            if (firstChoice == null) {
-                return "Invalid choice format returned by the AI provider.";
-            }
-
-            JSONObject message = firstChoice.optJSONObject("message");
-            if (message == null) {
-                return "No message returned by the AI provider.";
-            }
-
-            String text = message.optString("content", "").trim();
-            return text.isEmpty() ? "The AI provider returned an empty response." : text;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
     private String readKeyFromDotEnv() {
-        String value = readValueFromDotEnv(API_KEY_ENV);
-        if (value != null && !value.isBlank()) {
-            return value;
-        }
-        return EnvConfig.get("OPENAI_API_KEY");
+        return readValueFromDotEnv(API_KEY_ENV);
     }
 
     private String readValueFromDotEnv(String key) {
@@ -379,13 +299,5 @@ public class GeminiService {
             }
         }
         return sb.toString();
-    }
-
-    private boolean looksLikeOpenAiCompatibleKey(String key) {
-        if (key == null) {
-            return false;
-        }
-        String normalized = key.trim();
-        return normalized.startsWith("sk-") || normalized.startsWith("github_pat_");
     }
 }

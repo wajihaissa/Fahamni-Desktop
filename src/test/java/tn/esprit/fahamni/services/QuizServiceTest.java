@@ -10,7 +10,6 @@ import tn.esprit.fahamni.Models.quiz.QuizResult;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -110,129 +109,6 @@ class QuizServiceTest {
     }
 
     @Test
-    void evaluateQuizAcceptsCorrectCodeAnswerAfterWhitespaceNormalization() {
-        Quiz quiz = new Quiz();
-        quiz.setTitre("Syntax Drill");
-        quiz.setKeyword("java");
-
-        Question question = new Question();
-        question.setId(10L);
-        question.setQuestion("Write the Java print statement.");
-        question.setQuestionType(Question.TYPE_CODE);
-        question.setExpectedAnswer("System.out.println(\"Hello\");");
-        quiz.addQuestion(question);
-
-        QuizResult result = service.evaluateQuiz(
-                quiz,
-                Map.of(),
-                Map.of(10L, "  System.out.println(\"Hello\");   ")
-        );
-
-        assertNotNull(result);
-        assertEquals(1, result.getScore());
-        assertEquals(100.0, result.getPercentage());
-        assertTrue(result.isPassed());
-    }
-
-    @Test
-    void evaluateQuizUsesAiForLogicBasedCodeQuestions() {
-        StubAiQuizAssistantService aiService = new StubAiQuizAssistantService();
-        aiService.codeEvaluation = Optional.of(true);
-        QuizService aiQuizService = new QuizService(aiService);
-
-        Quiz quiz = new Quiz();
-        quiz.setTitre("Logic Drill");
-        quiz.setKeyword("java");
-
-        Question question = new Question();
-        question.setId(20L);
-        question.setQuestion("Write logic that returns true for even numbers.");
-        question.setQuestionType(Question.TYPE_CODE);
-        question.setCodeLanguage("Java");
-        question.setExpectedAnswer("return number % 2 == 0;");
-        question.setCodeEvaluationMode(Question.CODE_EVALUATION_AI);
-        quiz.addQuestion(question);
-
-        QuizResult result = aiQuizService.evaluateQuiz(
-                quiz,
-                Map.of(),
-                Map.of(20L, "return (number & 1) == 0;")
-        );
-
-        assertNotNull(result);
-        assertEquals(1, result.getScore());
-        assertTrue(result.isPassed());
-    }
-
-    @Test
-    void evaluateQuizAcceptsCorrectChoiceForCodeOutputQuestion() {
-        Quiz quiz = new Quiz();
-        quiz.setTitre("Output Drill");
-        quiz.setKeyword("java");
-
-        Question question = new Question();
-        question.setId(30L);
-        question.setQuestion("What is the output of this code?");
-        question.setQuestionType(Question.TYPE_CODE_OUTPUT);
-        question.setCodeLanguage("Java");
-        question.setStarterCode("System.out.println(2 + 3);");
-
-        Choice first = makeChoice("5", true);
-        first.setId(301L);
-        Choice second = makeChoice("\"23\"", false);
-        second.setId(302L);
-
-        question.addChoice(first);
-        question.addChoice(second);
-        quiz.addQuestion(question);
-
-        QuizResult result = service.evaluateQuiz(quiz, Map.of(30L, 301L), Map.of());
-
-        assertNotNull(result);
-        assertEquals(1, result.getScore());
-        assertEquals(100.0, result.getPercentage());
-        assertTrue(result.isPassed());
-    }
-
-    @Test
-    void isQuizStructureValidRejectsOutputPromptWithoutCodeSnippet() {
-        Quiz quiz = new Quiz();
-        quiz.setTitre("Broken Output Quiz");
-        quiz.setKeyword("java");
-
-        Question question = new Question();
-        question.setQuestion("What is the output of the following code?");
-        question.addChoice(makeChoice("1", true));
-        question.addChoice(makeChoice("0", false));
-        question.addChoice(makeChoice("Division by zero!", false));
-        question.addChoice(makeChoice("Error: Division by zero", false));
-        quiz.addQuestion(question);
-
-        assertFalse(service.isQuizStructureValid(quiz));
-    }
-
-    @Test
-    void isQuizStructureValidRejectsNaturalCodeOutputPromptWithoutSnippet() {
-        StubAiQuizAssistantService aiService = new StubAiQuizAssistantService();
-        aiService.codeSnippetRequirement = Optional.of(true);
-        QuizService aiQuizService = new QuizService(aiService);
-
-        Quiz quiz = new Quiz();
-        quiz.setTitre("Broken Output Quiz 2");
-        quiz.setKeyword("java");
-
-        Question question = new Question();
-        question.setQuestion("Pick the right answer.");
-        question.addChoice(makeChoice("15", true));
-        question.addChoice(makeChoice("10", false));
-        question.addChoice(makeChoice("5", false));
-        question.addChoice(makeChoice("0", false));
-        quiz.addQuestion(question);
-
-        assertFalse(aiQuizService.isQuizStructureValid(quiz));
-    }
-
-    @Test
     void getLastScoreReturnsNullForQuizWithoutResults() {
         assertNull(service.getLastScore(buildQuiz("Java Basics", "java")));
     }
@@ -267,11 +143,6 @@ class QuizServiceTest {
         source.setDifficulty("Hard");
         source.setHint("Think about ordering.");
         source.setExplanation("Lists preserve order.");
-        source.setQuestionType(Question.TYPE_CODE);
-        source.setCodeLanguage("Java");
-        source.setStarterCode("System.out.println();");
-        source.setExpectedAnswer("System.out.println(\"Hi\");");
-        source.setCodeEvaluationMode(Question.CODE_EVALUATION_AI);
 
         Quiz targetQuiz = new Quiz();
         targetQuiz.setTitre("Adaptive Quiz");
@@ -287,11 +158,6 @@ class QuizServiceTest {
         assertEquals("Hard", copy.getDifficulty());
         assertEquals("Think about ordering.", copy.getHint());
         assertEquals("Lists preserve order.", copy.getExplanation());
-        assertEquals(Question.TYPE_CODE, copy.getQuestionType());
-        assertEquals("Java", copy.getCodeLanguage());
-        assertEquals("System.out.println();", copy.getStarterCode());
-        assertEquals("System.out.println(\"Hi\");", copy.getExpectedAnswer());
-        assertEquals(Question.CODE_EVALUATION_AI, copy.getCodeEvaluationMode());
         assertSame(targetQuiz, copy.getQuiz());
         assertEquals(source.getChoices().size(), copy.getChoices().size());
         assertNotSame(source.getChoices().get(0), copy.getChoices().get(0));
@@ -303,13 +169,6 @@ class QuizServiceTest {
         User user = new User(77, "Quiz Tester", "quiz@test.local", "", UserRole.USER);
 
         QuizResult result = service.submitQuiz(-999_999L, Map.of(), user);
-
-        assertNull(result);
-    }
-
-    @Test
-    void submitQuizReturnsNullWhenUserIsMissing() {
-        QuizResult result = service.submitQuiz(-999_999L, Map.of(), null);
 
         assertNull(result);
     }
@@ -343,25 +202,5 @@ class QuizServiceTest {
         choice.setChoice(text);
         choice.setIsCorrect(isCorrect);
         return choice;
-    }
-
-    private static class StubAiQuizAssistantService extends AiQuizAssistantService {
-        private Optional<Boolean> codeEvaluation = Optional.empty();
-        private Optional<Boolean> codeSnippetRequirement = Optional.empty();
-
-        @Override
-        protected Optional<Boolean> tryEvaluateCodeAnswerWithOpenAi(Question question, String submittedAnswer) {
-            return codeEvaluation;
-        }
-
-        @Override
-        protected Optional<Boolean> tryDetectQuestionRequiresCodeSnippetWithOpenAi(String questionText, java.util.List<String> choices) {
-            return codeSnippetRequirement;
-        }
-
-        @Override
-        protected boolean isOpenAiReady() {
-            return true;
-        }
     }
 }

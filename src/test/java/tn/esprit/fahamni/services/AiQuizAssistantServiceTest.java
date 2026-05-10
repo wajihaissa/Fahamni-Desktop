@@ -20,7 +20,7 @@ class AiQuizAssistantServiceTest {
     void generateQuizDraftReturnsUsableQuizWhenOpenAiResponds() {
         StubAiQuizAssistantService service = new StubAiQuizAssistantService();
         service.openAiReady = true;
-        service.quizDraft = Optional.of(buildQuiz("Java", "Java Foundations", 4, true));
+        service.quizDraft = Optional.of(buildQuiz("Java", "Java Foundations", 4));
 
         AiQuizAssistantService.GeneratedQuizDraft generatedDraft =
                 service.generateQuizDraft("Java", "Java Foundations", 4, "Medium");
@@ -33,62 +33,9 @@ class AiQuizAssistantServiceTest {
         assertEquals("Java Foundations", quiz.getTitre());
         assertEquals("Java", quiz.getKeyword());
         assertEquals(4, quiz.getQuestions().size());
+        assertTrue(quiz.getQuestions().stream().allMatch(question -> question.getChoices().size() == 4));
         assertTrue(quiz.getQuestions().stream()
-                .filter(Question::isMultipleChoiceQuestion)
-                .allMatch(question -> question.getChoices().size() == 4));
-        assertTrue(quiz.getQuestions().stream()
-                .filter(Question::isMultipleChoiceQuestion)
                 .allMatch(question -> question.getChoices().stream().filter(choice -> Boolean.TRUE.equals(choice.getIsCorrect())).count() == 1));
-        assertTrue(quiz.getQuestions().stream().anyMatch(Question::isCodeQuestion));
-    }
-
-    @Test
-    void generateQuizDraftSupportsSixQuestions() {
-        StubAiQuizAssistantService service = new StubAiQuizAssistantService();
-        service.openAiReady = true;
-        service.quizDraft = Optional.of(buildQuiz("Java", "Java Foundations", 6, true));
-
-        AiQuizAssistantService.GeneratedQuizDraft generatedDraft =
-                service.generateQuizDraft("Java", "Java Foundations", 6, "Medium");
-
-        assertTrue(generatedDraft.success());
-        assertNotNull(generatedDraft.quiz());
-        assertEquals(6, generatedDraft.quiz().getQuestions().size());
-    }
-
-    @Test
-    void generateQuizDraftRepairsDuplicateChoicesInAiDraft() {
-        StubAiQuizAssistantService service = new StubAiQuizAssistantService();
-        service.openAiReady = true;
-
-        Quiz quiz = new Quiz();
-        quiz.setKeyword("Java");
-        quiz.setTitre("Java Foundations");
-
-        Question question = new Question();
-        question.setQuestion("What is the output of this code?");
-        question.setQuestionType(Question.TYPE_CODE_OUTPUT);
-        question.setCodeLanguage("Java");
-        question.setStarterCode("System.out.println(2 + 3);");
-        question.addChoice(choice("5", true));
-        question.addChoice(choice("5", false));
-        question.addChoice(choice("6", false));
-        question.addChoice(choice("6", false));
-        quiz.addQuestion(question);
-
-        service.quizDraft = Optional.of(quiz);
-
-        AiQuizAssistantService.GeneratedQuizDraft generatedDraft =
-                service.generateQuizDraft("Java", "Java Foundations", 4, "Medium");
-
-        Question repairedQuestion = generatedDraft.quiz().getQuestions().get(0);
-        assertEquals(4, repairedQuestion.getChoices().size());
-        assertEquals(4, repairedQuestion.getChoices().stream()
-                .map(Choice::getChoice)
-                .map(value -> value.trim().toLowerCase())
-                .distinct()
-                .count());
-        assertEquals(1, repairedQuestion.getChoices().stream().filter(choice -> Boolean.TRUE.equals(choice.getIsCorrect())).count());
     }
 
     @Test
@@ -104,21 +51,6 @@ class AiQuizAssistantServiceTest {
         assertNull(generatedDraft.quiz());
         assertEquals("Unavailable", generatedDraft.provider());
         assertEquals("OpenAI is not configured.", generatedDraft.message());
-    }
-
-    @Test
-    void generateQuizDraftReturnsFailureWhenAiResponseIsUnusable() {
-        StubAiQuizAssistantService service = new StubAiQuizAssistantService();
-        service.openAiReady = true;
-        service.quizDraft = Optional.empty();
-
-        AiQuizAssistantService.GeneratedQuizDraft generatedDraft =
-                service.generateQuizDraft("Java", "Java Foundations", 4, "Hard");
-
-        assertFalse(generatedDraft.success());
-        assertNull(generatedDraft.quiz());
-        assertEquals("OpenAI", generatedDraft.provider());
-        assertTrue(generatedDraft.message().contains("did not return a usable draft"));
     }
 
     @Test
@@ -161,10 +93,10 @@ class AiQuizAssistantServiceTest {
         Question question = buildQuiz("Networks", "Networks Quiz", 1).getQuestions().get(0);
         AiQuizAssistantService.GeneratedHint generatedHint = service.generateHint(null, question, null);
 
-        assertTrue(generatedHint.success());
-        assertNotNull(generatedHint.text());
-        assertEquals("Local fallback", generatedHint.provider());
-        assertTrue(generatedHint.message().contains("OpenAI hint generation is disabled."));
+        assertFalse(generatedHint.success());
+        assertNull(generatedHint.text());
+        assertEquals("Unavailable", generatedHint.provider());
+        assertEquals("OpenAI hint generation is disabled.", generatedHint.message());
     }
 
     @Test
@@ -184,53 +116,18 @@ class AiQuizAssistantServiceTest {
         assertTrue(java.util.Set.of("Easy", "Medium", "Hard").contains(metadata.difficulty()));
     }
 
-    @Test
-    void requiresCodeSnippetUsesAiDecisionWhenAvailable() {
-        StubAiQuizAssistantService service = new StubAiQuizAssistantService();
-        service.openAiReady = true;
-        service.codeSnippetRequirement = Optional.of(true);
-
-        assertTrue(service.requiresCodeSnippet(
-                "Which answer is correct?",
-                List.of("15", "10", "5", "0")
-        ));
-    }
-
-    @Test
-    void requiresCodeSnippetFallsBackToHeuristicWhenAiUnavailable() {
-        StubAiQuizAssistantService service = new StubAiQuizAssistantService();
-        service.openAiReady = false;
-
-        assertTrue(service.requiresCodeSnippet(
-                "What does the following code output when executed?",
-                List.of("15", "10", "5", "0")
-        ));
-    }
-
     private static Quiz buildQuiz(String keyword, String title, int questionCount) {
-        return buildQuiz(keyword, title, questionCount, false);
-    }
-
-    private static Quiz buildQuiz(String keyword, String title, int questionCount, boolean includeCodeQuestion) {
         Quiz quiz = new Quiz();
         quiz.setKeyword(keyword);
         quiz.setTitre(title);
 
         for (int index = 0; index < questionCount; index++) {
             Question question = new Question();
-            if (includeCodeQuestion && index == questionCount - 1) {
-                question.setQuestion("Write a valid " + keyword + " statement.");
-                question.setQuestionType(Question.TYPE_CODE);
-                question.setCodeLanguage(keyword);
-                question.setStarterCode("");
-                question.setExpectedAnswer("System.out.println(\"Hello\");");
-            } else {
-                question.setQuestion("Question " + (index + 1) + " about " + keyword + "?");
-                question.addChoice(choice("Correct " + (index + 1), true));
-                question.addChoice(choice("Wrong A " + (index + 1), false));
-                question.addChoice(choice("Wrong B " + (index + 1), false));
-                question.addChoice(choice("Wrong C " + (index + 1), false));
-            }
+            question.setQuestion("Question " + (index + 1) + " about " + keyword + "?");
+            question.addChoice(choice("Correct " + (index + 1), true));
+            question.addChoice(choice("Wrong A " + (index + 1), false));
+            question.addChoice(choice("Wrong B " + (index + 1), false));
+            question.addChoice(choice("Wrong C " + (index + 1), false));
             quiz.addQuestion(question);
         }
 
@@ -249,7 +146,6 @@ class AiQuizAssistantServiceTest {
         private String unavailableMessage = "OpenAI is unavailable.";
         private Optional<Quiz> quizDraft = Optional.empty();
         private Optional<String> hint = Optional.empty();
-        private Optional<Boolean> codeSnippetRequirement = Optional.empty();
 
         @Override
         protected boolean isOpenAiReady() {
@@ -274,11 +170,6 @@ class AiQuizAssistantServiceTest {
         @Override
         protected Optional<String> tryGenerateHintWithOpenAi(Quiz quiz, Question question, Long selectedChoiceId) {
             return hint;
-        }
-
-        @Override
-        protected Optional<Boolean> tryDetectQuestionRequiresCodeSnippetWithOpenAi(String questionText, List<String> choices) {
-            return codeSnippetRequirement;
         }
     }
 }

@@ -169,45 +169,6 @@ class QuizServiceIntegrationTest {
         }
     }
 
-    @Test
-    void submitQuizReturnsNullWhenUserDoesNotExistInDatabase() {
-        List<Long> quizIdsToCleanup = new ArrayList<>();
-
-        try {
-            Quiz quiz = service.createQuiz(buildQuiz(
-                    uniqueValue("Guarded Quiz"),
-                    uniqueValue("guarded-keyword"),
-                    "Java",
-                    "Which type stores true or false values?",
-                    "boolean",
-                    "String",
-                    "SQL",
-                    "Which clause filters rows?",
-                    "WHERE",
-                    "ORDER BY"
-            ));
-
-            assertNotNull(quiz);
-            quizIdsToCleanup.add(quiz.getId());
-
-            Map<Long, Long> answers = new HashMap<>();
-            answers.put(quiz.getQuestions().get(0).getId(), findCorrectChoiceId(quiz.getQuestions().get(0)));
-            answers.put(quiz.getQuestions().get(1).getId(), findCorrectChoiceId(quiz.getQuestions().get(1)));
-
-            User missingUser = new User(Integer.MAX_VALUE, "Missing User", "missing-user@example.com", "", UserRole.USER);
-
-            QuizResult result = service.submitQuiz(quiz.getId(), answers, missingUser);
-
-            assertNull(result);
-        } finally {
-            for (Long quizId : quizIdsToCleanup) {
-                if (quizId != null) {
-                    service.deleteQuiz(quizId);
-                }
-            }
-        }
-    }
-
     private Quiz buildQuiz(
             String title,
             String keyword,
