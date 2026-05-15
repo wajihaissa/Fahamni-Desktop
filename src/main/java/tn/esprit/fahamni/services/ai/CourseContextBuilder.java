@@ -9,6 +9,8 @@ import org.jsoup.Jsoup;
 import org.vosk.Model;
 import org.vosk.Recognizer;
 import tn.esprit.fahamni.entities.Matiere;
+import tn.esprit.fahamni.utils.LocalConfig;
+import tn.esprit.fahamni.utils.WebAssetBridge;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -22,6 +24,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +46,8 @@ public class CourseContextBuilder {
 
     private static boolean isFfmpegAvailable = false;
     private static boolean hasCheckedFfmpeg = false;
-    private static Model sharedVoskModel = null;
+    private static String checkedFfmpegPath = null;
+    private static final Map<String, Model> SHARED_VOSK_MODELS = new HashMap<>();
 
     private final LanguageDetector languageDetector = LanguageDetectorBuilder
         .fromLanguages(Language.ENGLISH, Language.FRENCH)
@@ -126,6 +130,49 @@ public class CourseContextBuilder {
         });
     }
 
+    public int countResources(Matiere matiere) {
+        if (matiere == null || matiere.getStructure() == null || matiere.getStructure().isBlank()) {
+            return 0;
+        }
+
+        int count = 0;
+        try {
+            JSONObject structure = new JSONObject(matiere.getStructure());
+            JSONArray chapters = structure.optJSONArray("chapters");
+            if (chapters == null) {
+                return 0;
+            }
+
+            for (int i = 0; i < chapters.length(); i++) {
+                JSONObject chapter = chapters.optJSONObject(i);
+                if (chapter == null) {
+                    continue;
+                }
+
+                JSONArray sections = chapter.optJSONArray("sections");
+                if (sections == null) {
+                    continue;
+                }
+
+                for (int j = 0; j < sections.length(); j++) {
+                    JSONObject section = sections.optJSONObject(j);
+                    if (section == null) {
+                        continue;
+                    }
+
+                    JSONArray resources = section.optJSONArray("resources");
+                    if (resources != null) {
+                        count += resources.length();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            return 0;
+        }
+
+        return count;
+    }
+
     private String extractResourceText(String type, String name, String path) throws Exception {
         if (TYPE_PDF.equalsIgnoreCase(type)) {
             return extractPdfText(path);
@@ -142,6 +189,13 @@ public class CourseContextBuilder {
     private String extractPdfText(String path) throws Exception {
         org.apache.pdfbox.text.PDFTextStripper stripper = new org.apache.pdfbox.text.PDFTextStripper();
 
+        Path localPdfPath = resolveResourcePath(path);
+        if (localPdfPath != null && Files.exists(localPdfPath)) {
+            try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.pdmodel.PDDocument.load(localPdfPath.toFile())) {
+                return stripper.getText(doc);
+            }
+        }
+
         if (isHttpPath(path)) {
             try (InputStream in = new BufferedInputStream(new URL(path).openStream());
                  org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.pdmodel.PDDocument.load(in)) {
@@ -149,14 +203,7 @@ public class CourseContextBuilder {
             }
         }
 
-        Path pdfPath = resolveResourcePath(path);
-        if (pdfPath == null || !Files.exists(pdfPath)) {
-            throw new IllegalArgumentException("PDF file not found: " + path);
-        }
-
-        try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.pdmodel.PDDocument.load(pdfPath.toFile())) {
-            return stripper.getText(doc);
-        }
+        throw new IllegalArgumentException("PDF file not found: " + path);
     }
 
     private String extractWebText(String url) throws Exception {
@@ -169,12 +216,12 @@ public class CourseContextBuilder {
 
     private String transcribeVideo(String resourceName, String resourcePath) {
         if (!isFfmpegAvailable()) {
-            System.err.println("FFmpeg not found at configured path: " + FFMPEG_PATH + ". Video transcription skipped.");
+            System.err.println("FFmpeg not found at configured path: " + getFfmpegPath() + ". Video transcription skipped.");
             return "";
         }
 
-        File frModelFolder = new File(VOSK_MODEL_FR);
-        File enModelFolder = new File(VOSK_MODEL_EN);
+        File frModelFolder = new File(getVoskModelFrPath());
+        File enModelFolder = new File(getVoskModelEnPath());
 
         File sampleWav = null;
         File fullWav = null;
@@ -210,10 +257,10 @@ public class CourseContextBuilder {
 
             if (selectedModelPath == null) {
                 if (!frModelFolder.exists()) {
-                    System.err.println("Vosk model not found at: " + VOSK_MODEL_FR + ". Transcription skipped for: " + resourceName + ".");
+                    System.err.println("Vosk model not found at: " + getVoskModelFrPath() + ". Transcription skipped for: " + resourceName + ".");
                 }
                 if (!enModelFolder.exists()) {
-                    System.err.println("Vosk model not found at: " + VOSK_MODEL_EN + ". Transcription skipped for: " + resourceName + ".");
+                    System.err.println("Vosk model not found at: " + getVoskModelEnPath() + ". Transcription skipped for: " + resourceName + ".");
                 }
                 return "";
             }
@@ -237,8 +284,8 @@ public class CourseContextBuilder {
             return byTitle;
         }
 
-        File frModelFolder = new File(VOSK_MODEL_FR);
-        File enModelFolder = new File(VOSK_MODEL_EN);
+        File frModelFolder = new File(getVoskModelFrPath());
+        File enModelFolder = new File(getVoskModelEnPath());
         if (!frModelFolder.exists() && !enModelFolder.exists()) {
             return "unknown";
         }
@@ -306,10 +353,13 @@ public class CourseContextBuilder {
             return "";
         }
 
+        Model model;
         try {
             synchronized (CourseContextBuilder.class) {
-                if (sharedVoskModel == null) {
-                    sharedVoskModel = new Model(modelPath);
+                model = SHARED_VOSK_MODELS.get(modelPath);
+                if (model == null) {
+                    model = new Model(modelPath);
+                    SHARED_VOSK_MODELS.put(modelPath, model);
                 }
             }
         } catch (IOException e) {
@@ -318,7 +368,7 @@ public class CourseContextBuilder {
         }
 
         try (AudioInputStream ais = AudioSystem.getAudioInputStream(wavFile);
-             Recognizer recognizer = new Recognizer(sharedVoskModel, 16000f)) {
+             Recognizer recognizer = new Recognizer(model, 16000f)) {
 
             byte[] buffer = new byte[4096];
             StringBuilder text = new StringBuilder();
@@ -348,10 +398,11 @@ public class CourseContextBuilder {
     }
 
     private void runFfmpeg(String inputPathOrUrl, String outputWavPath, Integer maxSeconds) throws Exception {
+        String ffmpegPath = getFfmpegPath();
         ProcessBuilder pb;
         if (maxSeconds == null) {
             pb = new ProcessBuilder(
-                FFMPEG_PATH, "-y",
+                ffmpegPath, "-y",
                 "-i", inputPathOrUrl,
                 "-ar", "16000",
                 "-ac", "1",
@@ -361,7 +412,7 @@ public class CourseContextBuilder {
             );
         } else {
             pb = new ProcessBuilder(
-                FFMPEG_PATH, "-y",
+                ffmpegPath, "-y",
                 "-i", inputPathOrUrl,
                 "-t", String.valueOf(maxSeconds),
                 "-ar", "16000",
@@ -415,34 +466,44 @@ public class CourseContextBuilder {
     }
 
     private boolean isFfmpegAvailable() {
-        if (hasCheckedFfmpeg) {
+        String ffmpegPath = getFfmpegPath();
+        if (hasCheckedFfmpeg && ffmpegPath.equals(checkedFfmpegPath)) {
             return isFfmpegAvailable;
         }
 
+        if (hasCheckedFfmpeg) {
+            hasCheckedFfmpeg = false;
+        }
+
         try {
-            ProcessBuilder pb = new ProcessBuilder(FFMPEG_PATH, "-version");
+            ProcessBuilder pb = new ProcessBuilder(ffmpegPath, "-version");
             pb.redirectErrorStream(true);
             Process process = pb.start();
             boolean result = process.waitFor() == 0;
             isFfmpegAvailable = result;
             hasCheckedFfmpeg = true;
+            checkedFfmpegPath = ffmpegPath;
             return result;
         } catch (Exception e) {
             isFfmpegAvailable = false;
             hasCheckedFfmpeg = true;
+            checkedFfmpegPath = ffmpegPath;
             return false;
         }
     }
 
     private String resolveFfmpegInput(String resourcePath) {
+        Path local = resolveResourcePath(resourcePath);
+        if (local != null && Files.exists(local)) {
+            return local.toAbsolutePath().toString();
+        }
         if (isHttpPath(resourcePath)) {
             return resourcePath;
         }
-        Path local = resolveResourcePath(resourcePath);
         if (local == null) {
             throw new IllegalArgumentException("Video file not found: " + resourcePath);
         }
-        return local.toAbsolutePath().toString();
+        return resourcePath;
     }
 
     private Path resolveResourcePath(String rawPath) {
@@ -450,12 +511,12 @@ public class CourseContextBuilder {
             return null;
         }
 
-        String normalized = rawPath.replace("\\", "/").trim();
-        Path p = Path.of(normalized);
-        if (p.isAbsolute() && Files.exists(p)) {
-            return p.normalize();
+        Path bridgedPath = WebAssetBridge.resolveStoredPathToLocalFile(rawPath);
+        if (bridgedPath != null && Files.exists(bridgedPath)) {
+            return bridgedPath.normalize();
         }
 
+        String normalized = rawPath.replace("\\", "/").trim();
         Path inResources = normalized.startsWith("/")
             ? RESOURCES_ROOT.resolve(normalized.substring(1))
             : RESOURCES_ROOT.resolve(normalized);
@@ -468,6 +529,21 @@ public class CourseContextBuilder {
             return inProject;
         }
         return null;
+    }
+
+    private String getFfmpegPath() {
+        String configured = LocalConfig.get("FFMPEG_PATH");
+        return configured == null || configured.isBlank() ? FFMPEG_PATH : configured;
+    }
+
+    private String getVoskModelFrPath() {
+        String configured = LocalConfig.get("VOSK_MODEL_FR");
+        return configured == null || configured.isBlank() ? VOSK_MODEL_FR : configured;
+    }
+
+    private String getVoskModelEnPath() {
+        String configured = LocalConfig.get("VOSK_MODEL_EN");
+        return configured == null || configured.isBlank() ? VOSK_MODEL_EN : configured;
     }
 
     private boolean isHttpPath(String path) {

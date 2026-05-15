@@ -106,6 +106,7 @@ public class ChatbotController implements Initializable {
         }
 
         loadedMatiereId.set(nextMatiereId);
+        int resourceCount = courseContextBuilder.countResources(matiere);
         addMessageToUI(
             "Fahamni AI is reading the course materials (PDFs, Links, Videos). This might take a moment...",
             false
@@ -119,10 +120,17 @@ public class ChatbotController implements Initializable {
                         // Ingestion resulted in empty context
                         isContextLoaded.set(false);
                         courseContext.set("");
-                        addMessageToUI(
-                            "Warning: Could not extract text from materials. I will answer based on general knowledge.",
-                            false
-                        );
+                        if (resourceCount <= 0) {
+                            addMessageToUI(
+                                "This course does not have any uploaded materials yet. I will answer based on general knowledge.",
+                                false
+                            );
+                        } else {
+                            addMessageToUI(
+                                "Warning: Course materials were found, but no text could be extracted. Check that the files exist and that FFmpeg/Vosk are configured correctly. I will answer based on general knowledge.",
+                                false
+                            );
+                        }
                     } else {
                         // Successfully extracted context
                         courseContext.set(result);

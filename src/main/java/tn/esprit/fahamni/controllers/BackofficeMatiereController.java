@@ -5,6 +5,7 @@ import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ import tn.esprit.fahamni.services.MatiereService;
 import tn.esprit.fahamni.test.Main;
 import tn.esprit.fahamni.utils.SceneManager;
 import tn.esprit.fahamni.utils.ViewNavigator;
+import tn.esprit.fahamni.utils.WebAssetBridge;
 
 public class BackofficeMatiereController implements Initializable {
 
@@ -238,20 +240,24 @@ public class BackofficeMatiereController implements Initializable {
 
     private String copyCoverImage(File sourceFile) {
         try {
-            String uploadsDir = System.getProperty("user.dir") + "/src/main/resources/uploads/matieres";
-            File dir = new File(uploadsDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-
             String originalName = sourceFile.getName();
             int dotIndex = originalName.lastIndexOf('.');
             String extension = dotIndex >= 0 ? originalName.substring(dotIndex) : "";
             String newFileName = "matiere_" + System.currentTimeMillis() + extension;
-            File destinationFile = new File(dir, newFileName);
 
-            Files.copy(sourceFile.toPath(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/matieres/" + newFileName;
+            Path symfonyDestination = WebAssetBridge.resolveSymfonyPublicFile("uploads/matiere/" + newFileName);
+            if (symfonyDestination != null) {
+                Files.createDirectories(symfonyDestination.getParent());
+                Files.copy(sourceFile.toPath(), symfonyDestination, StandardCopyOption.REPLACE_EXISTING);
+                return WebAssetBridge.buildPublicUrl("uploads/matiere/" + newFileName);
+            }
+
+            Path legacyDir = Path.of(System.getProperty("user.dir"), "src", "main", "resources", "uploads", "matiere");
+            Files.createDirectories(legacyDir);
+            Files.copy(sourceFile.toPath(), legacyDir.resolve(newFileName), StandardCopyOption.REPLACE_EXISTING);
+            System.err.println("Symfony public directory not configured or not detected. "
+                + "Cover image stored in legacy Java path; shared cover sync will remain incomplete.");
+            return "/uploads/matiere/" + newFileName;
         } catch (Exception e) {
             System.err.println("Error copying cover image: " + e.getMessage());
             return null;
@@ -522,21 +528,20 @@ public class BackofficeMatiereController implements Initializable {
 
     private String copyResourceFile(File sourceFile, String type) {
         try {
-            // Create uploads directory if it doesn't exist
-            String uploadsDir = System.getProperty("user.dir") + "/src/main/resources/uploads/resources";
-            File dir = new File(uploadsDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-
             // Generate unique filename
             String newFileName = System.currentTimeMillis() + "_" + sourceFile.getName();
-            File destinationFile = new File(uploadsDir + "/" + newFileName);
+            Path symfonyDestination = WebAssetBridge.resolveSymfonyPublicFile("uploads/resources/" + newFileName);
+            if (symfonyDestination != null) {
+                Files.createDirectories(symfonyDestination.getParent());
+                Files.copy(sourceFile.toPath(), symfonyDestination, StandardCopyOption.REPLACE_EXISTING);
+                return WebAssetBridge.buildPublicUrl("uploads/resources/" + newFileName);
+            }
 
-            // Copy the file
-            Files.copy(sourceFile.toPath(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-            // Return relative path
+            Path legacyDir = Path.of(System.getProperty("user.dir"), "src", "main", "resources", "uploads", "resources");
+            Files.createDirectories(legacyDir);
+            Files.copy(sourceFile.toPath(), legacyDir.resolve(newFileName), StandardCopyOption.REPLACE_EXISTING);
+            System.err.println("Symfony public directory not configured or not detected. "
+                + "Resource file stored in legacy Java path; shared resource sync will remain incomplete.");
             return "/uploads/resources/" + newFileName;
         } catch (Exception e) {
             System.err.println("Error copying resource file: " + e.getMessage());
@@ -664,7 +669,7 @@ public class BackofficeMatiereController implements Initializable {
         openBtn.setStyle("-fx-font-size: 10;");
         openBtn.setOnAction(e -> {
             try {
-                if ("Lien".equals(type)) {
+                if ("Lien".equals(type) || path.startsWith("http://") || path.startsWith("https://")) {
                     Desktop.getDesktop().browse(new URI(path));
                 } else {
                     String fullPath = System.getProperty("user.dir") + "/src/main/resources" + path;
